@@ -157,11 +157,12 @@ async function pip_install_all(fi = false) {
       "Dependencies are already up to date, skipping pip installs..."
     );
 
-  const pip_install_all_choice = await menu(
-    ["Yes", "No"],
-    `Attempt single pip install of all dependencies (potentially faster)?
-    (use arrow keys to move, enter to select)`
-  );
+  // const pip_install_all_choice = await menu(
+  //   ["Yes", "No"],
+  //   `Attempt single pip install of all dependencies (potentially faster)?
+  //   (use arrow keys to move, enter to select)`
+  // );
+  const pip_install_all_choice = "Yes";
 
   if (pip_install_all_choice === "Yes") {
     try {

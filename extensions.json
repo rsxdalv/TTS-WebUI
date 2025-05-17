@@ -269,21 +269,6 @@
             "extension_platform_version": "0.0.1"
         },
         {
-            "package_name": "extension_bark_legacy",
-            "name": "Bark Legacy",
-            "version": "0.0.1",
-            "requirements": "git+https://github.com/rsxdalv/extension_bark_legacy@main",
-            "description": "This is the legacy UI of Bark from TTS-WebUI",
-            "extension_type": "interface",
-            "extension_class": "text-to-speech",
-            "author": "rsxdalv",
-            "extension_author": "rsxdalv",
-            "license": "MIT",
-            "website": "https://github.com/rsxdalv/extension_bark_legacy",
-            "extension_website": "https://github.com/rsxdalv/extension_bark_legacy",
-            "extension_platform_version": "0.0.1"
-        },
-        {
             "package_name": "extension_audiocraft_mac",
             "name": "MusicGen (Mac)",
             "version": "0.0.1",
@@ -671,6 +656,21 @@
             "license": "MIT",
             "website": "https://github.com/rsxdalv/extension_rvc_training",
             "extension_website": "https://github.com/rsxdalv/extension_rvc_training",
+            "extension_platform_version": "0.0.1"
+        },
+        {
+            "package_name": "extension_bark_legacy",
+            "name": "Bark Legacy",
+            "version": "0.0.1",
+            "requirements": "git+https://github.com/rsxdalv/extension_bark_legacy@main",
+            "description": "This is the legacy UI of Bark from TTS-WebUI",
+            "extension_type": "interface",
+            "extension_class": "text-to-speech",
+            "author": "rsxdalv",
+            "extension_author": "rsxdalv",
+            "license": "MIT",
+            "website": "https://github.com/rsxdalv/extension_bark_legacy",
+            "extension_website": "https://github.com/rsxdalv/extension_bark_legacy",
             "extension_platform_version": "0.0.1"
         }
     ],

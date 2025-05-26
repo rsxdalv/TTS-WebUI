@@ -4,10 +4,6 @@ import router from "next/router";
 export const barkSettingsId = "barkSettingsParams.v4";
 
 export type BarkSettingsParams = {
-  env_suno_use_small_models: boolean;
-  env_suno_enable_mps: boolean;
-  env_suno_offload_cpu: boolean;
-
   text_use_gpu: boolean;
   text_use_small: boolean;
   coarse_use_gpu: boolean;
@@ -19,10 +15,6 @@ export type BarkSettingsParams = {
 };
 
 export const initialBarkSettingsParams: BarkSettingsParams = {
-  env_suno_use_small_models: false,
-  env_suno_enable_mps: false,
-  env_suno_offload_cpu: false,
-
   text_use_gpu: false,
   text_use_small: false,
   coarse_use_gpu: false,

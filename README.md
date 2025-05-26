@@ -20,6 +20,7 @@
   [![Discord](https://img.shields.io/discord/1258772280071295018?label=discord&logo=discord&logoColor=white)](https://discord.gg/V8BKTVRtJ9)
   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rsxdalv/tts-webui/blob/main/notebooks/google_colab.ipynb)
   [![GitHub forks](https://img.shields.io/github/forks/rsxdalv/tts-webui?style=social)](https://github.com/rsxdalv/tts-webui/network/members)
+  [![YouTube](https://img.shields.io/badge/YouTube-%23FF0000.svg?logo=YouTube&logoColor=white)](https://www.youtube.com/@TTS-WebUI)
 
 </div>
 
@@ -29,7 +30,7 @@
 
 </div>
 
-| [![Watch the video](https://img.youtube.com/vi/Y8J717tr9t0/sddefault.jpg)](https://youtu.be/Y8J717tr9t0) | [![Watch the video](https://img.youtube.com/vi/ScN2ypewABc/sddefault.jpg)](https://youtu.be/ScN2ypewABc) | [![Watch the video](https://img.youtube.com/vi/JXojhFjZ39k/sddefault.jpg)](https://youtu.be/JXojhFjZ39k) |
+| [![Watch the video](https://img.youtube.com/vi/JXojhFjZ39k/sddefault.jpg)](https://youtu.be/JXojhFjZ39k) | [![Watch the video](https://img.youtube.com/vi/ScN2ypewABc/sddefault.jpg)](https://youtu.be/ScN2ypewABc) | [![Watch the video](https://img.youtube.com/vi/HFtrCnczZQI/sddefault.jpg)](https://youtu.be/HFtrCnczZQI) |
 | :------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------: |
 
 <div align="center">
@@ -84,6 +85,14 @@
 | :-----------------------------------------: | :-----------------------------------------: | :-------------------------------: |
 
 ## Changelog
+
+May 26:
+* Add fixes for decorators to work with non-'text' inputs.
+* Clean up .env generator and remove the Bark environment variables from settings.
+* Add Audio book extension definitions for future use (extensions not available yet).
+* Fix SeamlessM4T Audio to Audio tab.
+* Update ACE-Step extension.
+* Improve Kokoro TTS API.
 
 May 14:
 * Prepare for Python 3.11 and 3.12 support.

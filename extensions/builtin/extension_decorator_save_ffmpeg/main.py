@@ -113,6 +113,7 @@ def callback_save_generation_musicgen(
     print("Saving generation to", filename)
 
     input_data = audio_array.tobytes()
+    metadata["text"] = metadata.get("text", "")
     metadata["text"] = _double_escape_quotes(metadata["text"])
     metadata["text"] = _double_escape_newlines(metadata["text"])
     metadata_str = json.dumps(metadata, ensure_ascii=False)
@@ -216,6 +217,7 @@ def callback_save_generation_bark(
 
     _attach_generation_meta(full_generation, "semantic_prompt", metadata)
     _attach_generation_meta(full_generation, "coarse_prompt", metadata)
+    metadata["text"] = metadata.get("text", "")
     metadata["text"] = _double_escape_quotes(metadata["text"])
     metadata["text"] = _double_escape_newlines(metadata["text"])
 

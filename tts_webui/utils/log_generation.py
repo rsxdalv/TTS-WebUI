@@ -11,7 +11,18 @@ def custom_repr(value):
 
 
 def StringifyParams(x):
-    params = ",\n    ".join(f"{k}={custom_repr(v)}" for k, v in x.items())
+    def filter_keys(k):
+        if k == "outputs":
+            return False
+        if k == "_type":
+            return False
+        if k == "text":
+            return False
+        return True
+
+    params = ",\n    ".join(
+        f"{k}={custom_repr(v)}" for k, v in x.items() if filter_keys(k)
+    )
     return f"{_get_typed_dict_name(x)}(\n    {params}\n)"
 
 

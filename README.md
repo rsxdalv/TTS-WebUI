@@ -85,6 +85,11 @@
 
 ## Changelog
 
+May 26:
+* Add fixes for decorators to work with non-'text' inputs.
+* Clean up .env generator and remove the Bark environment variables from settings.
+* Add Audio book extension definitions for future use (extensions not available yet).
+
 May 14:
 * Prepare for Python 3.11 and 3.12 support.
 

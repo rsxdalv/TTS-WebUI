@@ -14,7 +14,7 @@ def format_date_for_file(date: datetime):
 
 
 def _create_base_filename(kwargs, result_dict):
-    prompt = kwargs["text"]
+    prompt = kwargs.get("text", "")
     is_long = result_dict.get("long", False)
     base_filename = format_filename(
         title=prompt_to_title(prompt) + ("_long" if is_long else ""),

@@ -83,29 +83,6 @@ const BarkSettingsPage = () => {
         console.error("Error:", error);
       }
     }
-
-    const env_keys = [
-      "env_suno_use_small_models",
-      "env_suno_enable_mps",
-      "env_suno_offload_cpu",
-    ];
-    const isEnv = env_keys.includes(name);
-
-    if (isEnv) {
-      try {
-        await fetch("/api/gradio/save_env_variables_bark", {
-          method: "POST",
-          body: JSON.stringify(
-            Object.fromEntries(
-              env_keys.map((key) => [key, newBarkSettingsParams[key]])
-            )
-          ),
-        });
-        setBarkSettingsParams(newBarkSettingsParams);
-      } catch (error) {
-        console.error("Error:", error);
-      }
-    }
   };
 
   return (
@@ -177,39 +154,10 @@ const BarkSettingsPage = () => {
             />
           </div>
 
-          <div className="flex flex-col gap-y-2 cell">
-            <div className="flex gap-x-2 items-center">
-              <label className="text-md">Environment (requires restart):</label>
-            </div>
-            <SwitchWithLabel
-              label="Use small models"
-              name="env_suno_use_small_models"
-              value={barkSettingsParams.env_suno_use_small_models}
-              onChange={handleChange}
-            />
-            <SwitchWithLabel
-              label="Enable MPS"
-              name="env_suno_enable_mps"
-              value={barkSettingsParams.env_suno_enable_mps}
-              onChange={handleChange}
-            />
-            <SwitchWithLabel
-              label="Offload GPU models to CPU"
-              name="env_suno_offload_cpu"
-              value={barkSettingsParams.env_suno_offload_cpu}
-              onChange={handleChange}
-            />
-          </div>
-
           <Button
             variant="outline"
             onClick={() => {
-              setBarkSettingsParams({
-                ...barkSettingsParams,
-                env_suno_use_small_models: false,
-                env_suno_enable_mps: false,
-                env_suno_offload_cpu: false,
-              });
+              setBarkSettingsParams({ ...barkSettingsParams });
             }}
           >
             Reset to defaults

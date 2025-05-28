@@ -14,6 +14,13 @@ import tts_webui.utils.dotenv_init as dotenv_init
 dotenv_init.init()
 import os
 import gradio as gr
+
+import gradio as gr
+from gradio_goodtabs import GoodTabs
+from gradio_goodtab import GoodTab as Tab
+gr.Tab = Tab
+gr.Tabs = GoodTabs
+
 from tts_webui.utils.suppress_warnings import suppress_warnings
 
 suppress_warnings()

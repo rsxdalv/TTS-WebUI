@@ -86,6 +86,10 @@
 
 ## Changelog
 
+May 28:
+* Restore gr.Tabs to the old style for easier stacking of many tabs.
+* Integrate custom IconButton.
+
 May 27:
 * Include gradio==5.5.0 in each installation of extensions. While this might cause some extensions to fail to install,
   it should prevent extensions from breaking the UI. Please report extensions that fail to install.

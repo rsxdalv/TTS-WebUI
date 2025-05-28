@@ -1,7 +1,8 @@
 import os
 import gradio as gr
+from gradio_iconbutton import IconButton
 
-from tts_webui.utils.gr_reload_button import gr_open_button_simple, gr_reload_button
+from tts_webui.utils.OpenFolderButton import OpenFolderButton
 from tts_webui.utils.get_path_from_root import get_path_from_root
 from tts_webui.utils.manage_model_state import unload_model
 
@@ -33,12 +34,12 @@ def model_select_ui(
         label="Model",
         value=models[0][1],
     )
-    gr_reload_button().click(
+    IconButton("refresh").click(
         fn=lambda: Component(choices=get_models(repos, abs_dir)),
         outputs=[model],
         api_name=f"{prefix}_get_models",
     )
-    gr_open_button_simple(abs_dir, api_name=f"{prefix}_open_model_dir")
+    OpenFolderButton(abs_dir, api_name=f"{prefix}_open_model_dir")
     return model
 
 

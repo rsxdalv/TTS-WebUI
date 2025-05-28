@@ -1,26 +1,30 @@
-import gradio as gr
+from deprecated import deprecated
 from tts_webui.utils.open_folder import open_folder
+from gradio_iconbutton import IconButton
 
 
-def gr_icon_button(value="refresh", **kwargs):
-    return gr.Button(
-        value=value,
-        elem_classes="btn-sm material-symbols-outlined",
+@deprecated(
+    version="0.0.1",
+    reason="Use IconButton instead",
+)
+def gr_reload_button(**kwargs):
+    return IconButton(
+        value="refresh",
         size="sm",
         **kwargs,
     )
 
 
-def gr_reload_button(**kwargs):
-    return gr_icon_button(value="refresh", **kwargs)
-
-
-def gr_open_button(**kwargs):
-    return gr_icon_button(value="folder_open", **kwargs)
-
-
+@deprecated(
+    version="0.0.1",
+    reason="Use OpenFolderButton instead",
+)
 def gr_open_button_simple(dirname="", api_name=None, **kwargs):
-    return gr_open_button(**kwargs).click(
+    return IconButton(
+        value="folder_open",
+        size="sm",
+        **kwargs,
+    ).click(
         fn=lambda: open_folder(dirname),
         api_name=api_name,
     )

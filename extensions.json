@@ -4,7 +4,6 @@
             "package_name": "extension_vall_e_x",
             "recommended": true,
             "name": "Vall-E-X",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_vall_e_x@main",
             "description": "Multilingual text-to-speech model supporting English, Chinese, and Japanese",
             "extension_type": "interface",
@@ -20,7 +19,6 @@
             "package_name": "extension_styletts2",
             "recommended": true,
             "name": "StyleTTS2",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_styletts2@main",
             "description": "StyleTTS2 is a text-to-speech model that generates high-quality speech with controllable style",
             "extension_type": "interface",
@@ -36,7 +34,6 @@
             "package_name": "extension_seamless_m4t",
             "recommended": true,
             "name": "Seamless M4T",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_seamless_m4t@main",
             "description": "SeamlessM4T is a multilingual and multimodal translation model supporting text and speech",
             "extension_type": "interface",
@@ -52,7 +49,6 @@
             "package_name": "extension_mms",
             "recommended": true,
             "name": "MMS",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_mms@main",
             "description": "MMS (Massively Multilingual Speech) is a text-to-speech model supporting over 1000 languages",
             "extension_type": "interface",
@@ -68,7 +64,6 @@
             "package_name": "extension_tortoise",
             "recommended": true,
             "name": "Tortoise TTS",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_tortoise@main",
             "description": "Tortoise TTS is a high-quality text-to-speech model with voice cloning capabilities",
             "extension_type": "interface",
@@ -84,7 +79,6 @@
             "package_name": "extension_f5_tts",
             "recommended": true,
             "name": "F5-TTS",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_f5_tts@main",
             "description": "F5-TTS: A Fairytaler that Fakes Fluent and Faithful Speech with Flow Matching.",
             "extension_type": "interface",
@@ -100,7 +94,6 @@
             "package_name": "extension_bark",
             "recommended": true,
             "name": "Bark",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_bark@main",
             "description": "Bark: A text-to-speech model",
             "extension_type": "interface",
@@ -116,7 +109,6 @@
             "package_name": "extension_stable_audio",
             "recommended": true,
             "name": "Stable Audio",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_stable_audio@main",
             "description": "Stable Audio is a text-to-audio model for generating high-quality music and sound effects",
             "extension_type": "interface",
@@ -132,7 +124,6 @@
             "package_name": "extension_vocos",
             "recommended": true,
             "name": "Vocos",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_vocos@main",
             "description": "Vocos is a neural audio codec for high-quality audio compression and reconstruction",
             "extension_type": "interface",
@@ -148,7 +139,6 @@
             "package_name": "extension_audiocraft",
             "recommended": true,
             "name": "Audiocraft",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_audiocraft@main",
             "description": "Audiocraft provides MusicGen and MAGNeT models for high-quality music and audio generation",
             "extension_type": "interface",
@@ -164,7 +154,6 @@
             "package_name": "extension_rvc",
             "recommended": true,
             "name": "RVC",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_rvc@main",
             "description": "RVC: Retrieval-based Voice Conversion",
             "extension_type": "interface",
@@ -180,7 +169,6 @@
             "package_name": "extension_demucs",
             "recommended": true,
             "name": "Demucs",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_demucs@main",
             "description": "Demucs is a music source separation model that can separate drums, bass, vocals, and other instruments",
             "extension_type": "interface",
@@ -195,7 +183,6 @@
         {
             "package_name": "extension_audiocraft_plus",
             "name": "AudioCraft Plus",
-            "version": "2.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_audiocraft_plus@main",
             "description": "AudioCraft Plus is an all-in-one WebUI for the original AudioCraft, adding many quality features on top.",
             "extension_type": "interface",
@@ -210,7 +197,6 @@
         {
             "package_name": "extensions.builtin.extension_gallery_history",
             "name": "Gallery History",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_gallery_history@main",
             "description": "Gallery History allows selecting previously generated audio files by looking at their waveforms",
             "extension_type": "interface",
@@ -225,7 +211,6 @@
         {
             "package_name": "extensions.builtin.extension_whisper",
             "name": "Whisper",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_whisper@main",
             "description": "Whisper allows transcribing audio files.",
             "extension_type": "interface",
@@ -240,7 +225,6 @@
         {
             "package_name": "extension_riffusion",
             "name": "Riffusion",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_riffusion@main",
             "description": "Riffusion allows generating music from text.",
             "extension_type": "interface",
@@ -255,7 +239,6 @@
         {
             "package_name": "extension_audiocraft_mac",
             "name": "MusicGen (Mac)",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_audiocraft_mac@main",
             "description": "MusicGen allows generating music from text",
             "extension_type": "interface",
@@ -270,7 +253,6 @@
         {
             "package_name": "extension_xtts_ft_demo",
             "name": "XTTS Fine-tuning Demo",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_xtts_ft_demo@main",
             "description": "XTTS fine-tuning demo",
             "extension_type": "interface",
@@ -285,7 +267,6 @@
         {
             "package_name": "extensions.builtin.extension_huggingface_cache_manager",
             "name": "Huggingface Cache Manager",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_huggingface_cache_manager@main",
             "description": "Huggingface Cache Manager allows managing the Huggingface cache.",
             "extension_type": "interface",
@@ -300,7 +281,6 @@
         {
             "package_name": "extension_xtts_simple",
             "name": "XTTS",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_xtts_rvc_ui@simple",
             "description": "XTTS-Simple is a Gradio UI for XTTSv2",
             "extension_type": "interface",
@@ -315,7 +295,6 @@
         {
             "package_name": "extensions.builtin.extension_ffmpeg_metadata",
             "name": "FFMPEG Metadata",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_ffmpeg_metadata@main",
             "description": "FFMPEG Metadata allows loading metadata from audio files.",
             "extension_type": "interface",
@@ -330,7 +309,6 @@
         {
             "package_name": "extension_parler_tts",
             "name": "Parler-TTS",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_parler_tts@main",
             "description": "Parler-TTS is a training and inference library for high-fidelity text-to-speech (TTS) models.",
             "extension_type": "interface",
@@ -345,7 +323,6 @@
         {
             "package_name": "extension_audio_separator",
             "name": "Audio Separator",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_audio_separator@main",
             "description": "Audio Separator allows separating audio files into multiple audio files.",
             "extension_type": "interface",
@@ -360,7 +337,6 @@
         {
             "package_name": "extension_cosyvoice",
             "name": "CosyVoice [Unstable]",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_cosyvoice@main",
             "description": "CosyVoice: High-quality text-to-speech synthesis.",
             "extension_type": "interface",
@@ -375,7 +351,6 @@
         {
             "package_name": "extension_mars5",
             "name": "MARS5",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_mars5@main",
             "description": "MARS5: A novel speech model for insane prosody",
             "extension_type": "interface",
@@ -390,7 +365,6 @@
         {
             "package_name": "extension_kokoro",
             "name": "Kokoro",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_kokoro@main",
             "description": "Kokoro: A small, fast, and high-quality TTS model",
             "extension_type": "interface",
@@ -405,7 +379,6 @@
         {
             "package_name": "extension_dia",
             "name": "DIA",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_dia@main",
             "description": "DIA: A text-to-dialogue model",
             "extension_type": "interface",
@@ -420,7 +393,6 @@
         {
             "package_name": "extensions.builtin.extension_model_downloader",
             "name": "Model Downloader",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_model_downloader@main",
             "description": "Model Downloader allows downloading models from the Huggingface model hub.",
             "extension_type": "interface",
@@ -435,7 +407,6 @@
         {
             "package_name": "extension_resemble_enhance",
             "name": "Resemble Enhance",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_resemble_enhance@main",
             "description": "Resemble Enhance allows enhancing audio files.",
             "extension_type": "interface",
@@ -450,7 +421,6 @@
         {
             "package_name": "extension_gpt_sovits",
             "name": "GPT-SoVITS",
-            "version": "0.1.0",
             "requirements": "git+https://github.com/rsxdalv/extension_gpt_sovits@main",
             "description": "GPT-SoVITS: A TTS solution powered by GPT and SoftVC VITS Singing Voice Conversion.",
             "extension_type": "interface",
@@ -465,7 +435,6 @@
         {
             "package_name": "extension_ap_bwe",
             "name": "AP-BWE Bandwidth Extension",
-            "version": "0.1.0",
             "requirements": "git+https://github.com/rsxdalv/extension_ap_bwe@main",
             "description": "AP-BWE: An audio bandwidth extension solution using Amplitude-Phase Bandwidth Extension models.",
             "extension_type": "interface",
@@ -480,7 +449,6 @@
         {
             "package_name": "extensions.builtin.extension_simple_remixer",
             "name": "Simple Remixer",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_simple_remixer@main",
             "description": "Simple remixer allows concatenating multiple audio files and mixing them together.",
             "extension_type": "interface",
@@ -495,7 +463,6 @@
         {
             "package_name": "extensions.builtin.extension_conda_storage_optimizer",
             "name": "Conda Storage Optimizer",
-            "version": "0.0.1",
             "requirements": "",
             "description": "Conda Storage Optimizer allows cleaning up conda storage to free disk space.",
             "extension_type": "interface",
@@ -510,7 +477,6 @@
         {
             "package_name": "extension_maha_tts",
             "name": "Maha TTS",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_maha_tts@main",
             "description": "Maha TTS allows generating speech from text using the MahaTTS model.",
             "extension_type": "interface",
@@ -525,7 +491,6 @@
         {
             "package_name": "extension_openvoice",
             "name": "OpenVoice",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_openvoice@main",
             "description": "OpenVoice: A versatile instant voice cloning approach",
             "extension_type": "interface",
@@ -540,7 +505,6 @@
         {
             "package_name": "extension_openvoice_v2",
             "name": "OpenVoice V2",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_openvoice_v2@main",
             "description": "OpenVoice: A versatile instant voice cloning approach",
             "extension_type": "interface",
@@ -555,7 +519,6 @@
         {
             "package_name": "extension_kimi_audio",
             "name": "Kimi Audio",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_kimi_audio@main",
             "description": "Kimi Audio is a powerful text-to-speech and speech-to-text model by Moonshot AI",
             "extension_type": "interface",
@@ -570,7 +533,6 @@
         {
             "package_name": "extension_kokoro_tts_api",
             "name": "Kokoro TTS API",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_kokoro_tts_api@main",
             "description": "Kokoro TTS API is a text-to-speech model by hexgrad",
             "extension_type": "interface",
@@ -585,7 +547,6 @@
         {
             "package_name": "extension_piper_tts",
             "name": "Piper TTS",
-            "version": "1.2.0",
             "requirements": "git+https://github.com/rsxdalv/extension_piper_tts@main",
             "description": "Piper TTS is a text-to-speech model by rsxdalv",
             "extension_type": "interface",
@@ -600,7 +561,6 @@
         {
             "package_name": "extension_ace_step",
             "name": "ACE-Step",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_ace_step@main",
             "description": "ACE-Step: A Step Towards Music Generation Foundation Model",
             "extension_type": "interface",
@@ -615,7 +575,6 @@
         {
             "package_name": "extension_rvc_training",
             "name": "RVC Training (Not available yet)",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_rvc_training@main",
             "description": "RVC Training",
             "extension_type": "interface",
@@ -630,7 +589,6 @@
         {
             "package_name": "extension_bark_legacy",
             "name": "Bark Legacy",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_bark_legacy@main",
             "description": "This is the legacy UI of Bark from TTS-WebUI",
             "extension_type": "interface",
@@ -646,7 +604,6 @@
             "package_name": "extension_bark_voice_clone",
             "recommended": true,
             "name": "Bark Voice Clone",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_bark_voice_clone@main",
             "description": "Bark Voice Clone allows cloning voices for use with Bark TTS",
             "extension_type": "interface",
@@ -661,7 +618,6 @@
         {
             "package_name": "extension_ebook2audiobook",
             "name": "Ebook2Audiobook (Not available yet)",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_ebook2audiobook@main",
             "description": "Ebook2Audiobook allows converting ebooks to audiobooks",
             "extension_type": "interface",
@@ -676,7 +632,6 @@
         {
             "package_name": "extension_epub2tts",
             "name": "EPub2TTS (Not available yet)",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_epub2tts@main",
             "description": "EPub2TTS allows converting ebooks to audiobooks",
             "extension_type": "interface",
@@ -691,7 +646,6 @@
         {
             "package_name": "extension_audiobook_generator",
             "name": "Audiobook Generator (Not available yet)",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_audiobook_generator@main",
             "description": "Audiobook Generator allows converting ebooks to audiobooks",
             "extension_type": "interface",
@@ -708,7 +662,6 @@
         {
             "package_name": "extensions.builtin.extension_decorator_save_ffmpeg",
             "name": "Decorator Save Ogg",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_decorator_save_ffmpeg@main",
             "description": "Decorator Save Ogg",
             "extension_type": "decorator",
@@ -723,7 +676,6 @@
         {
             "package_name": "extensions.builtin.extension_decorator_save_waveform",
             "name": "Decorator Save Waveform",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_decorator_save_waveform@main",
             "description": "Decorator Save Waveform",
             "extension_type": "decorator",
@@ -738,7 +690,6 @@
         {
             "package_name": "extensions.builtin.extension_decorator_average_execution_time",
             "name": "Decorator Average Execution Time",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_decorator_average_execution_time@main",
             "description": "Decorator Average Execution Time",
             "extension_type": "decorator",
@@ -754,7 +705,6 @@
     "example_extension": {
         "package_name": "example_extension",
         "name": "Example Extension",
-        "version": "",
         "requirements": "example_extension_pip_location",
         "description": "",
         "extension_type": "interface",
@@ -770,7 +720,6 @@
         {
             "package_name": "extension_xtts_rvc_ui",
             "name": "XTTS-RVC-UI",
-            "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_xtts_rvc_ui@main",
             "description": "XTTS-RVC-UI is a Gradio UI for XTTSv2 and RVC",
             "extension_type": "interface",

@@ -21,7 +21,6 @@ def extension__tts_generation_webui():
     return {
         "package_name": "extension_gallery_history",
         "name": "Gallery History",
-        "version": "0.0.1",
         "requirements": "git+https://github.com/rsxdalv/extension_gallery_history@main",
         "description": "Gallery History allows selecting previously generated audio files by looking at their waveforms",
         "extension_type": "interface",

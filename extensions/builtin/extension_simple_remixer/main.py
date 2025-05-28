@@ -10,7 +10,6 @@ def extension__tts_generation_webui():
     return {
         "package_name": "extension_simple_remixer",
         "name": "Simple Remixer",
-        "version": "0.0.1",
         "requirements": "git+https://github.com/rsxdalv/extension_simple_remixer@main",
         "description": "Simple remixer allows concatenating multiple audio files and mixing them together.",
         "extension_type": "interface",

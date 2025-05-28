@@ -16,7 +16,6 @@ def extension__tts_generation_webui():
     return {
         "package_name": "extension_whisper",
         "name": "Whisper",
-        "version": "0.0.2",
         "requirements": "git+https://github.com/rsxdalv/extension_whisper@main",
         "description": "Whisper allows transcribing audio files.",
         "extension_type": "interface",

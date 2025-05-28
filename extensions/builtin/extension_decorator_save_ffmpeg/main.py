@@ -13,7 +13,6 @@ def extension__tts_generation_webui():
     return {
         "package_name": "extension_decorator_save_ogg",
         "name": "Decorator Save Ogg",
-        "version": "0.0.1",
         "requirements": "git+https://github.com/rsxdalv/extension_decorator_save_ogg@main",
         "description": "Decorator Save Ogg",
         "extension_type": "decorator",

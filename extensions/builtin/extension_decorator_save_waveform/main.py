@@ -6,7 +6,6 @@ def extension__tts_generation_webui():
     return {
         "package_name": "extension_decorator_save_waveform",
         "name": "Decorator Save Waveform",
-        "version": "0.0.1",
         "requirements": "git+https://github.com/rsxdalv/extension_decorator_save_waveform@main",
         "description": "Decorator Save Waveform",
         "extension_type": "decorator",

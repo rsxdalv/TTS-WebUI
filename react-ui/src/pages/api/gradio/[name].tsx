@@ -42,9 +42,10 @@ export default async function handler(
   res.status(200).json(result);
 }
 
-const getClient = () => Client.connect(defaultBackend, {
-  auth: process.env.GRADIO_AUTH?.split(":") as [string, string] | undefined,
-});
+const getClient = () =>
+  Client.connect(defaultBackend, {
+    auth: process.env.GRADIO_AUTH?.split(":") as [string, string] | undefined,
+  });
 
 type GradioChoices = {
   choices: string[];
@@ -445,6 +446,13 @@ const resolvedPassThrough =
       .then((resolvedParams) => gradioPredict<any>(endpoint, resolvedParams))
       .then(map);
 
+const resolvedPassThroughWithParamsLoopback =
+  (endpoint: string, map = (x: any) => x) =>
+  (params: Record<string, any>) =>
+    resolveFileParams(params)
+      .then((resolvedParams) => gradioPredict<any>(endpoint, resolvedParams))
+      .then((result) => ({ ...map(result), metadata: params }));
+
 const endpoints = {
   maha: simpleEndpoint("/maha_tts"),
   maha_tts_refresh_voices: resolvedPassThrough(
@@ -555,4 +563,14 @@ const endpoints = {
   ),
 
   ace_step_infer,
+
+  kokoro_generate: resolvedPassThroughWithParamsLoopback(
+    "/kokoro",
+    (result) => ({
+      audio: result?.data?.[0],
+      tokens: result?.data?.[1],
+      metadata: result?.data?.[2],
+      folder_root: result?.data?.[3],
+    })
+  ),
 };

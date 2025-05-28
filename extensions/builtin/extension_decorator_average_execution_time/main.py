@@ -5,7 +5,6 @@ def extension__tts_generation_webui():
     return {
         "package_name": "extension_decorator_average_execution_time",
         "name": "Decorator Average Execution Time",
-        "version": "0.0.1",
         "requirements": "git+https://github.com/rsxdalv/extension_decorator_average_execution_time@main",
         "description": "Decorator Average Execution Time",
         "extension_type": "decorator",

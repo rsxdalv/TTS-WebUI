@@ -10,10 +10,10 @@ def write_log(output, name, type):
         outfile.write("\n".join(output))
 
 
-def pip_install_wrapper(requirements, name):
+def pip_install_wrapper(requirements, name, include_gradio=True):
     def fn():
         output = []
-        for line in _pip_install(requirements, name):
+        for line in _pip_install(requirements + " gradio==5.5.0" if include_gradio else "", name):
             output.append(line)
             yield "<br />".join(output)
 

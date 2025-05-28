@@ -77,6 +77,10 @@ export const routes: Route[] = [
         href: "/text-to-speech/vallex",
         text: "Vall-E-X",
       },
+      {
+        href: "/text-to-speech/kokoro",
+        text: "Kokoro",
+      },
     ],
   },
   {

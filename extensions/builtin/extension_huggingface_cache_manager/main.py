@@ -7,7 +7,6 @@ def extension__tts_generation_webui():
     return {
         "package_name": "extension_huggingface_cache_manager",
         "name": "Huggingface Cache Manager",
-        "version": "0.0.1",
         "requirements": "git+https://github.com/rsxdalv/extension_huggingface_cache_manager@main",
         "description": "Huggingface Cache Manager allows managing the Huggingface cache.",
         "extension_type": "interface",

@@ -34,6 +34,12 @@ export const TextToSpeechModelList = () => (
       href="/text-to-speech/vallex"
       projectLink="https://github.com/Plachtaa/VALL-E-X"
     />
+    <ProjectCard
+      title="Kokoro"
+      description="Kokoro is an open-weight TTS model with 82 million parameters. Despite its lightweight architecture, it delivers comparable quality to larger models while being significantly faster and more cost-efficient."
+      href="/text-to-speech/kokoro"
+      projectLink="https://github.com/hexgrad/kokoro"
+    />
   </div>
 );
 

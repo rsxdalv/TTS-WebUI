@@ -8,7 +8,6 @@ def extension__tts_generation_webui():
     return {
         "package_name": "extension_conda_storage_optimizer",
         "name": "Conda Storage Optimizer",
-        "version": "0.0.1",
         "requirements": "",
         "description": "Conda Storage Optimizer allows cleaning up conda storage to free disk space.",
         "extension_type": "interface",

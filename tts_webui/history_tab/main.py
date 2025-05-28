@@ -101,7 +101,6 @@ def history_content(directory, history_tab, show_collections):
 
             history_list = gr.Dataframe(
                 value=[],
-                elem_classes="file-list",
                 type="array",
                 interactive=False,
                 col_count=len(datatypes),

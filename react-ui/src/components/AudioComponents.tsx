@@ -7,6 +7,7 @@ import { sendToVocos } from "../tabs/VocosParams";
 import { GradioFile } from "../types/GradioFile";
 import { sendToBarkVoiceGeneration } from "../tabs/BarkVoiceGenerationParams";
 import { sendToAceStep } from "../tabs/AceStepParams";
+import { sendToKokoro } from "../tabs/KokoroParams";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 import { DownloadIcon, XIcon } from "lucide-react";
@@ -72,6 +73,7 @@ export const AudioOutput = ({
 }) => {
   return (
     <div className={cn("w-full", className)} {...props}>
+      {/* {metadata && JSON.stringify(metadata)} */}
       <div className="flex items-start justify-between absolute z-10">
         <Label className="bg-background cell">{label || "Input file:"}</Label>
       </div>
@@ -103,6 +105,7 @@ const sendToFuncs = {
   sendToVocos,
   sendToBarkVoiceGeneration,
   sendToAceStep,
+  sendToKokoro,
 } as Record<string, (audio: string | undefined) => void>;
 
 const listOfFuncs = Object.keys(sendToFuncs);
@@ -119,6 +122,7 @@ const AudioPlayerWithConfig = ({
     barGap={1}
     barRadius={2}
     volume={0.4}
+    mediaControls={true}
     {...props}
   />
 );

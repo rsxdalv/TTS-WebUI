@@ -2,6 +2,7 @@ from tts_webui.utils.save_waveform_plot import plot_waveform_as_image
 import gradio as gr
 import torchaudio
 import torch
+from gradio_iconbutton import IconButton
 
 
 def extension__tts_generation_webui():
@@ -9,7 +10,6 @@ def extension__tts_generation_webui():
     return {
         "package_name": "extension_simple_remixer",
         "name": "Simple Remixer",
-        "version": "0.0.1",
         "requirements": "git+https://github.com/rsxdalv/extension_simple_remixer@main",
         "description": "Simple remixer allows concatenating multiple audio files and mixing them together.",
         "extension_type": "interface",
@@ -23,15 +23,6 @@ def extension__tts_generation_webui():
     }
 
 
-def gr_mini_button(value, **kwargs):
-    return gr.Button(
-        value,
-        elem_classes="btn-sm material-symbols-outlined",
-        size="sm",
-        **kwargs,
-    )
-
-
 def simple_remixer_ui():
     input_audio = gr.Audio(label="Input Audio")
 
@@ -40,11 +31,11 @@ def simple_remixer_ui():
             audio = gr.Audio(label=f"Slot {str(id)}")
 
             with gr.Row():
-                clear = gr_mini_button("delete").click(
+                clear = IconButton("delete").click(
                     fn=lambda: [gr.Audio(None)],
                     outputs=[audio],
                 )
-                copy_from_input = gr_mini_button("keyboard_return").click(
+                copy_from_input = IconButton("keyboard_return").click(
                     fn=lambda input_value: [gr.Audio(input_value)],
                     inputs=[input_audio],
                     outputs=[audio],
@@ -103,9 +94,7 @@ def simple_remixer_ui():
 
         merged_audios = [mix_audio(x) for x in stacked_audios]
         if non_null_audios := [x for x in merged_audios if x is not None]:
-            return gr.Audio(
-                (sample_rate, torch.cat(non_null_audios).cpu().numpy())
-            )
+            return gr.Audio((sample_rate, torch.cat(non_null_audios).cpu().numpy()))
         else:
             return gr.Audio(None)
 

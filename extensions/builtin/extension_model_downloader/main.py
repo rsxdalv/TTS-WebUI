@@ -7,7 +7,6 @@ def extension__tts_generation_webui():
     return {
         "package_name": "extension_model_downloader",
         "name": "Model Downloader",
-        "version": "0.0.1",
         "requirements": "git+https://github.com/rsxdalv/extension_model_downloader@main",
         "description": "Model Downloader allows downloading models from the Huggingface model hub.",
         "extension_type": "interface",

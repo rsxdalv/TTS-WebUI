@@ -30,7 +30,7 @@
 
 </div>
 
-| [![Watch the video](https://img.youtube.com/vi/JXojhFjZ39k/sddefault.jpg)](https://youtu.be/JXojhFjZ39k) | [![Watch the video](https://img.youtube.com/vi/ScN2ypewABc/sddefault.jpg)](https://youtu.be/ScN2ypewABc) | [![Watch the video](https://img.youtube.com/vi/HFtrCnczZQI/sddefault.jpg)](https://youtu.be/HFtrCnczZQI) |
+| [![Watch the video](https://img.youtube.com/vi/JXojhFjZ39k/sddefault.jpg)](https://youtu.be/JXojhFjZ39k) | [![Watch the video](https://img.youtube.com/vi/ScN2ypewABc/sddefault.jpg)](https://youtu.be/ScN2ypewABc) | [![Watch the video](https://img.youtube.com/vi/nfZEoXOGX5Y/sddefault.jpg)](https://youtu.be/nfZEoXOGX5Y) |
 | :------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------: |
 
 <div align="center">
@@ -85,6 +85,22 @@
 | :-----------------------------------------: | :-----------------------------------------: | :-------------------------------: |
 
 ## Changelog
+
+May 29:
+* Add [Chatterbox](https://github.com/resemble-ai/chatterbox) extension for future.
+* Add Kokoro TTS to React UI.
+
+May 28:
+* Restore gr.Tabs to the old style for easier stacking of many tabs.
+* Integrate custom IconButton.
+* Fix Gradio's output tab display
+* Add tutorial section
+
+May 27:
+* Include gradio==5.5.0 in each installation of extensions. While this might cause some extensions to fail to install,
+  it should prevent extensions from breaking the UI. Please report extensions that fail to install.
+  Thanks to cwlowden for debugging this issue. 
+* Make XTTS-RVC-UI an unrecommended extension.
 
 May 26:
 * Add fixes for decorators to work with non-'text' inputs.

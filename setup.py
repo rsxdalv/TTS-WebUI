@@ -22,7 +22,7 @@ extras_require = {
 setuptools.setup(
     name="tts_webui",
     packages=setuptools.find_namespace_packages(),
-    version="0.0.17",
+    version="0.1.0",
     author="rsxdalv",
     description="TTS WebUI / Harmonica",
     url="https://github.com/rsxdalv/tts-webui",

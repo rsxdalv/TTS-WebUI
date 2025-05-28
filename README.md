@@ -86,6 +86,12 @@
 
 ## Changelog
 
+May 27:
+* Include gradio==5.5.0 in each installation of extensions. While this might cause some extensions to fail to install,
+  it should prevent extensions from breaking the UI. Please report extensions that fail to install.
+  Thanks to cwlowden for debugging this issue. 
+* Make XTTS-RVC-UI an unrecommended extension.
+
 May 26:
 * Add fixes for decorators to work with non-'text' inputs.
 * Clean up .env generator and remove the Bark environment variables from settings.

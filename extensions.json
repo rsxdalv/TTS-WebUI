@@ -283,21 +283,6 @@
             "extension_platform_version": "0.0.1"
         },
         {
-            "package_name": "extension_xtts_rvc_ui",
-            "name": "XTTS-RVC-UI",
-            "version": "0.0.1",
-            "requirements": "git+https://github.com/rsxdalv/extension_xtts_rvc_ui@main",
-            "description": "XTTS-RVC-UI is a Gradio UI for XTTSv2 and RVC",
-            "extension_type": "interface",
-            "extension_class": "text-to-speech",
-            "author": "rsxdalv",
-            "extension_author": "rsxdalv",
-            "license": "MIT",
-            "website": "https://github.com/rsxdalv/extension_xtts_rvc_ui",
-            "extension_website": "https://github.com/rsxdalv/extension_xtts_rvc_ui",
-            "extension_platform_version": "0.0.1"
-        },
-        {
             "package_name": "extensions.builtin.extension_huggingface_cache_manager",
             "name": "Huggingface Cache Manager",
             "version": "0.0.1",
@@ -314,7 +299,7 @@
         },
         {
             "package_name": "extension_xtts_simple",
-            "name": "XTTS-Simple",
+            "name": "XTTS",
             "version": "0.0.1",
             "requirements": "git+https://github.com/rsxdalv/extension_xtts_rvc_ui@simple",
             "description": "XTTS-Simple is a Gradio UI for XTTSv2",
@@ -780,5 +765,22 @@
         "website": "",
         "extension_website": "",
         "extension_platform_version": ""
-    }
+    },
+    "tabs_not_recomended": [
+        {
+            "package_name": "extension_xtts_rvc_ui",
+            "name": "XTTS-RVC-UI",
+            "version": "0.0.1",
+            "requirements": "git+https://github.com/rsxdalv/extension_xtts_rvc_ui@main",
+            "description": "XTTS-RVC-UI is a Gradio UI for XTTSv2 and RVC",
+            "extension_type": "interface",
+            "extension_class": "text-to-speech",
+            "author": "rsxdalv",
+            "extension_author": "rsxdalv",
+            "license": "MIT",
+            "website": "https://github.com/rsxdalv/extension_xtts_rvc_ui",
+            "extension_website": "https://github.com/rsxdalv/extension_xtts_rvc_ui",
+            "extension_platform_version": "0.0.1"
+        }
+    ]
 }

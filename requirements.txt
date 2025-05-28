@@ -1,3 +1,5 @@
+tts_webui_core @ https://github.com/rsxdalv/tts_webui_core/releases/download/v0.0.1/tts_webui_core-0.0.1-py3-none-any.whl
+
 safetensors
 python-dotenv==1.0.0
  
@@ -5,7 +7,7 @@ ffmpeg-python # Apache 2.0
 gradio==5.5.0 # MIT License
 pydantic==2.10.6 # for gradio 5.5.0 fix
 pillow==10.3.0 # for gradio, conda fix
-beartype>=0.16.1 # workaround for a bug
+# beartype>=0.16.1 # workaround for a bug
 soundfile==0.12.1; sys_platform == 'win32' # torchaudio
 # Deepspeed needs to be compiled with DS_BUILD_OPS otherwise pip only install of PyTorch without NVCC will fail.
 # deepspeed==0.16.5; sys_platform == 'win32' # Apache 2.0
@@ -31,7 +33,8 @@ accelerate>=0.33.0
 
 # experimental 
 # triton>=3.2.0 ; sys_platform == 'linux',
-# triton-windows>=3.2.0.post18 ; sys_platform == 'win32',
+# triton-windows>=3.2.0.post18 ; sys_platform == 'win32', # has issues with certain libraries
+
 # flash-attn @ https://github.com/kingbri1/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu124torch2.6.0cxx11abiFALSE-cp310-cp310-win_amd64.whl ; sys_platform == 'win32'
 # flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.6cxx11abiFALSE-cp310-cp310-linux_x86_64.whl ; sys_platform == 'linux'
 

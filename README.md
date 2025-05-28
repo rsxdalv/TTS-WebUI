@@ -89,6 +89,7 @@
 May 28:
 * Restore gr.Tabs to the old style for easier stacking of many tabs.
 * Integrate custom IconButton.
+* Fix Gradio's output tab display
 
 May 27:
 * Include gradio==5.5.0 in each installation of extensions. While this might cause some extensions to fail to install,

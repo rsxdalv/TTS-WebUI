@@ -40,6 +40,10 @@ const installDependencies = async (gpuchoice) => {
       await $(
         `pip install -U torch==${torchVersion}+${cudaVersionTag} torchvision torchaudio --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
       );
+      // add torchao
+      // pip install --dry-run torchao --index-url https://download.pytorch.org/whl/cu124
+      // default version is already for 12.4 and has newer features
+      // pip install --dry-run torchao 
 
       await pip_install(
         `-U xformers==0.0.29.post3 --index-url https://download.pytorch.org/whl/${cudaVersionTag}`,

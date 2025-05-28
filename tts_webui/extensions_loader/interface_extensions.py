@@ -28,8 +28,8 @@ def _handle_package(package_name, title_name, requirements):
         with gr.Tab(f"[Available] {title_name}"):
             gr.Markdown(f"{title_name} Extension not installed")
             install_btn = gr.Button(f"Install {title_name} Extension")
-            gr.Markdown("Installation console:")
-            console_text = gr.HTML()
+            with gr.Accordion("Installation Console", open=True):
+                console_text = gr.HTML()
             install_btn.click(
                 pip_install_wrapper(requirements, title_name),
                 outputs=[console_text],
@@ -112,8 +112,8 @@ def _extension_management_ui(
                 fn=disable_extension(package_name),
                 outputs=[output],
             )
-        gr.Markdown("Console:")
-        output.render()
+        with gr.Accordion("Console", open=True):
+            output.render()
 
 
 # Get the interface extensions list from the data loader

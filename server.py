@@ -18,6 +18,7 @@ import gradio as gr
 import gradio as gr
 from gradio_goodtabs import GoodTabs
 from gradio_goodtab import GoodTab as Tab
+
 gr.Tab = Tab
 gr.Tabs = GoodTabs
 
@@ -124,12 +125,18 @@ def main_ui(theme_choice="Base"):
         analytics_enabled=False,  # it broke too many times
         theme=theme,
     ) as blocks:
-        gr.Markdown(
+        gr.HTML(
             """
-            # TTS WebUI
-            ### (This is the Gradio UI with more tools but more basic UI) | [React UI](http://localhost:3000) | [Feedback / Bug reports](https://forms.gle/2L62owhBsGFzdFBC8) | [Discord Server](https://discord.gg/V8BKTVRtJ9)
-            """
+        <div style="display: flex; align-items: baseline; gap: 1rem; font-family: sans-serif;">
+            <h1>TTS WebUI</h1>
+            | <h4>(The Gradio UI has more tools, but the UI is basic)</h4>
+            | <h3><a href="http://localhost:3000">React UI</a></h3>
+            | <h3><a href="https://forms.gle/2L62owhBsGFzdFBC8">Feedback / Bug reports</a></h3>
+            | <h3><a href="https://discord.gg/V8BKTVRtJ9">Discord Server</a></h3>
+        </div>
+        """
         )
+
         with gr.Tabs():
             all_tabs()
 
@@ -185,23 +192,9 @@ def all_tabs():
 
         handle_extension_class("settings", config)
     with gr.Tab("📚 Tutorials"), gr.Tabs():
-        # from tts_webui.utils.tutorial_tab import tutorial_tab
+        from tts_webui.tutorials.tab import tutorial_tab
 
-        # tutorial_tab()
-        with gr.Tab("TTS WebUI"):
-            gr.Markdown(
-                """
-                # TTS WebUI
-                ### Coming soon!
-                """
-            )
-        with gr.Tab("React UI"):
-            gr.Markdown(
-                """
-                # React UI
-                ### Coming soon!
-                """
-            )
+        tutorial_tab()
 
 
 def start_gradio_server():

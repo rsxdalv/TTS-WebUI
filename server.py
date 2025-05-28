@@ -184,6 +184,24 @@ def all_tabs():
         extension_decorator_list_tab()
 
         handle_extension_class("settings", config)
+    with gr.Tab("📚 Tutorials"), gr.Tabs():
+        # from tts_webui.utils.tutorial_tab import tutorial_tab
+
+        # tutorial_tab()
+        with gr.Tab("TTS WebUI"):
+            gr.Markdown(
+                """
+                # TTS WebUI
+                ### Coming soon!
+                """
+            )
+        with gr.Tab("React UI"):
+            gr.Markdown(
+                """
+                # React UI
+                ### Coming soon!
+                """
+            )
 
 
 def start_gradio_server():

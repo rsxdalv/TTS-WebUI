@@ -89,6 +89,7 @@
 May 29:
 * Add [Chatterbox](https://github.com/resemble-ai/chatterbox) extension.
 * Add Kokoro TTS to React UI.
+* Fix React Build, thanks [noaht8um](https://github.com/noaht8um)!
 
 May 28:
 * Restore gr.Tabs to the old style for easier stacking of many tabs.

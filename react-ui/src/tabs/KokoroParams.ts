@@ -7,7 +7,6 @@ import { Seeded } from "../types/Seeded";
 import { GradioFile } from "../types/GradioFile";
 import router from "next/router";
 import { MetadataHeaders } from "../types/MetadataHeaders";
-import { updateLocalStorageWithFunction } from "../data/updateLocalStorageWithFunction";
 
 export const kokoroId = "kokoroParams.v4";
 

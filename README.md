@@ -30,7 +30,7 @@
 
 </div>
 
-| [![Watch the video](https://img.youtube.com/vi/JXojhFjZ39k/sddefault.jpg)](https://youtu.be/JXojhFjZ39k) | [![Watch the video](https://img.youtube.com/vi/ScN2ypewABc/sddefault.jpg)](https://youtu.be/ScN2ypewABc) | [![Watch the video](https://img.youtube.com/vi/nfZEoXOGX5Y/sddefault.jpg)](https://youtu.be/nfZEoXOGX5Y) |
+| [![Watch the video](https://img.youtube.com/vi/JXojhFjZ39k/sddefault.jpg)](https://youtu.be/JXojhFjZ39k) | [![Watch the video](https://img.youtube.com/vi/ScN2ypewABc/sddefault.jpg)](https://youtu.be/ScN2ypewABc) | [![Watch the video](https://img.youtube.com/vi/yJhzwmwFpcs/sddefault.jpg)](https://youtu.be/yJhzwmwFpcs) |
 | :------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------: |
 
 <div align="center">
@@ -87,7 +87,7 @@
 ## Changelog
 
 May 29:
-* Add [Chatterbox](https://github.com/resemble-ai/chatterbox) extension for future.
+* Add [Chatterbox](https://github.com/resemble-ai/chatterbox) extension.
 * Add Kokoro TTS to React UI.
 
 May 28:

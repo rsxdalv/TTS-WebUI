@@ -51,3 +51,5 @@ matplotlib
 gradio_goodtabs @ https://github.com/rsxdalv/gradio_goodtabs/releases/download/v0.0.3/gradio_goodtabs-0.0.3-py3-none-any.whl
 gradio_goodtab @ https://github.com/rsxdalv/gradio_goodtab/releases/download/v0.0.3/gradio_goodtab-0.0.3-py3-none-any.whl
 gradio_iconbutton @ https://github.com/rsxdalv/gradio_iconbutton/releases/download/v0.0.1/gradio_iconbutton-0.0.1-py3-none-any.whl
+
+deprecated >= 1.2.13

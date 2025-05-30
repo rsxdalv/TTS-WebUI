@@ -236,7 +236,13 @@ def start_gradio_server():
         )
 
     # concurrency_count=gradio_interface_options.get("concurrency_count", 5),
-    demo.queue().launch(**gradio_interface_options, allowed_paths=["."])
+    del gradio_interface_options["favicon_path"]
+
+    demo.queue().launch(
+        **gradio_interface_options,
+        allowed_paths=["."],
+        favicon_path="./react-ui/public/favicon.ico",
+    )
 
 
 def server_hypervisor():

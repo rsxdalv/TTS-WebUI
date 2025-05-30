@@ -105,10 +105,10 @@ def settings_tab_gradio(
                 label="width: Width in pixels of the iframe element",
                 value=gradio_interface_options.get("width", None),
             ),
-            "favicon_path": gr.Textbox(
-                label="favicon_path: Path to a file (.png, .gif, or .ico) to use as the favicon",
-                value=gradio_interface_options.get("favicon_path", None),
-            ),
+            # "favicon_path": gr.Textbox(
+            #     label="favicon_path: Path to a file (.png, .gif, or .ico) to use as the favicon",
+            #     value=gradio_interface_options.get("favicon_path", None),
+            # ),
             "ssl_keyfile": gr.Textbox(
                 label="ssl_keyfile: Path to a file to use as the private key file to create a local server "
                 "running on https",

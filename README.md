@@ -88,6 +88,7 @@
 
 May 30:
 * Make OpenAI API extension installed by default (extension_kokoro_tts_api).
+* Add Favicon.
 
 May 29:
 * Add [Chatterbox](https://github.com/resemble-ai/chatterbox) extension.

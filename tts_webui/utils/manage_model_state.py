@@ -48,7 +48,7 @@ def manage_model_state(model_namespace):
                 model = func(model_name, *args, **kwargs)
                 model_state.set_model(model, model_name)
             else:
-                show(
+                print(
                     f"Using cached model '{model_name}' in namespace '{model_namespace}'."
                 )
 

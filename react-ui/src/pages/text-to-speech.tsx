@@ -7,7 +7,7 @@ export const TextToSpeechModelList = () => (
     <ProjectCard
       title="Bark"
       description="Bark is a text-to-speech model that can generate speech from text."
-      href="/text-to-speech/bark"
+      href="/text-to-speech/bark/generation"
       projectLink="https://github.com/suno-ai/bark"
     />
     <ProjectCard

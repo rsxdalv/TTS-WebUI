@@ -30,7 +30,7 @@ export const routes: Route[] = [
         text: "Bark",
         subroutes: [
           {
-            href: "/text-to-speech/bark",
+            href: "/text-to-speech/bark/generation",
             text: "Generation",
           },
           {

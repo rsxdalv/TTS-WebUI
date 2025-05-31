@@ -15,6 +15,7 @@ export const GenerationHistorySimple = ({
   funcs?: Record<string, (audio: string | undefined | any) => void>;
   nameKey?: string;
   filter?: string[];
+  getLabel?: (item: any) => string;
 }) => {
   const [showLast, setShowLast] = useLocalStorage<number>(
     name + "ShowLast",

@@ -58,10 +58,10 @@ const WaveSurferPlayerRaw = (props) => {
       // wavesurfer.on("ready", () => {
       //   setDuration(wavesurfer.getDuration());
       // }),
-      wavesurfer.on("error", (error) => {
-        console.error("WaveSurfer error:", error);
-        props.onError?.(error);
-      }),
+      // wavesurfer.on("error", (error) => {
+      //   console.error("WaveSurfer error:", error);
+      //   props.onError?.(error);
+      // }),
     ];
 
     return () => {

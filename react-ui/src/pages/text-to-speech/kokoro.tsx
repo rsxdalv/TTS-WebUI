@@ -51,7 +51,8 @@ const KokoroPage = () => {
           setHistoryData={setHistoryData}
           historyData={historyData}
           funcs={funcs}
-          nameKey="text"
+          // nameKey="text"
+          getLabel={(item: any) => item.metadata.text.slice(0, 40)}
           filter={["sendToKokoro"]}
         />
       </div>

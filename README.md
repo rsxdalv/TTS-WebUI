@@ -86,9 +86,14 @@
 
 ## Changelog
 
+May 31:
+* Improve React UI Audio player.
+
 May 30:
 * Make OpenAI API extension installed by default (extension_kokoro_tts_api).
 * Add Favicon.
+* Fix OpenVoice v2 extension.
+* Improve UI layout for StyleTTS2, MahaTTS, Vall-E-X, Parler TTS
 
 May 29:
 * Add [Chatterbox](https://github.com/resemble-ai/chatterbox) extension.

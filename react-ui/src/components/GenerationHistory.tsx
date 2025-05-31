@@ -38,6 +38,7 @@ export const GenerationHistory = ({
   historyData,
   funcs,
   nameKey,
+  getLabel,
   filter,
 }: {
   clearHistory: () => void;
@@ -45,7 +46,8 @@ export const GenerationHistory = ({
   setShowLast: React.Dispatch<React.SetStateAction<number>>;
   historyData: any[];
   funcs?: Record<string, (audio: string | undefined | any) => void>;
-  nameKey?: string;
+  nameKey?: string; // deprecated
+  getLabel?: (item: any) => string;
   filter?: string[];
 }) => (
   <div className="flex flex-col gap-y-2 cell">
@@ -74,6 +76,7 @@ export const GenerationHistory = ({
       </div>
     </div>
     <div className="flex flex-col gap-8">
+      {/* {JSON.stringify(historyData)} */}
       {historyData &&
         historyData
           .slice(1, showLast + 1)
@@ -82,7 +85,13 @@ export const GenerationHistory = ({
               key={index}
               audioOutput={item.audio}
               metadata={item}
-              label={nameKey ? item[nameKey] : `History ${index}`}
+              label={
+                getLabel
+                  ? getLabel(item)
+                  : nameKey
+                    ? item[nameKey]
+                    : `History ${index}`
+              }
               funcs={funcs}
               filter={filter}
             />

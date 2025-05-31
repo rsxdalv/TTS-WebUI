@@ -11,6 +11,7 @@ export const useWavesurfer = (containerRef, options: WaveSurferOptions) => {
 
     const ws = WaveSurfer.create({
       ...options,
+      height: 50,
       url: undefined,
       container: containerRef.current,
     });

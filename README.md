@@ -88,6 +88,7 @@
 
 May 31:
 * Improve React UI Audio player.
+* Fix ROCm installation version.
 
 May 30:
 * Make OpenAI API extension installed by default (extension_kokoro_tts_api).

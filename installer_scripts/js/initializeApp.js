@@ -34,6 +34,11 @@ const ensurePythonVersion = async () => {
   }
 };
 
+const rocmVersionTag = {
+  "2.6.0": "rocm6.2.4",
+  "2.7.0": "rocm6.3",
+};
+
 const installDependencies = async (gpuchoice) => {
   try {
     if (gpuchoice === "NVIDIA GPU") {
@@ -43,7 +48,7 @@ const installDependencies = async (gpuchoice) => {
       // add torchao
       // pip install --dry-run torchao --index-url https://download.pytorch.org/whl/cu124
       // default version is already for 12.4 and has newer features
-      // pip install --dry-run torchao 
+      // pip install --dry-run torchao
 
       await pip_install(
         `-U xformers==0.0.29.post3 --index-url https://download.pytorch.org/whl/${cudaVersionTag}`,
@@ -62,7 +67,7 @@ const installDependencies = async (gpuchoice) => {
       );
       displayMessage("Linux only!");
       await $(
-        `pip install torch==${torchVersion} torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.0`
+        `pip install torch==${torchVersion} torchvision torchaudio --index-url https://download.pytorch.org/whl/${rocmVersionTag[torchVersion]}`
       );
     } else {
       displayMessage("Unsupported or cancelled. Exiting...");
@@ -71,7 +76,9 @@ const installDependencies = async (gpuchoice) => {
     }
 
     saveMajorVersion(majorVersion);
-    displayMessage(`  Successfully installed torch==${torchVersion} with CUDA ${cudaVersion} support`);
+    displayMessage(
+      `  Successfully installed torch==${torchVersion} with CUDA ${cudaVersion} support`
+    );
   } catch (error) {
     displayError(`Error during installation: ${error.message}`);
     throw error;

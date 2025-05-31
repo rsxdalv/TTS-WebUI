@@ -10,9 +10,19 @@ import { sendToAceStep } from "../tabs/AceStepParams";
 import { sendToKokoro } from "../tabs/KokoroParams";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
-import { DownloadIcon, XIcon } from "lucide-react";
+import {
+  SendHorizontalIcon,
+  XIcon,
+  Dice1Icon,
+  Settings2Icon,
+  HeartIcon,
+  ChevronDownIcon,
+  Dice5Icon,
+} from "lucide-react";
 import { Label } from "./ui/label";
 import { SingleFileUpload } from "./SingleFileUpload";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { DownloadButton } from "./DownloadButton";
 
 export const AudioInput = ({
   callback,
@@ -89,10 +99,14 @@ export const AudioOutput = ({
           metadata={metadata}
           name={label}
         /> */}
-      </div>
-      {audioOutput ? (
-        <>
-          <AudioPlayerWithConfig volume={0.4} url={audioOutput.url} />
+
+        {/* Right side - Download button */}
+        {/* <div className="flex items-center flex-1 justify-end">
+          {audioOutput?.url && (
+
+          )}
+        </div> */}
+        {audioOutput?.url && (
           <AudioFuncs
             url={audioOutput.url}
             funcs={funcs}
@@ -100,6 +114,11 @@ export const AudioOutput = ({
             metadata={metadata}
             name={label}
           />
+        )}
+      </div>
+      {audioOutput ? (
+        <>
+          <AudioPlayerWithConfig volume={0.4} url={audioOutput.url} />
         </>
       ) : (
         <div className="w-full h-1">&nbsp;</div>
@@ -136,17 +155,15 @@ const AudioPlayerWithConfig = ({
     waveColor={"rgb(129, 144, 150)"}
     // progressColor={"darkorange"}
     sampleRate={44100}
-    
     barWidth={2}
     barGap={3}
     barRadius={10}
     // barWidth={3}
     // barGap={2}
     // barRadius={2}
-    
+
     // waveColor="#ffa500"
     progressColor="rgb(78, 158, 196)"
-
     {...props}
   />
 );
@@ -161,72 +178,84 @@ const AudioFuncs = ({
 }: Omit<WaveSurferOptions, "container"> & {
   filter?: string[];
   metadata?: any;
-  funcs?: Record<string, (audio: string | undefined | any) => void>;
-  name?: string;
-}) => (
-  <div className="mt-2 flex flex-wrap gap-1">
-    {funcs &&
-      Object.entries(funcs).map(([funcName, func]) => (
-        <FuncButton
-          key={funcName}
-          name={funcName}
-          func={func}
-          url={url}
-          metadata={metadata}
-        />
-      ))}
-    {listOfFuncs
-      .filter((funcName) =>
-        outputFilters ? !outputFilters.includes(funcName) : true
-      )
-      .map((funcName) => (
-        <FuncButton
-          key={funcName}
-          name={funcName}
-          func={sendToFuncs[funcName]}
-          url={url}
-          metadata={metadata}
-        />
-      ))}
-    <DownloadButton url={url} name={name} />
-  </div>
-);
-
-const DownloadButton = ({
-  url,
-  name = "audio",
-}: {
-  url?: string;
+  funcs?: Record<string, (audio: string | undefined | any, metadata?: any) => void>;
   name?: string;
 }) => {
-  const [downloadURL, setDownloadURL] = React.useState<string | undefined>(
-    undefined
+  // Separate sendTo functions from other functions
+  const sendToFunctions = listOfFuncs.filter((funcName) =>
+    outputFilters ? !outputFilters.includes(funcName) : true
   );
 
-  React.useEffect(() => {
-    if (!url) return;
-    const download = (url) => {
-      if (!url) {
-        throw new Error("Resource URL not provided! You need to provide one");
-      }
-      fetch(url)
-        .then((response) => response.blob())
-        .then((blob) => {
-          const blobURL = URL.createObjectURL(blob);
-          setDownloadURL(blobURL);
-        })
-        .catch((e) => console.log("=== Error downloading", e));
-    };
-    download(url);
-  }, [url]);
+  // Separate custom functions into sendTo and non-sendTo
+  const customSendToFuncs = funcs
+    ? Object.entries(funcs).filter(([funcName]) =>
+        funcName.startsWith("sendTo")
+      )
+    : [];
+  const customOtherFuncs = funcs
+    ? Object.entries(funcs).filter(
+        ([funcName]) => !funcName.startsWith("sendTo")
+      )
+    : [];
 
   return (
-    <Button variant="outline" size="sm" asChild className="flex-shrink-0">
-      <a className="cursor-pointer" href={downloadURL} download={`${name}.wav`}>
-        <DownloadIcon className="mr-2 w-5 h-5" />
-        Download
-      </a>
-    </Button>
+    <div className="justify-end flex gap-2">
+      {/* Non-sendTo functions (useSeed, useParameters, favorite, etc.) */}
+      {customOtherFuncs.length > 0 &&
+        customOtherFuncs.map(([funcName, func]) => (
+          <FuncButton
+            key={funcName}
+            name={funcName}
+            func={func}
+            url={url}
+            metadata={metadata}
+          />
+        ))}
+      {/* <DownloadButton url={audioOutput?.url} name={label} /> */}
+
+      {/* SendTo functions in dropdown menu */}
+      {(customSendToFuncs.length > 0 || sendToFunctions.length > 0) && (
+        <div className="flex gap-1">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <SendHorizontalIcon className="w-4 h-4 mr-2" />
+                Send to...
+                <ChevronDownIcon className="w-4 h-4 ml-2" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-1" align="start">
+              <div className="flex flex-col gap-1">
+                {customSendToFuncs.map(([funcName, func]) => (
+                  <Button
+                    key={funcName}
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start"
+                    onClick={() => func(url, metadata)}
+                  >
+                    <SendHorizontalIcon className="w-4 h-4 mr-2" />
+                    {getAudioFnName(funcName.replace("sendTo", ""))}
+                  </Button>
+                ))}
+                {sendToFunctions.map((funcName) => (
+                  <Button
+                    key={funcName}
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start"
+                    onClick={() => sendToFuncs[funcName](url)}
+                  >
+                    {getAudioFnName(funcName.replace("sendTo", ""))}
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
+      {/* <DownloadButton url={url} name={name} /> */}
+    </div>
   );
 };
 
@@ -240,11 +269,42 @@ const FuncButton = ({
   name: string;
   url: string | undefined | any;
   metadata?: any;
-}) => (
-  <Button variant="outline" size="sm" onClick={() => func(url, metadata)}>
-    {getAudioFnName(name)}
-  </Button>
-);
+}) => {
+  const getIconForFunction = (funcName: string) => {
+    if (funcName === "useSeed") return <Dice5Icon className="w-4 h-4" />;
+    if (funcName === "useParameters")
+      return <Settings2Icon className="w-4 h-4" />;
+    if (funcName === "favorite") return <HeartIcon className="w-4 h-4" />;
+    // Use As History
+    // Use As History Prompt Semantic
+    if (funcName === "useAsHistory")
+      return <SendHorizontalIcon className="w-4 h-4" />;
+    if (funcName === "useAsHistoryPromptSemantic")
+      return <SendHorizontalIcon className="w-4 h-4" />;
+    return null;
+  };
+
+  const icon = getIconForFunction(name);
+  const displayName = getAudioFnName(name);
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => func(url, metadata)}
+      className="text-[0] text-sm hover:text-sm transition-all"
+    >
+      {icon ? (
+        <span className="flex items-center gap-2">
+          {icon}
+          {displayName}
+        </span>
+      ) : (
+        displayName
+      )}
+    </Button>
+  );
+};
 
 const getAudioFnName = (name: string) =>
   name.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());

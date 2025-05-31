@@ -27,19 +27,23 @@ def model_select_ui(
     prefix: str,
     Component: type[gr.Radio | gr.Dropdown] = gr.Radio,
 ):
-    abs_dir = get_path_from_root("data", "models", prefix)
-    models = _get_models(repos, abs_dir)
-    model = Component(
-        choices=models,
-        label="Model",
-        value=models[0][1],
-    )
-    IconButton("refresh").click(
-        fn=lambda: Component(choices=_get_models(repos, abs_dir)),
-        outputs=[model],
-        api_name=f"{prefix}_get_models",
-    )
-    OpenFolderButton(abs_dir, api_name=f"{prefix}_open_model_dir")
+    with gr.Column(variant="panel"):
+        gr.Markdown("Model")
+        with gr.Row():
+            abs_dir = get_path_from_root("data", "models", prefix)
+            models = _get_models(repos, abs_dir)
+            model = Component(
+                choices=models,
+                # label="Model",
+                show_label=False,
+                value=models[0][1],
+            )
+            IconButton("refresh").click(
+                fn=lambda: Component(choices=_get_models(repos, abs_dir)),
+                outputs=[model],
+                api_name=f"{prefix}_get_models",
+            )
+            OpenFolderButton(abs_dir, api_name=f"{prefix}_open_model_dir")
     return model
 
 

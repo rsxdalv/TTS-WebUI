@@ -12,14 +12,13 @@ def randomize_seed(seed, randomize_seed):
 def randomize_seed_ui():
     with gr.Row():
         seed_input = gr.Textbox(label="Seed", value="-1")
-
-        CUSTOM_randomize_seed_checkbox = gr.Checkbox(label="Randomize seed", value=True)
+        randomize_seed_checkbox = gr.Checkbox(label="Randomize seed", value=True)
 
     return (
         seed_input,
         {
             "fn": randomize_seed,
-            "inputs": [seed_input, CUSTOM_randomize_seed_checkbox],
+            "inputs": [seed_input, randomize_seed_checkbox],
             "outputs": [seed_input],
         },
     )

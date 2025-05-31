@@ -30,8 +30,10 @@ export const AudioInput = ({
 }) =>
   url ? (
     <div className={cn("h-36 cell flex flex-col gap-y-2 relative", className)}>
-      <div className="flex items-start justify-between absolute w-full z-10 pr-4">
-        <Label className="bg-background cell">{label || "Input file:"}</Label>
+      <div className="flex items-start justify-h-2between absolute w-full z-pr-4">
+        <Label className="bg-background/70 cell text-xs px-2 py-1">
+          {label || "Input file:"}
+        </Label>
         {/* <Label className="">{label || "Input file:"}</Label> */}
         <Button variant="outline" size="sm" onClick={() => callback(undefined)}>
           Clear
@@ -72,18 +74,25 @@ export const AudioOutput = ({
   className?: string;
 }) => {
   return (
-    <div className={cn("w-full", className)} {...props}>
+    <div className={cn("w-full cell", className)} {...props}>
       {/* {metadata && JSON.stringify(metadata)} */}
-      <div className="flex items-start justify-between absolute z-10">
-        <Label className="bg-background cell">{label || "Input file:"}</Label>
+      <div className="mb-1 flex items-start justify-between z-10">
+        <Label className="bg-background/70 cell text-xs px-2 py-1">
+          {label || "Input file:"}
+        </Label>
+
+        {/* Top Fns like download, favorite, copy */}
+        {/* <AudioFuncs
+          url={audioOutput?.url}
+          funcs={funcs.filter((func) => func !== "favorite")}
+          filter={filter}
+          metadata={metadata}
+          name={label}
+        /> */}
       </div>
       {audioOutput ? (
         <>
-          <AudioPlayerWithConfig
-            height={100}
-            volume={0.4}
-            url={audioOutput.url}
-          />
+          <AudioPlayerWithConfig volume={0.4} url={audioOutput.url} />
           <AudioFuncs
             url={audioOutput.url}
             funcs={funcs}
@@ -116,16 +125,32 @@ const AudioPlayerWithConfig = ({
   volume?: number;
 }) => (
   <AudioPlayer
-    waveColor="#ffa500"
-    progressColor="#d59520"
-    barWidth={4}
-    barGap={1}
-    barRadius={2}
-    volume={0.4}
-    mediaControls={true}
+    volume={props.volume || 0.4}
+    height={50}
+    cursorWidth={2}
+    cursorColor="rgb(52, 128, 163)"
+    autoplay={false}
+    normalize={true}
+    dragToSeek={true}
+    minPxPerSec={20}
+    waveColor={"rgb(129, 144, 150)"}
+    // progressColor={"darkorange"}
+    sampleRate={44100}
+    
+    barWidth={2}
+    barGap={3}
+    barRadius={10}
+    // barWidth={3}
+    // barGap={2}
+    // barRadius={2}
+    
+    // waveColor="#ffa500"
+    progressColor="rgb(78, 158, 196)"
+
     {...props}
   />
 );
+// mediaControls={true}
 
 const AudioFuncs = ({
   filter: outputFilters,

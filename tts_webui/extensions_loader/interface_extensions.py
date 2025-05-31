@@ -112,6 +112,10 @@ def _extension_management_ui(
                 fn=disable_extension(package_name),
                 outputs=[output],
             )
+            # gr.Button("Soft Reload (Might fail)", visible=False).click(
+            #     fn=disable_extension(package_name),
+            #     outputs=[output],
+            # )
         with gr.Accordion("Console", open=True):
             output.render()
 

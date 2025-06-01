@@ -12,5 +12,5 @@ export const useSeedHelper =
   ) => {
     const seed = data?.metadata?.seed;
     if (!seed) return;
-    setParams((x) => ({ ...x, seed: Number(seed) }));
+    setParams((x) => ({ ...x, seed: Number(seed), use_random_seed: false }));
   };

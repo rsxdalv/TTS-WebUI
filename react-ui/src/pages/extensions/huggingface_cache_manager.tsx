@@ -7,7 +7,7 @@ const GPUInfoPage = () => {
   return (
     <Template>
       <Head>
-        <title>GPU Info - TTS Generation Webui</title>
+        <title>GPU Info - TTS WebUI</title>
       </Head>
       <div className="gap-y-4 p-4 flex w-full flex-col items-center">
         <ExtensionHuggingFaceCacheManager />

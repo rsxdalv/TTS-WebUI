@@ -165,6 +165,10 @@ export const routes: Route[] = [
         href: "/extensions/huggingface_cache_manager",
         text: "Huggingface Cache Manager",
       },
+      {
+        href: "/tools/api_config",
+        text: "API Config",
+      },
     ],
   },
 ];

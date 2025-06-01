@@ -39,13 +39,20 @@ export const AudioInput = ({
   className?: string;
 }) =>
   url ? (
-    <div className={cn("h-36 cell flex flex-col gap-y-2 relative", className)}>
-      <div className="flex items-start justify-h-2between absolute w-full z-pr-4">
+    <div className={cn("cell flex flex-col gap-y-2 relative", className)}>
+      {/* <div className="flex items-start justify-between w-full pr-4"> */}
+      <div className="mb-1 flex items-start justify-between z-10">
         <Label className="bg-background/70 cell text-xs px-2 py-1">
           {label || "Input file:"}
         </Label>
         {/* <Label className="">{label || "Input file:"}</Label> */}
-        <Button variant="outline" size="sm" onClick={() => callback(undefined)}>
+        <Button
+          variant="ghost"
+          size="sm"
+          // className="absolute text-xs right-2 z-10"
+          // className="z-10"
+          onClick={() => callback(undefined)}
+        >
           Clear
           <XIcon className="ml-2 w-5 h-5" />
         </Button>
@@ -178,7 +185,10 @@ const AudioFuncs = ({
 }: Omit<WaveSurferOptions, "container"> & {
   filter?: string[];
   metadata?: any;
-  funcs?: Record<string, (audio: string | undefined | any, metadata?: any) => void>;
+  funcs?: Record<
+    string,
+    (audio: string | undefined | any, metadata?: any) => void
+  >;
   name?: string;
 }) => {
   // Separate sendTo functions from other functions
@@ -292,7 +302,6 @@ const FuncButton = ({
       variant="ghost"
       size="sm"
       onClick={() => func(url, metadata)}
-      className="text-[0] text-sm hover:text-sm transition-all"
     >
       {icon ? (
         <span className="flex items-center gap-2">

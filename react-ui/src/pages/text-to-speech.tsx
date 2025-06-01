@@ -5,6 +5,12 @@ export const TextToSpeechModelList = () => (
   <div className="flex flex-col gap-2 text-center max-w-2xl">
     <h3 className="text-xl font-bold">Text-to-Speech Models:</h3>
     <ProjectCard
+      title="Kokoro"
+      description="Kokoro is a fast and lightweight TTS model with 82 million parameters. Small but comparable in quality to larger models."
+      href="/text-to-speech/kokoro"
+      projectLink="https://github.com/hexgrad/kokoro"
+    />
+    <ProjectCard
       title="Bark"
       description="Bark is a text-to-speech model that can generate speech from text."
       href="/text-to-speech/bark/generation"
@@ -33,12 +39,6 @@ export const TextToSpeechModelList = () => (
       description="Multilingual TTS: Speak in three languages - English, Chinese, and Japanese - with natural and expressive speech synthesis."
       href="/text-to-speech/vallex"
       projectLink="https://github.com/Plachtaa/VALL-E-X"
-    />
-    <ProjectCard
-      title="Kokoro"
-      description="Kokoro is an open-weight TTS model with 82 million parameters. Despite its lightweight architecture, it delivers comparable quality to larger models while being significantly faster and more cost-efficient."
-      href="/text-to-speech/kokoro"
-      projectLink="https://github.com/hexgrad/kokoro"
     />
   </div>
 );

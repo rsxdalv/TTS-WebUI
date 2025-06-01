@@ -26,6 +26,10 @@ export const routes: Route[] = [
     text: "Text-to-Speech",
     subroutes: [
       {
+        href: "/text-to-speech/kokoro",
+        text: "Kokoro",
+      },
+      {
         href: "/text-to-speech/bark",
         text: "Bark",
         subroutes: [
@@ -76,10 +80,6 @@ export const routes: Route[] = [
       {
         href: "/text-to-speech/vallex",
         text: "Vall-E-X",
-      },
-      {
-        href: "/text-to-speech/kokoro",
-        text: "Kokoro",
       },
     ],
   },

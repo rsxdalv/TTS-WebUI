@@ -86,6 +86,10 @@
 
 ## Changelog
 
+June 1:
+* Add presets API.
+* Add API Preset config to React UI.
+
 May 31:
 * Improve React UI Audio player.
 * Fix ROCm installation version.

@@ -573,4 +573,31 @@ const endpoints = {
       folder_root: result?.data?.[3],
     })
   ),
+
+  chatterbox_tts: resolvedPassThroughWithParamsLoopback(
+    "/chatterbox_tts",
+    (result) => ({
+      audio: result?.data?.[0],
+      metadata: result?.data?.[1],
+      folder_root: result?.data?.[2],
+    })
+  ),
+
+  //   api/gradio/open_ai_api_load_presets
+  // api/gradio/open_ai_api_save_presets
+  // api/gradio/get_chatterbox_voices
+  // api/gradio/open_ai_api_test_voice_preset
+  open_ai_api_load_presets: resolvedPassThrough(
+    "/open_ai_api_load_presets",
+    (result) => result?.data[0]
+  ),
+  open_ai_api_save_presets: passThrough("/open_ai_api_save_presets"),
+  get_chatterbox_voices: resolvedPassThrough(
+    "/get_chatterbox_voices",
+    (result) => result?.data[0]
+  ),
+  open_ai_api_test_voice_preset: resolvedPassThrough(
+    "/open_ai_api_test_voice_preset",
+    (result) => result?.data[0].url
+  ),
 };

@@ -4,7 +4,6 @@ import os
 def env_entry(name, value, comment, null_if_empty=True):
     return f"# {comment}\n{'# ' if null_if_empty and not value else ''}{name}={value}\n"
 
-
 def generate_env(
     *,
     model_location_hf_env_var: str = "",
@@ -42,6 +41,8 @@ def generate_env(
     env = "# This file gets updated automatically from the UI\n\n"
     env += "# If you wish to manually specify any ENV variables, please do so in the .env.user file\n"
     env += "# The variables in .env.user will take PRIORITY!\n\n"
+
+    env += env_entry("USE_TF", "0", "Disable Tensorflow for transformers")
 
     env += env_entry(
         "HUGGINGFACE_HUB_CACHE",

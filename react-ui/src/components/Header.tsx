@@ -26,11 +26,19 @@ export const routes: Route[] = [
     text: "Text-to-Speech",
     subroutes: [
       {
+        href: "/text-to-speech/kokoro",
+        text: "Kokoro",
+      },
+      {
+        href: "/text-to-speech/chatterbox",
+        text: "Chatterbox",
+      },
+      {
         href: "/text-to-speech/bark",
         text: "Bark",
         subroutes: [
           {
-            href: "/text-to-speech/bark",
+            href: "/text-to-speech/bark/generation",
             text: "Generation",
           },
           {
@@ -76,10 +84,6 @@ export const routes: Route[] = [
       {
         href: "/text-to-speech/vallex",
         text: "Vall-E-X",
-      },
-      {
-        href: "/text-to-speech/kokoro",
-        text: "Kokoro",
       },
     ],
   },
@@ -164,6 +168,10 @@ export const routes: Route[] = [
       {
         href: "/extensions/huggingface_cache_manager",
         text: "Huggingface Cache Manager",
+      },
+      {
+        href: "/tools/api_config",
+        text: "API Config",
       },
     ],
   },

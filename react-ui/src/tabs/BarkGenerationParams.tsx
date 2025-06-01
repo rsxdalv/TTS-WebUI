@@ -51,7 +51,7 @@ export const sendToBarkAsVoice = (voice?: string) => {
       history_prompt_semantic: voice,
     })
   );
-  router.push("/text-to-speech/bark");
+  router.push("/text-to-speech/bark/generation");
 };
 
 export const useBarkGenerationParams = () =>

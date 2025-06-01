@@ -1,4 +1,5 @@
 import inspect
+import functools
 
 
 def gradio_dict_decorator(fn, gradio_fn_input_dictionary, outputs):
@@ -109,7 +110,7 @@ def _get_mapped_args(inputs: dict, list_args):
     return {k: v for k, v in zip(list(inputs.values()), list_args)}
 
 
-def dictionarize(fn, inputs: dict, outputs: dict):
+def dictionarize(fn, inputs: dict, outputs: dict, **kwargs):
     def unmap_outputs(result_dict):
         return {v: result_dict[k] for k, v in outputs.items()}
 
@@ -139,4 +140,80 @@ def dictionarize(fn, inputs: dict, outputs: dict):
         "fn": get_wrapper(),
         "inputs": list(inputs.keys()),
         "outputs": list(outputs.values()),
+        **kwargs,
+    }
+
+
+def _apply_sig_with_defaults(fn, input_dict, original_fn=None):
+    """
+    Assigns a signature to a function, preserving default values from the original signature.
+    """
+    # Get the original signature to extract default values
+    # If original_fn is provided, use that; otherwise inspect fn itself
+    source_fn = original_fn if original_fn else fn
+    original_sig = inspect.signature(source_fn)
+    original_params = original_sig.parameters
+
+    # Create new parameters with preserved defaults
+    new_params = []
+    for name in input_dict.values():
+        if name in original_params:
+            # Use the original parameter with its default value
+            original_param = original_params[name]
+            # Only set default if it's not Parameter.empty
+            default = (
+                original_param.default
+                if original_param.default != inspect.Parameter.empty
+                else inspect.Parameter.empty
+            )
+            new_param = inspect.Parameter(
+                name=name,
+                kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                default=default,
+                annotation=original_param.annotation,
+            )
+        else:
+            # Create new parameter without default
+            new_param = inspect.Parameter(
+                name=name, kind=inspect.Parameter.POSITIONAL_OR_KEYWORD
+            )
+        new_params.append(new_param)
+
+    # Assign the new signature to the wrapper function
+    fn.__signature__ = inspect.Signature(new_params)
+    return fn
+
+
+def dictionarize_wraps(fn, inputs: dict, outputs: dict, **kwargs):
+    def unmap_outputs(result_dict):
+        return {v: result_dict[k] for k, v in outputs.items()}
+
+    def get_wrapper():
+        if inspect.isgeneratorfunction(fn):
+
+            def gen_wrapper(*list_args):
+                mapped_args = _get_mapped_args(inputs, list_args)
+                print(mapped_args)
+                for result_dict in fn(
+                    **_get_mapped_args(inputs, list_args), outputs=outputs
+                ):
+                    yield unmap_outputs(result_dict)
+
+            return _apply_sig_with_defaults(gen_wrapper, inputs, original_fn=fn)
+        else:
+
+            # @functools.wraps(fn)
+            def wrapper(*list_args):
+                mapped_args = _get_mapped_args(inputs, list_args)
+                print(mapped_args)
+                result_dict = fn(**_get_mapped_args(inputs, list_args), outputs=outputs)
+                return unmap_outputs(result_dict)
+
+            return _apply_sig_with_defaults(wrapper, inputs, original_fn=fn)
+
+    return {
+        "fn": get_wrapper(),
+        "inputs": list(inputs.keys()),
+        "outputs": list(outputs.values()),
+        **kwargs,
     }

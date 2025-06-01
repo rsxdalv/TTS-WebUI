@@ -11,6 +11,12 @@ export const TextToSpeechModelList = () => (
       projectLink="https://github.com/hexgrad/kokoro"
     />
     <ProjectCard
+      title="Chatterbox"
+      description="Expressive text-to-speech model with reference audio support for voice cloning."
+      href="/text-to-speech/chatterbox"
+      projectLink="https://github.com/resemble-ai/chatterbox"
+    />
+    <ProjectCard
       title="Bark"
       description="Bark is a text-to-speech model that can generate speech from text."
       href="/text-to-speech/bark/generation"
@@ -50,3 +56,4 @@ export default function TextToSpeech() {
     </Template>
   );
 }
+

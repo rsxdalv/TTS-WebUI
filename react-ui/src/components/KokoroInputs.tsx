@@ -239,7 +239,7 @@ export const KokoroInputs: React.FC<KokoroInputsProps> = ({
             <CardTitle>Seed Settings</CardTitle>
           </CardHeader>
           <CardContent>
-            <SeedInput params={kokoroParams} handleChange={handleChange} />
+            <SeedInput className="flex-wrap" params={kokoroParams} handleChange={handleChange} />
           </CardContent>
         </Card>
 

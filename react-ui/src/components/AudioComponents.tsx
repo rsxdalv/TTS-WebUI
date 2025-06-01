@@ -8,6 +8,7 @@ import { GradioFile } from "../types/GradioFile";
 import { sendToBarkVoiceGeneration } from "../tabs/BarkVoiceGenerationParams";
 import { sendToAceStep } from "../tabs/AceStepParams";
 import { sendToKokoro } from "../tabs/KokoroParams";
+import { sendToChatterbox } from "../tabs/ChatterboxParams";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 import {
@@ -141,6 +142,7 @@ const sendToFuncs = {
   sendToBarkVoiceGeneration,
   sendToAceStep,
   sendToKokoro,
+  sendToChatterbox,
 } as Record<string, (audio: string | undefined) => void>;
 
 const listOfFuncs = Object.keys(sendToFuncs);
@@ -317,3 +319,4 @@ const FuncButton = ({
 
 const getAudioFnName = (name: string) =>
   name.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());
+

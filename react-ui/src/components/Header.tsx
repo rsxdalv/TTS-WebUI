@@ -30,6 +30,10 @@ export const routes: Route[] = [
         text: "Kokoro",
       },
       {
+        href: "/text-to-speech/chatterbox",
+        text: "Chatterbox",
+      },
+      {
         href: "/text-to-speech/bark",
         text: "Bark",
         subroutes: [

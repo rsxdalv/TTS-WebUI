@@ -19,6 +19,7 @@ export const SeedInput = <
   handleChange: HandleChange;
   className?: string;
 }) => (
+  // <div className={cn("flex gap-2 items-center w-full flex-wrap", className)}>
   <div className={cn("flex gap-2 items-center w-full", className)}>
     <Label htmlFor="seed">Seed:</Label>
     <Input

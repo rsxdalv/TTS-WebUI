@@ -14,10 +14,12 @@ def pip_install_wrapper(requirements, name, include_gradio=True):
     def fn():
         output = []
         for line in _pip_install(requirements + " gradio==5.5.0" if include_gradio else "", name):
-            output.append(line)
+            output.append(str(line))
             yield "<br />".join(output)
 
         write_log(output, name, type="pip-install")
+        return line
+        # verify installation by importing the package or drying run install
 
     return fn
 
@@ -64,9 +66,12 @@ def _pip_install(requirements, name):
         # yield from pip_shell(f"uv pip install {requirements}")
         print(f"Successfully installed {name} dependencies")
         yield f"Successfully installed {name} dependencies"
+        yield f"Please restart the webui to see the changes"
+        yield True
     except Exception:
         print(f"Failed to install {name} dependencies")
         yield f"Failed to install {name} dependencies"
+        yield False
 
 
 def _pip_uninstall(package_name, name):

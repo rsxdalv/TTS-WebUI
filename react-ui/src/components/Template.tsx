@@ -22,7 +22,7 @@ export const Template = ({
           <Header />
           {title && (
             <Head>
-              <title>{`${title} - TTS Generation Webui`}</title>
+              <title>{`${title} - TTS WebUI`}</title>
             </Head>
           )}
           {children}

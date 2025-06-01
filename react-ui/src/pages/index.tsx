@@ -14,7 +14,7 @@ export default function Home() {
   return (
     <Template>
       <Head>
-        <title>TTS Generation Webui</title>
+        <title>TTS WebUI</title>
       </Head>
       <div className="flex flex-col gap-2 text-center max-w-2xl">
         <h2 className="text-2xl font-bold">Welcome to the TTS Webui!</h2>

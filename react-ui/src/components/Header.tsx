@@ -92,6 +92,10 @@ export const routes: Route[] = [
     text: "Audio/Music Generation",
     subroutes: [
       {
+        href: "/audio-music-generation/ace-step",
+        text: "ACE-Step",
+      },
+      {
         href: "/audio-music-generation/musicgen",
         text: "MusicGen",
       },
@@ -102,10 +106,6 @@ export const routes: Route[] = [
       {
         href: "/audio-music-generation/stable-audio",
         text: "Stable Audio",
-      },
-      {
-        href: "/audio-music-generation/ace-step",
-        text: "ACE-Step",
       },
     ],
   },
@@ -270,7 +270,7 @@ export const Header = ({}) => {
     <>
       <div className="flex items-center w-full pb-1">
         <h1 className="text-3xl font-bold text-start w-full text-gray-900">
-          TTS Generation Webui
+          TTS WebUI
         </h1>
         <div className="mr-2 relative w-96 flex-shrink-0 h-12 z-10">
           <div className="w-full">

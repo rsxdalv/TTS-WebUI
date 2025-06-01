@@ -6,5 +6,5 @@ from .decorator_log_generation import decorator_log_generation, decorator_log_ge
 from .decorator_save_metadata import decorator_save_metadata
 from .decorator_save_musicgen_npz import decorator_save_musicgen_npz
 from .decorator_save_wav import decorator_save_wav, decorator_save_wav_generator
-from .gradio_dict_decorator import dictionarize
+from .gradio_dict_decorator import dictionarize, dictionarize_wraps
 from .log_function_time import log_function_time, log_generator_time

@@ -36,7 +36,7 @@ extensions.external.json
 /data/models/parler_tts/
 /data/models/musicgen_audiogen/*/
 /data/models/gpt_sovits/
-/data/models/resemble_enhance/ds/
+/data/models/resemble_enhance/
 /data/models/ap_bwe/weights/
 /data/models/openvoice/
 /data/models/openvoice_v2/

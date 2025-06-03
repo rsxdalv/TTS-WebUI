@@ -25,6 +25,9 @@ class ModelState:
     def get_model_name(self):
         return self._model_name
 
+    def set_model_name(self, model_name):
+        self._model_name = model_name
+
 
 model_states = {}
 
@@ -95,3 +98,15 @@ def is_model_loaded(model_namespace):
         model_namespace in model_states
         and model_states[model_namespace].get_model() is not None
     )
+
+
+def rename_model(model_namespace, new_name):
+    if model_namespace in model_states:
+        model_states[model_namespace].set_model_name(new_name)
+
+
+def get_current_model(model_namespace):
+    if model_namespace in model_states:
+        return model_states[model_namespace].get_model()
+    else:
+        return None

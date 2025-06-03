@@ -10,9 +10,9 @@ def randomize_seed(seed, randomize_seed):
 
 
 def randomize_seed_ui():
-    with gr.Row():
-        seed_input = gr.Textbox(label="Seed", value="-1")
-        randomize_seed_checkbox = gr.Checkbox(label="Randomize seed", value=True)
+    with gr.Accordion("Seed", open=True), gr.Group(), gr.Row(equal_height=True):
+        seed_input = gr.Textbox(scale=9, container=False, show_label=False, show_copy_button=True, value="-1")
+        randomize_seed_checkbox = gr.Checkbox(scale=1, label="Randomize seed", value=True)
 
     return (
         seed_input,

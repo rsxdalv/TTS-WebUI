@@ -48,7 +48,18 @@ def model_select_ui(
 
 
 def unload_model_button(prefix: str):
-    return gr.Button(value="Unload Model").click(
+    button = gr.Button(value="Unload Model", variant="stop")
+
+    button.click(
+        fn=lambda: gr.Button(
+            value="Unloading...", variant="primary", interactive=False
+        ),
+        outputs=[button],
+    ).then(
         fn=lambda: unload_model(model_namespace=prefix),
         api_name=f"{prefix}_unload_model",
+    ).then(
+        fn=lambda: gr.Button(value="Unload Model", variant="stop", interactive=True),
+        outputs=[button],
     )
+    return button

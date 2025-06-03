@@ -91,6 +91,20 @@
             "extension_platform_version": "0.0.1"
         },
         {
+            "package_name": "extension_chatterbox",
+            "name": "Chatterbox",
+            "requirements": "git+https://github.com/rsxdalv/extension_chatterbox@main",
+            "description": "Chatterbox, Resemble AI's first production-grade open source TTS model",
+            "extension_type": "interface",
+            "extension_class": "text-to-speech",
+            "author": "Resemble AI",
+            "extension_author": "rsxdalv",
+            "license": "MIT",
+            "website": "https://github.com/resemble-ai/chatterbox",
+            "extension_website": "https://github.com/rsxdalv/extension_chatterbox",
+            "extension_platform_version": "0.0.1"
+        },
+        {
             "package_name": "extension_bark",
             "recommended": true,
             "name": "Bark",
@@ -655,20 +669,6 @@
             "license": "MIT",
             "website": "https://github.com/rsxdalv/extension_audiobook_generator",
             "extension_website": "https://github.com/rsxdalv/extension_audiobook_generator",
-            "extension_platform_version": "0.0.1"
-        },
-        {
-            "package_name": "extension_chatterbox",
-            "name": "Chatterbox",
-            "requirements": "git+https://github.com/rsxdalv/extension_chatterbox@main",
-            "description": "Chatterbox, Resemble AI's first production-grade open source TTS model",
-            "extension_type": "interface",
-            "extension_class": "text-to-speech",
-            "author": "Resemble AI",
-            "extension_author": "rsxdalv",
-            "license": "MIT",
-            "website": "https://github.com/resemble-ai/chatterbox",
-            "extension_website": "https://github.com/rsxdalv/extension_chatterbox",
             "extension_platform_version": "0.0.1"
         }
     ],

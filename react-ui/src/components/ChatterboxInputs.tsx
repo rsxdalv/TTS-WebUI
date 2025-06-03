@@ -98,6 +98,13 @@ export const ChatterboxInputs = ({
           />
         </div>
 
+        {/* add voice dropdown */}
+        {/* <div className="pt-2">
+          <VoiceDropdown
+            params={chatterboxParams}
+            handleChange={handleChange}
+          />
+        </div> */}
         <div className="pt-2">
           <AudioInput
             url={chatterboxParams.audio_prompt_path?.path}

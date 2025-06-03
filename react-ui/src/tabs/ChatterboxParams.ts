@@ -27,6 +27,7 @@ export interface ChatterboxParams extends Seeded {
   device: string;
   dtype: string;
   model_name: string;
+  chunked: boolean;
 }
 
 export const defaultChatterboxParams: ChatterboxParams = {
@@ -40,6 +41,7 @@ export const defaultChatterboxParams: ChatterboxParams = {
   model_name: "just_a_placeholder",
   seed: -1,
   use_random_seed: true,
+  chunked: false,
 };
 
 export type ChatterboxResult = {

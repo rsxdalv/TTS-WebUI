@@ -15,6 +15,8 @@ import {
 import { UnloadModelButton } from "./component/ModelDropdown";
 import { AudioInput } from "./AudioComponents";
 import { SeedInput } from "./SeedInput";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 
 // Type alias for components that need basic params
 type ChatterboxBasicParams = Omit<ChatterboxParams, "audio_prompt_path"> & {
@@ -75,7 +77,7 @@ export const ChatterboxInputs = ({
             onChange={handleChange}
             label="CFG Weight/Pace"
             name="cfg_weight"
-            min="0.2"
+            min="0"
             max="1"
             step="0.05"
             decimals={2}
@@ -110,6 +112,22 @@ export const ChatterboxInputs = ({
           />
         </div>
 
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="chunked"
+            checked={chatterboxParams.chunked}
+            name="chunked"
+            onCheckedChange={(x) =>
+              handleChange({ target: { name: "chunked", value: x } })
+            }
+          />
+          <div>
+            <Label htmlFor="chunked">Chunked</Label>
+            <CardDescription>
+              Enable chunked generation for longer prompts.
+            </CardDescription>
+          </div>
+        </div>
         <div className="flex items-center gap-4 pt-2">
           <RadioWithLabel
             label="Device"

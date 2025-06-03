@@ -176,11 +176,25 @@ def _create_decorator(wrappers_list):
     return decorator
 
 
+def _create_decorator_generator(wrappers_list):
+    def decorator(fn0):
+        for wrapper in wrappers_list:
+            fn0 = wrapper(fn0)
+
+        @functools.wraps(fn0)
+        def wrapped(*args, **kwargs):
+            yield from fn0(*args, **kwargs)
+
+        return wrapped
+
+    return decorator
+
+
 # Define the four decorators using the helper function
 decorator_extension_outer = _create_decorator(OUTER_WRAPPERS)
 decorator_extension_inner = _create_decorator(INNER_WRAPPERS)
-decorator_extension_outer_generator = _create_decorator(OUTER_WRAPPERS_GEN)
-decorator_extension_inner_generator = _create_decorator(INNER_WRAPPERS_GEN)
+decorator_extension_outer_generator = _create_decorator_generator(OUTER_WRAPPERS_GEN)
+decorator_extension_inner_generator = _create_decorator_generator(INNER_WRAPPERS_GEN)
 
 if __name__ == "__main__":
     pass

@@ -28,3 +28,24 @@ def decorator_save_wav_generator(fn):
             yield result_dict
 
     return wrapper
+
+
+def decorator_save_wav_generator_accumulated(fn):
+    def wrapper(*args, **kwargs):
+        accumulated_result_dict = None
+        for result_dict in fn(*args, **kwargs):
+            if result_dict is None:
+                continue
+            if accumulated_result_dict is None:
+                accumulated_result_dict = result_dict
+            else:
+                accumulated_result_dict["audio_out"][1] = np.concatenate(
+                    [
+                        accumulated_result_dict["audio_out"][1],
+                        result_dict["audio_out"][1],
+                    ]
+                )
+            yield result_dict
+        _save_wav(accumulated_result_dict)
+
+    return wrapper

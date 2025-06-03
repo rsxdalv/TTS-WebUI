@@ -24,6 +24,7 @@ RUN npm --version
 ENV TORCH_VERSION=2.6.0
 
 ENV PATH="/root/.cargo/bin:$PATH"
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir setuptools torch==$TORCH_VERSION torchvision torchaudio 
 
 # Set working directory

@@ -7,3 +7,15 @@ def split_by_lines(prompt: str):
 
 def split_by_length_simple(prompt: str):
     return [prompt[i : i + 200] for i in range(0, len(prompt), 200)]
+
+
+try:
+    from tortoise.utils.text import split_and_recombine_text
+except ImportError:
+
+    def split_and_recombine_text(
+        text: str, desired_length: int = 200, max_length: int = 300
+    ):
+        return split_by_length_simple(text)
+
+    # split_and_recombine_text = split_by_length_simple

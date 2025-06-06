@@ -86,6 +86,10 @@
 
 ## Changelog
 
+June 6:
+* Update DIA Extension for Float16 support.
+* Improve decorators for streaming usage.
+
 June 4:
 * Attempt dockerfile fix.
 * Add interactivity to model unloading button, improve Gradio random seed UI.

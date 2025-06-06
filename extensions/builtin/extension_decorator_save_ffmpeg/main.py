@@ -81,22 +81,30 @@ def decorator_save_flac(fn):
 
 def decorator_save_ogg_generator(fn):
     def wrapper(*args, **kwargs):
+        SAVE_EACH = kwargs.get("generator_save_each", False)
         for result_dict in fn(*args, **kwargs):
             if result_dict is None:
                 continue
-            _save(kwargs, result_dict, "ogg")
+            if SAVE_EACH:
+                _save(kwargs, result_dict, "ogg")
             yield result_dict
+        if not SAVE_EACH:
+            _save(kwargs, result_dict, "ogg")
 
     return wrapper
 
 
 def decorator_save_flac_generator(fn):
     def wrapper(*args, **kwargs):
+        SAVE_EACH = kwargs.get("generator_save_each", False)
         for result_dict in fn(*args, **kwargs):
             if result_dict is None:
                 continue
-            _save(kwargs, result_dict, "flac")
+            if SAVE_EACH:
+                _save(kwargs, result_dict, "flac")
             yield result_dict
+        if not SAVE_EACH:
+            _save(kwargs, result_dict, "flac")
 
     return wrapper
 

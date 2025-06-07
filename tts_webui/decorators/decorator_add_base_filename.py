@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from deprecated import deprecated
 from tts_webui.utils.prompt_to_title import prompt_to_title
 
 output_path = "outputs"
@@ -30,6 +31,7 @@ def _add_filename(kwargs, result_dict):
     return result_dict
 
 
+@deprecated(version="0.0.1", reason="Use get_relative_output_path instead")
 def _make_dirs(result_dict):
     result_dict["folder_root"] = os.path.join(output_path, result_dict["filename"])
     os.makedirs(result_dict["folder_root"], exist_ok=True)

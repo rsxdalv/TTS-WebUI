@@ -46,14 +46,22 @@ def decorator_save_wav_generator_accumulated(fn):
             if accumulated_result_dict is None:
                 accumulated_result_dict = result_dict
             else:
-                accumulated_result_dict["audio_out"][1] = np.concatenate(
-                    [
-                        accumulated_result_dict["audio_out"][1],
-                        result_dict["audio_out"][1],
-                    ]
-                )
+                accumulated_result_dict = {
+                    **accumulated_result_dict,
+                    **result_dict,
+                    "audio_out": (
+                        accumulated_result_dict["audio_out"][0],
+                        np.concatenate(
+                            [
+                                accumulated_result_dict["audio_out"][1],
+                                result_dict["audio_out"][1],
+                            ]
+                        ),
+                    ),
+                }
             yield result_dict
         if not SAVE_EACH:
             _save_wav(accumulated_result_dict)
 
     return wrapper
+

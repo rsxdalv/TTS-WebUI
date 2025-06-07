@@ -3,7 +3,10 @@ import gradio as gr
 
 
 def get_collections():
-    dirs = os.listdir("collections")
+    from tts_webui.utils.get_path_from_root import get_path_from_root
+
+    path = get_path_from_root("collections")
+    dirs = os.listdir(path)
     dirs.sort()
 
     def get_collection_path(d):

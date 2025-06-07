@@ -15,16 +15,6 @@ dotenv_init.init()
 import os
 
 
-def fix_gradio_tabs():
-    import gradio as gr
-    from gradio_goodtabs import GoodTabs
-    from gradio_goodtab import GoodTab as Tab
-
-    gr.Tab = Tab
-    gr.Tabs = GoodTabs
-
-
-fix_gradio_tabs()
 from tts_webui.utils.suppress_warnings import suppress_warnings
 
 suppress_warnings()

@@ -1,10 +1,10 @@
 import importlib
 import importlib.util
 from importlib.metadata import version
-import time
 import gradio as gr
 
 from tts_webui.config.config import config
+from tts_webui.extensions_loader.LoadingIndicator import LoadingIndicator
 from tts_webui.utils.pip_install import pip_install_wrapper, pip_uninstall_wrapper
 from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
 from tts_webui.extensions_loader.extensions_data_loader import (
@@ -23,28 +23,9 @@ def check_if_package_installed(package_name):
     return spec is not None
 
 
-class loading_logger:
-    def __init__(self, title_name, skipped=False):
-        self.title_name = title_name
-        self.skipped = skipped
-
-    def __enter__(self):
-        print(f"Loading {self.title_name.ljust(35, '.')}...", end="")
-        self.start_time = time.time()
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self.skipped:
-            print(f"{' ' * 6} skipped.")
-            return
-        elapsed_time = time.time() - self.start_time
-        seconds = f"{elapsed_time:.2f}"
-        seconds = seconds.replace("0.", " .")
-        print(f"{seconds.rjust(6, ' ')} seconds.")
-
-
 def _handle_package(package_name, title_name, requirements):
     if package_name in disabled_extensions:
-        with loading_logger(title_name, skipped=True):
+        with LoadingIndicator(title_name, skipped=True):
             with gr.Tab(f"[Disabled] {title_name}"):
                 gr.Markdown(f"## {title_name} Extension is disabled")
                 enable_btn = gr.Button(f"Enable")
@@ -66,7 +47,7 @@ def _handle_package(package_name, title_name, requirements):
             )
         return
 
-    with loading_logger(title_name):
+    with LoadingIndicator(title_name):
         try:
             module = importlib.import_module(f"{package_name}.main")
             package_version = (
@@ -88,7 +69,10 @@ def _handle_package(package_name, title_name, requirements):
                             package_version,
                             show=False,
                         )
-                main_tab()
+                try:
+                    main_tab()
+                except Exception as e:
+                    generic_error_tab_advanced(e, name=title_name, requirements=requirements)
         except Exception as e:
             generic_error_tab_advanced(e, name=title_name, requirements=requirements)
 
@@ -97,7 +81,9 @@ def enable_extension(package_name):
     def _enable_extension():
         disabled_extensions.remove(package_name)
         print(f"Enabled extension {package_name}")
-        gr.Info("Enabled extension. Please restart the application for changes to take effect.")
+        gr.Info(
+            "Enabled extension. Please restart the application for changes to take effect."
+        )
         _save_config(config)
 
     return _enable_extension
@@ -107,7 +93,9 @@ def disable_extension(package_name):
     def _disable_extension():
         disabled_extensions.append(package_name)
         print(f"Disabled extension {package_name}")
-        gr.Info("Disabled extension. Please restart the application for changes to take effect.")
+        gr.Info(
+            "Disabled extension. Please restart the application for changes to take effect."
+        )
         _save_config(config)
 
     return _disable_extension
@@ -117,10 +105,10 @@ def toggle_extension_state(package_name, disabled_list):
     def _toggle_extension_state():
         if package_name in disabled_list:
             enable_extension(package_name)()
-            return "Enable"
+            return "Disable"
         else:
             disable_extension(package_name)()
-            return "Disable"
+            return "Enable"
 
     return _toggle_extension_state
 

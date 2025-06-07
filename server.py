@@ -14,8 +14,6 @@ import tts_webui.utils.dotenv_init as dotenv_init
 dotenv_init.init()
 import os
 import gradio as gr
-
-import gradio as gr
 from gradio_goodtabs import GoodTabs
 from gradio_goodtab import GoodTab as Tab
 
@@ -32,14 +30,13 @@ from tts_webui.history_tab.collections_directories_atom import (
     collections_directories_atom,
 )
 from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
-from tts_webui.extensions_loader.interface_extensions import (
+from tts_webui.extensions_loader import (
     extension_list_tab,
     handle_extension_class,
-)
-from tts_webui.extensions_loader.decorator_extensions import (
     extension_decorator_list_tab,
 )
-from tts_webui.utils.print_gradio_options import print_gradio_options
+from tts_webui.gradio.print_gradio_options import print_gradio_options
+from tts_webui.gradio.get_theme import get_theme
 
 
 def reload_config_and_restart_ui():
@@ -50,13 +47,6 @@ def reload_config_and_restart_ui():
     # demo.close()
     # time.sleep(1)
     # demo.launch(**gradio_interface_options)
-
-
-gradio_interface_options = (
-    config["gradio_interface_options"]
-    if "gradio_interface_options" in config
-    else default_config
-)
 
 
 def run_tab(module_name, function_name, name, requirements=None):
@@ -83,47 +73,12 @@ def load_tabs(list_of_tabs):
         run_tab(module_name, function_name, name, requirements)
 
 
-def main_ui(theme_choice="Base"):
-    themes = {
-        "Base": gr.themes.Base,
-        "Default": gr.themes.Default,
-        "Monochrome": gr.themes.Monochrome,
-    }
-    theme: gr.themes.Base = themes[theme_choice](
-        # primary_hue="blue",
-        primary_hue="sky",
-        secondary_hue="sky",
-        neutral_hue="neutral",
-        font=[
-            gr.themes.GoogleFont("Inter"),
-            "ui-sans-serif",
-            "system-ui",
-            "sans-serif",
-        ],
-    )
-    theme.set(
-        embed_radius="*radius_sm",
-        block_label_radius="*radius_sm",
-        block_label_right_radius="*radius_sm",
-        block_radius="*radius_sm",
-        block_title_radius="*radius_sm",
-        container_radius="*radius_sm",
-        checkbox_border_radius="*radius_sm",
-        input_radius="*radius_sm",
-        table_radius="*radius_sm",
-        button_large_radius="*radius_sm",
-        button_small_radius="*radius_sm",
-        button_primary_background_fill_hover="*primary_300",
-        button_primary_background_fill_hover_dark="*primary_600",
-        button_secondary_background_fill_hover="*secondary_200",
-        button_secondary_background_fill_hover_dark="*secondary_600",
-    )
-
+def main_ui(config):
     with gr.Blocks(
         css=full_css,
         title="TTS WebUI",
         analytics_enabled=False,  # it broke too many times
-        theme=theme,
+        theme=get_theme(config),
     ) as blocks:
         gr.HTML(
             """
@@ -138,12 +93,12 @@ def main_ui(theme_choice="Base"):
         )
 
         with gr.Tabs():
-            all_tabs()
+            all_tabs(config)
 
     return blocks
 
 
-def all_tabs():
+def all_tabs(config):
     with gr.Tab("💬 Text-to-Speech"), gr.Tabs():
         handle_extension_class("text-to-speech", config)
     with gr.Tab("🎼 Audio/Music Generation"), gr.Tabs():
@@ -174,7 +129,7 @@ def all_tabs():
     with gr.Tab("⚙️ Settings"), gr.Tabs():
         from tts_webui.settings_tab_gradio import settings_tab_gradio
 
-        settings_tab_gradio(reload_config_and_restart_ui, gradio_interface_options)
+        settings_tab_gradio(reload_config_and_restart_ui, gr_options)
 
         settings_tabs = [
             (
@@ -197,49 +152,45 @@ def all_tabs():
         tutorial_tab()
 
 
-def start_gradio_server():
+gr_options = (
+    config["gradio_interface_options"]
+    if "gradio_interface_options" in config
+    else default_config
+)
 
-    # detect if --share is passed
+
+def start_gradio_server(config):
+
     if "--share" in os.sys.argv:
         print("Gradio share mode enabled")
-        gradio_interface_options["share"] = True
+        gr_options["share"] = True
 
     if "--docker" in os.sys.argv:
-        gradio_interface_options["server_name"] = "0.0.0.0"
+        gr_options["server_name"] = "0.0.0.0"
         print("Info: Docker mode: opening gradio server on all interfaces")
 
     print("Starting Gradio server...")
-    if "enable_queue" in gradio_interface_options:
-        del gradio_interface_options["enable_queue"]
-    if gradio_interface_options["auth"] is not None:
+    if "enable_queue" in gr_options:
+        del gr_options["enable_queue"]
+    if gr_options["auth"] is not None:
         # split username:password into (username, password)
-        gradio_interface_options["auth"] = tuple(
-            gradio_interface_options["auth"].split(":")
-        )
+        gr_options["auth"] = tuple(gr_options["auth"].split(":"))
         print("Gradio server authentication enabled")
-    # delete show_tips option
-    if "show_tips" in gradio_interface_options:
-        del gradio_interface_options["show_tips"]
-    # TypeError: Blocks.launch() got an unexpected keyword argument 'file_directories'
-    if "file_directories" in gradio_interface_options:
-        del gradio_interface_options["file_directories"]
-    print_gradio_options(gradio_interface_options)
+
+    def upgrade_gradio_options(options):
+        for key in ["file_directories", "favicon_path", "show_tips"]:
+            if key in gr_options:
+                del gr_options[key]
+
+    upgrade_gradio_options(gr_options)
+    print_gradio_options(gr_options)
 
     demo = main_ui()
 
     print("\n\n")
 
-    if gradio_interface_options["server_name"] == "0.0.0.0":
-        print("Notice: Server is open to the internet")
-        print(
-            f"Gradio server will be available on http://localhost:{gradio_interface_options['server_port']}"
-        )
-
-    # concurrency_count=gradio_interface_options.get("concurrency_count", 5),
-    del gradio_interface_options["favicon_path"]
-
     demo.queue().launch(
-        **gradio_interface_options,
+        **gr_options,
         allowed_paths=["."],
         favicon_path="./react-ui/public/favicon.ico",
     )
@@ -272,7 +223,7 @@ def server_hypervisor():
             "npm start --prefix react-ui",
             env={
                 **os.environ,
-                "GRADIO_BACKEND_AUTOMATIC": f"http://127.0.0.1:{gradio_interface_options['server_port']}/",
+                "GRADIO_BACKEND_AUTOMATIC": f"http://127.0.0.1:{gr_options['server_port']}/",
                 # "GRADIO_AUTH": gradio_interface_options["auth"].join(":"),
             },
             shell=True,
@@ -316,9 +267,10 @@ def server_hypervisor():
 
 if __name__ == "__main__":
     server_hypervisor()
+
     import webbrowser
 
-    if gradio_interface_options["inbrowser"] and "--no-react" not in os.sys.argv:
+    if gr_options["inbrowser"] and "--no-react" not in os.sys.argv:
         webbrowser.open("http://localhost:3000")
 
-    start_gradio_server()
+    start_gradio_server(config=config)

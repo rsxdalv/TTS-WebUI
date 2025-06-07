@@ -2,6 +2,7 @@ tts_webui_core @ https://github.com/rsxdalv/tts_webui_core/releases/download/v0.
 
 safetensors
 python-dotenv==1.0.0
+cached_path >= 1.7.3 # Prevent old huggingface-hub fallbacks
  
 ffmpeg-python # Apache 2.0
 gradio==5.5.0 # MIT License

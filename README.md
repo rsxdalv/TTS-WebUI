@@ -30,7 +30,7 @@
 
 </div>
 
-| [![Watch the video](https://img.youtube.com/vi/JXojhFjZ39k/sddefault.jpg)](https://youtu.be/JXojhFjZ39k) | [![Watch the video](https://img.youtube.com/vi/ScN2ypewABc/sddefault.jpg)](https://youtu.be/ScN2ypewABc) | [![Watch the video](https://img.youtube.com/vi/yJhzwmwFpcs/sddefault.jpg)](https://youtu.be/yJhzwmwFpcs) |
+| [![Watch the video](https://img.youtube.com/vi/JXojhFjZ39k/sddefault.jpg)](https://youtu.be/JXojhFjZ39k) | [![Watch the video](https://img.youtube.com/vi/ScN2ypewABc/sddefault.jpg)](https://youtu.be/ScN2ypewABc) | [![Watch the video](https://img.youtube.com/vi/_0rftbXPJLI/sddefault.jpg)](https://youtu.be/_0rftbXPJLI) |
 | :------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------: |
 
 <div align="center">
@@ -85,6 +85,9 @@
 | :-----------------------------------------: | :-----------------------------------------: | :-------------------------------: |
 
 ## Changelog
+
+June 7:
+* Chatterbox upgrade for streaming.
 
 June 6:
 * Update DIA Extension for Float16 support.

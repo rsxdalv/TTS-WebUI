@@ -89,6 +89,7 @@
 June 8:
 * Fix decorators for generation.
 * Refactor server.py code.
+* Hotfix for docker, thanks https://github.com/chrislawso for reporting.
 
 June 7:
 * Chatterbox upgrade for streaming.

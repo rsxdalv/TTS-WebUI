@@ -84,7 +84,11 @@ def print_gradio_options(options):
 
         print(f"  • {group_name.ljust(8)} > {', '.join(formatted_params)}")
 
-    print("\nGradio server is running...")
+    if options["server_name"] == "0.0.0.0":
+        print("Notice: Server is open to the internet")
+        print(
+            f"Gradio server will be available on http://localhost:{gradio_interface_options['server_port']}"
+        )
 
 
 # Example usage:

@@ -1,7 +1,9 @@
 import os
 
+_dir_cache = {}
 
-def get_relative_output_path(result_dict, *args):
+
+def _get_relative_output_path(result_dict, *args):
     """
     Get the relative path to the output directory.
 
@@ -12,7 +14,11 @@ def get_relative_output_path(result_dict, *args):
     Returns:
         str: The relative path to the output directory.
     """
-    return os.path.join(result_dict["folder_root"], *args)
+    dir = result_dict["folder_root"]
+    if dir not in _dir_cache:
+        os.makedirs(dir, exist_ok=True)
+        _dir_cache[dir] = True
+    return os.path.join(dir, *args)
 
 
 def get_relative_output_path_ext(result_dict, ext: str):
@@ -26,4 +32,4 @@ def get_relative_output_path_ext(result_dict, ext: str):
     Returns:
         str: The relative path to the output directory with an extension.
     """
-    return get_relative_output_path(result_dict, result_dict["filename"] + ext)
+    return _get_relative_output_path(result_dict, result_dict["filename"] + ext)

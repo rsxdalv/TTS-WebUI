@@ -86,6 +86,10 @@
 
 ## Changelog
 
+June 8:
+* Fix decorators for generation.
+* Refactor server.py code.
+
 June 7:
 * Chatterbox upgrade for streaming.
 

@@ -34,3 +34,30 @@ def decorator_save_waveform_plot(fn):
         return result_dict
 
     return wrapper
+
+
+def decorator_save_waveform_plot_generator(fn):
+    """
+    Add waveform_plot to the result_dict.
+    """
+
+    def wrapper(*args, **kwargs):
+        SAVE_EACH = kwargs.get("generator_save_each", False)
+        for result_dict in fn(*args, **kwargs):
+            if result_dict is None:
+                continue
+            if SAVE_EACH:
+                path = get_relative_output_path_ext(result_dict, ".png")
+                print("Saving waveform plot to", path)
+                result_dict["waveform_plot"] = middleware_save_waveform_plot(
+                    result_dict["audio_out"][1], path
+                )
+            yield result_dict
+        if not SAVE_EACH:
+            path = get_relative_output_path_ext(result_dict, ".png")
+            print("Saving waveform plot to", path)
+            result_dict["waveform_plot"] = middleware_save_waveform_plot(
+                result_dict["audio_out"][1], path
+            )
+
+    return wrapper

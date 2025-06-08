@@ -40,9 +40,20 @@ const rocmVersionTag = {
   "2.7.1": "rocm6.3",
 };
 
+const GPUChoice = {
+  NVIDIA: "NVIDIA GPU",
+  NVIDIA_NIGHTLY: "NVIDIA GPU (Nightly RTX 50 series)",
+  APPLE_M_SERIES: "Apple M Series Chip",
+  CPU: "CPU",
+  CANCEL: "Cancel",
+  AMD_ROCM: "AMD GPU (ROCM, Linux only)",
+  INTEL_UNSUPPORTED: "Intel GPU (unsupported)",
+  INTEGRATED_UNSUPPORTED: "Integrated GPU (unsupported)",
+};
+
 const installDependencies = async (gpuchoice) => {
   try {
-    if (gpuchoice === "NVIDIA GPU") {
+    if (gpuchoice === GPUChoice.NVIDIA) {
       await $(
         `pip install -U torch==${torchVersion}+${cudaVersionTag} torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
       );
@@ -50,24 +61,24 @@ const installDependencies = async (gpuchoice) => {
       // pip install --dry-run torchao --index-url https://download.pytorch.org/whl/cu124
       // default version is already for 12.4 and has newer features
       // pip install --dry-run torchao
-    } else if (gpuchoice === "NVIDIA GPU (Nightly RTX 50 series)") {
+    } else if (gpuchoice === GPUChoice.NVIDIA_NIGHTLY) {
       displayMessage("Installing nightly PyTorch build for RTX 50 series...");
       await $(
         `pip install -U torch==${torchVersion}+${cudaVersionTag} torchvision torchaudio --pre --index-url https://download.pytorch.org/whl/nightly/${cudaVersionTag}`
       );
-      
+
       // await pip_install(
       //   `-U xformers torch==${torchVersion} --index-url https://download.pytorch.org/whl/${cudaVersionTag}`,
       //   "xformers",
       //   true
       // );
-    } else if (gpuchoice === "Apple M Series Chip") {
+    } else if (gpuchoice === GPUChoice.APPLE_M_SERIES) {
       await $(`pip install torch==${torchVersion} torchvision torchaudio`);
-    } else if (gpuchoice === "CPU") {
+    } else if (gpuchoice === GPUChoice.CPU) {
       await $(
         `pip install torch==${torchVersion}+cpu torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu`
       );
-    } else if (gpuchoice === "AMD GPU (ROCM, Linux only)") {
+    } else if (gpuchoice === GPUChoice.AMD_ROCM) {
       displayMessage(
         "ROCM is experimental and not well supported yet, installing..."
       );
@@ -94,14 +105,14 @@ const installDependencies = async (gpuchoice) => {
 const askForGPUChoice = () =>
   menu(
     [
-      "NVIDIA GPU",
-      "NVIDIA GPU (Nightly RTX 50 series)",
-      "Apple M Series Chip",
-      "CPU",
-      "Cancel",
-      "AMD GPU (ROCM, Linux only)",
-      "Intel GPU (unsupported)",
-      "Integrated GPU (unsupported)",
+      GPUChoice.NVIDIA,
+      GPUChoice.NVIDIA_NIGHTLY,
+      GPUChoice.APPLE_M_SERIES,
+      GPUChoice.CPU,
+      GPUChoice.CANCEL,
+      GPUChoice.AMD_ROCM,
+      GPUChoice.INTEL_UNSUPPORTED,
+      GPUChoice.INTEGRATED_UNSUPPORTED,
     ],
     `
 These are not yet automatically supported: AMD GPU, Intel GPU, Integrated GPU.

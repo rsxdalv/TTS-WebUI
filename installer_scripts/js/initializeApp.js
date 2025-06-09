@@ -11,9 +11,12 @@ const DEBUG_DRY_RUN = false;
 const torchVersion = "2.7.0"; // 2.7.1 has no xformers
 const cudaVersion = "12.8";
 const cudaVersionTag = `cu128`;
+let dev_version = "";
 
 const pythonVersion = `3.10.11`; // 3.11 and 3.12 are not yet supported
 const pythonPackage = `python=${pythonVersion}`;
+// const conda = "conda";
+const conda = "micromamba";
 
 const ensurePythonVersion = async () => {
   try {
@@ -22,7 +25,7 @@ const ensurePythonVersion = async () => {
     if (version !== `Python ${pythonVersion}`) {
       displayMessage(`Current python version is """${version}"""`);
       displayMessage(`Python version is not ${pythonVersion}. Reinstalling...`);
-      await $(`conda install -y -k -c conda-forge ${pythonPackage}`);
+      await $(`${conda} install -y -k -c conda-forge ${pythonPackage}`);
     }
   } catch (error) {
     displayError("Failed to check/install python version");
@@ -63,8 +66,9 @@ const installDependencies = async (gpuchoice) => {
       // pip install --dry-run torchao
     } else if (gpuchoice === GPUChoice.NVIDIA_NIGHTLY) {
       displayMessage("Installing nightly PyTorch build for RTX 50 series...");
+      dev_version = ".dev20250310";
       await $(
-        `pip install -U torch==${torchVersion}+${cudaVersionTag} torchvision torchaudio --pre --index-url https://download.pytorch.org/whl/nightly/${cudaVersionTag}`
+        `pip install -U torch==${torchVersion}${dev_version}+${cudaVersionTag} torchvision torchaudio --pre --index-url https://download.pytorch.org/whl/nightly/${cudaVersionTag}`
       );
 
       // await pip_install(
@@ -164,7 +168,7 @@ async function pip_install_or_fail(
   await $sh(
     `${
       pipFallback ? "pip" : "uv pip"
-    } install ${dry_run_flag}${requirements} torch==${torchVersion}`
+    } install ${dry_run_flag}${requirements} torch==${torchVersion}${dev_version}`
   );
   displayMessage(
     `Successfully installed ${name || requirements} dependencies\n`

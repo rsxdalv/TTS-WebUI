@@ -1,5 +1,5 @@
 # Python 3.10 w/ Nvidia Cuda
-FROM nvidia/cuda:12.4.0-devel-ubuntu22.04 AS env_base
+FROM nvidia/cuda:12.8.0-devel-ubuntu22.04 AS env_base
 
 # Install Pre-reqs
 RUN apt-get update && apt-get install --no-install-recommends -y \
@@ -21,11 +21,12 @@ RUN npm --version
 # RUN /install.sh && rm /install.sh
 
 # Define PyTorch version
-ENV TORCH_VERSION=2.6.0
+ENV TORCH_VERSION=2.7.0
 
 ENV PATH="/root/.cargo/bin:$PATH"
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
-RUN pip install --no-cache-dir setuptools torch==$TORCH_VERSION torchvision torchaudio 
+# add xformers?
+RUN pip install --no-cache-dir setuptools torch==$TORCH_VERSION torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 
 # Set working directory
 WORKDIR /app

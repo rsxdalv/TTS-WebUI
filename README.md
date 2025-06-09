@@ -86,6 +86,11 @@
 
 ## Changelog
 
+June 9:
+* Add CUDA Toolkit extension.
+* Hotfix for PyTorch 2.7.0 nightly.
+* Update Docker to 2.7.0
+
 June 8:
 * Fix decorators for generation.
 * Refactor server.py code.

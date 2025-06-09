@@ -4,8 +4,14 @@ import { HandleChange } from "../types/HandleChange";
 import { RadioWithLabel } from "./component/RadioWithLabel";
 import { ModelDropdown } from "./component/ModelDropdown";
 import { modelsFnFactory } from "./modelsFnFactory";
-import { AudioLinesIcon, MusicLargeIcon, MusicMediumIcon, MusicSmallIcon } from "./icons";
+import {
+  AudioLinesIcon,
+  MusicLargeIcon,
+  MusicMediumIcon,
+  MusicSmallIcon,
+} from "./icons";
 import { ClockIcon } from "lucide-react";
+import { useEffectOnce } from "@/hooks/useEffectOnce";
 
 const modelToType = {
   "facebook/magnet-small-10secs": "Small",
@@ -175,9 +181,9 @@ const Model = ({
     "magnet"
   );
 
-  React.useEffect(() => {
+  useEffectOnce(() => {
     fetchOptions();
-  }, []);
+  });
 
   const selected = params?.model_name;
   return (

@@ -86,6 +86,10 @@
 
 ## Changelog
 
+June 10:
+* Patch eslint warnings during build.
+* Fix extension_cuda_toolkit definition.
+
 June 9:
 * Add CUDA Toolkit extension.
 * Hotfix for PyTorch 2.7.0 nightly.

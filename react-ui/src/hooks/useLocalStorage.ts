@@ -14,7 +14,11 @@ export const readLocalStorage = (key: string, namespace = defaultNamespace) => {
   return item ? (JSON.parse(item) as any) : undefined;
 };
 
-const updateLocalStorage = (key: string, value: any, namespace = defaultNamespace) => {
+const updateLocalStorage = (
+  key: string,
+  value: any,
+  namespace = defaultNamespace
+) => {
   const prefixedKey = namespace + key;
   localStorage.setItem(prefixedKey, JSON.stringify(value));
 };
@@ -62,6 +66,7 @@ export default function useLocalStorage<T>(
     setStoredValue(fromLocal);
     // First load is done
     setFirstLoadDone(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValue, prefixedKey]);
 
   const setLocalValue = useCallback(

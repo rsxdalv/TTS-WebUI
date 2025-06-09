@@ -133,7 +133,8 @@ const GenerationInputs = ({ model, seed }: { model: string; seed: number }) => {
       vallex: setVallexParams,
     };
     fn[model as keyof typeof fn]((x) => ({ ...x, seed }));
-  }, [seed]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed, model]);
 
   switch (model) {
     case "bark":

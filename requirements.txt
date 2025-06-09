@@ -40,12 +40,12 @@ accelerate>=0.33.0
 # flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.6cxx11abiFALSE-cp310-cp310-linux_x86_64.whl ; sys_platform == 'linux'
 
 
-extension_bark @ git+https://github.com/rsxdalv/extension_bark@main
-extension_tortoise @ git+https://github.com/rsxdalv/extension_tortoise@main
-extension_demucs @ git+https://github.com/rsxdalv/extension_demucs@main
-extension_mms @ git+https://github.com/rsxdalv/extension_mms@main
-extension_seamless_m4t @ git+https://github.com/rsxdalv/extension_seamless_m4t@main
-extension_vocos @ git+https://github.com/rsxdalv/extension_vocos@main
+# extension_bark @ git+https://github.com/rsxdalv/extension_bark@main
+extension_tortoise @ https://github.com/rsxdalv/extension_tortoise/releases/download/v0.0.2/extension_tortoise-0.0.2-py3-none-any.whl
+extension_demucs @ https://github.com/rsxdalv/extension_demucs/releases/download/v0.0.3/extension_demucs-0.0.3-py3-none-any.whl
+extension_mms @ https://github.com/rsxdalv/extension_mms/releases/download/v0.0.1/extension_mms-0.0.1-py3-none-any.whl
+extension_seamless_m4t @ https://github.com/rsxdalv/extension_seamless_m4t/releases/download/v0.0.3/extension_seamless_m4t-0.0.3-py3-none-any.whl
+extension_vocos @ https://github.com/rsxdalv/extension_vocos/releases/download/v0.0.2/extension_vocos-0.0.2-py3-none-any.whl
 
 matplotlib
 
@@ -55,4 +55,5 @@ gradio_iconbutton @ https://github.com/rsxdalv/gradio_iconbutton/releases/downlo
 
 deprecated >= 1.2.13
 
-extension_kokoro_tts_api @ git+https://github.com/rsxdalv/extension_kokoro_tts_api@main
+# extension_kokoro_tts_api @ git+https://github.com/rsxdalv/extension_kokoro_tts_api@main
+extension_kokoro_tts_api @ https://github.com/rsxdalv/extension_kokoro_tts_api/releases/download/v0.6.0/extension_kokoro_tts_api-0.6.0-py3-none-any.whl

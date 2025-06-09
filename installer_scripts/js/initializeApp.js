@@ -45,7 +45,7 @@ const rocmVersionTag = {
 
 const GPUChoice = {
   NVIDIA: "NVIDIA GPU",
-  NVIDIA_NIGHTLY: "NVIDIA GPU (Nightly RTX 50 series)",
+  NVIDIA_NIGHTLY: "NVIDIA GPU (Not recommended, Nightly RTX 50 series)",
   APPLE_M_SERIES: "Apple M Series Chip",
   CPU: "CPU",
   CANCEL: "Cancel",

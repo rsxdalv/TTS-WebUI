@@ -70,3 +70,7 @@ log.out
 
 # Ignore integration workspace
 workspace/
+
+# Ignore Docker-related files
+outputs/
+favorites/

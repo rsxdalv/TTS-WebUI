@@ -48,6 +48,20 @@ if (Get-Command "conda" -ErrorAction SilentlyContinue) {
     # if ($decision -eq 1) {
     #     exit 1
     # }
+    # Check if Base environment is active, if so, deactivate it or WARN the user
+    $condaEnv = conda info --envs | Select-String "base"
+    if ($condaEnv -match "\*") {
+        Write-Host "Warning: Base environment is active, please deactivate it before running the installer."
+        Write-Host "You can deactivate the base environment by running 'conda deactivate' in a command prompt."
+        # ask user if they still want to continue
+        $decision = $Host.UI.PromptForChoice($title, $question, $choices, 1)
+        if ($decision -eq 1) {
+            exit 1
+        }
+    }
+
+    # conda info --envs
+    # conda deactivate
 }
 
 & "$PSScriptRoot\init_mamba.bat"

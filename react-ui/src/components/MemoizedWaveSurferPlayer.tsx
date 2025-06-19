@@ -81,6 +81,7 @@ const WaveSurferPlayerRaw = (props) => {
     if (!wavesurfer) return;
     wavesurfer.stop();
     props.onStop?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wavesurfer, props.onStop]);
 
   const rewind10percent = useCallback(() => {

@@ -14,7 +14,12 @@ const main = async () => {
   if (!installedPackages || Object.keys(installedPackages).length === 0) {
     console.log("No React UI extensions found");
 
-    fs.writeFileSync("./src/extensions/link.ts", "export default {};\n");
+    fs.writeFileSync(
+      "./src/extensions/link.ts",
+      `const linkExtension = {};
+export default linkExtension;
+`
+    );
     return;
   }
 

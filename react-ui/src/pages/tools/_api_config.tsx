@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEffectOnce } from "@/hooks/useEffectOnce";
 
 // Predefined voice options (these would come from an API in production)
 const VOICE_OPTIONS = {
@@ -189,10 +190,10 @@ export default function VoiceConfigGenerator() {
   const [isEditingVoice, setIsEditingVoice] = useState(false);
 
   // Load initial configuration on mount
-  useEffect(() => {
+  useEffectOnce(() => {
     loadConfig();
     loadAvailableVoices();
-  }, []);
+  });
 
   // Update JSON output whenever config changes
   useEffect(() => {

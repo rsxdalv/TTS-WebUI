@@ -14,6 +14,7 @@ import {
   FileAudio2Icon,
 } from "./icons";
 import { Label } from "./ui/label";
+import { useEffectOnce } from "../hooks/useEffectOnce";
 
 const modelMap = {
   Small: { size: "small", stereo: true, melody: false },
@@ -92,9 +93,9 @@ export const MusicgenModelSelector = ({
     "musicgen_audiogen"
   );
 
-  React.useEffect(() => {
+  useEffectOnce(() => {
     fetchOptions();
-  }, []);
+  });
 
   const selected = musicgenParams?.model_name;
 

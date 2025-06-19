@@ -55,4 +55,4 @@ gradio_iconbutton @ https://github.com/rsxdalv/gradio_iconbutton/releases/downlo
 
 deprecated >= 1.2.13
 
-extension_kokoro_tts_api @ https://github.com/rsxdalv/extension_kokoro_tts_api/releases/download/v0.6.0/extension_kokoro_tts_api-0.6.0-py3-none-any.whl
+extension_kokoro_tts_api @ https://github.com/rsxdalv/extension_kokoro_tts_api/releases/download/v0.8.0/extension_kokoro_tts_api-0.8.0-py3-none-any.whl

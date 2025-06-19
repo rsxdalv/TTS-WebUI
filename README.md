@@ -86,6 +86,11 @@
 
 ## Changelog
 
+June 20:
+* Upgrade Chatterbox to enable compilation for 2-4x speedup.
+* Fix React UI build errors.
+* Add 'auto start' option to OpenAI-API.
+
 June 10:
 * Patch eslint warnings during build.
 * Fix extension_cuda_toolkit definition.

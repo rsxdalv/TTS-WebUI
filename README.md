@@ -86,6 +86,9 @@
 
 ## Changelog
 
+June 26:
+* Fix React UI file size limit of 4MB, now 50MB. Thanks https://github.com/SuperFurias ! (#446)
+
 June 20:
 * Upgrade Chatterbox to enable compilation for 2-4x speedup.
 * Fix React UI build errors.

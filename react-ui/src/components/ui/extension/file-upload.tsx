@@ -84,7 +84,7 @@ export const FileUploader = forwardRef<
         "image/*": [".jpg", ".jpeg", ".png", ".gif"],
       },
       maxFiles = 1,
-      maxSize = 4 * 1024 * 1024,
+      maxSize = 1024 * 1024 * 50,
       multiple = true,
     } = dropzoneOptions;
 
@@ -185,10 +185,12 @@ export const FileUploader = forwardRef<
               toast.error(
                 `File is too large. Max size is ${maxSize / 1024 / 1024}MB`,
               );
+              console.error(`File is too large. Max size is ${maxSize / 1024 / 1024}MB`);
               break;
             }
             if (rejectedFiles[i].errors[0]?.message) {
               toast.error(rejectedFiles[i].errors[0].message);
+              console.error(rejectedFiles[i].errors[0].message);
               break;
             }
           }

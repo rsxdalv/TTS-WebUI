@@ -30,7 +30,7 @@ export const SingleFileUpload = ({
   const dropZoneConfig_ = {
     maxFiles: 1,
     accept: accept || { "application/json": [".json"] },
-    maxSize: 1024 * 1024 * 4,
+    maxSize: 1024 * 1024 * 50,
     ...dropZoneConfig,
   };
   return (

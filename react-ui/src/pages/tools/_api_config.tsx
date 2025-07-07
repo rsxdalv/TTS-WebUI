@@ -798,7 +798,10 @@ export default function VoiceConfigGenerator() {
                               <SelectContent>
                                 <SelectItem value="unset">Unset</SelectItem>
                                 {availableChatterboxVoices.map((voice) => (
-                                  <SelectItem key={voice} value={voice}>
+                                  <SelectItem
+                                    key={voice}
+                                    value={`voices/chatterbox/${voice}`}
+                                  >
                                     {voice.replace(".wav", "")}
                                   </SelectItem>
                                 ))}

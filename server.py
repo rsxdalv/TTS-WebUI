@@ -57,11 +57,14 @@ def start_gradio_server(config):
 
     print("\n\n")
 
-    demo.queue().launch(
-        **gr_options,
-        allowed_paths=["."],
-        favicon_path="./react-ui/public/favicon.ico",
-    )
+    try:
+        demo.queue().launch(
+            **gr_options,
+            allowed_paths=["."],
+            favicon_path="./react-ui/public/favicon.ico",
+        )
+    except Exception as e:
+        print(f"Failed to launch Gradio server: {e}")
 
 
 def server_hypervisor():

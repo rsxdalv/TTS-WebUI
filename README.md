@@ -323,7 +323,17 @@ Updates need to be done manually by using the mini-control panel:
 ### Text Generation WebUI (oobabooga/text-generation-webui)
 
 1. Install https://github.com/rsxdalv/text-to-tts-webui extension in text-generation-webui
+2. Start the API and test it with Python Requests
+3. Configure using the panel: ![oobaboooga-text-to-tts-webui](./documentation/screenshots/oobaboooga-text-to-tts-webui.png)
 
+### OpenWebUI 
+
+1. Enable OpenAI API extension in TTS WebUI
+2. Start the API and test it with Python Requests
+3. Once you can see the audio generates successfully, go to OpenWebUI, and add a new TTS API
+   Default provider endpoint: `http://localhost:7778/v1/audio/speech`
+4. Test it out!
+![openwebui](./documentation/screenshots/openwebui.png)
 
 ### OpenAI Compatible APIs
 

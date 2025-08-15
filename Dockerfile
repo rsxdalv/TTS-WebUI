@@ -46,7 +46,7 @@ RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxd
 RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/extension_styletts2@main
 RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/extension_vall_e_x@main
 RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/extension_maha_tts@main
-RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/extension_stable_audio@main
+# RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/extension_stable_audio@main
 # RUN pip install --no-cache-dir torch==$TORCH_VERSION hydra-core==1.3.2
 RUN pip install --no-cache-dir torch==$TORCH_VERSION nvidia-ml-py
 

@@ -4,7 +4,7 @@
 
   <h4 align="center">
 
-  [Download Installer](https://github.com/rsxdalv/tts-webui/archive/refs/heads/main.zip) ||
+  [Download Installer](https://github.com/rsxdalv/TTS-WebUI/releases/download/v0.0.0/tts-webui-installer.zip) ||
   [Installation](#installation) ||
   [Docker Setup](#docker-setup) ||
   [Silly Tavern](#integrations) ||
@@ -85,6 +85,18 @@
 | :-----------------------------------------: | :-----------------------------------------: | :-------------------------------: |
 
 ## Changelog
+
+August:
+* Add docker compose volumes to persist data #529, thanks FranckKe.
+* [react-ui] Prepend voices/chatterbox to voice file selection in ap test page #542, thanks rohan-sircar.
+
+## July 2025 
+* Add new tutorials
+* Add more robust gradio launching
+* Simplify installation instructions
+* Improve chatterbox speed.
+
+## June 2025
 
 June 26:
 * Fix React UI file size limit of 4MB, now 50MB. Thanks https://github.com/SuperFurias ! (#446)
@@ -343,7 +355,7 @@ Using the instructions above, you can install an OpenAI compatible API, and use 
 
 Current base installation size is around 10.7 GB. Each model will require 2-8 GB of space in addition.
 
-* Download the [latest version](https://github.com/rsxdalv/tts-webui/archive/refs/heads/main.zip) and extract it.
+* Download the [latest version](https://github.com/rsxdalv/TTS-WebUI/releases/download/v0.0.0/tts-webui-installer.zip) and extract it.
 * Run start_tts_webui.bat or start_tts_webui.sh to start the server. It will ask you to select the GPU/Chip you are using. Once everything has installed, it will start the Gradio server at http://localhost:7770 and the React UI at http://localhost:3000.
 * Output log will be available in the installer_scripts/output.log file.
 * Note: The start script sets up a conda environment and a python virtual environment. Thus you don't need to make a venv before that, and in fact, launching from another venv might break this script.

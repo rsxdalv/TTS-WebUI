@@ -23,7 +23,7 @@ from tts_webui.gradio.print_gradio_options import print_gradio_options
 
 
 gr_options = config["gradio_interface_options"]
-
+REACT_UI_PORT = os.environ.get("REACT_UI_PORT", 3000)
 
 def start_gradio_server(config):
 
@@ -57,11 +57,14 @@ def start_gradio_server(config):
 
     print("\n\n")
 
-    demo.queue().launch(
-        **gr_options,
-        allowed_paths=["."],
-        favicon_path="./react-ui/public/favicon.ico",
-    )
+    try:
+        demo.queue().launch(
+            **gr_options,
+            allowed_paths=["."],
+            favicon_path="./react-ui/public/favicon.ico",
+        )
+    except Exception as e:
+        print(f"Failed to launch Gradio server: {e}")
 
 
 def server_hypervisor():
@@ -88,7 +91,7 @@ def server_hypervisor():
     if "--no-react" not in os.sys.argv:
         print("Starting React UI...")
         subprocess.Popen(
-            "npm start --prefix react-ui",
+            f"npm start --prefix react-ui -- -p {REACT_UI_PORT}",
             env={
                 **os.environ,
                 "GRADIO_BACKEND_AUTOMATIC": f"http://127.0.0.1:{gr_options['server_port']}/",
@@ -139,6 +142,5 @@ if __name__ == "__main__":
     import webbrowser
 
     if gr_options["inbrowser"] and "--no-react" not in os.sys.argv:
-        webbrowser.open("http://localhost:3000")
-
+        webbrowser.open(f"http://localhost:{REACT_UI_PORT}")
     start_gradio_server(config=config)

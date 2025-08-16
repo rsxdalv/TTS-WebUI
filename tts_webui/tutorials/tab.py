@@ -16,6 +16,15 @@ def tutorial_tab():
     #         ### Coming soon!
     #         """
     #     )
+    # 
+    with gr.Tab("Chat with Chatterbox in SillyTavern!"):
+        youtube_video("_0rftbXPJLI")
+    # 5:10
+    # Now playing
+    # Chatterbox TTS by Resemble AI - Local ElevenLabs
+    # https://www.youtube.com/watch?v=yJhzwmwFpcs
+    with gr.Tab("Chatterbox TTS"):
+        youtube_video("yJhzwmwFpcs")
     with gr.Tab("Extensions"):
         youtube_video("https://www.youtube.com/watch?v=nfZEoXOGX5Y")
     # with gr.Tab("TTS WebUI scroll through preview 2025 (silent)"):

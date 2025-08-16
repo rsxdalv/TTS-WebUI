@@ -297,32 +297,6 @@ See the [2024 Changelog](./documentation/changelog-2024.md) for a detailed list 
 See the [2023 Changelog](./documentation/changelog-2023.md) for a detailed list of changes in 2023.
 </details>
 
-## Upgrading (For old installations)
-*In case of issues, feel free to contact the developers*.
-
-<details>
-<summary>Click to expand</summary>
-
-### Upgrading from v6 to new installer
-
-#### Recommended: Fresh install
-* Download the [new version](https://github.com/rsxdalv/tts-webui/archive/refs/heads/main.zip) and run the start_tts_webui.bat (Windows) or start_tts_webui.sh (MacOS, Linux)
-* Once it is finished, close the server.
-* Recommended: Copy the old generations to the new directory, such as favorites/ outputs/ outputs-rvc/ models/ collections/ config.json
-* With caution: you can copy the whole new tts-webui directory over the old one, but there might be some old files that are lost.
-
-#### In-place upgrade, can delete some files, tweaks
-* Update the existing installation using the update_*platform* script
-* After the update run the new start_tts_webui.bat (Windows) or start_tts_webui.sh (MacOS, Linux) inside of the tts-webui directory
-* Once the server starts, check if it works.
-* With caution: if the new server works, within the one-click-installers directory, delete the old installer_files.
-
-#### *Is there any more optimal way to do this?*
-
-Not exactly, the dependencies clash, especially between conda and python (and dependencies are already in a critical state, moving them to conda is ways off). Therefore, while it might be possible to just replace the old installer with the new one and running the update, the problems are unpredictable and **unfixable**. Making an update to installer requires a lot of testing so it's not done lightly.
-
-</details>
-
 ## Extensions
 
 Extensions are available to install from the webui itself, or using React UI. They can also be installed using the extension manager. Internally, extensions are just python packages that are installed using pip. Multiple extensions can be installed at the same time, but there might be compatibility issues between them. After installing or updating an extension, you need to restart the app to load it.
@@ -336,8 +310,7 @@ Updates need to be done manually by using the mini-control panel:
 
 ### Silly Tavern
 
-1. Install the Kokoro TTS API extension  
-   ![kokoro-tts-api-extension](./documentation/screenshots/kokoro-tts-api-extension.png)
+1. Update OpenAI TTS API extension to latest version
 2. Start the API and test it with Python Requests
  
    *(OpenAI client might not be installed thus the Test with Python OpenAI client might fail)*
@@ -346,6 +319,21 @@ Updates need to be done manually by using the mini-control panel:
    Default provider endpoint: `http://localhost:7778/v1/audio/speech`
    ![silly-tavern-tts-api](./documentation/screenshots/silly-tavern-tts-api.png)
 4. Test it out!
+
+### Text Generation WebUI (oobabooga/text-generation-webui)
+
+1. Install https://github.com/rsxdalv/text-to-tts-webui extension in text-generation-webui
+2. Start the API and test it with Python Requests
+3. Configure using the panel: ![oobaboooga-text-to-tts-webui](./documentation/screenshots/oobaboooga-text-to-tts-webui.png)
+
+### OpenWebUI 
+
+1. Enable OpenAI API extension in TTS WebUI
+2. Start the API and test it with Python Requests
+3. Once you can see the audio generates successfully, go to OpenWebUI, and add a new TTS API
+   Default provider endpoint: `http://localhost:7778/v1/audio/speech`
+4. Test it out!
+![openwebui](./documentation/screenshots/openwebui.png)
 
 ### OpenAI Compatible APIs
 

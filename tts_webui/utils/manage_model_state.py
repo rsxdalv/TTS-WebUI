@@ -44,14 +44,12 @@ def manage_model_state(model_namespace):
             model_state = model_states[model_namespace]
 
             if not model_state.is_model_loaded(model_name):
-                show(
-                    f"Model '{model_name}' in namespace '{model_namespace}' is not loaded or is different. Loading model..."
-                )
-                unload_model(model_namespace)
+                show(f"Loading model '{model_name}'...")
+                unload_model(model_namespace, silent=True)
                 model = func(model_name, *args, **kwargs)
                 model_state.set_model(model, model_name)
             else:
-                print(
+                show(
                     f"Using cached model '{model_name}' in namespace '{model_namespace}'."
                 )
 
@@ -62,7 +60,7 @@ def manage_model_state(model_namespace):
     return decorator
 
 
-def unload_model(model_namespace):
+def unload_model(model_namespace, silent=False):
     if (
         model_namespace in model_states
         and model_states[model_namespace].get_model() is not None
@@ -70,9 +68,11 @@ def unload_model(model_namespace):
         model_states[model_namespace].set_model(None, None)
         # del model_states[model_namespace]
         torch_clear_memory()
-        show(f"Model in namespace '{model_namespace}' has been unloaded.")
+        if not silent:
+            show(f"Model in namespace '{model_namespace}' has been unloaded.")
     else:
-        show(f"No model loaded in namespace '{model_namespace}'.")
+        if not silent:
+            show(f"No model loaded in namespace '{model_namespace}'.")
 
 
 def unload_all_models():

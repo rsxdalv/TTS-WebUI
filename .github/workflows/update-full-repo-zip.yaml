@@ -44,7 +44,7 @@ jobs:
         continue-on-error: true
         with:
           script: |
-            const release = ${{ steps.latest_release.outputs.result }};
+            const release = steps.latest_release.outputs.result;
             const assets = release.assets;
             const assetName = 'tts-webui-full.zip';
             
@@ -65,8 +65,8 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const release = ${{ steps.latest_release.outputs.result }};
-            
+            const release = steps.latest_release.outputs.result;
+
             const uploadUrl = release.upload_url;
             const assetPath = './tts-webui-full.zip';
             const assetName = 'tts-webui-full.zip';

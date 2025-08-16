@@ -89,8 +89,15 @@ jobs:
       #     github-token: ${{ secrets.GITHUB_TOKEN }}
       #   env:
       #     UPLOAD_URL: ${{ steps.latest_release.outputs.result.upload_url }}
-      - name: Upload ZIP
-        uses: actions/upload-artifact@v4
+      # - name: Upload ZIP
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: tts-webui-full
+      #     path: tts-webui-full.zip
+
+      - name: Upload ZIP to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: tts-webui-full
-          path: tts-webui-full.zip
+          files: tts-webui-full.zip
+          tag_name: ${{ steps.latest_release.outputs.result.tag_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}

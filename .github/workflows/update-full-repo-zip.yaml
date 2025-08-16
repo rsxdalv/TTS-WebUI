@@ -66,26 +66,31 @@ jobs:
             }
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload release asset
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const fs = require('fs');
-            const uploadUrl = process.env.UPLOAD_URL;
-            const assetPath = './tts-webui-full.zip';
-            const assetName = 'tts-webui-full.zip';
-            const assetContentType = 'application/zip';
-            const data = fs.readFileSync(assetPath);
+      # - name: Upload release asset
+      #   uses: actions/github-script@v6
+      #   with:
+      #     script: |
+      #       const fs = require('fs');
+      #       const uploadUrl = process.env.UPLOAD_URL;
+      #       const assetPath = './tts-webui-full.zip';
+      #       const assetName = 'tts-webui-full.zip';
+      #       const assetContentType = 'application/zip';
+      #       const data = fs.readFileSync(assetPath);
 
-            await github.rest.repos.uploadReleaseAsset({
-              url: uploadUrl.replace(/{[^{}]*}/, ''),
-              headers: {
-                'content-type': assetContentType,
-                'content-length': data.length
-              },
-              name: assetName,
-              data: data
-            });
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          UPLOAD_URL: ${{ steps.latest_release.outputs.result.upload_url }}
+      #       await github.rest.repos.uploadReleaseAsset({
+      #         url: uploadUrl.replace(/{[^{}]*}/, ''),
+      #         headers: {
+      #           'content-type': assetContentType,
+      #           'content-length': data.length
+      #         },
+      #         name: assetName,
+      #         data: data
+      #       });
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #   env:
+      #     UPLOAD_URL: ${{ steps.latest_release.outputs.result.upload_url }}
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: tts-webui-full
+          path: tts-webui-full.zip

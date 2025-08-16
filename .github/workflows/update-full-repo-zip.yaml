@@ -2,7 +2,7 @@ name: Update Full Repository Zip
 
 on:
   push:
-    branches: ['main']
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
@@ -14,14 +14,14 @@ jobs:
       - name: Checkout repository with full history
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # This ensures we get the full git history
+          fetch-depth: 0 # This ensures we get the full git history
 
       - name: Create zip file with full git history
         run: |
           # Create a zip file containing the entire repository including .git folder
           # zip -r tts-webui-full.zip . -x "node_modules/*" "installer_files/*" "*.pyc" "__pycache__/*"
           zip -r tts-webui-full.zip .
-      
+
       - name: Get latest release
         id: latest_release
         uses: actions/github-script@v6
@@ -44,10 +44,15 @@ jobs:
         continue-on-error: true
         with:
           script: |
-            const release = steps.latest_release.outputs.result;
+            // Get the latest release
+            const { data: release } = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+
             const assets = release.assets;
             const assetName = 'tts-webui-full.zip';
-            
+
             for (const asset of assets) {
               if (asset.name === assetName) {
                 console.log(`Deleting existing asset: ${asset.name} (${asset.id})`);
@@ -59,21 +64,19 @@ jobs:
                 break;
               }
             }
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload zip to latest release
+      - name: Upload release asset
         uses: actions/github-script@v6
         with:
           script: |
             const fs = require('fs');
-            const release = steps.latest_release.outputs.result;
-
-            const uploadUrl = release.upload_url;
+            const uploadUrl = process.env.UPLOAD_URL;
             const assetPath = './tts-webui-full.zip';
             const assetName = 'tts-webui-full.zip';
             const assetContentType = 'application/zip';
-            
             const data = fs.readFileSync(assetPath);
-            
+
             await github.rest.repos.uploadReleaseAsset({
               url: uploadUrl.replace(/{[^{}]*}/, ''),
               headers: {
@@ -83,3 +86,6 @@ jobs:
               name: assetName,
               data: data
             });
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          UPLOAD_URL: ${{ steps.latest_release.outputs.result.upload_url }}

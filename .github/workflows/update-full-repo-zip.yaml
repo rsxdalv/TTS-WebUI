@@ -2,7 +2,7 @@ name: Update Full Repository Zip
 
 on:
   push:
-    branches: ['main']
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
@@ -12,42 +12,31 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository with full history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # This ensures we get the full git history
+          ref: main
+          fetch-depth: 0 # This ensures we get the full git history
 
       - name: Create zip file with full git history
         run: |
           # Create a zip file containing the entire repository including .git folder
-          # zip -r tts-webui-full.zip . -x "node_modules/*" "installer_files/*" "*.pyc" "__pycache__/*"
-          zip -r tts-webui-full.zip .
-      
-      - name: Get latest release
-        id: latest_release
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const releases = await github.rest.repos.listReleases({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              per_page: 1
-            });
-            if (releases.data.length === 0) {
-              core.setFailed('No releases found');
-              return;
-            }
-            return releases.data[0];
-          result-encoding: string
+          # zip -r tts-webui-installer.zip . -x "node_modules/*" "installer_files/*" "*.pyc" "__pycache__/*"
+          zip -r tts-webui-installer.zip .
 
       - name: Delete existing asset if it exists
         uses: actions/github-script@v6
         continue-on-error: true
         with:
           script: |
-            const release = ${{ steps.latest_release.outputs.result }};
+            // Get the latest release
+            const { data: release } = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+
             const assets = release.assets;
-            const assetName = 'tts-webui-full.zip';
-            
+            const assetName = 'tts-webui-installer.zip';
+
             for (const asset of assets) {
               if (asset.name === assetName) {
                 console.log(`Deleting existing asset: ${asset.name} (${asset.id})`);
@@ -59,27 +48,11 @@ jobs:
                 break;
               }
             }
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload zip to latest release
-        uses: actions/github-script@v6
+      - name: Upload ZIP to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          script: |
-            const fs = require('fs');
-            const release = ${{ steps.latest_release.outputs.result }};
-            
-            const uploadUrl = release.upload_url;
-            const assetPath = './tts-webui-full.zip';
-            const assetName = 'tts-webui-full.zip';
-            const assetContentType = 'application/zip';
-            
-            const data = fs.readFileSync(assetPath);
-            
-            await github.rest.repos.uploadReleaseAsset({
-              url: uploadUrl.replace(/{[^{}]*}/, ''),
-              headers: {
-                'content-type': assetContentType,
-                'content-length': data.length
-              },
-              name: assetName,
-              data: data
-            });
+          files: tts-webui-installer.zip
+          tag_name: v0.0.0
+          token: ${{ secrets.GITHUB_TOKEN }}

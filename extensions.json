@@ -684,6 +684,20 @@
             "website": "https://developer.nvidia.com/cuda-toolkit",
             "extension_website": "https://github.com/rsxdalv/extension_cuda_toolkit",
             "extension_platform_version": "0.0.1"
+        },
+        {
+            "package_name": "extension_higgs_v2",
+            "name": "Higgs V2 (Early Access)",
+            "requirements": "git+https://github.com/rsxdalv/extension_higgs_v2@main",
+            "description": "Higgs V2",
+            "extension_type": "interface",
+            "extension_class": "text-to-speech",
+            "author": "rsxdalv",
+            "extension_author": "rsxdalv",
+            "license": "MIT",
+            "website": "https://github.com/rsxdalv/extension_higgs_v2",
+            "extension_website": "https://github.com/rsxdalv/extension_higgs_v2",
+            "extension_platform_version": "0.0.1"
         }
     ],
     "decorators": [

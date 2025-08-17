@@ -17,6 +17,17 @@ jobs:
           ref: main
           fetch-depth: 0 # This ensures we get the full git history
 
+      - name: Clear git settings
+        run: |
+          # Remove the [gc] section
+          git config --unset gc.auto || true
+          
+          # Remove the [http "https://github.com/"] section
+          git config --unset-all http.https://github.com/.extraheader || true
+          
+          # Verify the changes
+          git config --list
+
       - name: Create zip file with full git history
         run: |
           # Create a zip file containing the entire repository including .git folder

@@ -58,7 +58,7 @@
 | [(Extension) GPT-SoVITS](https://github.com/X-T-E-R/GPT-SoVITS-Inference) | | |
 | [(Extension) Piper TTS](https://github.com/rhasspy/piper) | | |
 | [(Extension) Kimi Audio 7B Instruct](https://github.com/Dao-AILab/Kimi-Audio) | | |
-| [(Extension) ACE-Step](https://github.com/ACE-Step/ACE-Step) | | |
+| [(Extension) Chatterbox](https://github.com/rsxdalv/chatterbox) | [(Extension) ACE-Step](https://github.com/ACE-Step/ACE-Step) | |
 
 </div>
 

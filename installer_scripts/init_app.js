@@ -56,56 +56,58 @@ const AppliedGitVersion = {
   save: () => fs.writeFileSync(AppliedGitVersion.file, getGitCommitHash()),
 };
 
+const initRepoHistory = async () => {
+  displayMessage("Linking to tts-webui repository");
+  // this is a clone over the files from https://github.com/rsxdalv/tts-webui
+  try {
+    await $sh("git init -b main");
+    await $sh("git remote add origin https://github.com/rsxdalv/tts-webui");
+    await $sh("git fetch");
+    await $sh("git reset --hard origin/main"); // Required when the versioned files existed in path before "git init" of this repo.
+    await $sh("git branch --set-upstream-to=origin/main");
+
+    const newHash = getGitCommitHash();
+    updateState({ gitHash: newHash });
+
+    return true;
+  } catch (error) {
+    updateState({
+      status: "error",
+      lastError: "Failed to initialize git repository",
+    });
+    displayMessage("Error:");
+    displayError(error);
+    throw error;
+  }
+};
+
 const syncRepo = async () => {
   updateState({ status: "updating_repo", currentStep: 2 });
 
   if (!fs.existsSync(".git")) {
-    displayMessage("Linking to tts-webui repository");
-    // this is a clone over the files from https://github.com/rsxdalv/tts-webui
-    try {
-      await $sh("git init -b main");
-      await $sh(
-        "git remote add origin https://github.com/rsxdalv/tts-webui"
-      );
-      await $sh("git fetch");
-      await $sh("git reset --hard origin/main"); // Required when the versioned files existed in path before "git init" of this repo.
-      await $sh("git branch --set-upstream-to=origin/main");
+    return initRepoHistory();
+  }
 
-      const newHash = getGitCommitHash();
-      updateState({ gitHash: newHash });
-
-      return true;
-    } catch (error) {
-      updateState({
-        status: "error",
-        lastError: "Failed to initialize git repository",
-      });
-      displayMessage("Error:");
-      displayError(error);
-      throw error;
+  displayMessage("Pulling updates from tts-webui");
+  try {
+    await $sh("git pull");
+    const newHash = getGitCommitHash();
+    updateState({ gitHash: newHash });
+    if (AppliedGitVersion.get() === newHash) {
+      displayMessage("Current git version: " + newHash);
+      displayMessage("No updates found, skipping...");
+      return false || DEBUG_ALWAYS_RETURN_UPDATED;
     }
-  } else {
-    displayMessage("Pulling updates from tts-webui");
-    try {
-      await $sh("git pull");
-      const newHash = getGitCommitHash();
-      updateState({ gitHash: newHash });
-      if (AppliedGitVersion.get() === newHash) {
-        displayMessage("Current git version: " + newHash);
-        displayMessage("No updates found, skipping...");
-        return false || DEBUG_ALWAYS_RETURN_UPDATED;
-      }
-      return true;
-    } catch (error) {
-      updateState({ lastError: "Problem pulling updates from git" });
-      displayMessage(
-        "There was a problem while pulling updates. Warning: missing updates might cause issues. Continuing..."
-      );
-      displayMessage("Error:");
-      displayError(error);
-      return false;
-      // throw error;
-    }
+    return true;
+  } catch (error) {
+    updateState({ lastError: "Problem pulling updates from git" });
+    displayMessage(
+      "There was a problem while pulling updates. Warning: missing updates might cause issues. Continuing..."
+    );
+    displayMessage("Error:");
+    displayError(error);
+    return false;
+    // throw error;
   }
 };
 

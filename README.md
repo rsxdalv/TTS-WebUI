@@ -35,6 +35,28 @@
 
 <div align="center">
 
+## Examples
+
+</div>
+
+
+| <video src="https://github.com/user-attachments/assets/16ac948a-fe98-49ad-ad87-19c41fe7e65e" width="300"></video> | <video src="https://github.com/user-attachments/assets/55bde4f7-bbcc-4ecf-8f94-b315b9d22e74" width="300"></video> | <video src="https://github.com/user-attachments/assets/fcee8906-a101-400d-8499-4e72c7603042" width="300"></video> |
+| :-----------------------------------------: | :-----------------------------------------: | :-------------------------------: |
+
+<div align="center">
+
+## Screenshots
+
+</div>
+
+| ![react_1](./documentation/screenshots/react_ui%20(1).png) | ![react_2](./documentation/screenshots/react_ui%20(2).png) | ![react_3](./documentation/screenshots/react_ui%20(3).png) |
+| :-----------------------------------------: | :-----------------------------------------: | :-------------------------------: |
+
+| ![gradio_1](./documentation/screenshots/gradio%20(1).png) | ![gradio_2](./documentation/screenshots/gradio%20(2).png) | ![gradio_3](./documentation/screenshots/gradio%20(3).png) |
+| :-----------------------------------------: | :-----------------------------------------: | :-------------------------------: |
+
+<div align="center">
+
 ## Models
 
 | Text-to-speech                | Audio/Music Generation       | Audio Conversion/Tools        |
@@ -61,28 +83,6 @@
 | [(Extension) Chatterbox](https://github.com/rsxdalv/chatterbox) | [(Extension) ACE-Step](https://github.com/ACE-Step/ACE-Step) | |
 
 </div>
-
-<div align="center">
-
-## Examples
-
-</div>
-
-
-| <video src="https://github.com/user-attachments/assets/16ac948a-fe98-49ad-ad87-19c41fe7e65e" width="300"></video> | <video src="https://github.com/user-attachments/assets/55bde4f7-bbcc-4ecf-8f94-b315b9d22e74" width="300"></video> | <video src="https://github.com/user-attachments/assets/fcee8906-a101-400d-8499-4e72c7603042" width="300"></video> |
-| :-----------------------------------------: | :-----------------------------------------: | :-------------------------------: |
-
-<div align="center">
-
-## Screenshots
-
-</div>
-
-| ![react_1](./documentation/screenshots/react_ui%20(1).png) | ![react_2](./documentation/screenshots/react_ui%20(2).png) | ![react_3](./documentation/screenshots/react_ui%20(3).png) |
-| :-----------------------------------------: | :-----------------------------------------: | :-------------------------------: |
-
-| ![gradio_1](./documentation/screenshots/gradio%20(1).png) | ![gradio_2](./documentation/screenshots/gradio%20(2).png) | ![gradio_3](./documentation/screenshots/gradio%20(3).png) |
-| :-----------------------------------------: | :-----------------------------------------: | :-------------------------------: |
 
 ## Changelog
 

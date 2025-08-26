@@ -81,12 +81,14 @@
 | [(Extension) Piper TTS](https://github.com/rhasspy/piper) | | |
 | [(Extension) Kimi Audio 7B Instruct](https://github.com/Dao-AILab/Kimi-Audio) | | |
 | [(Extension) Chatterbox](https://github.com/rsxdalv/chatterbox) | [(Extension) ACE-Step](https://github.com/ACE-Step/ACE-Step) | |
+| [(Extension) VibeVoice](https://github.com/rsxdalv/extension_vibevoice) | | |
 
 </div>
 
 ## Changelog
 
 August:
+* Add VibeVoice (Early Access) extension
 * Add docker compose volumes to persist data #529, thanks FranckKe.
 * [react-ui] Prepend voices/chatterbox to voice file selection in ap test page #542, thanks rohan-sircar.
 

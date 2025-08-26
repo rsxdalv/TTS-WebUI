@@ -31,7 +31,7 @@ const ChatterboxPage = () => {
           <div className="flex flex-col gap-y-4 w-1/2">
             <AudioOutput
               audioOutput={historyData[0]?.audio}
-              label="Chatterbox TTS Output"
+              label="Generated Audio"
               funcs={funcs}
               metadata={historyData[0]}
               filter={["sendToChatterbox"]}

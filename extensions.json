@@ -698,6 +698,20 @@
             "website": "https://github.com/rsxdalv/extension_higgs_v2",
             "extension_website": "https://github.com/rsxdalv/extension_higgs_v2",
             "extension_platform_version": "0.0.1"
+        },
+        {
+            "package_name": "extension_vibevoice",
+            "name": "VibeVoice (Early Access)",
+            "requirements": "git+https://github.com/rsxdalv/extension_vibevoice@main",
+            "description": "A template extension for TTS Generation WebUI",
+            "extension_type": "interface",
+            "extension_class": "text-to-speech",
+            "author": "Microsoft",
+            "extension_author": "rsxdalv",
+            "license": "MIT",
+            "website": "https://github.com/rsxdalv/extension_vibevoice",
+            "extension_website": "https://github.com/rsxdalv/extension_vibevoice",
+            "extension_platform_version": "0.0.1"
         }
     ],
     "decorators": [

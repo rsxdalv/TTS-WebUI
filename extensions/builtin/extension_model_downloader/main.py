@@ -37,7 +37,7 @@ def download_pretrained_model(model_type: str, name: str, token: str):
         repo_type="model",
         local_dir=local_dir,
         local_dir_use_symlinks=False,
-        token=token,
+        token=token if token else None,
     )
 
     print(model_config_path)

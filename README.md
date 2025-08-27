@@ -88,6 +88,8 @@
 ## Changelog
 
 August:
+* Fix model downloader when no token is used, thanks Nusantara.
+* Improve Chatterbox speed
 * Add VibeVoice (Early Access) extension
 * Add docker compose volumes to persist data #529, thanks FranckKe.
 * [react-ui] Prepend voices/chatterbox to voice file selection in ap test page #542, thanks rohan-sircar.

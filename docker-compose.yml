@@ -6,23 +6,25 @@ services:
       - ${TTS_PORT:-7770}:7770
       # include React UI
       - ${UI_PORT:-3000}:3000
+      - ${OPENAI_API_PORT:-7778}:7778
     container_name: tts-webui
     volumes:
       - ./data:/app/tts-webui/data
       - ./outputs:/app/tts-webui/outputs
       - ./favorites:/app/tts-webui/favorites
+      # - ./voices:/app/tts-webui/voices
     # environment:
     #   # Disable hard requirements for CUDA version ("requirement error: unsatisfied condition [...]")
     #   # This might still lead to errors but allows to run some models even if CUDA version is not met
     #   # https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/docker-specialized.html#nvidia-disable-require-environment-variable
-    #   NVIDIA_DISABLE_REQUIRE: 1 
+    #   NVIDIA_DISABLE_REQUIRE: 1
     deploy:
-        resources:
-          reservations:
-            devices:
-              - driver: nvidia
-                device_ids: ['0']
-                capabilities: [gpu]
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: [gpu]
 
   # for the future:
   # db:
@@ -35,4 +37,3 @@ services:
   #     interval: 1s
   #     timeout: 5s
   #     retries: 10
- 

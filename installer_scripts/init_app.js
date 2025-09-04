@@ -11,14 +11,11 @@ const checkConda = async () => {
     updateState({ status: "checking_dependencies", currentStep: 1 });
 
     displayMessage("Checking conda installation...");
-    await $sh("conda --version");
-
-    updateState({ condaReady: true });
-
+    
     displayMessage("");
     // verify conda paths
     $sh("conda info --envs");
-
+    
     // expect
     // # conda environments:
     // #
@@ -26,6 +23,10 @@ const checkConda = async () => {
     $sh("node --version");
     $sh("python --version");
     $sh("pip --version");
+
+    await $sh("conda --version");
+
+    updateState({ condaReady: true });
   } catch (error) {
     updateState({ status: "error", lastError: "Conda installation not found" });
 

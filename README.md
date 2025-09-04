@@ -87,6 +87,10 @@
 
 ## Changelog
 
+September:
+* OpenAI API now supports Whisper transcriptions
+* Removed PyTorch Nightly option
+
 August:
 * Fix model downloader when no token is used, thanks Nusantara.
 * Improve Chatterbox speed

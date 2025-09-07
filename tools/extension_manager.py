@@ -132,11 +132,17 @@ def main():
             extension_list_tab()
             extension_decorator_list_tab()
 
+    share = "--share" in sys.argv
+    if share:
+        print("Launching with public link via Gradio Share...")
+    else:
+        print("Launching on local host only...")
+
     gradio_interface_options = {
         "server_name": "127.0.0.1",
         "server_port": 7771,  # User preferred port
         "inbrowser": True,
-        "share": False,
+        "share": share,
     }
     blocks.queue().launch(**gradio_interface_options, allowed_paths=["."])
 

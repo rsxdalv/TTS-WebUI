@@ -19,7 +19,7 @@
    conda install -y -c conda-forge git python=3.10.11 conda-forge::nodejs=22.9.0 conda conda-forge::uv=0.4.17 ninja conda-forge::postgresql=16.4 conda-forge::vswhere "conda-forge::ffmpeg=4.4.2[build=lgpl*]"
    ```
 
-Note: Python 3.11 and 3.12 are not yet supported, but might work. The main issue are 3rd party libraries.
+Note: Python 3.12 is not supported as of now. Python 3.11 works for many models, but not all.
 
 ## Installation Options
 

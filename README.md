@@ -82,6 +82,7 @@
 | [(Extension) Kimi Audio 7B Instruct](https://github.com/Dao-AILab/Kimi-Audio) | | |
 | [(Extension) Chatterbox](https://github.com/rsxdalv/chatterbox) | [(Extension) ACE-Step](https://github.com/ACE-Step/ACE-Step) | |
 | [(Extension) VibeVoice](https://github.com/rsxdalv/extension_vibevoice) | | |
+| [(Extension) Kitten TTS](https://github.com/rsxdalv/extension_kitten_tts) | | |
 
 </div>
 
@@ -91,6 +92,7 @@ September:
 * OpenAI API now supports Whisper transcriptions
 * Removed PyTorch Nightly option
 * Fix Google Colab installation (Python 3.12 not supported)
+* Add Kitten TTS Mini extension
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

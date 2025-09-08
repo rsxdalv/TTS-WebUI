@@ -82,6 +82,7 @@
 | [(Extension) Kimi Audio 7B Instruct](https://github.com/Dao-AILab/Kimi-Audio) | | |
 | [(Extension) Chatterbox](https://github.com/rsxdalv/chatterbox) | [(Extension) ACE-Step](https://github.com/ACE-Step/ACE-Step) | |
 | [(Extension) VibeVoice](https://github.com/rsxdalv/extension_vibevoice) | | |
+| [(Extension) Kitten TTS](https://github.com/rsxdalv/extension_kitten_tts) | | |
 
 </div>
 

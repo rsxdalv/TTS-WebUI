@@ -91,6 +91,7 @@ September:
 * OpenAI API now supports Whisper transcriptions
 * Removed PyTorch Nightly option
 * Fix Google Colab installation (Python 3.12 not supported)
+* Add Kitten TTS Mini extension
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

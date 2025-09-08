@@ -10,7 +10,7 @@ def main_ui(config):
 
     with gr.Blocks(
         css=full_css,
-        title="TTS WebUI",
+        title="TTS WebUI - Gradio",
         analytics_enabled=False,  # it broke too many times
         theme=get_theme(config),
     ) as blocks:

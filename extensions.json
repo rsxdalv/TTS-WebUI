@@ -725,7 +725,7 @@
             "license": "MIT",
             "website": "https://github.com/rsxdalv/extension_kitten_tts",
             "extension_website": "https://github.com/rsxdalv/extension_kitten_tts",
-            "extension_platform_version": "0.0.1",
+            "extension_platform_version": "0.0.1"
         }
     ],
     "decorators": [

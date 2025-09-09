@@ -67,8 +67,8 @@
 | [MMS](https://github.com/facebookresearch/fairseq/blob/main/examples/mms/README.md) | [(Extension) Riffusion](https://github.com/riffusion/riffusion-hobby) | [Whisper](https://github.com/openai/whisper) |
 | [Vall-E X](https://github.com/Plachtaa/VALL-E-X) | [(Extension) AudioCraft Mac](https://github.com/trizko/audiocraft) | [AP BWE](https://github.com/yxlu-0102/AP-BWE) |
 | [StyleTTS2](https://github.com/sidharthrajaram/StyleTTS2) | [(Extension) AudioCraft Plus](https://github.com/GrandaddyShmax/audiocraft_plus) | [Resemble Enhance](https://github.com/resemble-ai/resemble-enhance) |
-| [SeamlessM4T](https://github.com/facebookresearch/seamless_communication) | | [Audio Separator](https://github.com/nomadkaraoke/python-audio-separator) |]
-| [(Extension) XTTSv2](https://github.com/coqui-ai/TTS) | | |
+| [SeamlessM4T](https://github.com/facebookresearch/seamless_communication) | | [Audio Separator](https://github.com/nomadkaraoke/python-audio-separator) |
+| [(Extension) XTTSv2](https://github.com/coqui-ai/TTS) | | [PyRNNoise](https://github.com/rsxdalv/extension_pyrnnoise) |
 | [(Extension) MARS5](https://github.com/camb-ai/mars5-tts) | | |
 | [(Extension) F5-TTS](https://github.com/SWivid/F5-TTS) | | |
 | [(Extension) Parler TTS](https://github.com/huggingface/parler-tts) | | |
@@ -93,6 +93,7 @@ September:
 * Removed PyTorch Nightly option
 * Fix Google Colab installation (Python 3.12 not supported)
 * Add Kitten TTS Mini extension
+* Add PyRNNoise extension
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

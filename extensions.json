@@ -730,7 +730,7 @@
         {
             "package_name": "extension_pyrnnoise",
             "name": "PyRNNoise",
-            "requirements": "git+https://github.com/yourusername/extension_pyrnnoise@main",
+            "requirements": "git+https://github.com/rsxdalv/extension_pyrnnoise@main",
             "description": "A template extension for TTS Generation WebUI",
             "extension_type": "interface",
             "extension_class": "audio-conversion",

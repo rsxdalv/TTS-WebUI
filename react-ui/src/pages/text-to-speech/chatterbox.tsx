@@ -20,15 +20,11 @@ const ChatterboxPage = () => {
   return (
     <Template title="Chatterbox TTS">
       <div className="gap-y-4 p-4 flex w-full flex-col">
-        <div className="flex gap-x-6 w-full justify-center">
-          <div className="flex flex-col gap-y-4 w-1/2">
-            <ChatterboxInputs
-              chatterboxParams={chatterboxParams}
-              handleChange={handleChange}
-              setChatterboxParams={setChatterboxParams}
-            />
-          </div>
-          <div className="flex flex-col gap-y-4 w-1/2">
+        <ChatterboxInputs
+          chatterboxParams={chatterboxParams}
+          handleChange={handleChange}
+          setChatterboxParams={setChatterboxParams}
+          output={
             <AudioOutput
               audioOutput={historyData[0]?.audio}
               label="Generated Audio"
@@ -36,13 +32,15 @@ const ChatterboxPage = () => {
               metadata={historyData[0]}
               filter={["sendToChatterbox"]}
             />
+          }
+          hyperParams={
             <HyperParameters
               genParams={chatterboxParams}
               consumer={chatterboxConsumer}
               prefix="chatterbox"
             />
-          </div>
-        </div>
+          }
+        />
 
         <GenerationHistorySimple
           name="Chatterbox TTS"

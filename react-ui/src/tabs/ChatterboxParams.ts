@@ -10,7 +10,7 @@ import router from "next/router";
 import { MetadataHeaders } from "../types/MetadataHeaders";
 import { generateWithChatterbox } from "../functions/generateWithChatterbox";
 
-export const chatterboxId = "chatterboxParams.v1";
+export const chatterboxId = "chatterboxParams.v2";
 
 export const sendToChatterbox = (audio?: string) => {
   if (!audio) return;
@@ -28,6 +28,15 @@ export interface ChatterboxParams extends Seeded {
   dtype: string;
   model_name: string;
   chunked: boolean;
+  halve_first_chunk: boolean;
+  desired_length: number;
+  max_length: number;
+  cpu_offload: boolean;
+  initial_forward_pass_backend?: string;
+  generate_token_backend?: string;
+  max_new_tokens: number;
+  max_cache_len: number;
+  language_id?: string;
 }
 
 export const defaultChatterboxParams: ChatterboxParams = {
@@ -37,11 +46,20 @@ export const defaultChatterboxParams: ChatterboxParams = {
   temperature: 0.8,
   audio_prompt_path: undefined,
   device: "auto",
-  dtype: "float32",
+  dtype: "bfloat16",
   model_name: "just_a_placeholder",
   seed: -1,
   use_random_seed: true,
   chunked: false,
+  halve_first_chunk: false,
+  desired_length: 200,
+  max_length: 300,
+  cpu_offload: false,
+  initial_forward_pass_backend: "eager",
+  generate_token_backend: "cudagraphs-manual",
+  max_new_tokens: 1000,
+  max_cache_len: 1500,
+  language_id: "en",
 };
 
 export type ChatterboxResult = {

@@ -30,7 +30,7 @@
 
 </div>
 
-| [![Watch the video](https://img.youtube.com/vi/JXojhFjZ39k/sddefault.jpg)](https://youtu.be/JXojhFjZ39k) | [![Watch the video](https://img.youtube.com/vi/ScN2ypewABc/sddefault.jpg)](https://youtu.be/ScN2ypewABc) | [![Watch the video](https://img.youtube.com/vi/_0rftbXPJLI/sddefault.jpg)](https://youtu.be/_0rftbXPJLI) |
+| [![Watch the video](https://img.youtube.com/vi/JXojhFjZ39k/sddefault.jpg)](https://youtu.be/JXojhFjZ39k) | [![Watch the video](https://img.youtube.com/vi/YvM3DdRHDsI/sddefault.jpg)](https://youtu.be/YvM3DdRHDsI) | [![Watch the video](https://img.youtube.com/vi/_0rftbXPJLI/sddefault.jpg)](https://youtu.be/_0rftbXPJLI) |
 | :------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------: |
 
 <div align="center">
@@ -94,6 +94,7 @@ September:
 * Fix Google Colab installation (Python 3.12 not supported)
 * Add Kitten TTS Mini extension
 * Add PyRNNoise extension
+* Upgrade React UI's Chatterbox interface
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

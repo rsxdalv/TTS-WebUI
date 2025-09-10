@@ -94,6 +94,7 @@ September:
 * Fix Google Colab installation (Python 3.12 not supported)
 * Add Kitten TTS Mini extension
 * Add PyRNNoise extension
+* Upgrade React UI's Chatterbox interface
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

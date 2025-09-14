@@ -10,7 +10,7 @@ import router from "next/router";
 import { MetadataHeaders } from "../types/MetadataHeaders";
 import { generateWithChatterbox } from "../functions/generateWithChatterbox";
 
-export const chatterboxId = "chatterboxParams.v2";
+export const chatterboxId = "chatterboxParams.v3";
 
 export const sendToChatterbox = (audio?: string) => {
   if (!audio) return;

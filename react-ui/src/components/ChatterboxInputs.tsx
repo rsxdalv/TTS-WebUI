@@ -165,8 +165,8 @@ export const ChatterboxInputs = ({
           </div>
           <SelectWithLabel
             label="Language"
-            name="language"
-            value={(chatterboxParams as any).language || "en"}
+            name="language_id"
+            value={(chatterboxParams as any).language_id || "en"}
             onChange={handleChange}
             options={Object.entries(SUPPORTED_LANGUAGES).map(
               ([value, label]) => ({

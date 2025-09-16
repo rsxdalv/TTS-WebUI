@@ -191,21 +191,13 @@ async function pip_install_all(fi = false) {
       "Dependencies are already up to date, skipping pip installs..."
     );
 
-  // const pip_install_all_choice = await menu(
-  //   ["Yes", "No"],
-  //   `Attempt single pip install of all dependencies (potentially faster)?
-  //   (use arrow keys to move, enter to select)`
-  // );
-  const pip_install_all_choice = "Yes";
-
-  if (pip_install_all_choice === "Yes") {
+  async function single_install() {
     try {
       displayMessage("Attempting single pip install of all dependencies...");
 
       await pip_install_or_fail(
-        "-r requirements.txt git+https://github.com/rsxdalv/extension_audiocraft@main git+https://github.com/rsxdalv/extension_bark_voice_clone@main git+https://github.com/rsxdalv/extension_maha_tts@main git+https://github.com/rsxdalv/extension_rvc@main git+https://github.com/rsxdalv/extension_stable_audio@main git+https://github.com/rsxdalv/extension_styletts2@main git+https://github.com/rsxdalv/extension_vall_e_x@main hydra-core==1.3.2 nvidia-ml-py",
+        "-r requirements.txt git+https://github.com/rsxdalv/tts_webui_extension.audiocraft@main git+https://github.com/rsxdalv/tts_webui_extension.bark_voice_clone@main git+https://github.com/rsxdalv/tts_webui_extension.maha_tts@main git+https://github.com/rsxdalv/tts_webui_extension.rvc@main git+https://github.com/rsxdalv/tts_webui_extension.stable_audio@main git+https://github.com/rsxdalv/tts_webui_extension.styletts2@main git+https://github.com/rsxdalv/tts_webui_extension.vall_e_x@main hydra-core==1.3.2 nvidia-ml-py",
         "All dependencies",
-        // first_install
         true
       );
       savePipPackagesVersion(newPipPackagesVersion);
@@ -218,6 +210,8 @@ async function pip_install_all(fi = false) {
     }
   }
 
+  await single_install();
+
   displayMessage("Updating dependencies...");
   // pip_install_all(false); // potential speed optimization
 
@@ -229,13 +223,13 @@ async function pip_install_all(fi = false) {
     displayMessage("Exiting...");
     throw error;
   }
-  await pip_install("git+https://github.com/rsxdalv/extension_bark_voice_clone@main", "Bark Voice Clone", fi); // prettier-ignore
-  await pip_install("git+https://github.com/rsxdalv/extension_rvc@main", "RVC", fi); // prettier-ignore
-  await pip_install("git+https://github.com/rsxdalv/extension_audiocraft@main", "Audiocraft", fi); // prettier-ignore
-  await pip_install("git+https://github.com/rsxdalv/extension_styletts2@main", "StyleTTS", fi); // prettier-ignore
-  await pip_install("git+https://github.com/rsxdalv/extension_vall_e_x@main", "Vall-E-X", fi); // prettier-ignore
-  await pip_install("git+https://github.com/rsxdalv/extension_maha_tts@main", "Maha TTS", fi); // prettier-ignore
-  await pip_install("git+https://github.com/rsxdalv/extension_stable_audio@main", "Stable Audio", fi); // prettier-ignore
+  await pip_install("git+https://github.com/rsxdalv/tts_webui_extension.bark_voice_clone@main", "Bark Voice Clone", fi); // prettier-ignore
+  await pip_install("git+https://github.com/rsxdalv/tts_webui_extension.rvc@main", "RVC", fi); // prettier-ignore
+  await pip_install("git+https://github.com/rsxdalv/tts_webui_extension.audiocraft@main", "Audiocraft", fi); // prettier-ignore
+  await pip_install("git+https://github.com/rsxdalv/tts_webui_extension.styletts2@main", "StyleTTS", fi); // prettier-ignore
+  await pip_install("git+https://github.com/rsxdalv/tts_webui_extension.vall_e_x@main", "Vall-E-X", fi); // prettier-ignore
+  await pip_install("git+https://github.com/rsxdalv/tts_webui_extension.maha_tts@main", "Maha TTS", fi); // prettier-ignore
+  await pip_install("git+https://github.com/rsxdalv/tts_webui_extension.stable_audio@main", "Stable Audio", fi); // prettier-ignore
   await pip_install("hydra-core==1.3.2", "hydra-core fix due to fairseq", fi); // reinstall hydra-core==1.3.2 because of fairseq
   await pip_install("nvidia-ml-py", "nvidia-ml-py", fi);
   savePipPackagesVersion(newPipPackagesVersion);

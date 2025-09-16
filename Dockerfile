@@ -40,13 +40,12 @@ WORKDIR /app/tts-webui
 # Install all requirements
 RUN pip3 install --no-cache-dir torch==$TORCH_VERSION -r requirements.txt
 # RUN pip install --no-cache-dir --verbose torch==$TORCH_VERSION -r requirements.txt
-RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/extension_bark_voice_clone@main
-RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/extension_rvc@main
-RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/extension_audiocraft@main
-RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/extension_styletts2@main
-RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/extension_vall_e_x@main
-RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/extension_maha_tts@main
-# RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/extension_stable_audio@main
+RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/tts_webui_extension.bark_voice_clone@main
+RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/tts_webui_extension.rvc@main
+RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/tts_webui_extension.audiocraft@main
+RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/tts_webui_extension.styletts2@main
+RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/tts_webui_extension.vall_e_x@main
+# RUN pip install --no-cache-dir torch==$TORCH_VERSION git+https://github.com/rsxdalv/tts_webui_extension.stable_audio@main
 # RUN pip install --no-cache-dir torch==$TORCH_VERSION hydra-core==1.3.2
 RUN pip install --no-cache-dir torch==$TORCH_VERSION nvidia-ml-py
 

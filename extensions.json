@@ -64,7 +64,7 @@
             "package_name": "tts_webui_extension.tortoise_tts",
             "recommended": true,
             "name": "Tortoise TTS",
-            "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.tortoise@main",
+            "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.tortoise_tts@main",
             "description": "Tortoise TTS is a high-quality text-to-speech model with voice cloning capabilities",
             "extension_type": "interface",
             "extension_class": "text-to-speech",
@@ -72,7 +72,7 @@
             "extension_author": "rsxdalv",
             "license": "MIT",
             "website": "https://github.com/neonbjb/tortoise-tts",
-            "extension_website": "https://github.com/rsxdalv/tts_webui_extension.tortoise",
+            "extension_website": "https://github.com/rsxdalv/tts_webui_extension.tortoise_tts",
             "extension_platform_version": "0.0.1"
         },
         {

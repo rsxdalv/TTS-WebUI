@@ -462,7 +462,7 @@
         },
         {
             "package_name": "tts_webui_extension.gpt_sovits",
-            "name": "GPT-SoVITS",
+            "name": "GPT-SoVITS [low compatibility]",
             "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.gpt_sovits@main",
             "description": "GPT-SoVITS: A TTS solution powered by GPT and SoftVC VITS Singing Voice Conversion.",
             "extension_type": "interface",

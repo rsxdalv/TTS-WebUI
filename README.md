@@ -96,6 +96,7 @@ September:
 * Add PyRNNoise extension
 * Upgrade React UI's Chatterbox interface
 * Rename Kokoro TTS extension to OpenAI TTS API extension
+* Rename all extensions to tts_webui_extension.*
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

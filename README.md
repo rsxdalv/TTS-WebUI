@@ -97,6 +97,9 @@ September:
 * Upgrade React UI's Chatterbox interface
 * Rename Kokoro TTS extension to OpenAI TTS API extension
 * Rename all extensions to tts_webui_extension.*
+* Switch to PyPI for multiple extensions
+* Add Intel PyTorch installation option
+* Add "Custom" Choice option to installer for self-managed PyTorch installations
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

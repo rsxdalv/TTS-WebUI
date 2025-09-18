@@ -4,7 +4,6 @@ import setuptools
 TORCH_VERSION = "2.7.0"
 CUDA_VERSION = "cu128"
 
-# get requirements from requirements.txt
 with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
@@ -19,7 +18,6 @@ extras_require = {
         # "xformers>=0.0.20",
         # "triton>=2.0.0",
         # "flash-attn>=2.0.0",
-        # "torch==2.6.0+cu126",
         # f"torch=={TORCH_VERSION} --index-url https://download.pytorch.org/whl/{CUDA_VERSION}",
         f"torch=={TORCH_VERSION}+{CUDA_VERSION}",
         "torchvision",
@@ -38,6 +36,12 @@ extras_require = {
         # "torch>=2.0.0",
         # Add any ROCM specific packages here
     ],
+    "intel": [
+        f"torch=={TORCH_VERSION}",
+        "torchvision",
+        "torchaudio",
+        # --index-url https://download.pytorch.org/whl/test/xpu
+    ],
 }
 
 setuptools.setup(
@@ -52,7 +56,7 @@ setuptools.setup(
     # ),
     # include_package_data=True,
     packages=[],
-    version="0.4.0",
+    version="0.5.0",
     author="rsxdalv",
     description="TTS WebUI / Harmonica",
     url="https://github.com/rsxdalv/tts-webui",

@@ -11,7 +11,6 @@ ffmpeg-python # Apache 2.0
 gradio==5.5.0 # MIT License
 pydantic==2.10.6 # for gradio 5.5.0 fix
 pillow==10.3.0 # for gradio, conda fix
-# beartype>=0.16.1 # workaround for a bug
 soundfile==0.12.1; sys_platform == 'win32' # torchaudio
 # Deepspeed needs to be compiled with DS_BUILD_OPS otherwise pip only install of PyTorch without NVCC will fail.
 # deepspeed==0.16.5; sys_platform == 'win32' # Apache 2.0

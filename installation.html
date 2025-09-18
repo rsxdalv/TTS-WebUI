@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTS WebUI Installation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        header {
+            background: #0078d7;
+            color: #fff;
+            padding: 1rem 0;
+            text-align: center;
+        }
+        main {
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h1, h2 {
+            color: #0078d7;
+        }
+        ul, ol {
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+        footer {
+            text-align: center;
+            padding: 1rem 0;
+            background: #f1f1f1;
+            margin-top: 2rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        input, select, button {
+            padding: 0.5rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background: #0078d7;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #005fa3;
+        }
+        .download-link {
+            display: block;
+            margin-top: 1rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Installation Guide</h1>
+    </header>
+    <main>
+        <section>
+            <h2>Prerequisites</h2>
+            <ul>
+                <li>Python 3.10 or Python 3.11</li>
+                <li>Git for version control</li>
+                <li>Active internet connection</li>
+            </ul>
+        </section>
+        <section>
+            <h2>Installation Steps</h2>
+            <ol>
+                <!-- <li>Clone the repository: <code>git clone https://github.com/your-repo/tts-generation-webui.git</code></li>
+                <li>Navigate to the project directory: <code>cd tts-generation-webui</code></li> -->
+                <li>Run the start script for your platform, for example, Windows: <code>start_tts_webui.bat</code></li>
+                <li>Install dependencies: <code>pip install -r requirements.txt</code></li>
+                <li>Run the application: <code>python app.py</code></li>
+            </ol>
+        </section>
+        <!-- <section>
+            <img src="./image.jpg">
+            <script type="module" src="script.js" />
+            <h2>Generate Configuration</h2>
+            <form id="configForm">
+                <div class="form-group">
+                    <label for="pythonVersion">Python Version:</label>
+                    <input type="text" id="pythonVersion" name="pythonVersion" placeholder="e.g., 3.10.11" value="3.10.11" required>
+                </div>
+                <div class="form-group">
+                    <label for="gpuChoice">GPU Choice:</label>
+                    <select id="gpuChoice" name="gpuChoice" required>
+                        <option value="NVIDIA">NVIDIA GPU</option>
+                        <option value="NVIDIA_NIGHTLY">NVIDIA GPU (Nightly RTX 50 series)</option>
+                        <option value="APPLE_M_SERIES">Apple M Series Chip</option>
+                        <option value="CPU">CPU</option>
+                        <option value="AMD_ROCM">AMD GPU (ROCM, Linux only)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="torchVersion">Torch Version:</label>
+                    <input type="text" id="torchVersion" name="torchVersion" placeholder="e.g., 2.7.0" value="2.7.0" required>
+                </div>
+                <button type="button" onclick="generateConfig()">Generate JSON</button>
+            </form>
+            <pre id="output" style="margin-top: 1rem; background: #f4f4f4; padding: 1rem; border-radius: 8px;"></pre>
+            <a id="downloadLink" class="download-link" href="#" style="display: none;">Download JSON</a>
+        </section> -->
+    </main>
+    <footer>
+        <p>&copy; 2025 TTS Generation WebUI</p>
+    </footer>
+    <script>
+        function generateConfig() {
+            const pythonVersion = document.getElementById('pythonVersion').value;
+            const gpuChoice = document.getElementById('gpuChoice').value;
+            const torchVersion = document.getElementById('torchVersion').value;
+
+            if (!pythonVersion || !gpuChoice || !torchVersion) {
+                alert('Please fill in all fields.');
+                return;
+            }
+
+            const config = {
+                pythonVersion,
+                gpuChoice,
+                torchVersion
+            };
+
+            const jsonOutput = JSON.stringify(config, null, 2);
+            document.getElementById('output').textContent = jsonOutput;
+
+            const blob = new Blob([jsonOutput], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const downloadLink = document.getElementById('downloadLink');
+            downloadLink.href = url;
+            downloadLink.download = 'config.json';
+            downloadLink.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

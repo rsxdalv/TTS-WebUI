@@ -9,10 +9,9 @@ const { applyDatabaseConfig } = require("./applyDatabaseConfig.js");
 const torchVersion = "2.7.0"; // 2.7.1 has no xformers
 const cudaVersion = "12.8";
 const cudaVersionTag = `cu128`;
+const torch = `torch==${torchVersion}`;
 
-const pythonVersion = `3.10.11`; // 3.11 and 3.12 are not yet supported
-const pythonPackage = `python=${pythonVersion}`;
-const conda = "micromamba";
+const pythonVersion = `3.10.11`; // 3.11 has limited support, 3.12 is not yet supported
 
 const ensurePythonVersion = async () => {
   try {
@@ -21,6 +20,9 @@ const ensurePythonVersion = async () => {
     if (version !== `Python ${pythonVersion}`) {
       displayMessage(`Current python version is """${version}"""`);
       displayMessage(`Python version is not ${pythonVersion}. Reinstalling...`);
+      const pythonPackage = `python=${pythonVersion}`;
+      const conda = "micromamba";
+
       await $(`${conda} install -y -k -c conda-forge ${pythonPackage}`);
     }
   } catch (error) {
@@ -54,7 +56,7 @@ const installDependencies = async (gpuchoice) => {
   try {
     if (gpuchoice === PyTorchChoice.NVIDIA) {
       await $(
-        `pip install -U torch==${torchVersion}+${cudaVersionTag} torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
+        `pip install -U ${torch}+${cudaVersionTag} torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
       );
       // add torchao
       // pip install --dry-run torchao --index-url https://download.pytorch.org/whl/cu124
@@ -63,21 +65,21 @@ const installDependencies = async (gpuchoice) => {
     } else if (gpuchoice === PyTorchChoice.CUSTOM) {
       displayMessage("Please install torch manually");
       displayMessage(
-        `For example with CUDA ${cudaVersion} use: pip install torch==${torchVersion}+${cudaVersionTag} torchvision torchaudio --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
+        `For example with CUDA ${cudaVersion} use: pip install ${torch}+${cudaVersionTag} torchvision torchaudio --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
       );
     } else if (gpuchoice === PyTorchChoice.APPLE_M_SERIES) {
-      await $(`pip install torch==${torchVersion} torchvision torchaudio`);
+      await $(`pip install ${torch} torchvision torchaudio`);
     } else if (gpuchoice === PyTorchChoice.CPU) {
       await $(
-        `pip install torch==${torchVersion}+cpu torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu`
+        `pip install ${torch}+cpu torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu`
       );
     } else if (gpuchoice === PyTorchChoice.AMD_ROCM) {
       await $(
-        `pip install torch==${torchVersion} torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/${rocmVersionTag[torchVersion]}`
+        `pip install ${torch} torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/${rocmVersionTag[torchVersion]}`
       );
     } else if (gpuchoice === PyTorchChoice.INTEL_XPU) {
       await $(
-        `pip install torch==${torchVersion} torchvision torchaudio --index-url https://download.pytorch.org/whl/test/xpu`
+        `pip install ${torch} torchvision torchaudio --index-url https://download.pytorch.org/whl/test/xpu`
       );
     } else {
       displayMessage("Unsupported or cancelled. Exiting...");
@@ -87,7 +89,7 @@ const installDependencies = async (gpuchoice) => {
 
     saveMajorVersion(majorVersion);
     displayMessage(
-      `  Successfully installed torch==${torchVersion} with CUDA ${cudaVersion} support`
+      `  Successfully installed ${torch} with CUDA ${cudaVersion} support`
     );
   } catch (error) {
     displayError(`Error during installation: ${error.message}`);
@@ -153,9 +155,7 @@ async function pip_install_or_fail(
 ) {
   displayMessage(`Installing ${name || requirements} dependencies...`);
   const pip = pipFallback ? "pip" : "uv pip";
-  await $sh(
-    `${pip} install ${requirements} torch==${torchVersion}`
-  );
+  await $sh(`${pip} install ${requirements} ${torch}`);
   displayMessage(
     `Successfully installed ${name || requirements} dependencies\n`
   );

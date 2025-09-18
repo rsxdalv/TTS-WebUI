@@ -41,11 +41,12 @@ accelerate>=0.33.0
 
 
 # extension_bark @ git+https://github.com/rsxdalv/extension_bark@main
-tts_webui_extension.tortoise_tts @ https://github.com/rsxdalv/tts_webui_extension.tortoise_tts/releases/download/v0.0.2/tts_webui_extension_tortoise_tts-0.0.2-py3-none-any.whl
-tts_webui_extension.demucs @ https://github.com/rsxdalv/tts_webui_extension.demucs/releases/download/v0.0.3/tts_webui_extension_demucs-0.0.3-py3-none-any.whl
-tts_webui_extension.mms @ https://github.com/rsxdalv/tts_webui_extension.mms/releases/download/v0.0.1/tts_webui_extension_mms-0.0.1-py3-none-any.whl
-tts_webui_extension.seamless_m4t @ https://github.com/rsxdalv/tts_webui_extension.seamless_m4t/releases/download/v0.0.4/tts_webui_extension_seamless_m4t-0.0.4-py3-none-any.whl
-tts_webui_extension.vocos @ https://github.com/rsxdalv/tts_webui_extension.vocos/releases/download/v0.0.2/tts_webui_extension_vocos-0.0.2-py3-none-any.whl
+tts_webui_extension.tortoise_tts>=0.0.3
+tts_webui_extension.demucs>=0.0.4
+tts_webui_extension.mms>=0.0.2
+tts_webui_extension.seamless_m4t>=0.0.6
+tts_webui_extension.vocos>=0.0.3
+tts_webui_extension.openai_tts_api>=0.13.2
 
 matplotlib
 
@@ -54,5 +55,3 @@ gradio_goodtab @ https://github.com/rsxdalv/gradio_goodtab/releases/download/v0.
 gradio_iconbutton @ https://github.com/rsxdalv/gradio_iconbutton/releases/download/v0.0.1/gradio_iconbutton-0.0.1-py3-none-any.whl
 
 deprecated >= 1.2.13
-
-tts_webui_extension.openai_tts_api @ https://github.com/rsxdalv/tts_webui_extension.openai_tts_api/releases/download/v0.13.2/tts_webui_extension_openai_tts_api-0.13.2-py3-none-any.whl

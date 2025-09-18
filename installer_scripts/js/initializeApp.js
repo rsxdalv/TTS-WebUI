@@ -45,13 +45,12 @@ const rocmVersionTag = {
 
 const GPUChoice = {
   NVIDIA: "NVIDIA GPU",
-  NVIDIA_NIGHTLY: "NVIDIA GPU (Not recommended, Nightly RTX 50 series)",
-  // NVIDIA_NIGHTLY: "NVIDIA GPU (Not recommended, Nightly)",
+  NVIDIA_NIGHTLY: "NVIDIA GPU (Nightly)",
   APPLE_M_SERIES: "Apple M Series Chip",
+  AMD_ROCM: "AMD GPU (ROCM, Linux only)",
+  INTEL_XPU: "Intel GPU (XPU)",
   CPU: "CPU",
   CANCEL: "Cancel",
-  AMD_ROCM: "AMD GPU (ROCM, Linux only)",
-  INTEL_UNSUPPORTED: "Intel GPU (unsupported)",
   INTEGRATED_UNSUPPORTED: "Integrated GPU (unsupported)",
 };
 
@@ -71,12 +70,6 @@ const installDependencies = async (gpuchoice) => {
       await $(
         `pip install -U torch==${torchVersion}${dev_version}+${cudaVersionTag} torchvision torchaudio --pre --index-url https://download.pytorch.org/whl/nightly/${cudaVersionTag}`
       );
-
-      // await pip_install(
-      //   `-U xformers torch==${torchVersion} --index-url https://download.pytorch.org/whl/${cudaVersionTag}`,
-      //   "xformers",
-      //   true
-      // );
     } else if (gpuchoice === GPUChoice.APPLE_M_SERIES) {
       await $(`pip install torch==${torchVersion} torchvision torchaudio`);
     } else if (gpuchoice === GPUChoice.CPU) {
@@ -84,12 +77,12 @@ const installDependencies = async (gpuchoice) => {
         `pip install torch==${torchVersion}+cpu torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu`
       );
     } else if (gpuchoice === GPUChoice.AMD_ROCM) {
-      displayMessage(
-        "ROCM is experimental and not well supported yet, installing..."
-      );
-      displayMessage("Linux only!");
       await $(
         `pip install torch==${torchVersion} torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/${rocmVersionTag[torchVersion]}`
+      );
+    } else if (gpuchoice === GPUChoice.INTEL_XPU) {
+      await $(
+        `pip install torch==${torchVersion} torchvision torchaudio --index-url https://download.pytorch.org/whl/test/xpu`
       );
     } else {
       displayMessage("Unsupported or cancelled. Exiting...");
@@ -111,12 +104,12 @@ const askForGPUChoice = () =>
   menu(
     [
       GPUChoice.NVIDIA,
-      // GPUChoice.NVIDIA_NIGHTLY,
+      GPUChoice.NVIDIA_NIGHTLY,
       GPUChoice.APPLE_M_SERIES,
       GPUChoice.CPU,
-      GPUChoice.CANCEL,
       GPUChoice.AMD_ROCM,
-      GPUChoice.INTEL_UNSUPPORTED,
+      GPUChoice.INTEL_XPU,
+      GPUChoice.CANCEL,
       GPUChoice.INTEGRATED_UNSUPPORTED,
     ],
     `

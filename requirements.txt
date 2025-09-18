@@ -1,9 +1,12 @@
-tts_webui_core @ https://github.com/rsxdalv/tts_webui_core/releases/download/v0.0.1/tts_webui_core-0.0.1-py3-none-any.whl
+tts_webui_core>=0.0.1
 
 safetensors
 python-dotenv==1.0.0
-cached_path >= 1.7.3 # Prevent old huggingface-hub fallbacks
+cached_path>=1.7.3 # Prevent old huggingface-hub fallbacks
+deprecated>=1.2.13
  
+matplotlib
+
 ffmpeg-python # Apache 2.0
 gradio==5.5.0 # MIT License
 pydantic==2.10.6 # for gradio 5.5.0 fix
@@ -15,7 +18,6 @@ soundfile==0.12.1; sys_platform == 'win32' # torchaudio
 
 # https://github.com/rsxdalv/xformers/releases/download/v0.0.30/xformers-0.0.30+cbc9beb.d20250514-cp310-cp310-macosx_11_0_universal2.whl ; sys_platform == 'darwin' and python_version == '3.10' # BSD 3-Clause License
 # https://github.com/rsxdalv/xformers/releases/download/v0.0.30/xformers-0.0.30+cbc9beb.d20250514-cp311-cp311-macosx_11_0_universal2.whl ; sys_platform == 'darwin' and python_version == '3.11' # BSD 3-Clause License
-# xformers==0.0.30; sys_platform == 'darwin' # Apache 2.0
 
 fairseq @ https://github.com/rsxdalv/fairseq/releases/download/v0.12.3/fairseq-0.12.13-cp310-cp310-win_amd64.whl ; sys_platform == 'win32' and python_version == '3.10' # MIT License
 fairseq @ https://github.com/rsxdalv/fairseq/releases/download/v0.12.3/fairseq-0.12.13-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl ; sys_platform == 'linux' and python_version == '3.10' # MIT License
@@ -39,7 +41,7 @@ accelerate>=0.33.0
 # flash-attn @ https://github.com/kingbri1/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu124torch2.6.0cxx11abiFALSE-cp310-cp310-win_amd64.whl ; sys_platform == 'win32'
 # flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.6cxx11abiFALSE-cp310-cp310-linux_x86_64.whl ; sys_platform == 'linux'
 
-
+# Extensions
 # extension_bark @ git+https://github.com/rsxdalv/extension_bark@main
 tts_webui_extension.tortoise_tts>=0.0.3
 tts_webui_extension.demucs>=0.0.4
@@ -48,10 +50,6 @@ tts_webui_extension.seamless_m4t>=0.0.6
 tts_webui_extension.vocos>=0.0.3
 tts_webui_extension.openai_tts_api>=0.13.2
 
-matplotlib
-
-gradio_goodtabs @ https://github.com/rsxdalv/gradio_goodtabs/releases/download/v0.0.3/gradio_goodtabs-0.0.3-py3-none-any.whl
-gradio_goodtab @ https://github.com/rsxdalv/gradio_goodtab/releases/download/v0.0.3/gradio_goodtab-0.0.3-py3-none-any.whl
-gradio_iconbutton @ https://github.com/rsxdalv/gradio_iconbutton/releases/download/v0.0.1/gradio_iconbutton-0.0.1-py3-none-any.whl
-
-deprecated >= 1.2.13
+gradio-goodtabs>=0.0.3
+gradio-goodtab>=0.0.3
+gradio-iconbutton>=0.0.1

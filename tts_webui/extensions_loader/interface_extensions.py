@@ -188,6 +188,10 @@ def extension_list_tab():
         external_extension_list = [
             x for x in extension_list_json if "builtin" not in x["package_name"]
         ]
+        # sort
+        external_extension_list = sorted(
+            external_extension_list, key=lambda x: x["name"].lower()
+        )
 
         with gr.Row():
             with gr.Column():

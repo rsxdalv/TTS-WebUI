@@ -11,11 +11,9 @@ const DEBUG_DRY_RUN = false;
 const torchVersion = "2.7.0"; // 2.7.1 has no xformers
 const cudaVersion = "12.8";
 const cudaVersionTag = `cu128`;
-let dev_version = "";
 
 const pythonVersion = `3.10.11`; // 3.11 and 3.12 are not yet supported
 const pythonPackage = `python=${pythonVersion}`;
-// const conda = "conda";
 const conda = "micromamba";
 
 const ensurePythonVersion = async () => {
@@ -43,21 +41,20 @@ const rocmVersionTag = {
   "2.7.1": "rocm6.3",
 };
 
-const GPUChoice = {
+const PyTorchChoice = {
   NVIDIA: "NVIDIA GPU",
-  NVIDIA_NIGHTLY: "NVIDIA GPU (Not recommended, Nightly RTX 50 series)",
-  // NVIDIA_NIGHTLY: "NVIDIA GPU (Not recommended, Nightly)",
+  CUSTOM: "Custom (Manual torch install)",
   APPLE_M_SERIES: "Apple M Series Chip",
+  AMD_ROCM: "AMD GPU (ROCM, Linux only)",
+  INTEL_XPU: "Intel GPU (XPU)",
   CPU: "CPU",
   CANCEL: "Cancel",
-  AMD_ROCM: "AMD GPU (ROCM, Linux only)",
-  INTEL_UNSUPPORTED: "Intel GPU (unsupported)",
   INTEGRATED_UNSUPPORTED: "Integrated GPU (unsupported)",
 };
 
 const installDependencies = async (gpuchoice) => {
   try {
-    if (gpuchoice === GPUChoice.NVIDIA) {
+    if (gpuchoice === PyTorchChoice.NVIDIA) {
       await $(
         `pip install -U torch==${torchVersion}+${cudaVersionTag} torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
       );
@@ -65,31 +62,24 @@ const installDependencies = async (gpuchoice) => {
       // pip install --dry-run torchao --index-url https://download.pytorch.org/whl/cu124
       // default version is already for 12.4 and has newer features
       // pip install --dry-run torchao
-    } else if (gpuchoice === GPUChoice.NVIDIA_NIGHTLY) {
-      displayMessage("Installing nightly PyTorch build for RTX 50 series...");
-      dev_version = ".dev20250310";
-      await $(
-        `pip install -U torch==${torchVersion}${dev_version}+${cudaVersionTag} torchvision torchaudio --pre --index-url https://download.pytorch.org/whl/nightly/${cudaVersionTag}`
+    } else if (gpuchoice === PyTorchChoice.CUSTOM) {
+      displayMessage("Please install torch manually");
+      displayMessage(
+        `For example with CUDA ${cudaVersion} use: pip install torch==${torchVersion}+${cudaVersionTag} torchvision torchaudio --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
       );
-
-      // await pip_install(
-      //   `-U xformers torch==${torchVersion} --index-url https://download.pytorch.org/whl/${cudaVersionTag}`,
-      //   "xformers",
-      //   true
-      // );
-    } else if (gpuchoice === GPUChoice.APPLE_M_SERIES) {
+    } else if (gpuchoice === PyTorchChoice.APPLE_M_SERIES) {
       await $(`pip install torch==${torchVersion} torchvision torchaudio`);
-    } else if (gpuchoice === GPUChoice.CPU) {
+    } else if (gpuchoice === PyTorchChoice.CPU) {
       await $(
         `pip install torch==${torchVersion}+cpu torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu`
       );
-    } else if (gpuchoice === GPUChoice.AMD_ROCM) {
-      displayMessage(
-        "ROCM is experimental and not well supported yet, installing..."
-      );
-      displayMessage("Linux only!");
+    } else if (gpuchoice === PyTorchChoice.AMD_ROCM) {
       await $(
         `pip install torch==${torchVersion} torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/${rocmVersionTag[torchVersion]}`
+      );
+    } else if (gpuchoice === PyTorchChoice.INTEL_XPU) {
+      await $(
+        `pip install torch==${torchVersion} torchvision torchaudio --index-url https://download.pytorch.org/whl/test/xpu`
       );
     } else {
       displayMessage("Unsupported or cancelled. Exiting...");
@@ -110,14 +100,14 @@ const installDependencies = async (gpuchoice) => {
 const askForGPUChoice = () =>
   menu(
     [
-      GPUChoice.NVIDIA,
-      // GPUChoice.NVIDIA_NIGHTLY,
-      GPUChoice.APPLE_M_SERIES,
-      GPUChoice.CPU,
-      GPUChoice.CANCEL,
-      GPUChoice.AMD_ROCM,
-      GPUChoice.INTEL_UNSUPPORTED,
-      GPUChoice.INTEGRATED_UNSUPPORTED,
+      PyTorchChoice.NVIDIA,
+      PyTorchChoice.APPLE_M_SERIES,
+      PyTorchChoice.CPU,
+      PyTorchChoice.AMD_ROCM,
+      PyTorchChoice.INTEL_XPU,
+      PyTorchChoice.CANCEL,
+      PyTorchChoice.CUSTOM,
+      PyTorchChoice.INTEGRATED_UNSUPPORTED,
     ],
     `
 These are not yet automatically supported: AMD GPU, Intel GPU, Integrated GPU.
@@ -169,7 +159,7 @@ async function pip_install_or_fail(
   await $sh(
     `${
       pipFallback ? "pip" : "uv pip"
-    } install ${dry_run_flag}${requirements} torch==${torchVersion}${dev_version}`
+    } install ${dry_run_flag}${requirements} torch==${torchVersion}`
   );
   displayMessage(
     `Successfully installed ${name || requirements} dependencies\n`
@@ -249,8 +239,6 @@ const checkIfTorchInstalled = async () => {
   }
 };
 
-const FORCE_REINSTALL = process.env.FORCE_REINSTALL ? true : false;
-
 const getGPUChoice = async () => {
   if (fs.existsSync(gpuFile)) {
     const gpuchoice = readGPUChoice();
@@ -267,7 +255,7 @@ const getGPUChoice = async () => {
 async function applyCondaConfig() {
   displayMessage("Applying conda config...");
   displayMessage("  Checking if Torch is installed...");
-  if (readMajorVersion() === majorVersion && !FORCE_REINSTALL) {
+  if (readMajorVersion() === majorVersion) {
     if (await checkIfTorchInstalled()) {
       displayMessage("  Torch is already installed. Skipping installation...");
       await pip_install_all();

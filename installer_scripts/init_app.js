@@ -11,11 +11,11 @@ const checkConda = async () => {
     updateState({ status: "checking_dependencies", currentStep: 1 });
 
     displayMessage("Checking conda installation...");
-    
+
     displayMessage("");
     // verify conda paths
     $sh("conda info --envs");
-    
+
     // expect
     // # conda environments:
     // #
@@ -37,14 +37,6 @@ const checkConda = async () => {
   }
 };
 
-const updateConda = async () => {
-  await $sh("conda update -y -n base -c defaults conda");
-};
-
-const FORCE_REINSTALL = process.env.FORCE_REINSTALL ? true : false;
-const DEBUG_ALWAYS_RETURN_UPDATED =
-  FORCE_REINSTALL || process.env.DEBUG_ALWAYS_RETURN_UPDATED ? true : false;
-
 const getGitCommitHash = () =>
   fs.readFileSync("./.git/refs/heads/main", "utf8");
 
@@ -57,36 +49,12 @@ const AppliedGitVersion = {
   save: () => fs.writeFileSync(AppliedGitVersion.file, getGitCommitHash()),
 };
 
-const initRepoHistory = async () => {
-  displayMessage("Linking to tts-webui repository");
-  // this is a clone over the files from https://github.com/rsxdalv/tts-webui
-  try {
-    await $sh("git init -b main");
-    await $sh("git remote add origin https://github.com/rsxdalv/tts-webui");
-    await $sh("git fetch");
-    await $sh("git reset --hard origin/main"); // Required when the versioned files existed in path before "git init" of this repo.
-    await $sh("git branch --set-upstream-to=origin/main");
-
-    const newHash = getGitCommitHash();
-    updateState({ gitHash: newHash });
-
-    return true;
-  } catch (error) {
-    updateState({
-      status: "error",
-      lastError: "Failed to initialize git repository",
-    });
-    displayMessage("Error:");
-    displayError(error);
-    throw error;
-  }
-};
-
 const syncRepo = async () => {
   updateState({ status: "updating_repo", currentStep: 2 });
 
   if (!fs.existsSync(".git")) {
-    return initRepoHistory();
+    displayMessage("CRITICAL: No git repository found, skipping update...");
+    throw new Error("No git repository found");
   }
 
   displayMessage("Pulling updates from tts-webui");
@@ -97,7 +65,7 @@ const syncRepo = async () => {
     if (AppliedGitVersion.get() === newHash) {
       displayMessage("Current git version: " + newHash);
       displayMessage("No updates found, skipping...");
-      return false || DEBUG_ALWAYS_RETURN_UPDATED;
+      return false;
     }
     return true;
   } catch (error) {
@@ -108,25 +76,19 @@ const syncRepo = async () => {
     displayMessage("Error:");
     displayError(error);
     return false;
-    // throw error;
   }
 };
 
 async function main() {
   startServer();
 
-  const version = "0.1.0";
+  const version = "0.2.0";
   displayMessage("\n\nStarting init app (version: " + version + ")...\n\n");
 
   updateState({ status: "initializing", currentStep: 0, totalSteps: 5 });
-  if (process.env.DEBUG_ALWAYS_RETURN_UPDATED) {
-    displayMessage("Forcing update");
-  }
 
   try {
     await checkConda();
-    // await updateConda();
-    // check if there are any packages actually installed inside of conda
     const isUpdated = await syncRepo();
     if (!isUpdated) {
       updateState({ status: "ready", currentStep: 5, totalSteps: 5 });

@@ -249,8 +249,6 @@ const checkIfTorchInstalled = async () => {
   }
 };
 
-const FORCE_REINSTALL = process.env.FORCE_REINSTALL ? true : false;
-
 const getGPUChoice = async () => {
   if (fs.existsSync(gpuFile)) {
     const gpuchoice = readGPUChoice();
@@ -267,7 +265,7 @@ const getGPUChoice = async () => {
 async function applyCondaConfig() {
   displayMessage("Applying conda config...");
   displayMessage("  Checking if Torch is installed...");
-  if (readMajorVersion() === majorVersion && !FORCE_REINSTALL) {
+  if (readMajorVersion() === majorVersion) {
     if (await checkIfTorchInstalled()) {
       displayMessage("  Torch is already installed. Skipping installation...");
       await pip_install_all();

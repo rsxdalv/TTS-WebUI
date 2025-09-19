@@ -173,34 +173,32 @@ const extensions = [
   {
     name: "Bark Voice Clone",
     package:
-      "git+https://github.com/rsxdalv/tts_webui_extension.bark_voice_clone@main",
+      "https://github.com/rsxdalv/tts_webui_extension.bark_voice_clone/releases/download/v0.0.1/tts_webui_extension_bark_voice_clone-0.0.1-py3-none-any.whl",
   },
   {
     name: "RVC",
-    package: "git+https://github.com/rsxdalv/tts_webui_extension.rvc@main",
+    package:
+      "https://github.com/rsxdalv/tts_webui_extension.rvc/releases/download/v0.0.3/tts_webui_extension_rvc-0.0.3-py3-none-any.whl",
   },
   {
     name: "Audiocraft",
     package:
-      "git+https://github.com/rsxdalv/tts_webui_extension.audiocraft@main",
+      "https://github.com/rsxdalv/tts_webui_extension.audiocraft/releases/download/v0.0.2/tts_webui_extension_audiocraft-0.0.2-py3-none-any.whl",
   },
   {
     name: "StyleTTS",
     package:
-      "git+https://github.com/rsxdalv/tts_webui_extension.styletts2@main",
+      "https://github.com/rsxdalv/tts_webui_extension.styletts2/releases/download/v0.1.0/tts_webui_extension_styletts2-0.1.0-py3-none-any.whl",
   },
   {
     name: "Vall-E-X",
-    package: "git+https://github.com/rsxdalv/tts_webui_extension.vall_e_x@main",
+    package:
+      "https://github.com/rsxdalv/tts_webui_extension.vall_e_x/releases/download/v0.1.0/tts_webui_extension_vall_e_x-0.1.0-py3-none-any.whl",
   },
-  // {
-  //   name: "Maha TTS",
-  //   package: "git+https://github.com/rsxdalv/tts_webui_extension.maha_tts@main",
-  // },
   {
     name: "Stable Audio",
     package:
-      "git+https://github.com/rsxdalv/tts_webui_extension.stable_audio@main",
+      "https://github.com/rsxdalv/tts_webui_extension.stable_audio/releases/download/v0.1.1/tts_webui_extension_stable_audio-0.1.1-py3-none-any.whl",
   },
 ];
 

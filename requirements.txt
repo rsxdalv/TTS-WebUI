@@ -6,6 +6,7 @@ cached_path>=1.7.3 # Prevent old huggingface-hub fallbacks
 deprecated>=1.2.13
  
 matplotlib
+typer
 
 ffmpeg-python # Apache 2.0
 gradio==5.5.0 # MIT License
@@ -32,20 +33,8 @@ accelerate>=0.33.0
 # https://github.com/rsxdalv/xformers/releases/download/v0.0.30/xformers-0.0.30+cbc9beb.d20250514-cp310-cp310-macosx_11_0_universal2.whl ; sys_platform == 'darwin' and python_version == '3.10' # BSD 3-Clause License
 # https://github.com/rsxdalv/xformers/releases/download/v0.0.30/xformers-0.0.30+cbc9beb.d20250514-cp311-cp311-macosx_11_0_universal2.whl ; sys_platform == 'darwin' and python_version == '3.11' # BSD 3-Clause License
 
-fairseq @ https://github.com/rsxdalv/fairseq/releases/download/v0.12.3/fairseq-0.12.13-cp310-cp310-win_amd64.whl ; sys_platform == 'win32' and python_version == '3.10' # MIT License
-fairseq @ https://github.com/rsxdalv/fairseq/releases/download/v0.12.3/fairseq-0.12.13-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl ; sys_platform == 'linux' and python_version == '3.10' # MIT License
-fairseq @ https://github.com/rsxdalv/fairseq/releases/download/v0.12.3/fairseq-0.12.13-cp310-cp310-macosx_11_0_universal2.whl ; sys_platform == 'darwin' and python_version == '3.10' # MIT License
-
-fairseq @ https://github.com/rsxdalv/fairseq/releases/download/v0.12.3/fairseq-0.12.13-cp311-cp311-win_amd64.whl ; sys_platform == 'win32' and python_version == '3.11' # MIT License
-fairseq @ https://github.com/rsxdalv/fairseq/releases/download/v0.12.3/fairseq-0.12.13-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl ; sys_platform == 'linux' and python_version == '3.11' # MIT License
-fairseq @ https://github.com/rsxdalv/fairseq/releases/download/v0.12.3/fairseq-0.12.13-cp311-cp311-macosx_11_0_universal2.whl ; sys_platform == 'darwin' and python_version == '3.11' # MIT License
-
-fairseq @ https://github.com/rsxdalv/fairseq/releases/download/v0.12.3/fairseq-0.12.13-cp312-cp312-win_amd64.whl ; sys_platform == 'win32' and python_version == '3.12' # MIT License
-fairseq @ https://github.com/rsxdalv/fairseq/releases/download/v0.12.3/fairseq-0.12.13-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl ; sys_platform == 'linux' and python_version == '3.12' # MIT License
-fairseq @ https://github.com/rsxdalv/fairseq/releases/download/v0.12.3/fairseq-0.12.13-cp312-cp312-macosx_11_0_universal2.whl ; sys_platform == 'darwin' and python_version == '3.12' # MIT License
-
-# Extensions
-# extension_bark @ git+https://github.com/rsxdalv/extension_bark@main
+# Core Extensions
+tts_webui_extension.bark>=0.0.3
 tts_webui_extension.tortoise_tts>=0.0.3
 tts_webui_extension.demucs>=0.0.4
 tts_webui_extension.mms>=0.0.2

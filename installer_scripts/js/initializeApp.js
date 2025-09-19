@@ -172,35 +172,23 @@ async function pip_install(requirements, name = "", pipFallback = false) {
 const extensions = [
   {
     name: "Bark Voice Clone",
-    package:
-      "https://github.com/rsxdalv/tts_webui_extension.bark_voice_clone/releases/download/v0.0.1/tts_webui_extension_bark_voice_clone-0.0.1-py3-none-any.whl",
+    package: '"tts-webui-extension.bark_voice_clone>=0.0.1"',
   },
-  {
-    name: "RVC",
-    package:
-      "https://github.com/rsxdalv/tts_webui_extension.rvc/releases/download/v0.0.3/tts_webui_extension_rvc-0.0.3-py3-none-any.whl",
-  },
-  {
-    name: "Audiocraft",
-    package:
-      "https://github.com/rsxdalv/tts_webui_extension.audiocraft/releases/download/v0.0.2/tts_webui_extension_audiocraft-0.0.2-py3-none-any.whl",
-  },
-  {
-    name: "StyleTTS",
-    package:
-      "https://github.com/rsxdalv/tts_webui_extension.styletts2/releases/download/v0.1.0/tts_webui_extension_styletts2-0.1.0-py3-none-any.whl",
-  },
-  {
-    name: "Vall-E-X",
-    package:
-      "https://github.com/rsxdalv/tts_webui_extension.vall_e_x/releases/download/v0.1.0/tts_webui_extension_vall_e_x-0.1.0-py3-none-any.whl",
-  },
+  { name: "RVC", package: '"tts-webui-extension.rvc>=0.0.3"' },
+  { name: "Audiocraft", package: '"tts-webui-extension.audiocraft>=0.0.2"' },
+  { name: "StyleTTS", package: '"tts-webui-extension.styletts2>=0.1.0"' },
+  { name: "Vall-E-X", package: '"tts-webui-extension.vall_e_x>=0.1.0"' },
   {
     name: "Stable Audio",
-    package:
-      "https://github.com/rsxdalv/tts_webui_extension.stable_audio/releases/download/v0.1.1/tts_webui_extension_stable_audio-0.1.1-py3-none-any.whl",
+    package: '"tts-webui-extension.stable_audio>=0.1.1"',
   },
 ];
+
+const constructDependencyInstallString = () =>
+  "-r requirements.txt " +
+  extensions.map((ext) => ext.package).join(" ") +
+  " hydra-core==1.3.2 nvidia-ml-py" +
+  " --extra-index-url https://tts-webui.github.io/extensions-index/";
 
 // The first install is a temporary safeguard due to mysterious issues with uv
 async function pip_install_all(fi = false) {
@@ -213,9 +201,7 @@ async function pip_install_all(fi = false) {
     displayMessage("Attempting single pip install of all dependencies...");
 
     await pip_install_or_fail(
-      "-r requirements.txt " +
-        extensions.map((ext) => ext.package).join(" ") +
-        " hydra-core==1.3.2 nvidia-ml-py",
+      constructDependencyInstallString(),
       "All dependencies",
       true
     );
@@ -243,7 +229,11 @@ async function pip_install_all(fi = false) {
     throw error;
   }
   for (const ext of extensions) {
-    await pip_install(ext.package, ext.name, fi);
+    await pip_install(
+      `${ext.package} --extra-index-url https://tts-webui.github.io/extensions-index/`,
+      ext.name,
+      fi
+    );
   }
   await pip_install("hydra-core==1.3.2", "hydra-core fix due to fairseq", fi); // reinstall hydra-core==1.3.2 because of fairseq
   await pip_install("nvidia-ml-py", "nvidia-ml-py", fi);

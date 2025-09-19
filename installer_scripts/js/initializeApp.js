@@ -187,7 +187,6 @@ const extensions = [
 const constructDependencyInstallString = () =>
   "-r requirements.txt " +
   extensions.map((ext) => ext.package).join(" ") +
-  " hydra-core==1.3.2 nvidia-ml-py" +
   " --extra-index-url https://tts-webui.github.io/extensions-index/";
 
 // The first install is a temporary safeguard due to mysterious issues with uv
@@ -235,8 +234,6 @@ async function pip_install_all(fi = false) {
       fi
     );
   }
-  await pip_install("hydra-core==1.3.2", "hydra-core fix due to fairseq", fi); // reinstall hydra-core==1.3.2 because of fairseq
-  await pip_install("nvidia-ml-py", "nvidia-ml-py", fi);
   savePipPackagesVersion(newPipPackagesVersion);
   displayMessage("");
 }

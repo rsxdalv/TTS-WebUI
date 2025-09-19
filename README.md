@@ -57,34 +57,114 @@
 
 <div align="center">
 
-## Models
+## Supported Models
 
-| Text-to-speech                | Audio/Music Generation       | Audio Conversion/Tools        |
-|-------------------------------|------------------------------|-------------------------------|
-| [Bark](https://github.com/suno-ai/bark) | [MusicGen](https://github.com/facebookresearch/audiocraft/blob/main/docs/MUSICGEN.md) | [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) |
-| [Tortoise](https://github.com/neonbjb/tortoise-tts) | [MAGNeT](https://github.com/facebookresearch/audiocraft/blob/main/docs/MAGNET.md) | [Demucs](https://github.com/facebookresearch/demucs) |
-| [Maha TTS](https://github.com/dubverse-ai/MahaTTS) | [Stable Audio](https://github.com/Stability-AI/stable-audio-tools) | [Vocos](https://github.com/gemelo-ai/vocos) |
-| [MMS](https://github.com/facebookresearch/fairseq/blob/main/examples/mms/README.md) | [(Extension) Riffusion](https://github.com/riffusion/riffusion-hobby) | [Whisper](https://github.com/openai/whisper) |
-| [Vall-E X](https://github.com/Plachtaa/VALL-E-X) | [(Extension) AudioCraft Mac](https://github.com/trizko/audiocraft) | [AP BWE](https://github.com/yxlu-0102/AP-BWE) |
-| [StyleTTS2](https://github.com/sidharthrajaram/StyleTTS2) | [(Extension) AudioCraft Plus](https://github.com/GrandaddyShmax/audiocraft_plus) | [Resemble Enhance](https://github.com/resemble-ai/resemble-enhance) |
-| [SeamlessM4T](https://github.com/facebookresearch/seamless_communication) | | [Audio Separator](https://github.com/nomadkaraoke/python-audio-separator) |
-| [(Extension) XTTSv2](https://github.com/coqui-ai/TTS) | | [PyRNNoise](https://github.com/rsxdalv/extension_pyrnnoise) |
-| [(Extension) MARS5](https://github.com/camb-ai/mars5-tts) | | |
-| [(Extension) F5-TTS](https://github.com/SWivid/F5-TTS) | | |
-| [(Extension) Parler TTS](https://github.com/huggingface/parler-tts) | | |
-| [(Extension) OpenVoice](https://github.com/myshell-ai/OpenVoice) | | |
-| [(Extension) OpenVoice V2](https://github.com/myshell-ai/OpenVoice) | | |
-| [(Extension) Kokoro TTS](https://github.com/hexgrad/kokoro) | | |
-| [(Extension) DIA](https://github.com/nari-labs/dia) | | |
-| [(Extension) CosyVoice](https://github.com/FunAudioLLM/CosyVoice) | | |
-| [(Extension) GPT-SoVITS](https://github.com/X-T-E-R/GPT-SoVITS-Inference) | | |
-| [(Extension) Piper TTS](https://github.com/rhasspy/piper) | | |
-| [(Extension) Kimi Audio 7B Instruct](https://github.com/Dao-AILab/Kimi-Audio) | | |
-| [(Extension) Chatterbox](https://github.com/rsxdalv/chatterbox) | [(Extension) ACE-Step](https://github.com/ACE-Step/ACE-Step) | |
-| [(Extension) VibeVoice](https://github.com/rsxdalv/extension_vibevoice) | | |
-| [(Extension) Kitten TTS](https://github.com/rsxdalv/extension_kitten_tts) | | |
+| Text-to-speech                                                                      | Audio/Music Generation                                                                | Audio Conversion/Tools                                                       |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [Bark](https://github.com/suno-ai/bark)                                             | [MusicGen](https://github.com/facebookresearch/audiocraft/blob/main/docs/MUSICGEN.md) | [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) |
+| [Tortoise](https://github.com/neonbjb/tortoise-tts)                                 | [MAGNeT](https://github.com/facebookresearch/audiocraft/blob/main/docs/MAGNET.md)     | [Demucs](https://github.com/facebookresearch/demucs)                         |
+| [Maha TTS](https://github.com/dubverse-ai/MahaTTS)                                  | [Stable Audio](https://github.com/Stability-AI/stable-audio-tools)                    | [Vocos](https://github.com/gemelo-ai/vocos)                                  |
+| [MMS](https://github.com/facebookresearch/fairseq/blob/main/examples/mms/README.md) | [Riffusion\*](https://github.com/riffusion/riffusion-hobby)                           | [Whisper](https://github.com/openai/whisper)                                 |
+| [Vall-E X](https://github.com/Plachtaa/VALL-E-X)                                    | [AudioCraft Mac\*](https://github.com/trizko/audiocraft)                              | [AP BWE](https://github.com/yxlu-0102/AP-BWE)                                |
+| [StyleTTS2](https://github.com/sidharthrajaram/StyleTTS2)                           | [AudioCraft Plus\*](https://github.com/GrandaddyShmax/audiocraft_plus)                | [Resemble Enhance](https://github.com/resemble-ai/resemble-enhance)          |
+| [SeamlessM4T](https://github.com/facebookresearch/seamless_communication)           | [ACE-Step\*](https://github.com/ACE-Step/ACE-Step)                                    | [Audio Separator](https://github.com/nomadkaraoke/python-audio-separator)    |
+| [XTTSv2\*](https://github.com/coqui-ai/TTS)                                         |                                                                                       | [PyRNNoise\*](https://github.com/rsxdalv/extension_pyrnnoise)                |
+| [MARS5\*](https://github.com/camb-ai/mars5-tts)                                     |                                                                                       |                                                                              |
+| [F5-TTS\*](https://github.com/SWivid/F5-TTS)                                        |                                                                                       |                                                                              |
+| [Parler TTS\*](https://github.com/huggingface/parler-tts)                           |                                                                                       |                                                                              |
+| [OpenVoice\*](https://github.com/myshell-ai/OpenVoice)                              |                                                                                       |                                                                              |
+| [OpenVoice V2\*](https://github.com/myshell-ai/OpenVoice)                           |                                                                                       |                                                                              |
+| [Kokoro TTS\*](https://github.com/hexgrad/kokoro)                                   |                                                                                       |                                                                              |
+| [DIA\*](https://github.com/nari-labs/dia)                                           |                                                                                       |                                                                              |
+| [CosyVoice\*](https://github.com/FunAudioLLM/CosyVoice)                             |                                                                                       |                                                                              |
+| [GPT-SoVITS\*](https://github.com/X-T-E-R/GPT-SoVITS-Inference)                     |                                                                                       |                                                                              |
+| [Piper TTS\*](https://github.com/rhasspy/piper)                                     |                                                                                       |                                                                              |
+| [Kimi Audio 7B Instruct\*](https://github.com/Dao-AILab/Kimi-Audio)                 |                                                                                       |                                                                              |
+| [Chatterbox\*](https://github.com/rsxdalv/chatterbox)                               |                                                                                       |                                                                              |
+| [VibeVoice\*](https://github.com/rsxdalv/extension_vibevoice)                       |                                                                                       |                                                                              |
+| [Kitten TTS\*](https://github.com/rsxdalv/extension_kitten_tts)                     |                                                                                       |                                                                              |
+
+\* These models are not installed by default, instead they are available as extensions.
 
 </div>
+
+
+## Installation
+
+### Using the Installer (Recommended)
+
+Current base installation size is around 10.7 GB. Each model will require 2-8 GB of space in addition.
+
+* Download the [latest version](https://github.com/rsxdalv/TTS-WebUI/releases/download/v0.0.0/tts-webui-installer.zip) and extract it.
+* Run start_tts_webui.bat or start_tts_webui.sh to start the server. It will ask you to select the GPU/Chip you are using. Once everything has installed, it will start the Gradio server at http://localhost:7770 and the React UI at http://localhost:3000.
+* Output log will be available in the installer_scripts/output.log file.
+* Note: The start script sets up a conda environment and a python virtual environment. Thus you don't need to make a venv before that, and in fact, launching from another venv might break this script.
+
+### Manual installation
+
+Prerequisites:
+* git
+* Python 3.10 or 3.11 (3.12 not supported yet)
+* PyTorch
+* ffmpeg (with vorbis support)
+* (Optional) NodeJS 22.9.0 for React UI
+* (Optional) PostgreSQL 16.4+ for database support
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/rsxdalv/tts-webui.git
+   cd tts-webui
+   ```
+2. Install required packages:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3. Run the server:
+   ```bash
+   python server.py --no-react
+   ```
+
+4. For React UI:
+   ```bash
+   cd react-ui
+   npm install
+   npm run build
+   cd ..
+   python server.py
+   ```
+
+For detailed manual installation instructions, please refer to the [Manual Installation Guide](./documentation/manual_installation.md).
+
+### Docker Setup
+
+tts-webui can also be ran inside of a Docker container. Using CUDA inside of docker requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). To get started, pull the image from GitHub Container Registry:
+
+```
+docker pull ghcr.io/rsxdalv/tts-webui:main
+```
+
+Once the image has been pulled it can be started with Docker Compose:
+The ports are 7770 (env:TTS_PORT) for the Gradio backend and 3000 (env:UI_PORT) for the React front end.
+
+```
+docker compose up -d
+```
+
+The container will take some time to generate the first output while models are downloaded in the background. The status of this download can be verified by checking the container logs:
+
+```
+docker logs tts-webui
+```
+
+#### Building the image yourself
+If you wish to build your own docker container, you can use the included Dockerfile:
+
+```
+docker build -t tts-webui .
+```
+Please note that the docker-compose needs to be edited to use the image you just built.
+
 
 ## Changelog
 
@@ -370,56 +450,7 @@ Updates need to be done manually by using the mini-control panel:
 
 Using the instructions above, you can install an OpenAI compatible API, and use it with Silly Tavern or other OpenAI compatible clients.
 
-## Installation
-
-Current base installation size is around 10.7 GB. Each model will require 2-8 GB of space in addition.
-
-* Download the [latest version](https://github.com/rsxdalv/TTS-WebUI/releases/download/v0.0.0/tts-webui-installer.zip) and extract it.
-* Run start_tts_webui.bat or start_tts_webui.sh to start the server. It will ask you to select the GPU/Chip you are using. Once everything has installed, it will start the Gradio server at http://localhost:7770 and the React UI at http://localhost:3000.
-* Output log will be available in the installer_scripts/output.log file.
-* Note: The start script sets up a conda environment and a python virtual environment. Thus you don't need to make a venv before that, and in fact, launching from another venv might break this script.
-
-### Manual installation
-
-For detailed manual installation instructions, please refer to the [Manual Installation Guide](./documentation/manual_installation.md).
-
-### Docker Setup
-
-tts-webui can also be ran inside of a Docker container. Using CUDA inside of docker requires (NVIDIA Container Toolkit)[https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html]. To get started, pull the image from GitHub Container Registry:
-
-```
-docker pull ghcr.io/rsxdalv/tts-webui:main
-```
-
-Once the image has been pulled it can be started with Docker Compose:
-The ports are 7770 (env:TTS_PORT) for the Gradio backend and 3000 (env:UI_PORT) for the React front end.
-
-```
-docker compose up -d
-```
-
-The container will take some time to generate the first output while models are downloaded in the background. The status of this download can be verified by checking the container logs:
-
-```
-docker logs tts-webui
-```
-
-#### Building the image yourself
-If you wish to build your own docker container, you can use the included Dockerfile:
-
-```
-docker build -t tts-webui .
-```
-Please note that the docker-compose needs to be edited to use the image you just built.
-
-
 ## Compatibility / Errors
-
-Audiocraft is currently only compatible with Linux and Windows. MacOS support still has not arrived, although it might be possible to install manually.
-
-### Torch being reinstalled
-
-Due to the python package manager (pip) limitations, torch can get reinstalled several times. This is a wide ranging issue of pip and torch.
 
 ### Red messages in console
 These messages:

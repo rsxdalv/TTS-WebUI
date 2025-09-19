@@ -100,6 +100,7 @@ September:
 * Switch to PyPI for multiple extensions
 * Add Intel PyTorch installation option
 * Add "Custom" Choice option to installer for self-managed PyTorch installations
+* Integrate with new pip index for extensions (https://tts-webui.github.io/extensions-index/)
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

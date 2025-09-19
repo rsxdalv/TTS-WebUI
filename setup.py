@@ -3,14 +3,15 @@ import setuptools
 # Define versions
 TORCH_VERSION = "2.7.0"
 CUDA_VERSION = "cu128"
+torch = f"torch=={TORCH_VERSION}"
 
 with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
 # Define optional dependencies
 extras_require = {
-    "cpu": [
-        f"torch=={TORCH_VERSION}",
+    "cpu": [    
+        torch,
         "torchvision",
         "torchaudio",
     ],
@@ -19,25 +20,24 @@ extras_require = {
         # "triton>=2.0.0",
         # "flash-attn>=2.0.0",
         # f"torch=={TORCH_VERSION} --index-url https://download.pytorch.org/whl/{CUDA_VERSION}",
-        f"torch=={TORCH_VERSION}+{CUDA_VERSION}",
+        f"{torch}+{CUDA_VERSION}",
         "torchvision",
         "torchaudio",
         "xformers",
     ],
     "mac": [
-        f"torch=={TORCH_VERSION}",
+        torch,
         "torchvision",
         "torchaudio",
     ],
     "rocm": [
-        f"torch=={TORCH_VERSION}",
+        torch,
         "torchvision",
         "torchaudio",
-        # "torch>=2.0.0",
         # Add any ROCM specific packages here
     ],
     "intel": [
-        f"torch=={TORCH_VERSION}",
+        torch,
         "torchvision",
         "torchaudio",
         # --index-url https://download.pytorch.org/whl/test/xpu

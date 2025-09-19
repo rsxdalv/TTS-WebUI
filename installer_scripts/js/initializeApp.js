@@ -6,15 +6,12 @@ const { menu } = require("./menu.js");
 const { $, $$, $sh } = require("./shell.js");
 const { applyDatabaseConfig } = require("./applyDatabaseConfig.js");
 
-const DEBUG_DRY_RUN = false;
-
 const torchVersion = "2.7.0"; // 2.7.1 has no xformers
 const cudaVersion = "12.8";
 const cudaVersionTag = `cu128`;
+const torch = `torch==${torchVersion}`;
 
-const pythonVersion = `3.10.11`; // 3.11 and 3.12 are not yet supported
-const pythonPackage = `python=${pythonVersion}`;
-const conda = "micromamba";
+const pythonVersion = `3.10.11`; // 3.11 has limited support, 3.12 is not yet supported
 
 const ensurePythonVersion = async () => {
   try {
@@ -23,6 +20,9 @@ const ensurePythonVersion = async () => {
     if (version !== `Python ${pythonVersion}`) {
       displayMessage(`Current python version is """${version}"""`);
       displayMessage(`Python version is not ${pythonVersion}. Reinstalling...`);
+      const pythonPackage = `python=${pythonVersion}`;
+      const conda = "micromamba";
+
       await $(`${conda} install -y -k -c conda-forge ${pythonPackage}`);
     }
   } catch (error) {
@@ -56,7 +56,7 @@ const installDependencies = async (gpuchoice) => {
   try {
     if (gpuchoice === PyTorchChoice.NVIDIA) {
       await $(
-        `pip install -U torch==${torchVersion}+${cudaVersionTag} torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
+        `pip install -U ${torch}+${cudaVersionTag} torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
       );
       // add torchao
       // pip install --dry-run torchao --index-url https://download.pytorch.org/whl/cu124
@@ -65,21 +65,21 @@ const installDependencies = async (gpuchoice) => {
     } else if (gpuchoice === PyTorchChoice.CUSTOM) {
       displayMessage("Please install torch manually");
       displayMessage(
-        `For example with CUDA ${cudaVersion} use: pip install torch==${torchVersion}+${cudaVersionTag} torchvision torchaudio --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
+        `For example with CUDA ${cudaVersion} use: pip install ${torch}+${cudaVersionTag} torchvision torchaudio --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
       );
     } else if (gpuchoice === PyTorchChoice.APPLE_M_SERIES) {
-      await $(`pip install torch==${torchVersion} torchvision torchaudio`);
+      await $(`pip install ${torch} torchvision torchaudio`);
     } else if (gpuchoice === PyTorchChoice.CPU) {
       await $(
-        `pip install torch==${torchVersion}+cpu torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu`
+        `pip install ${torch}+cpu torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu`
       );
     } else if (gpuchoice === PyTorchChoice.AMD_ROCM) {
       await $(
-        `pip install torch==${torchVersion} torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/${rocmVersionTag[torchVersion]}`
+        `pip install ${torch} torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/${rocmVersionTag[torchVersion]}`
       );
     } else if (gpuchoice === PyTorchChoice.INTEL_XPU) {
       await $(
-        `pip install torch==${torchVersion} torchvision torchaudio --index-url https://download.pytorch.org/whl/test/xpu`
+        `pip install ${torch} torchvision torchaudio --index-url https://download.pytorch.org/whl/test/xpu`
       );
     } else {
       displayMessage("Unsupported or cancelled. Exiting...");
@@ -89,7 +89,7 @@ const installDependencies = async (gpuchoice) => {
 
     saveMajorVersion(majorVersion);
     displayMessage(
-      `  Successfully installed torch==${torchVersion} with CUDA ${cudaVersion} support`
+      `  Successfully installed ${torch} with CUDA ${cudaVersion} support`
     );
   } catch (error) {
     displayError(`Error during installation: ${error.message}`);
@@ -148,19 +148,14 @@ const removeGPUChoice = () => {
   if (fs.existsSync(gpuFile)) fs.unlinkSync(gpuFile);
 };
 
-const dry_run_flag = DEBUG_DRY_RUN ? "--dry-run " : "";
-
 async function pip_install_or_fail(
   requirements,
   name = "",
   pipFallback = false
 ) {
   displayMessage(`Installing ${name || requirements} dependencies...`);
-  await $sh(
-    `${
-      pipFallback ? "pip" : "uv pip"
-    } install ${dry_run_flag}${requirements} torch==${torchVersion}`
-  );
+  const pip = pipFallback ? "pip" : "uv pip";
+  await $sh(`${pip} install ${requirements} ${torch}`);
   displayMessage(
     `Successfully installed ${name || requirements} dependencies\n`
   );
@@ -174,6 +169,27 @@ async function pip_install(requirements, name = "", pipFallback = false) {
   }
 }
 
+const extensions = [
+  {
+    name: "Bark Voice Clone",
+    package: '"tts-webui-extension.bark_voice_clone>=0.0.1"',
+  },
+  { name: "RVC", package: '"tts-webui-extension.rvc>=0.0.3"' },
+  { name: "Audiocraft", package: '"tts-webui-extension.audiocraft>=0.0.2"' },
+  { name: "StyleTTS", package: '"tts-webui-extension.styletts2>=0.1.0"' },
+  { name: "Vall-E-X", package: '"tts-webui-extension.vall_e_x>=0.1.0"' },
+  {
+    name: "Stable Audio",
+    package: '"tts-webui-extension.stable_audio>=0.1.1"',
+  },
+];
+
+const constructDependencyInstallString = () =>
+  "-r requirements.txt " +
+  extensions.map((ext) => ext.package).join(" ") +
+  " hydra-core==1.3.2 nvidia-ml-py" +
+  " --extra-index-url https://tts-webui.github.io/extensions-index/";
+
 // The first install is a temporary safeguard due to mysterious issues with uv
 async function pip_install_all(fi = false) {
   if (readPipPackagesVersion() === newPipPackagesVersion)
@@ -182,28 +198,27 @@ async function pip_install_all(fi = false) {
     );
 
   async function single_install() {
-    try {
-      displayMessage("Attempting single pip install of all dependencies...");
+    displayMessage("Attempting single pip install of all dependencies...");
 
-      await pip_install_or_fail(
-        "-r requirements.txt git+https://github.com/rsxdalv/tts_webui_extension.audiocraft@main git+https://github.com/rsxdalv/tts_webui_extension.bark_voice_clone@main git+https://github.com/rsxdalv/tts_webui_extension.maha_tts@main git+https://github.com/rsxdalv/tts_webui_extension.rvc@main git+https://github.com/rsxdalv/tts_webui_extension.stable_audio@main git+https://github.com/rsxdalv/tts_webui_extension.styletts2@main git+https://github.com/rsxdalv/tts_webui_extension.vall_e_x@main hydra-core==1.3.2 nvidia-ml-py",
-        "All dependencies",
-        true
-      );
-      savePipPackagesVersion(newPipPackagesVersion);
-      displayMessage("");
-      return;
-    } catch (error) {
-      displayMessage(
-        "Failed to install all dependencies, falling back to individual installs..."
-      );
-    }
+    await pip_install_or_fail(
+      constructDependencyInstallString(),
+      "All dependencies",
+      true
+    );
+    savePipPackagesVersion(newPipPackagesVersion);
+    displayMessage("");
   }
 
-  await single_install();
+  try {
+    await single_install();
+    return;
+  } catch (error) {
+    displayMessage(
+      "Failed to install all dependencies, falling back to individual installs..."
+    );
+  }
 
   displayMessage("Updating dependencies...");
-  // pip_install_all(false); // potential speed optimization
 
   try {
     await pip_install_or_fail("-r requirements.txt", "Core Packages", fi);
@@ -213,13 +228,13 @@ async function pip_install_all(fi = false) {
     displayMessage("Exiting...");
     throw error;
   }
-  await pip_install("git+https://github.com/rsxdalv/tts_webui_extension.bark_voice_clone@main", "Bark Voice Clone", fi); // prettier-ignore
-  await pip_install("git+https://github.com/rsxdalv/tts_webui_extension.rvc@main", "RVC", fi); // prettier-ignore
-  await pip_install("git+https://github.com/rsxdalv/tts_webui_extension.audiocraft@main", "Audiocraft", fi); // prettier-ignore
-  await pip_install("git+https://github.com/rsxdalv/tts_webui_extension.styletts2@main", "StyleTTS", fi); // prettier-ignore
-  await pip_install("git+https://github.com/rsxdalv/tts_webui_extension.vall_e_x@main", "Vall-E-X", fi); // prettier-ignore
-  await pip_install("git+https://github.com/rsxdalv/tts_webui_extension.maha_tts@main", "Maha TTS", fi); // prettier-ignore
-  await pip_install("git+https://github.com/rsxdalv/tts_webui_extension.stable_audio@main", "Stable Audio", fi); // prettier-ignore
+  for (const ext of extensions) {
+    await pip_install(
+      `${ext.package} --extra-index-url https://tts-webui.github.io/extensions-index/`,
+      ext.name,
+      fi
+    );
+  }
   await pip_install("hydra-core==1.3.2", "hydra-core fix due to fairseq", fi); // reinstall hydra-core==1.3.2 because of fairseq
   await pip_install("nvidia-ml-py", "nvidia-ml-py", fi);
   savePipPackagesVersion(newPipPackagesVersion);

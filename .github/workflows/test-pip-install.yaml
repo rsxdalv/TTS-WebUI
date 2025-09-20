@@ -64,7 +64,6 @@ jobs:
             tts-webui-extension.styletts2>=0.1.0 \
             tts-webui-extension.vall_e_x>=0.1.0 \
             tts-webui-extension.stable_audio>=0.1.1 \
-            hydra-core==1.3.2 nvidia-ml-py \
             --extra-index-url https://tts-webui.github.io/extensions-index/
 
       - name: Test tts_webui

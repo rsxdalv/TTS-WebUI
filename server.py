@@ -25,7 +25,7 @@ from tts_webui.gradio.print_gradio_options import print_gradio_options
 gr_options = config["gradio_interface_options"]
 REACT_UI_PORT = os.environ.get("REACT_UI_PORT", 3000)
 
-def start_gradio_server(config):
+def start_gradio_server(gr_options, config):
 
     if "--share" in os.sys.argv:
         print("Gradio share mode enabled")
@@ -36,20 +36,19 @@ def start_gradio_server(config):
         print("Info: Docker mode: opening gradio server on all interfaces")
 
     print("Starting Gradio server...")
-    if "enable_queue" in gr_options:
-        del gr_options["enable_queue"]
-    if gr_options["auth"] is not None:
-        # split username:password into (username, password)
-        gr_options["auth"] = tuple(gr_options["auth"].split(":"))
-        print("Gradio server authentication enabled")
 
     def upgrade_gradio_options(options):
-        for key in ["file_directories", "favicon_path", "show_tips"]:
-            if key in gr_options:
-                del gr_options[key]
+        if gr_options["auth"] is not None:
+            # split username:password into (username, password)
+            gr_options["auth"] = tuple(gr_options["auth"].split(":"))
+            print("Gradio server authentication enabled")
+        for key in ["file_directories", "favicon_path", "show_tips", "enable_queue"]:
+            if key in options:
+                del options[key]
+        return options
 
-    upgrade_gradio_options(gr_options)
-    print_gradio_options(gr_options)
+    parsed_options = upgrade_gradio_options(gr_options)
+    print_gradio_options(parsed_options)
 
     from tts_webui.gradio.main_ui import main_ui
 
@@ -59,7 +58,7 @@ def start_gradio_server(config):
 
     try:
         demo.queue().launch(
-            **gr_options,
+            **parsed_options,
             allowed_paths=["."],
             favicon_path="./react-ui/public/favicon.ico",
         )
@@ -136,11 +135,14 @@ def server_hypervisor():
         print(f"Failed to set signal handlers: {e}")
 
 
-if __name__ == "__main__":
+def start():
     server_hypervisor()
 
     import webbrowser
 
     if gr_options["inbrowser"] and "--no-react" not in os.sys.argv:
         webbrowser.open(f"http://localhost:{REACT_UI_PORT}")
-    start_gradio_server(config=config)
+    start_gradio_server(gr_options=gr_options, config=config)
+
+if __name__ == "__main__":
+    start()

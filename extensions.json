@@ -740,6 +740,34 @@
             "website": "https://github.com/rsxdalv/tts_webui_extension.pyrnnoise",
             "extension_website": "https://github.com/rsxdalv/tts_webui_extension.pyrnnoise",
             "extension_platform_version": "0.0.1"
+        },
+        {
+            "package_name": "tts_webui_extension.mimo_audio",
+            "name": "MiMo-Audio",
+            "requirements": "tts_webui_extension.mimo_audio>=0.0.4",
+            "description": "A template extension for TTS Generation WebUI",
+            "extension_type": "interface",
+            "extension_class": "tools",
+            "author": "Xiaomi MiMo",
+            "extension_author": "rsxdalv",
+            "license": "MIT",
+            "website": "https://github.com/XiaomiMiMo/MiMo-Audio",
+            "extension_website": "https://github.com/rsxdalv/tts_webui_extension.mimo_audio",
+            "extension_platform_version": "0.0.1"
+        },
+        {
+            "package_name": "tts_webui_extension.songbloom",
+            "name": "Songbloom (in development)",
+            "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.songbloom@main",
+            "description": "A template extension for TTS Generation WebUI",
+            "extension_type": "interface",
+            "extension_class": "audio-music-generation",
+            "author": "Cypress-Yang",
+            "extension_author": "rsxdalv",
+            "license": "MIT",
+            "website": "https://github.com/rsxdalv/tts_webui_extension.songbloom",
+            "extension_website": "https://github.com/rsxdalv/tts_webui_extension.songbloom",
+            "extension_platform_version": "0.0.1"
         }
     ],
     "decorators": [

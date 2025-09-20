@@ -181,6 +181,7 @@ September:
 * Add Intel PyTorch installation option
 * Add "Custom" Choice option to installer for self-managed PyTorch installations
 * Integrate with new pip index for extensions (https://tts-webui.github.io/extensions-index/)
+* Add Xiaomi's MiMo Audio extension
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

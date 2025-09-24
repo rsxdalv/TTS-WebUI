@@ -56,7 +56,6 @@
 | :-----------------------------------------: | :-----------------------------------------: | :-------------------------------: |
 
 <div align="center">
-
 ## Supported Models
 
 | Text-to-speech                                                                      | Audio/Music Generation                                                                | Audio Conversion/Tools                                                       |
@@ -68,8 +67,8 @@
 | [Vall-E X](https://github.com/Plachtaa/VALL-E-X)                                    | [AudioCraft Mac\*](https://github.com/trizko/audiocraft)                              | [AP BWE](https://github.com/yxlu-0102/AP-BWE)                                |
 | [StyleTTS2](https://github.com/sidharthrajaram/StyleTTS2)                           | [AudioCraft Plus\*](https://github.com/GrandaddyShmax/audiocraft_plus)                | [Resemble Enhance](https://github.com/resemble-ai/resemble-enhance)          |
 | [SeamlessM4T](https://github.com/facebookresearch/seamless_communication)           | [ACE-Step\*](https://github.com/ACE-Step/ACE-Step)                                    | [Audio Separator](https://github.com/nomadkaraoke/python-audio-separator)    |
-| [XTTSv2\*](https://github.com/coqui-ai/TTS)                                         |                                                                                       | [PyRNNoise\*](https://github.com/rsxdalv/extension_pyrnnoise)                |
-| [MARS5\*](https://github.com/camb-ai/mars5-tts)                                     |                                                                                       |                                                                              |
+| [XTTSv2\*](https://github.com/coqui-ai/TTS)                                         | [Song Bloom\*](https://github.com/rsxdalv/tts_webui_extension.song_bloom)             | [PyRNNoise\*](https://github.com/rsxdalv/tts_webui_extension.pyrnnoise)      |
+| [MARS5\*](https://github.com/camb-ai/mars5-tts)                                     |                                                                                       | [MiMo Audio\*](https://github.com/rsxdalv/tts_webui_extension.mimo_audio)    |
 | [F5-TTS\*](https://github.com/SWivid/F5-TTS)                                        |                                                                                       |                                                                              |
 | [Parler TTS\*](https://github.com/huggingface/parler-tts)                           |                                                                                       |                                                                              |
 | [OpenVoice\*](https://github.com/myshell-ai/OpenVoice)                              |                                                                                       |                                                                              |
@@ -81,8 +80,9 @@
 | [Piper TTS\*](https://github.com/rhasspy/piper)                                     |                                                                                       |                                                                              |
 | [Kimi Audio 7B Instruct\*](https://github.com/Dao-AILab/Kimi-Audio)                 |                                                                                       |                                                                              |
 | [Chatterbox\*](https://github.com/rsxdalv/chatterbox)                               |                                                                                       |                                                                              |
-| [VibeVoice\*](https://github.com/rsxdalv/extension_vibevoice)                       |                                                                                       |                                                                              |
-| [Kitten TTS\*](https://github.com/rsxdalv/extension_kitten_tts)                     |                                                                                       |                                                                              |
+| [VibeVoice\*](https://github.com/rsxdalv/tts_webui_extension.vibevoice)             |                                                                                       |                                                                              |
+| [Kitten TTS\*](https://github.com/rsxdalv/tts_webui_extension.kitten_tts)           |                                                                                       |                                                                              |
+| [Index-TTS2\*](https://github.com/rsxdalv/tts_webui_extension.index_tts)            |                                                                                       |                                                                              |
 
 \* These models are not installed by default, instead they are available as extensions.
 
@@ -182,6 +182,8 @@ September:
 * Add "Custom" Choice option to installer for self-managed PyTorch installations
 * Integrate with new pip index for extensions (https://tts-webui.github.io/extensions-index/)
 * Add Xiaomi's MiMo Audio extension
+* Add Cypress-Yang's SongBloom extension
+* Add Index-TTS2 extension
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

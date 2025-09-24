@@ -51,6 +51,7 @@ extensions.external.json
 /data/models/piper/
 /data/models/ace_step/
 /data/models/bark/
+/data/models/index-tts/
 
 /data/api/presets/
 

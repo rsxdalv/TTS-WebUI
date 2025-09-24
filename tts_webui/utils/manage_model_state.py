@@ -36,7 +36,7 @@ def manage_model_state(model_namespace):
     """Decorator to manage the model state."""
 
     def decorator(func):
-        def wrapper(model_name, *args, **kwargs):
+        def wrapper(model_name="default", *args, **kwargs):
             global model_states
             if model_namespace not in model_states:
                 model_states[model_namespace] = ModelState()
@@ -48,10 +48,6 @@ def manage_model_state(model_namespace):
                 unload_model(model_namespace, silent=True)
                 model = func(model_name, *args, **kwargs)
                 model_state.set_model(model, model_name)
-            # else:
-            #     show(
-            #         f"Using cached model '{model_name}' in namespace '{model_namespace}'."
-            #     )
 
             return model_state.get_model()
 

@@ -182,6 +182,8 @@ September:
 * Add "Custom" Choice option to installer for self-managed PyTorch installations
 * Integrate with new pip index for extensions (https://tts-webui.github.io/extensions-index/)
 * Add Xiaomi's MiMo Audio extension
+* Add Cypress-Yang's SongBloom extension
+* Add Index-TTS2 extension
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

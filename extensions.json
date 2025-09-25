@@ -782,6 +782,20 @@
             "website": "https://github.com/rsxdalv/tts_webui_extension.index_tts",
             "extension_website": "https://github.com/rsxdalv/tts_webui_extension.index_tts",
             "extension_platform_version": "0.0.1"
+        },
+        {
+            "package_name": "tts_webui_extension.vox_cpm",
+            "name": "VoxCPM",
+            "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.vox_cpm@main",
+            "description": "A template extension for TTS Generation WebUI",
+            "extension_type": "interface",
+            "extension_class": "text-to-speech",
+            "author": "OpenBMB",
+            "extension_author": "rsxdalv",
+            "license": "MIT",
+            "website": "https://github.com/rsxdalv/tts_webui_extension.vox_cpm",
+            "extension_website": "https://github.com/rsxdalv/tts_webui_extension.vox_cpm",
+            "extension_platform_version": "0.0.1"
         }
     ],
     "decorators": [

@@ -83,6 +83,7 @@
 | [VibeVoice\*](https://github.com/rsxdalv/tts_webui_extension.vibevoice)             |                                                                                       |                                                                              |
 | [Kitten TTS\*](https://github.com/rsxdalv/tts_webui_extension.kitten_tts)           |                                                                                       |                                                                              |
 | [Index-TTS2\*](https://github.com/rsxdalv/tts_webui_extension.index_tts)            |                                                                                       |                                                                              |
+| [VoxCPM\*](https://github.com/rsxdalv/tts_webui_extension.vox_cpm)                  |                                                                                       |                                                                              |
 
 \* These models are not installed by default, instead they are available as extensions.
 
@@ -184,6 +185,7 @@ September:
 * Add Xiaomi's MiMo Audio extension
 * Add Cypress-Yang's SongBloom extension
 * Add Index-TTS2 extension
+* Add VoxCPM extension
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

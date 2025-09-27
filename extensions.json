@@ -785,7 +785,7 @@
         },
         {
             "package_name": "tts_webui_extension.vox_cpm",
-            "name": "VoxCPM",
+            "name": "VoxCPM (Beta)",
             "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.vox_cpm@main",
             "description": "A template extension for TTS Generation WebUI",
             "extension_type": "interface",
@@ -795,6 +795,20 @@
             "license": "MIT",
             "website": "https://github.com/rsxdalv/tts_webui_extension.vox_cpm",
             "extension_website": "https://github.com/rsxdalv/tts_webui_extension.vox_cpm",
+            "extension_platform_version": "0.0.1"
+        },
+        {
+            "package_name": "tts_webui_extension.fireredtts2",
+            "name": "FireRedTTS2 (Beta)",
+            "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.fireredtts2@main",
+            "description": "A template extension for TTS Generation WebUI",
+            "extension_type": "interface",
+            "extension_class": "text-to-speech",
+            "author": "FireRedTeam",
+            "extension_author": "rsxdalv",
+            "license": "MIT",
+            "website": "https://github.com/rsxdalv/tts_webui_extension.fireredtts2",
+            "extension_website": "https://github.com/rsxdalv/tts_webui_extension.fireredtts2",
             "extension_platform_version": "0.0.1"
         }
     ],

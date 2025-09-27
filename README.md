@@ -84,6 +84,7 @@
 | [Kitten TTS\*](https://github.com/rsxdalv/tts_webui_extension.kitten_tts)           |                                                                                       |                                                                              |
 | [Index-TTS2\*](https://github.com/rsxdalv/tts_webui_extension.index_tts)            |                                                                                       |                                                                              |
 | [VoxCPM\*](https://github.com/rsxdalv/tts_webui_extension.vox_cpm)                  |                                                                                       |                                                                              |
+| [FireRedTTS2\*](https://github.com/rsxdalv/tts_webui_extension.fireredtts2)         |                                                                                       |                                                                              |
 
 \* These models are not installed by default, instead they are available as extensions.
 
@@ -186,6 +187,7 @@ September:
 * Add Cypress-Yang's SongBloom extension
 * Add Index-TTS2 extension
 * Add VoxCPM extension
+* Add FireRedTTS2 extension
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

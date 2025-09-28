@@ -54,6 +54,7 @@ extensions.external.json
 /data/models/index-tts/
 /data/models/voxcpm/
 /data/models/fireredtts2/
+/data/models/megatts3/
 
 /data/api/presets/
 

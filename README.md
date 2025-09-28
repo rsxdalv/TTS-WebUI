@@ -85,6 +85,7 @@
 | [Index-TTS2\*](https://github.com/rsxdalv/tts_webui_extension.index_tts)            |                                                                                       |                                                                              |
 | [VoxCPM\*](https://github.com/rsxdalv/tts_webui_extension.vox_cpm)                  |                                                                                       |                                                                              |
 | [FireRedTTS2\*](https://github.com/rsxdalv/tts_webui_extension.fireredtts2)         |                                                                                       |                                                                              |
+| [MegaTTS3\*](https://github.com/rsxdalv/tts_webui_extension.megatts3)               |                                                                                       |                                                                              |
 
 \* These models are not installed by default, instead they are available as extensions.
 
@@ -188,6 +189,7 @@ September:
 * Add Index-TTS2 extension
 * Add VoxCPM extension
 * Add FireRedTTS2 extension
+* Add MegaTTS3 extension
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

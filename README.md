@@ -190,6 +190,7 @@ September:
 * Add VoxCPM extension
 * Add FireRedTTS2 extension
 * Add MegaTTS3 extension
+* Move towards publishing release tags
 
 August:
 * Fix model downloader when no token is used, thanks Nusantara.

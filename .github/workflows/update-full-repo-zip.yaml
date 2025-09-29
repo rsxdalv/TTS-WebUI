@@ -40,9 +40,15 @@ jobs:
         with:
           script: |
             // Get the latest release
-            const { data: release } = await github.rest.repos.getLatestRelease({
+            // const { data: release } = await github.rest.repos.getLatestRelease({
+            //  owner: context.repo.owner,
+            //  repo: context.repo.repo
+            // });
+
+            const { data: release } = await github.rest.repos.getReleaseByTag({
               owner: context.repo.owner,
-              repo: context.repo.repo
+              repo: context.repo.repo,
+              tag: 'v0.0.0'
             });
 
             const assets = release.assets;

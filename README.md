@@ -4,7 +4,6 @@
 
   <h4 align="center">
 
-  [Download Installer](https://github.com/rsxdalv/TTS-WebUI/releases/download/latest/tts-webui-installer.zip) ||
   [Download Installer](https://github.com/rsxdalv/TTS-WebUI/releases/download/v0.0.0/tts-webui-installer.zip) ||
   [Installation](#installation) ||
   [Docker Setup](#docker-setup) ||

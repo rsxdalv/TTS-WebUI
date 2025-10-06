@@ -37,12 +37,12 @@ def load_tabs(list_of_tabs):
 
 
 def all_tabs(config):
-    with gr.Tab("💬 Text-to-Speech"), gr.Tabs():
-        handle_extension_class("text-to-speech", config)
-    with gr.Tab("🎼 Audio/Music Generation"), gr.Tabs():
-        handle_extension_class("audio-music-generation", config)
-    with gr.Tab("🎙️ Audio Conversion"), gr.Tabs():
-        handle_extension_class("audio-conversion", config)
+    # with gr.Tab("💬 Text-to-Speech"), gr.Tabs():
+    #     handle_extension_class("text-to-speech", config)
+    # with gr.Tab("🎼 Audio/Music Generation"), gr.Tabs():
+    #     handle_extension_class("audio-music-generation", config)
+    # with gr.Tab("🎙️ Audio Conversion"), gr.Tabs():
+    #     handle_extension_class("audio-conversion", config)
     with gr.Tab("📁 Outputs"), gr.Tabs():
         outputs_tabs = [
             ("tts_webui.history_tab.main", "outputs_tab", "Outputs"),
@@ -53,8 +53,8 @@ def all_tabs(config):
 
         handle_extension_class("outputs", config)
 
-    with gr.Tab("🔧 Tools"), gr.Tabs():
-        handle_extension_class("tools", config)
+    # with gr.Tab("🔧 Tools"), gr.Tabs():
+    #     handle_extension_class("tools", config)
     with gr.Tab("⚙️ Settings"), gr.Tabs():
         from tts_webui.settings_tab_gradio import settings_tab_gradio
 
@@ -63,19 +63,14 @@ def all_tabs(config):
         )
 
         settings_tabs = [
-            (
-                "tts_webui.utils.model_location_settings_tab",
-                "model_location_settings_tab",
-                "Model Location Settings",
-            ),
-            ("tts_webui.utils.gpu_info_tab", "gpu_info_tab", "GPU Info"),
-            ("tts_webui.utils.pip_list_tab", "pip_list_tab", "Installed Packages"),
             ("tts_webui.extensions_loader", "extension_list_tab", "Extensions List"),
             (
                 "tts_webui.extensions_loader",
                 "extension_decorator_list_tab",
                 "Extension Decorators List",
             ),
+            # ("tts_webui.logs_tab", "logs_tab", "Logs"),
+            # ("tts_webui.about_tab", "about_tab", "About"),
         ]
         load_tabs(settings_tabs)
 

@@ -3,24 +3,23 @@ import torch
 
 
 def gpu_info_tab():
-    with gr.Tab("GPU Info") as gpu_info_tab:
-        gpu_info = gr.Markdown("")
+    gpu_info = gr.Markdown("")
 
-        gr.Button("Refresh").click(
-            fn=refresh_gpu_info,
-            outputs=gpu_info,
-            api_name="refresh_gpu_info",  # , every=1
-        )
-        gpu_info_tab.select(
-            fn=refresh_gpu_info,
-            outputs=gpu_info,
-        )
+    button = gr.Button("Load GPU Info")
+    button.click(
+        fn=refresh_gpu_info,
+        outputs=gpu_info,
+        api_name="refresh_gpu_info",  # , every=1
+    ).then(
+        fn=lambda: gr.Button("Refresh GPU Info"),
+        outputs=[button],
+    )
 
-        gr.Button("API_GET_GPU_INFO", visible=False).click(
-            fn=get_gpu_info,
-            outputs=[gr.JSON(None, visible=False)],
-            api_name="get_gpu_info",
-        )
+    gr.Button("API_GET_GPU_INFO", visible=False).click(
+        fn=get_gpu_info,
+        outputs=[gr.JSON(None, visible=False)],
+        api_name="get_gpu_info",
+    )
 
 
 def get_gpu_info():
@@ -91,6 +90,23 @@ Torch Version: {gpu_info['torch_version']}"""
 def refresh_gpu_info():
     return "".join([render_gpu_info(x) for x in get_gpu_info()])
 
+
+def extension__tts_generation_webui():
+    gpu_info_tab()
+    return {
+        "package_name": "extensions.builtin.extension_gpu_info",
+        "name": "GPU Info",
+        "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.gpu_info@main",
+        "description": "Display GPU information such as VRAM, CUDA version, and more.",
+        "extension_type": "interface",
+        "extension_class": "settings",
+        "author": "openai",
+        "extension_author": "openai",
+        "license": "MIT",
+        "website": "https://github.com/rsxdalv/tts_webui_extension.gpu_info",
+        "extension_website": "https://github.com/rsxdalv/tts_webui_extension.gpu_info",
+        "extension_platform_version": "0.0.1",
+    }
 
 if __name__ == "__main__":
     if "demo" in locals():

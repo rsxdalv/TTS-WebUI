@@ -32,15 +32,7 @@ def all_tabs(config):
     with gr.Tab("🎙️ Audio Conversion"), gr.Tabs():
         handle_extension_class("audio-conversion", config)
     with gr.Tab("📁 Outputs"), gr.Tabs():
-        outputs_tabs = [
-            ("tts_webui.history_tab.main", "outputs_tab", "Outputs"),
-            ("tts_webui.history_tab.main", "favorites_tab", "Favorites"),
-            ("tts_webui.history_tab.main", "collections_tab", "Collections"),
-        ]
-        load_tabs(outputs_tabs)
-
         handle_extension_class("outputs", config)
-
     with gr.Tab("🔧 Tools"), gr.Tabs():
         handle_extension_class("tools", config)
     with gr.Tab("⚙️ Settings"), gr.Tabs():
@@ -59,9 +51,4 @@ def all_tabs(config):
 
         handle_extension_class("settings", config)
     with gr.Tab("📚 Tutorials"), gr.Tabs():
-        tutorials_tabs = [
-            ("tts_webui.tutorials.tab", "tutorial_tab", "Tutorials"),
-        ]
-        load_tabs(tutorials_tabs)
-
         handle_extension_class("tutorials", config)

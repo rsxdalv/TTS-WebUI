@@ -237,6 +237,20 @@
             "extension_platform_version": "0.0.1"
         },
         {
+            "package_name": "extensions.builtin.extension_history_tab",
+            "name": "History",
+            "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.history_tab@main",
+            "description": "Outputs Tab for TTS WebUI",
+            "extension_type": "interface",
+            "extension_class": "outputs",
+            "author": "rsxdalv",
+            "extension_author": "rsxdalv",
+            "license": "MIT",
+            "website": "https://github.com/rsxdalv/tts_webui_extension.history_tab",
+            "extension_website": "https://github.com/rsxdalv/tts_webui_extension.history_tab",
+            "extension_platform_version": "0.0.1"
+        },
+        {
             "package_name": "extensions.builtin.extension_gallery_history",
             "name": "Gallery History",
             "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.gallery_history@main",
@@ -865,6 +879,20 @@
             "license": "MIT",
             "website": "https://github.com/rsxdalv/tts_webui_extension.model_location",
             "extension_website": "https://github.com/rsxdalv/tts_webui_extension.model_location",
+            "extension_platform_version": "0.0.1"
+        },
+        {
+            "package_name": "extensions.builtin.extension_youtube_tutorials",
+            "name": "YouTube Tutorials",
+            "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.youtube_tutorials@main",
+            "description": "YouTube Tutorials shows a list of YouTube tutorials in the web UI",
+            "extension_type": "interface",
+            "extension_class": "tutorials",
+            "author": "rsxdalv",
+            "extension_author": "rsxdalv",
+            "license": "MIT",
+            "website": "https://github.com/rsxdalv/tts_webui_extension.youtube_tutorials",
+            "extension_website": "https://github.com/rsxdalv/tts_webui_extension.youtube_tutorials",
             "extension_platform_version": "0.0.1"
         }
     ],

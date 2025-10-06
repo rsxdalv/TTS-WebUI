@@ -25,6 +25,22 @@ def load_tabs(list_of_tabs):
 
 
 def all_tabs(config):
+    return
+    with gr.Tab("⚙️ Settings"), gr.Tabs():
+        settings_tabs = [
+            ("tts_webui.extensions_loader", "extension_list_tab", "Extensions List"),
+            (
+                "tts_webui.extensions_loader",
+                "extension_decorator_list_tab",
+                "Extension Decorators List",
+            ),
+            # ("tts_webui.logs_tab", "logs_tab", "Logs"),
+            # ("tts_webui.about_tab", "about_tab", "About"),
+        ]
+        load_tabs(settings_tabs)
+
+        handle_extension_class("settings", config)
+    return
     with gr.Tab("💬 Text-to-Speech"), gr.Tabs():
         handle_extension_class("text-to-speech", config)
     with gr.Tab("🎼 Audio/Music Generation"), gr.Tabs():
@@ -37,6 +53,7 @@ def all_tabs(config):
         handle_extension_class("tools", config)
     with gr.Tab("⚙️ Settings"), gr.Tabs():
         settings_tabs = [
+            ("tts_webui.settings_tab_gradio", "gradio_settings", "Gradio Settings"),
             ("tts_webui.extensions_loader", "extension_list_tab", "Extensions List"),
             (
                 "tts_webui.extensions_loader",

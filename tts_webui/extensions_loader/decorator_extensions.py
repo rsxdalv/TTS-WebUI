@@ -90,6 +90,11 @@ def extension_decorator_list_tab():
                 )
 
 
+def _get_pretty_time(elapsed):
+    seconds = f"{elapsed:.2f}"
+    seconds = seconds.replace("0.", " .")
+    return f"{seconds.rjust(6, ' ')} seconds."
+
 def _load_decorators(class_name: Literal["outer", "inner"]):
     """
     Loads all decorators from extensions.
@@ -120,38 +125,46 @@ def _load_decorators(class_name: Literal["outer", "inner"]):
     gen_wrappers = []
 
     def _parse_module(module: ModuleType, name: str):
-        if name.startswith("decorator_"):
-            if name in disabled_extensions:
-                print(f"  Skipping disabled decorator extension {name}")
-                return
-            if name.endswith("_generator"):
-                gen_wrappers.append(getattr(module, name))
-                print(f"  Decorator {name} loaded")
-                return
-            wrappers.append(getattr(module, name))
-            print(f"  Decorator {name} loaded")
+        if name in disabled_extensions:
+            return
+
+        wrapper = getattr(module, name)
+        if name.endswith("_generator"):
+            gen_wrappers.append(wrapper)
+        else:
+            wrappers.append(wrapper)
 
     def _load(x: dict):
         if x["package_name"] in disabled_extensions:
             print(f"Skipping disabled decorator extension {x['name']}")
             return
         module = importlib.import_module(f"{x['package_name']}.main")
-        for name in dir(module):
+        names = dir(module)
+        extensions = [n for n in names if n.startswith("decorator_")]
+        for name in extensions:
             _parse_module(module, name)
+
+        skipped = [name for name in extensions if name in disabled_extensions]
+        loaded = [name for name in extensions if name not in disabled_extensions]
+
+        return loaded, skipped
 
     # Get decorator extensions filtered by class from the data loader
     filtered_extensions = get_decorator_extensions_by_class(class_name)
 
     for x in filtered_extensions:
-        print(f"Loading decorator extension {x['name']}")
+        print(f"Loading decorator {x['name'].ljust(30, '.')}...", end="")
         start_time = time.time()
         try:
-            _load(x)
+            loaded, skipped = _load(x)
+            print(_get_pretty_time(time.time() - start_time))
+
+            if loaded:
+                print(f"  Loaded: {', '.join(loaded)}")
+            if skipped:
+                print(f"  Skipped: {', '.join(skipped)}")
         except Exception as e:
-            print(f"Failed to load decorator extension {x['name']}: {e}")
-        finally:
-            elapsed_time = time.time() - start_time
-            print(f"  Done in {elapsed_time:.2f} seconds. ({x['name']})\n")
+            print("Failed.")
 
     wrappers.reverse()
     gen_wrappers.reverse()

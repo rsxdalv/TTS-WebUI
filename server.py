@@ -1,6 +1,6 @@
 # ruff: noqa: E402
 # %%
-print("Starting server...\n")
+print("Starting TTS WebUI... ", end="")
 
 # Apply torch.load monkeypatch early to ensure it's in place before any models are loaded
 from tts_webui.utils.torch_load_patch import apply_torch_load_patch
@@ -35,8 +35,6 @@ def start_gradio_server(gr_options, config):
         gr_options["server_name"] = "0.0.0.0"
         print("Info: Docker mode: opening gradio server on all interfaces")
 
-    print("Starting Gradio server...")
-
     def upgrade_gradio_options(options):
         if gr_options["auth"] is not None:
             # split username:password into (username, password)
@@ -54,8 +52,6 @@ def start_gradio_server(gr_options, config):
 
     demo = main_ui(config=config)
 
-    print("\n")
-
     try:
         demo.queue().launch(
             **parsed_options,
@@ -71,24 +67,10 @@ def server_hypervisor():
     import signal
     import sys
 
-    postgres_dir = os.path.join("data", "postgres")
+    argv = os.sys.argv
 
-    def stop_postgres(postgres_process):
-        try:
-            subprocess.check_call(f"pg_ctl stop -D {postgres_dir} -m fast", shell=True)
-            print("PostgreSQL stopped gracefully.")
-        except Exception as e:
-            print(f"Error stopping PostgreSQL: {e}")
-            postgres_process.terminate()
-
-    def signal_handler(signal, frame, postgres_process):
-        print("Shutting down...")
-        stop_postgres(postgres_process)
-        sys.exit(0)
-
-    # Check for --no-react flag
-    if "--no-react" not in os.sys.argv:
-        print("Starting React UI...")
+    if "--no-react" not in argv:
+        print("\nStarting React UI...")
         subprocess.Popen(
             f"npm start --prefix react-ui -- -p {REACT_UI_PORT}",
             env={
@@ -99,21 +81,32 @@ def server_hypervisor():
             shell=True,
         )
     else:
-        print("Skipping React UI (--no-react flag detected)")
+        print("skipping React UI (--no-react flag detected) ", end="")
 
-    # Check for --no-database or docker flag
-    if "--no-database" in os.sys.argv or "--docker" in os.sys.argv:
-        if "--docker" in os.sys.argv:
-            print("Info: Docker mode: skipping Postgres")
-        else:
-            print("Skipping Postgres (--no-database flag detected)")
+    if "--no-database" in argv or "--docker" in argv:
+        if "--no-database" in argv:
+            print("skipping Postgres (--no-database flag detected) \n", end="")
         return
 
-    print("Starting Postgres...")
+    print("\nStarting Postgres...")
+    postgres_dir = os.path.join("data", "postgres")
     postgres_process = subprocess.Popen(
         f"postgres -D {postgres_dir} -p 7773", shell=True
     )
-    try:
+    try:        
+        def stop_postgres(postgres_process):
+            try:
+                subprocess.check_call(f"pg_ctl stop -D {postgres_dir} -m fast", shell=True)
+                print("PostgreSQL stopped gracefully.")
+            except Exception as e:
+                print(f"Error stopping PostgreSQL: {e}")
+                postgres_process.terminate()
+
+        def signal_handler(signal, frame, postgres_process):
+            print("Shutting down...")
+            stop_postgres(postgres_process)
+            sys.exit(0)
+
         signal.signal(
             signal.SIGINT,
             lambda sig, frame: signal_handler(sig, frame, postgres_process),

@@ -54,7 +54,7 @@ def print_gradio_options(options):
 
     # Print header
     print(
-        f"Gradio server: http://{options.get('server_name', '127.0.0.1')}:{options.get('server_port', '7770')}"
+        f"Starting Gradio server: http://{options.get('server_name', '127.0.0.1')}:{options.get('server_port', '7770')}"
     )
 
     # Print each group

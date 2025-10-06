@@ -1,4 +1,4 @@
-<h1 align="center">TTS WebUI / Harmonica</h1>
+<h1 align="center">TTS WebUI</h1>
 
 <div align="center">
 
@@ -56,6 +56,7 @@
 | :-----------------------------------------: | :-----------------------------------------: | :-------------------------------: |
 
 <div align="center">
+
 ## Supported Models
 
 | Text-to-speech                                                                      | Audio/Music Generation                                                                | Audio Conversion/Tools                                                       |

@@ -29,6 +29,8 @@ def main_ui(config):
         with gr.Tabs():
             all_tabs(config)
 
+    print("\nGradio UI loaded")
+
     return blocks
 
 

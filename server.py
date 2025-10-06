@@ -54,7 +54,7 @@ def start_gradio_server(gr_options, config):
 
     demo = main_ui(config=config)
 
-    print("\n\n")
+    print("\n")
 
     try:
         demo.queue().launch(

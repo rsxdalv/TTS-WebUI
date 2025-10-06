@@ -5,18 +5,6 @@ from tts_webui.extensions_loader.LoadingIndicator import LoadingIndicator
 from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
 
 
-def reload_config_and_restart_ui():
-    import os
-
-    os._exit(0)
-    # print("Reloading config and restarting UI...")
-    # config = load_config()
-    # gradio_interface_options = config["gradio_interface_options"] if "gradio_interface_options" in config else {}
-    # demo.close()
-    # time.sleep(1)
-    # demo.launch(**gradio_interface_options)
-
-
 def run_tab(module_name, function_name, name, requirements=None):
     import importlib
 
@@ -37,12 +25,12 @@ def load_tabs(list_of_tabs):
 
 
 def all_tabs(config):
-    # with gr.Tab("💬 Text-to-Speech"), gr.Tabs():
-    #     handle_extension_class("text-to-speech", config)
-    # with gr.Tab("🎼 Audio/Music Generation"), gr.Tabs():
-    #     handle_extension_class("audio-music-generation", config)
-    # with gr.Tab("🎙️ Audio Conversion"), gr.Tabs():
-    #     handle_extension_class("audio-conversion", config)
+    with gr.Tab("💬 Text-to-Speech"), gr.Tabs():
+        handle_extension_class("text-to-speech", config)
+    with gr.Tab("🎼 Audio/Music Generation"), gr.Tabs():
+        handle_extension_class("audio-music-generation", config)
+    with gr.Tab("🎙️ Audio Conversion"), gr.Tabs():
+        handle_extension_class("audio-conversion", config)
     with gr.Tab("📁 Outputs"), gr.Tabs():
         outputs_tabs = [
             ("tts_webui.history_tab.main", "outputs_tab", "Outputs"),
@@ -53,16 +41,11 @@ def all_tabs(config):
 
         handle_extension_class("outputs", config)
 
-    # with gr.Tab("🔧 Tools"), gr.Tabs():
-    #     handle_extension_class("tools", config)
+    with gr.Tab("🔧 Tools"), gr.Tabs():
+        handle_extension_class("tools", config)
     with gr.Tab("⚙️ Settings"), gr.Tabs():
-        from tts_webui.settings_tab_gradio import settings_tab_gradio
-
-        settings_tab_gradio(
-            reload_config_and_restart_ui, config["gradio_interface_options"]
-        )
-
         settings_tabs = [
+            ("tts_webui.settings_tab_gradio", "gradio_settings", "Gradio Settings"),
             ("tts_webui.extensions_loader", "extension_list_tab", "Extensions List"),
             (
                 "tts_webui.extensions_loader",
@@ -76,6 +59,9 @@ def all_tabs(config):
 
         handle_extension_class("settings", config)
     with gr.Tab("📚 Tutorials"), gr.Tabs():
-        from tts_webui.tutorials.tab import tutorial_tab
+        tutorials_tabs = [
+            ("tts_webui.tutorials.tab", "tutorial_tab", "Tutorials"),
+        ]
+        load_tabs(tutorials_tabs)
 
-        tutorial_tab()
+        handle_extension_class("tutorials", config)

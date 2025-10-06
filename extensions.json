@@ -840,6 +840,20 @@
             "extension_platform_version": "0.0.1"
         },
         {
+            "package_name": "extensions.builtin.extension_gradio_settings",
+            "name": "Gradio Settings",
+            "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.gradio_settings@main",
+            "description": "Gradio Settings allows to configure Gradio interface options from the web UI",
+            "extension_type": "interface",
+            "extension_class": "settings",
+            "author": "rsxdalv",
+            "extension_author": "rsxdalv",
+            "license": "MIT",
+            "website": "https://github.com/rsxdalv/tts_webui_extension.gradio_settings",
+            "extension_website": "https://github.com/rsxdalv/tts_webui_extension.gradio_settings",
+            "extension_platform_version": "0.0.1"
+        },
+        {
             "package_name": "extensions.builtin.extension_gpu_info",
             "name": "GPU Info",
             "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.gpu_info@main",
@@ -899,7 +913,7 @@
     "decorators": [
         {
             "package_name": "extensions.builtin.extension_decorator_save_ffmpeg",
-            "name": "Decorator Save Ogg",
+            "name": "Save Ogg",
             "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.decorator_save_ffmpeg@main",
             "description": "Decorator Save Ogg",
             "extension_type": "decorator",
@@ -913,7 +927,7 @@
         },
         {
             "package_name": "extensions.builtin.extension_decorator_save_waveform",
-            "name": "Decorator Save Waveform",
+            "name": "Save Waveform",
             "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.decorator_save_waveform@main",
             "description": "Decorator Save Waveform",
             "extension_type": "decorator",
@@ -927,7 +941,7 @@
         },
         {
             "package_name": "extensions.builtin.extension_decorator_average_execution_time",
-            "name": "Decorator Average Execution Time",
+            "name": "Average Time",
             "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.decorator_average_execution_time@main",
             "description": "Decorator Average Execution Time",
             "extension_type": "decorator",

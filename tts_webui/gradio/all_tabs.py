@@ -37,7 +37,6 @@ def all_tabs(config):
         handle_extension_class("tools", config)
     with gr.Tab("⚙️ Settings"), gr.Tabs():
         settings_tabs = [
-            ("tts_webui.settings_tab_gradio", "gradio_settings", "Gradio Settings"),
             ("tts_webui.extensions_loader", "extension_list_tab", "Extensions List"),
             (
                 "tts_webui.extensions_loader",

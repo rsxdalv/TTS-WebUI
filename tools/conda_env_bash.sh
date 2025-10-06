@@ -1,8 +1,11 @@
 #!/bin/bash
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Change to the script's directory
+cd "$SCRIPT_DIR"
+
 export MICROMAMBA_EXE="./installer_files/mamba/micromamba"
 
 $MICROMAMBA_EXE run -p ./installer_files/env bash
-
-# /tools$ ./conda_env_bash.sh
-# ./conda_env_bash.sh: line 5: ./installer_files/mamba/micromamba: No such file or directory

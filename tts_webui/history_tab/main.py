@@ -60,6 +60,15 @@ def history_tab(directory="outputs", show_collections=False):
     ) as history_tab:
         return history_content(directory, history_tab, show_collections)
 
+def outputs_tab():
+    collections_directories_atom.render()
+    return history_tab("outputs")
+
+def favorites_tab():
+    return history_tab("favorites")
+
+def collections_tab():
+    return history_tab("outputs", show_collections=True)
 
 def history_content(directory, history_tab, show_collections):
     directories = get_collections()

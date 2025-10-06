@@ -1,14 +1,7 @@
 import gradio as gr
 
-from tts_webui.extensions_loader import (
-    extension_decorator_list_tab,
-    extension_list_tab,
-    handle_extension_class,
-)
+from tts_webui.extensions_loader import handle_extension_class
 from tts_webui.extensions_loader.LoadingIndicator import LoadingIndicator
-from tts_webui.history_tab.collections_directories_atom import (
-    collections_directories_atom,
-)
 from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
 
 
@@ -51,20 +44,11 @@ def all_tabs(config):
     with gr.Tab("🎙️ Audio Conversion"), gr.Tabs():
         handle_extension_class("audio-conversion", config)
     with gr.Tab("📁 Outputs"), gr.Tabs():
-        from tts_webui.history_tab.main import history_tab
-
-        collections_directories_atom.render()
-        try:
-            history_tab()
-            history_tab(directory="favorites")
-            history_tab(
-                directory="outputs",
-                show_collections=True,
-            )
-        except Exception as e:
-            generic_error_tab_advanced(e, name="History", requirements=None)
-
-        outputs_tabs = []
+        outputs_tabs = [
+            ("tts_webui.history_tab.main", "outputs_tab", "Outputs"),
+            ("tts_webui.history_tab.main", "favorites_tab", "Favorites"),
+            ("tts_webui.history_tab.main", "collections_tab", "Collections"),
+        ]
         load_tabs(outputs_tabs)
 
         handle_extension_class("outputs", config)
@@ -86,11 +70,14 @@ def all_tabs(config):
             ),
             ("tts_webui.utils.gpu_info_tab", "gpu_info_tab", "GPU Info"),
             ("tts_webui.utils.pip_list_tab", "pip_list_tab", "Installed Packages"),
+            ("tts_webui.extensions_loader", "extension_list_tab", "Extensions List"),
+            (
+                "tts_webui.extensions_loader",
+                "extension_decorator_list_tab",
+                "Extension Decorators List",
+            ),
         ]
         load_tabs(settings_tabs)
-
-        extension_list_tab()
-        extension_decorator_list_tab()
 
         handle_extension_class("settings", config)
     with gr.Tab("📚 Tutorials"), gr.Tabs():

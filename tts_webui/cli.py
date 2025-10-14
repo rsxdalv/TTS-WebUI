@@ -33,6 +33,27 @@ def serve(extra_args: Optional[List[str]] = typer.Argument(None)) -> int:  # pra
 
 
 @app.command()
+def mcp() -> int:  # pragma: no cover - manual run
+    """Start the MCP (Model Context Protocol) server for AI assistant integration."""
+    from tts_webui.mcp_server.server import main as mcp_main
+    import asyncio
+    
+    typer.secho("Starting TTS WebUI MCP server...", fg=typer.colors.GREEN)
+    typer.secho("The server uses stdio for communication with MCP clients.", fg=typer.colors.BLUE)
+    typer.secho("Connect your AI assistant to use TTS functionality.", fg=typer.colors.BLUE)
+    
+    try:
+        asyncio.run(mcp_main())
+        return 0
+    except KeyboardInterrupt:
+        typer.secho("\nMCP server stopped.", fg=typer.colors.YELLOW)
+        return 0
+    except Exception as e:
+        typer.secho(f"Error running MCP server: {e}", fg=typer.colors.RED)
+        return 1
+
+
+@app.command()
 def troubleshoot() -> None:
     """Run basic troubleshooting checks and print recommendations."""
     project_root = Path.cwd()

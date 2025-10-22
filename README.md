@@ -172,6 +172,14 @@ Please note that the docker-compose needs to be edited to use the image you just
 
 ## Changelog
 
+October:
+* Update Gradio to 5.49.1
+* Update @gradio/client to 1.19.1
+* Fix Chatterbox installation issues, paths and streaming errors in Silly Tavern
+* Create new extension category - Conversational AI
+* Reorganize environment variables, new dotenv manager
+* Convert more of the UI into extensions and simplify base server
+
 September:
 * OpenAI API now supports Whisper transcriptions
 * Removed PyTorch Nightly option

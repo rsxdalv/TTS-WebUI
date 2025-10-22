@@ -138,23 +138,33 @@ def _extension_management_ui(
                 get_latest_version(package_name),
                 outputs=[output],
             )
-            gr.Button("Attempt Update", variant="primary").click(
+            attempt_update = gr.Button("Attempt Update", variant="primary")
+            attempt_update.click(
+                fn=lambda: gr.Button("Updating...", interactive=False),
+                outputs=[attempt_update],
+            ).then(
                 pip_install_wrapper(requirements, title_name),
                 outputs=[output],
+            ).then(
+                fn=lambda: gr.Button("Attempt Update", interactive=True),
+                outputs=[attempt_update],
             )
-            gr.Button("Uninstall Extension", variant="stop").click(
+            uninstall_extension_btn = gr.Button("Uninstall Extension", variant="stop")
+            uninstall_extension_btn.click(
+                fn=lambda: gr.Button("Uninstalling...", interactive=False),
+                outputs=[uninstall_extension_btn],
+            ).then(
                 pip_uninstall_wrapper(package_name, title_name),
                 outputs=[output],
+            ).then(
+                fn=lambda: gr.Button("Uninstall Extension", interactive=True),
+                outputs=[uninstall_extension_btn],
             )
             toggle_btn = gr.Button("Disable", variant="secondary")
             toggle_btn.click(
                 fn=toggle_extension_state(package_name, disabled_extensions),
                 outputs=[toggle_btn],
             )
-            # gr.Button("Soft Reload (Might fail)", visible=False).click(
-            #     fn=disable_extension(package_name),
-            #     outputs=[output],
-            # )
         with gr.Accordion("Console", open=True):
             output.render()
 

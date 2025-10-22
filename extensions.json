@@ -1,6 +1,34 @@
 {
     "tabs": [
         {
+            "package_name": "extensions.builtin.extension_extension_list_tab",
+            "name": "Extensions List",
+            "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.extension_list_tab@main",
+            "description": "Extensions List shows the list of interface extensions in the web UI",
+            "extension_type": "interface",
+            "extension_class": "settings",
+            "author": "rsxdalv",
+            "extension_author": "rsxdalv",
+            "license": "MIT",
+            "website": "https://github.com/rsxdalv/tts_webui_extension.extension_list_tab",
+            "extension_website": "https://github.com/rsxdalv/tts_webui_extension.extension_list_tab",
+            "extension_platform_version": "0.0.1"
+        },
+        {
+            "package_name": "extensions.builtin.extension_extension_decorator_list_tab",
+            "name": "Decorator Extensions List",
+            "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.extension_decorator_list_tab@main",
+            "description": "Decorator Extensions List shows the list of decorator extensions in the web UI",
+            "extension_type": "interface",
+            "extension_class": "settings",
+            "author": "rsxdalv",
+            "extension_author": "rsxdalv",
+            "license": "MIT",
+            "website": "https://github.com/rsxdalv/tts_webui_extension.extension_decorator_list_tab",
+            "extension_website": "https://github.com/rsxdalv/tts_webui_extension.extension_decorator_list_tab",
+            "extension_platform_version": "0.0.1"
+        },
+        {
             "package_name": "tts_webui_extension.vall_e_x",
             "recommended": true,
             "name": "Vall-E-X",

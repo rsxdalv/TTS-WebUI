@@ -19,6 +19,9 @@ def init():
     load_dotenv()
     load_dotenv(dotenv_path=".env.user", override=True)
 
+
+def print_env():
+    print("Current Environment Variables:")
     # print env
     for key, value in os.environ.items():
         # if key.startswith("HUGGINGFACE") or key.startswith("HF_") or key.startswith(

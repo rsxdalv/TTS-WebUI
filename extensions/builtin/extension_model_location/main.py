@@ -90,7 +90,7 @@ def model_location_settings():
                 os.environ["HF_HOME"] = str(model_location_hf_env_var2)
                 os.environ["TORCH_HOME"] = str(model_location_th_home)
                 os.environ["XDG_CACHE_HOME"] = str(model_location_th_xdg)
-                from tts_webui.utils.setup_or_recover import generate_env, write_env
+                from tts_webui.dotenv_manager.writer import generate_env, write_env
 
                 write_env(
                     generate_env(
@@ -100,7 +100,6 @@ def model_location_settings():
                         model_location_th_xdg=model_location_th_xdg,
                     )
                 )
-                # os._exit(0)
                 return "saved"
 
             for i in inputs:

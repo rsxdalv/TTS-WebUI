@@ -37,6 +37,8 @@ export default async function handler(
 
   const { body } = req;
   const parsedBody = body && typeof body === "string" ? JSON.parse(body) : body;
+  // Impossible to catch error when the backend has no such endpoint
+  // Instead we need to get the metadata ahead of time to validate before calling gradio
   const result = await endpoints[name](parsedBody);
 
   res.status(200).json(result);

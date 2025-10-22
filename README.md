@@ -179,6 +179,7 @@ October:
 * Create new extension category - Conversational AI
 * Reorganize environment variables, new dotenv manager
 * Convert more of the UI into extensions and simplify base server
+* Add API_KEY to OpenAI TTS API extension
 
 September:
 * OpenAI API now supports Whisper transcriptions

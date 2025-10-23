@@ -181,6 +181,7 @@ October:
 * Convert more of the UI into extensions and simplify base server
 * Add API_KEY to OpenAI TTS API extension
 * feat: support new extensions format - tabsInGroups
+* feat: add External Extensions Installer to manage and install external extensions via JSON
 
 September:
 * OpenAI API now supports Whisper transcriptions

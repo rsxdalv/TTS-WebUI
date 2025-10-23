@@ -5,12 +5,12 @@ from tts_webui.extensions_loader import handle_extension_class
 
 def all_tabs(config):
     for name, extension_class in [
-        ("💬 Text-to-Speech", "text-to-speech"),
-        ("🎼 Audio/Music Generation", "audio-music-generation"),
-        ("🎙️ Audio Conversion", "audio-conversion"),
-        ("🤖 Conversational AI", "conversational-ai"),
-        ("📁 Outputs", "outputs"),
-        ("🔧 Tools", "tools"),
+        # ("💬 Text-to-Speech", "text-to-speech"),
+        # ("🎼 Audio/Music Generation", "audio-music-generation"),
+        # ("🎙️ Audio Conversion", "audio-conversion"),
+        # ("🤖 Conversational AI", "conversational-ai"),
+        # ("📁 Outputs", "outputs"),
+        # ("🔧 Tools", "tools"),
         ("⚙️ Settings", "settings"),
         ("📚 Tutorials", "tutorials"),
     ]:

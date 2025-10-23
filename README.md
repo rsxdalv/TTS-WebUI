@@ -180,6 +180,7 @@ October:
 * Reorganize environment variables, new dotenv manager
 * Convert more of the UI into extensions and simplify base server
 * Add API_KEY to OpenAI TTS API extension
+* feat: support new extensions format - tabsInGroups
 
 September:
 * OpenAI API now supports Whisper transcriptions

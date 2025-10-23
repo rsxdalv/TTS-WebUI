@@ -9,7 +9,7 @@ matplotlib
 typer
 
 ffmpeg-python # Apache 2.0
-gradio==5.5.0 # MIT License
+gradio==5.49.1 # MIT License
 pydantic==2.10.6 # for gradio 5.5.0 fix
 pillow==10.3.0 # for gradio, conda fix
 soundfile==0.12.1; sys_platform == 'win32' # torchaudio
@@ -27,21 +27,21 @@ accelerate>=0.33.0
 # triton>=3.2.0 ; sys_platform == 'linux',
 # triton-windows>=3.2.0.post18 ; sys_platform == 'win32', # has issues with certain libraries
 
-# flash-attn @ https://github.com/kingbri1/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu124torch2.6.0cxx11abiFALSE-cp310-cp310-win_amd64.whl ; sys_platform == 'win32'
-# flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.6cxx11abiFALSE-cp310-cp310-linux_x86_64.whl ; sys_platform == 'linux'
+# flash-attn @ https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.4.11/flash_attn-2.8.3+cu128torch2.6-cp310-cp310-linux_x86_64.whl ; sys_platform == 'linux' and python_version == '3.10'
+# flash-attn @ https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.4.10/flash_attn-2.8.2+cu128torch2.8-cp310-cp310-win_amd64.whl ; sys_platform == 'win32' and python_version == '3.10'
 
 # https://github.com/rsxdalv/xformers/releases/download/v0.0.30/xformers-0.0.30+cbc9beb.d20250514-cp310-cp310-macosx_11_0_universal2.whl ; sys_platform == 'darwin' and python_version == '3.10' # BSD 3-Clause License
 # https://github.com/rsxdalv/xformers/releases/download/v0.0.30/xformers-0.0.30+cbc9beb.d20250514-cp311-cp311-macosx_11_0_universal2.whl ; sys_platform == 'darwin' and python_version == '3.11' # BSD 3-Clause License
 
 # Core Extensions
-tts_webui_extension.bark>=0.0.3
+tts_webui_extension.bark>=0.0.5
 tts_webui_extension.tortoise_tts>=0.0.3
 tts_webui_extension.demucs>=0.0.4
 tts_webui_extension.mms>=0.0.2
 tts_webui_extension.seamless_m4t>=0.0.6
 tts_webui_extension.vocos>=0.0.3
-tts_webui_extension.openai_tts_api>=0.13.3
+tts_webui_extension.openai_tts_api>=0.14.0
 
-gradio-goodtabs>=0.0.3
-gradio-goodtab>=0.0.3
+gradio-goodtabs>=0.0.5
+gradio-goodtab>=0.0.5
 gradio-iconbutton>=0.0.1

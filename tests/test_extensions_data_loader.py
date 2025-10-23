@@ -18,6 +18,7 @@ from tts_webui.extensions_loader.extensions_data_loader import (
     load_merged_extensions_data,
     get_decorator_extensions,
     get_interface_extensions,
+    _flatten_interface_tabs,
     get_extension_example,
     filter_extensions_by_type_and_class,
     get_decorator_extensions_by_class,
@@ -85,6 +86,30 @@ class TestExtensionsDataLoader(unittest.TestCase):
                     "extension_class": "inner",
                 },
             ],
+            "tabsInGroups": {
+                "groupA": [
+                    {
+                        "package_name": "extension_group_a1",
+                        "name": "Group A 1",
+                        "extension_type": "interface",
+                        "extension_class": "audio-music-generation",
+                    }
+                ],
+                "groupB": [
+                    {
+                        "package_name": "extension_group_b1",
+                        "name": "Group B 1",
+                        "extension_type": "interface",
+                        "extension_class": "text-to-speech",
+                    },
+                    {
+                        "package_name": "extension_base2",  # duplicate from base tabs
+                        "name": "Base Extension 2 (Dup)",
+                        "extension_type": "interface",
+                        "extension_class": "audio-music-generation",
+                    }
+                ],
+            },
         }
 
     @patch("builtins.open", new_callable=mock_open, read_data='{"key": "value"}')
@@ -112,24 +137,9 @@ class TestExtensionsDataLoader(unittest.TestCase):
         """Test merging extensions data."""
         result = merge_extensions_data(self.base_extensions, self.external_extensions)
 
-        # Check that the base extensions are preserved
-        self.assertEqual(len(result["tabs"]), 3)  # 2 base + 1 external (1 duplicate ignored)
+        # Only decorators are concatenated; tabs are unchanged in merge
+        self.assertEqual(len(result.get("tabs", [])), 2)
         self.assertEqual(len(result["decorators"]), 2)  # 1 base + 1 external
-
-        # Check that the external extension was added
-        external_extension = next(
-            (x for x in result["tabs"] if x["package_name"] == "extension_external1"),
-            None,
-        )
-        self.assertIsNotNone(external_extension)
-        self.assertEqual(external_extension["name"], "External Extension 1")
-
-        # Check that the duplicate was not added
-        duplicate_extensions = [
-            x for x in result["tabs"] if x["package_name"] == "extension_base1"
-        ]
-        self.assertEqual(len(duplicate_extensions), 1)
-        self.assertEqual(duplicate_extensions[0]["name"], "Base Extension 1")  # Original name preserved
 
     @patch("os.path.exists")
     @patch("tts_webui.extensions_loader.extensions_data_loader.load_json_file")
@@ -145,8 +155,8 @@ class TestExtensionsDataLoader(unittest.TestCase):
         mock_load_json.assert_any_call(DEFAULT_EXTENSIONS_FILE)
         mock_load_json.assert_any_call(EXTERNAL_EXTENSIONS_FILE)
 
-        # Check that the merge happened correctly
-        self.assertEqual(len(result["tabs"]), 3)  # 2 base + 1 external (1 duplicate ignored)
+        # Check that the merge happened correctly (only decorators concatenated)
+        self.assertEqual(len(result.get("tabs", [])), 2)
         self.assertEqual(len(result["decorators"]), 2)  # 1 base + 1 external
 
     @patch("os.path.exists")
@@ -171,10 +181,12 @@ class TestExtensionsDataLoader(unittest.TestCase):
         result = get_decorator_extensions()
         self.assertEqual(result, self.base_extensions["decorators"])
 
-    @patch("tts_webui.extensions_loader.extensions_data_loader.load_merged_extensions_data")
-    def test_get_interface_extensions(self, mock_load_merged):
+    @patch("os.path.exists")
+    @patch("tts_webui.extensions_loader.extensions_data_loader.load_extensions_json")
+    def test_get_interface_extensions(self, mock_load_base, mock_exists):
         """Test getting interface extensions."""
-        mock_load_merged.return_value = self.base_extensions
+        mock_exists.return_value = False
+        mock_load_base.return_value = self.base_extensions
         result = get_interface_extensions()
         self.assertEqual(result, self.base_extensions["tabs"])
 
@@ -236,6 +248,50 @@ class TestExtensionsDataLoader(unittest.TestCase):
         result = create_empty_external_extensions_file()
         self.assertFalse(result)
         mock_file.assert_not_called()
+
+    @patch("os.path.exists")
+    @patch("tts_webui.extensions_loader.extensions_data_loader.load_extensions_json")
+    def test_get_interface_extensions_flattens_groups(self, mock_load_base, mock_exists):
+        """Test get_interface_extensions flattens tabsInGroups and deduplicates by package_name."""
+        mock_exists.return_value = False
+        # deep copy of base and add grouped tabs including a duplicate
+        merged = json.loads(json.dumps(self.base_extensions))
+        merged["tabsInGroups"] = {
+            "g1": [
+                {
+                    "package_name": "extension_group_1",
+                    "name": "Group 1",
+                    "extension_type": "interface",
+                    "extension_class": "text-to-speech",
+                },
+                # duplicate of base first tab should not add a second copy
+                self.base_extensions["tabs"][0],
+            ]
+        }
+        mock_load_base.return_value = merged
+        result = get_interface_extensions()
+        pkgs = [x.get("package_name") for x in result]
+        self.assertIn("extension_group_1", pkgs)
+        self.assertEqual(pkgs.count(self.base_extensions["tabs"][0]["package_name"]), 1)
+
+    def test_flatten_interface_tabs_helper(self):
+        data = {
+            "tabs": [
+                {"package_name": "a", "extension_type": "interface", "extension_class": "text-to-speech"}
+            ],
+            "tabsInGroups": {
+                "g1": [
+                    {"package_name": "b", "extension_type": "interface", "extension_class": "text-to-speech"},
+                    {"package_name": "a", "extension_type": "interface", "extension_class": "text-to-speech"},
+                ],
+                "g2": [
+                    {"package_name": "c", "extension_type": "interface", "extension_class": "audio-music-generation"}
+                ],
+            },
+        }
+        flattened = _flatten_interface_tabs(data)
+        pkgs = [x.get("package_name") for x in flattened]
+        self.assertEqual(pkgs, ["a", "b", "c"])  # order: tabs then groups, dedup
 
 
 if __name__ == "__main__":

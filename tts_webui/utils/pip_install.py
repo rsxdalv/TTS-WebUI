@@ -13,7 +13,7 @@ def write_log(output, name, type):
 def pip_install_wrapper(requirements, name, include_gradio=True):
     def fn():
         output = []
-        for line in _pip_install(requirements + " gradio==5.5.0" if include_gradio else "", name):
+        for line in _pip_install(requirements + " gradio==5.49.1" if include_gradio else "", name):
             output.append(str(line))
             yield "<br />".join(output)
 

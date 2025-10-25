@@ -60,7 +60,6 @@ def history_tab(directory="outputs", show_collections=False):
     ) as history_tab:
         return history_content(directory, history_tab, show_collections)
 
-
 def history_content(directory, history_tab, show_collections):
     directories = get_collections()
     directory_dropdown = gr.Dropdown(
@@ -290,3 +289,36 @@ def create_collection_ui(directories_state):
         inputs=[new_collection_name],
         outputs=[directories_state, create_collection_button],
     )
+
+
+def outputs_tab():
+    collections_directories_atom.render()
+    return history_tab("outputs")
+
+
+def favorites_tab():
+    return history_tab("favorites")
+
+
+def collections_tab():
+    return history_tab("outputs", show_collections=True)
+
+
+def extension__tts_generation_webui():
+    outputs_tab()
+    favorites_tab()
+    collections_tab()
+    return {
+        "package_name": "extensions.builtin.extension_history_tab",
+        "name": "History",
+        "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.history_tab@main",
+        "description": "Outputs Tab for TTS WebUI",
+        "extension_type": "interface",
+        "extension_class": "outputs",
+        "author": "rsxdalv",
+        "extension_author": "rsxdalv",
+        "license": "MIT",
+        "website": "https://github.com/rsxdalv/tts_webui_extension.history_tab",
+        "extension_website": "https://github.com/rsxdalv/tts_webui_extension.history_tab",
+        "extension_platform_version": "0.0.1",
+    }

@@ -55,6 +55,7 @@ extensions.external.json
 /data/models/voxcpm/
 /data/models/fireredtts2/
 /data/models/megatts3/
+/data/models/songbloom/
 
 /data/api/presets/
 

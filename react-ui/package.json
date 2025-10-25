@@ -18,7 +18,7 @@
     "@emotion/css": "^11.10.8",
     "@emotion/react": "^11.10.8",
     "@emotion/styled": "^11.10.8",
-    "@gradio/client": "^1.6.0",
+    "@gradio/client": "^1.19.1",
     "@material-design-icons/svg": "^0.14.7",
     "@radix-ui/react-accordion": "^1.2.10",
     "@radix-ui/react-collapsible": "^1.1.0",

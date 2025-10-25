@@ -138,23 +138,33 @@ def _extension_management_ui(
                 get_latest_version(package_name),
                 outputs=[output],
             )
-            gr.Button("Attempt Update", variant="primary").click(
+            attempt_update = gr.Button("Attempt Update", variant="primary")
+            attempt_update.click(
+                fn=lambda: gr.Button("Updating...", interactive=False),
+                outputs=[attempt_update],
+            ).then(
                 pip_install_wrapper(requirements, title_name),
                 outputs=[output],
+            ).then(
+                fn=lambda: gr.Button("Attempt Update", interactive=True),
+                outputs=[attempt_update],
             )
-            gr.Button("Uninstall Extension", variant="stop").click(
+            uninstall_extension_btn = gr.Button("Uninstall Extension", variant="stop")
+            uninstall_extension_btn.click(
+                fn=lambda: gr.Button("Uninstalling...", interactive=False),
+                outputs=[uninstall_extension_btn],
+            ).then(
                 pip_uninstall_wrapper(package_name, title_name),
                 outputs=[output],
+            ).then(
+                fn=lambda: gr.Button("Uninstall Extension", interactive=True),
+                outputs=[uninstall_extension_btn],
             )
             toggle_btn = gr.Button("Disable", variant="secondary")
             toggle_btn.click(
                 fn=toggle_extension_state(package_name, disabled_extensions),
                 outputs=[toggle_btn],
             )
-            # gr.Button("Soft Reload (Might fail)", visible=False).click(
-            #     fn=disable_extension(package_name),
-            #     outputs=[output],
-            # )
         with gr.Accordion("Console", open=True):
             output.render()
 
@@ -174,65 +184,64 @@ def handle_extension_class(extension_class, config):
 
 
 def extension_list_tab():
-    with gr.Tab("Extensions List"):
-        gr.Markdown("List of all extensions")
-        table_string = """| Title | Description |\n| --- | --- |\n"""
-        for x in extension_list_json:
-            table_string += (
-                # f"| {x['name']} (v{x['version']}) "
-                f"| {x['name']} "
-                + f"| {x['description']} (website: {x['website']}) (extension_website: {x['extension_website']}) |\n"
-            )
-        gr.Markdown(table_string)
-
-        external_extension_list = [
-            x for x in extension_list_json if "builtin" not in x["package_name"]
-        ]
-        # sort
-        external_extension_list = sorted(
-            external_extension_list, key=lambda x: x["name"].lower()
+    gr.Markdown("List of all extensions")
+    table_string = """| Title | Description |\n| --- | --- |\n"""
+    for x in extension_list_json:
+        table_string += (
+            # f"| {x['name']} (v{x['version']}) "
+            f"| {x['name']} "
+            + f"| {x['description']} (website: {x['website']}) (extension_website: {x['extension_website']}) |\n"
         )
+    gr.Markdown(table_string)
 
-        with gr.Row():
-            with gr.Column():
-                gr.Markdown("Install/Uninstall Extensions")
+    external_extension_list = [
+        x for x in extension_list_json if "builtin" not in x["package_name"]
+    ]
+    # sort
+    external_extension_list = sorted(
+        external_extension_list, key=lambda x: x["name"].lower()
+    )
 
-                install_dropdown = gr.Dropdown(
-                    label="Select Extension to Install",
-                    choices=[x["package_name"] for x in external_extension_list],
-                )
+    with gr.Row():
+        with gr.Column():
+            gr.Markdown("Install/Uninstall Extensions")
 
-                install_button = gr.Button("Install extension")
+            install_dropdown = gr.Dropdown(
+                label="Select Extension to Install",
+                choices=[x["package_name"] for x in external_extension_list],
+            )
 
-                def install_extension(package_name):
-                    requirements = [
-                        x["requirements"]
-                        for x in external_extension_list
-                        if x["package_name"] == package_name
-                    ][0]
-                    yield from pip_install_wrapper(requirements, package_name)()
+            install_button = gr.Button("Install extension")
 
-                install_button.click(
-                    fn=install_extension,
-                    inputs=[install_dropdown],
-                    outputs=[gr.HTML()],
-                    api_name="install_extension",
-                )
+            def install_extension(package_name):
+                requirements = [
+                    x["requirements"]
+                    for x in external_extension_list
+                    if x["package_name"] == package_name
+                ][0]
+                yield from pip_install_wrapper(requirements, package_name)()
 
-            with gr.Column():
-                gr.Markdown("Uninstall Extensions")
-                uninstall_dropdown = gr.Dropdown(
-                    label="Select Extension to Uninstall",
-                    choices=[x["package_name"] for x in external_extension_list],
-                )
-                uninstall_button = gr.Button("Uninstall extension")
+            install_button.click(
+                fn=install_extension,
+                inputs=[install_dropdown],
+                outputs=[gr.HTML()],
+                api_name="install_extension",
+            )
 
-                uninstall_button.click(
-                    fn=uninstall_extension,
-                    inputs=[uninstall_dropdown],
-                    outputs=[gr.HTML()],
-                    api_name="uninstall_extension",
-                )
+        with gr.Column():
+            gr.Markdown("Uninstall Extensions")
+            uninstall_dropdown = gr.Dropdown(
+                label="Select Extension to Uninstall",
+                choices=[x["package_name"] for x in external_extension_list],
+            )
+            uninstall_button = gr.Button("Uninstall extension")
+
+            uninstall_button.click(
+                fn=uninstall_extension,
+                inputs=[uninstall_dropdown],
+                outputs=[gr.HTML()],
+                api_name="uninstall_extension",
+            )
 
 
 if __name__ == "__main__":

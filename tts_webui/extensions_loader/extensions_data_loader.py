@@ -8,7 +8,8 @@ such as multiple JSON file merges or fetching from external sources.
 
 import json
 import os
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Iterable
+from itertools import chain
 
 
 # Default paths for extensions files
@@ -60,22 +61,19 @@ def merge_extensions_data(base_data: Dict[str, Any], additional_data: Dict[str, 
     result = base_data.copy()
 
     for key, value in additional_data.items():
-        if key in result and isinstance(value, list) and isinstance(result[key], list):
-            # For lists (like tabs and decorators), extend the existing list
-            # but avoid duplicates based on package_name
-            existing_package_names = {item.get("package_name") for item in result[key] if isinstance(item, dict) and "package_name" in item}
+        # Do not merge 'tabs' here; handled by get_interface_extensions
+        if key == "tabs":
+            continue
 
-            for item in value:
-                if isinstance(item, dict) and "package_name" in item:
-                    if item["package_name"] not in existing_package_names:
-                        result[key].append(item)
-                        existing_package_names.add(item["package_name"])
-                else:
-                    # If it doesn't have a package_name, just append it
-                    result[key].append(item)
+        # Only concatenate decorators; for all other keys, prefer base unless missing
+        if key == "decorators" and key in result and isinstance(value, list) and isinstance(result[key], list):
+            # Concatenate and de-duplicate by package_name preserving order
+            result[key] = _dedupe_by_package_name([*result[key], *value])
         elif key not in result:
-            # If the key doesn't exist in the base data, add it
             result[key] = value
+        else:
+            # For all other keys (including dicts like tabsInGroups), do not deep-merge; keep base
+            pass
 
     return result
 
@@ -110,15 +108,58 @@ def get_decorator_extensions() -> List[Dict[str, Any]]:
     return extensions_data.get("decorators", [])
 
 
+def _dedupe_by_package_name(items: Iterable[Any]) -> List[Dict[str, Any]]:
+    """Deduplicate a sequence of tab dicts by package_name preserving order."""
+    out: List[Dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in items:
+        if isinstance(item, dict):
+            pkg = item.get("package_name")
+            if pkg and pkg in seen:
+                continue
+            if pkg:
+                seen.add(pkg)
+        out.append(item)  # tolerate non-dict if present
+    return out
+
+
+def _flatten_interface_tabs(extensions_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Return a single list of interface tabs from either 'tabs' or 'tabsInGroups'.
+
+    - Accepts legacy format: { "tabs": [ ... ] }
+    - Accepts grouped format: { "tabsInGroups": { "groupA": [ ... ], "groupB": [ ... ] } }
+    - Concatenates tabs + ...Object.values(tabsInGroups) and de-duplicates by package_name.
+    """
+    tabs_list = extensions_data.get("tabs", []) or []
+    groups = extensions_data.get("tabsInGroups", {}) or {}
+    group_lists = [v for v in groups.values() if isinstance(v, list)] if isinstance(groups, dict) else []
+    flattened = chain.from_iterable([tabs_list, *group_lists])
+    return _dedupe_by_package_name(flattened)
+
+
 def get_interface_extensions() -> List[Dict[str, Any]]:
     """
-    Get the list of interface extensions (tabs).
+    Get the list of interface extensions (tabs) supporting both 'tabs' and 'tabsInGroups'.
+
+    Merge strategy: flatten each source (base, then external) independently, then
+    concatenate and de-duplicate by package_name to preserve the original order.
 
     Returns:
-        List[Dict[str, Any]]: List of interface extensions.
+        List[Dict[str, Any]]: Ordered, de-duplicated list of interface extensions.
     """
-    extensions_data = load_merged_extensions_data()
-    return extensions_data.get("tabs", [])
+    # Base (main) file
+    base_data = load_extensions_json()
+    base_tabs = _flatten_interface_tabs(base_data)
+
+    # External (optional)
+    combined = list(base_tabs)
+    if os.path.exists(EXTERNAL_EXTENSIONS_FILE):
+        external_data = load_json_file(EXTERNAL_EXTENSIONS_FILE)
+        if external_data:
+            external_tabs = _flatten_interface_tabs(external_data)
+            combined = _dedupe_by_package_name([*combined, *external_tabs])
+
+    return combined
 
 
 def filter_extensions_by_type_and_class(
@@ -196,7 +237,7 @@ def create_empty_external_extensions_file() -> bool:
     if not os.path.exists(EXTERNAL_EXTENSIONS_FILE):
         try:
             with open(EXTERNAL_EXTENSIONS_FILE, "w") as f:
-                json.dump({"tabs": [], "decorators": []}, f, indent=4)
+                json.dump({"tabs": [], "tabsInGroups": {}, "decorators": []}, f, indent=4)
             print(f"Created empty {EXTERNAL_EXTENSIONS_FILE}")
             return True
         except Exception as e:

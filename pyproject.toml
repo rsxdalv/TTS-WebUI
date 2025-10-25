@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "TTS-WebUI"
+version = "0.2.0"
+description = "TTS WebUI / Harmonica"
+readme = "README.md"
+authors = [
+    {name = "rsxdalv"}
+]
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dynamic = ["dependencies"]
+
+[project.urls]
+Homepage = "https://github.com/rsxdalv/tts-webui"
+
+[project.scripts]
+tts-webui = "tts_webui.cli:main"
+
+[project.optional-dependencies]
+cpu = [
+    "torch==2.7.0",
+    "torchvision",
+    "torchaudio",
+]
+cuda = [
+    "torch==2.7.0+cu128",
+    "torchvision",
+    "torchaudio",
+    "xformers",
+]
+mac = [
+    "torch==2.7.0",
+    "torchvision",
+    "torchaudio",
+]
+rocm = [
+    "torch==2.7.0",
+    "torchvision",
+    "torchaudio",
+]
+intel = [
+    "torch==2.7.0",
+    "torchvision",
+    "torchaudio",
+]
+
+[tool.setuptools]
+packages = ["tts_webui"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+# [tool.setuptools.package-data]
+# "*" = ["*.json"]
+
+# Alternative configuration if you want to use find_namespace_packages
+# [tool.setuptools.packages.find]
+# namespaces = true
+# include = ["tts_webui.*"]

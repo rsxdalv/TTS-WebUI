@@ -134,6 +134,8 @@ def extension__tts_generation_webui():
     gr.Markdown("""
     ## External Extensions Installer
     Paste one or more extension JSON objects below. We'll validate, preview, and let you add them to `extensions.external.json` and optionally install their requirements right away.
+
+    You can discover and copy extension JSON entries from the [TTS WebUI Extension Catalog](https://rsxdalv.github.io/tts-webui-extension-catalog/).
     """)
 
     with gr.Row():

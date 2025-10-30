@@ -56,7 +56,7 @@ def _handle_package(package_name, title_name, requirements):
             main_tab = getattr(module, "extension__tts_generation_webui")
             with gr.Tab(title_name):
                 if "builtin" in package_name:
-                    gr.Markdown(f"{title_name} Extension is up to date")
+                    pass
                 else:
                     if hasattr(module, "update_button"):
                         update_button = getattr(module, "update_button")

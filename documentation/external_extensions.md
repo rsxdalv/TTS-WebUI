@@ -11,6 +11,16 @@ The TTS WebUI supports loading extensions from multiple sources:
 
 This allows you to add your own extensions without modifying the main extensions file, making it easier to update the application without conflicts.
 
+## Discovering Extensions
+
+You can browse and discover available extensions from the TTS WebUI Extension Catalog at [https://rsxdalv.github.io/tts-webui-extension-catalog/](https://rsxdalv.github.io/tts-webui-extension-catalog/).
+
+This online catalog provides a curated list of community-created extensions that can be added to your TTS WebUI installation.
+
+### Contributing Extensions
+
+To add your own extension to the catalog, you can submit a pull request on the GitHub repository at [https://github.com/rsxdalv/tts-webui-extension-catalog/pulls](https://github.com/rsxdalv/tts-webui-extension-catalog/pulls). Follow the repository's contribution guidelines to submit your extension for review and inclusion.
+
 ## How to Use
 
 ### Creating the External Extensions File

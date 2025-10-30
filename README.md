@@ -182,6 +182,7 @@ October:
 * Add API_KEY to OpenAI TTS API extension
 * feat: support new extensions format - tabsInGroups
 * feat: add External Extensions Installer to manage and install external extensions via JSON
+* feat: Add links to TTS WebUI Extension Catalog in documentation and installer UI
 
 September:
 * OpenAI API now supports Whisper transcriptions
@@ -227,7 +228,11 @@ See the [2023 Changelog](./documentation/changelog-2023.md) for a detailed list 
 
 ## Extensions
 
-Extensions are available to install from the webui itself, or using React UI. They can also be installed using the extension manager. Internally, extensions are just python packages that are installed using pip. Multiple extensions can be installed at the same time, but there might be compatibility issues between them. After installing or updating an extension, you need to restart the app to load it.
+Extensions are available to install from the webui itself, or using React UI. They can also be installed using the extension manager or the External Extensions Installer (a built-in tool for adding custom extensions from JSON).
+
+Internally, extensions are just python packages that are installed using pip. Multiple extensions can be installed at the same time, but there might be compatibility issues between them. After installing or updating an extension, you need to restart the app to load it.
+
+For a curated list of community-created extensions, visit the [TTS WebUI Extension Catalog](https://rsxdalv.github.io/tts-webui-extension-catalog/). You can also find information on publishing your own extensions there.
 
 Updates need to be done manually by using the mini-control panel:
 
@@ -365,4 +370,3 @@ Most notably:
 - Tortoise: *Unknown* (Apache-2.0 according to repo, but no license file in HuggingFace)
 - MusicGen: CC BY-NC 4.0
 - AudioGen: CC BY-NC 4.0
-

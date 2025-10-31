@@ -37,10 +37,10 @@ accelerate>=0.33.0
 tts_webui_extension.bark>=0.0.5
 tts_webui_extension.tortoise_tts>=0.0.3
 tts_webui_extension.demucs>=0.0.4
-tts_webui_extension.mms>=0.0.2
+tts_webui_extension.mms>=0.0.5
 tts_webui_extension.seamless_m4t>=0.0.6
 tts_webui_extension.vocos>=0.0.3
-tts_webui_extension.openai_tts_api>=0.14.0
+tts_webui_extension.openai_tts_api>=0.15.0
 tts_webui_extension.log_viewer>=0.1.0
 
 gradio-goodtabs>=0.0.5

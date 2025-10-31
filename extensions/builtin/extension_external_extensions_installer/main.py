@@ -137,6 +137,11 @@ def extension__tts_generation_webui():
 
     You can discover and copy extension JSON entries from the [TTS WebUI Extension Catalog](https://rsxdalv.github.io/tts-webui-extension-catalog/).
     """)
+    
+    with gr.Accordion("Browse Extension Catalog", open=True):
+        gr.HTML(
+            """<iframe width="100%" height="600px" src="https://rsxdalv.github.io/tts-webui-extension-catalog/?browse=true" title="TTS WebUI Extension Catalog" frameborder="0" allowfullscreen></iframe>"""
+        )
 
     with gr.Row():
         json_input = gr.Textbox(label="Extension JSON", lines=16, placeholder="Paste JSON object or array of objects here")

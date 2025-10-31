@@ -1,5 +1,41 @@
 # Changelog 2025 (Until June)
 
+
+## September 2025
+* OpenAI API now supports Whisper transcriptions
+* Removed PyTorch Nightly option
+* Fix Google Colab installation (Python 3.12 not supported)
+* Add Kitten TTS Mini extension
+* Add PyRNNoise extension
+* Upgrade React UI's Chatterbox interface
+* Rename Kokoro TTS extension to OpenAI TTS API extension
+* Rename all extensions to tts_webui_extension.*
+* Switch to PyPI for multiple extensions
+* Add Intel PyTorch installation option
+* Add "Custom" Choice option to installer for self-managed PyTorch installations
+* Integrate with new pip index for extensions (https://tts-webui.github.io/extensions-index/)
+* Add Xiaomi's MiMo Audio extension
+* Add Cypress-Yang's SongBloom extension
+* Add Index-TTS2 extension
+* Add VoxCPM extension
+* Add FireRedTTS2 extension
+* Add MegaTTS3 extension
+* Move towards publishing release tags
+
+## August 2025
+* Fix model downloader when no token is used, thanks Nusantara.
+* Improve Chatterbox speed
+* Add VibeVoice (Early Access) extension
+* Add docker compose volumes to persist data #529, thanks FranckKe.
+* [react-ui] Prepend voices/chatterbox to voice file selection in ap test page #542, thanks rohan-sircar.
+
+## July 2025
+* Add new tutorials
+* Add more robust gradio launching
+* Simplify installation instructions
+* Improve chatterbox speed.
+
+
 ## June 2025
 
 June 26:

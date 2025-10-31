@@ -172,6 +172,10 @@ Please note that the docker-compose needs to be edited to use the image you just
 
 ## Changelog
 
+November:
+* Add extension marketplace directly in the Gradio UI using iframe
+
+
 October:
 * Update Gradio to 5.49.1
 * Update @gradio/client to 1.19.1
@@ -184,40 +188,6 @@ October:
 * feat: add External Extensions Installer to manage and install external extensions via JSON
 * feat: Add links to TTS WebUI Extension Catalog in documentation and installer UI
 * feat: Add Log Viewer extension to view and manage log files
-
-September:
-* OpenAI API now supports Whisper transcriptions
-* Removed PyTorch Nightly option
-* Fix Google Colab installation (Python 3.12 not supported)
-* Add Kitten TTS Mini extension
-* Add PyRNNoise extension
-* Upgrade React UI's Chatterbox interface
-* Rename Kokoro TTS extension to OpenAI TTS API extension
-* Rename all extensions to tts_webui_extension.*
-* Switch to PyPI for multiple extensions
-* Add Intel PyTorch installation option
-* Add "Custom" Choice option to installer for self-managed PyTorch installations
-* Integrate with new pip index for extensions (https://tts-webui.github.io/extensions-index/)
-* Add Xiaomi's MiMo Audio extension
-* Add Cypress-Yang's SongBloom extension
-* Add Index-TTS2 extension
-* Add VoxCPM extension
-* Add FireRedTTS2 extension
-* Add MegaTTS3 extension
-* Move towards publishing release tags
-
-August:
-* Fix model downloader when no token is used, thanks Nusantara.
-* Improve Chatterbox speed
-* Add VibeVoice (Early Access) extension
-* Add docker compose volumes to persist data #529, thanks FranckKe.
-* [react-ui] Prepend voices/chatterbox to voice file selection in ap test page #542, thanks rohan-sircar.
-
-July: 
-* Add new tutorials
-* Add more robust gradio launching
-* Simplify installation instructions
-* Improve chatterbox speed.
 
 ## Past Changes
 

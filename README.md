@@ -183,6 +183,7 @@ October:
 * feat: support new extensions format - tabsInGroups
 * feat: add External Extensions Installer to manage and install external extensions via JSON
 * feat: Add links to TTS WebUI Extension Catalog in documentation and installer UI
+* feat: Add Log Viewer extension to view and manage log files
 
 September:
 * OpenAI API now supports Whisper transcriptions

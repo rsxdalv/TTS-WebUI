@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "TTS-WebUI"
-version = "0.2.0"
+version = "0.2.1"
 description = "TTS WebUI / Harmonica"
 readme = "README.md"
 authors = [

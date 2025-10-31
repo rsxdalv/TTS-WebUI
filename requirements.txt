@@ -41,6 +41,7 @@ tts_webui_extension.mms>=0.0.2
 tts_webui_extension.seamless_m4t>=0.0.6
 tts_webui_extension.vocos>=0.0.3
 tts_webui_extension.openai_tts_api>=0.14.0
+tts_webui_extension.log_viewer>=0.1.0
 
 gradio-goodtabs>=0.0.5
 gradio-goodtab>=0.0.5

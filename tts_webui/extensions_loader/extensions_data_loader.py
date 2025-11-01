@@ -15,6 +15,9 @@ from itertools import chain
 # Default paths for extensions files
 DEFAULT_EXTENSIONS_FILE = "extensions.json"
 EXTERNAL_EXTENSIONS_FILE = "extensions.external.json"
+# Catalog (git-cloned) source
+CATALOG_DIR = os.path.join("data", "extensions-catalog")
+CATALOG_EXTENSIONS_FILE = os.path.join(CATALOG_DIR, "lib", "extensions.json")
 
 
 def load_json_file(file_path: str) -> Dict[str, Any]:
@@ -45,6 +48,19 @@ def load_extensions_json() -> Dict[str, Any]:
         Returns an empty dict if the file cannot be loaded.
     """
     return load_json_file(DEFAULT_EXTENSIONS_FILE)
+
+
+def load_catalog_extensions_json() -> Dict[str, Any]:
+    """
+    Load the extensions catalog from the git-synced repository, if present.
+
+    Returns an empty dict if not available or failed to load.
+    """
+    if os.path.exists(CATALOG_EXTENSIONS_FILE):
+        data = load_json_file(CATALOG_EXTENSIONS_FILE)
+        if data:
+            return data
+    return {}
 
 
 def merge_extensions_data(base_data: Dict[str, Any], additional_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -82,19 +98,36 @@ def load_merged_extensions_data() -> Dict[str, Any]:
     """
     Load and merge extensions data from multiple sources.
 
+    Precedence for decorators and similar list-like data: external > latest > base.
+    Tabs are handled separately in get_interface_extensions().
+
     Returns:
         Dict[str, Any]: Merged extensions data from all sources.
     """
-    # Load base extensions data
-    extensions_data = load_extensions_json()
+    base = load_extensions_json()
+    catalog = load_catalog_extensions_json()
+    external = load_json_file(EXTERNAL_EXTENSIONS_FILE) if os.path.exists(EXTERNAL_EXTENSIONS_FILE) else {}
 
-    # Load external extensions data if it exists
-    if os.path.exists(EXTERNAL_EXTENSIONS_FILE):
-        external_data = load_json_file(EXTERNAL_EXTENSIONS_FILE)
-        if external_data:
-            extensions_data = merge_extensions_data(extensions_data, external_data)
+    # Start from base metadata
+    result: Dict[str, Any] = base.copy() if isinstance(base, dict) else {}
 
-    return extensions_data
+    # Merge decorators with precedence: external > latest > base (keep-first by package_name)
+    base_decor = base.get("decorators", []) if isinstance(base, dict) else []
+    catalog_decor = catalog.get("decorators", []) if isinstance(catalog, dict) else []
+    external_decor = external.get("decorators", []) if isinstance(external, dict) else []
+    result["decorators"] = _dedupe_by_package_name([*external_decor, *catalog_decor, *base_decor])
+
+    # For any other non-tab keys missing in base, fill from latest, then external
+    for src in (catalog, external):
+        if not isinstance(src, dict):
+            continue
+        for k, v in src.items():
+            if k in ("tabs", "tabsInGroups", "decorators"):
+                continue
+            if k not in result:
+                result[k] = v
+
+    return result
 
 
 def get_decorator_extensions() -> List[Dict[str, Any]]:
@@ -141,24 +174,21 @@ def get_interface_extensions() -> List[Dict[str, Any]]:
     """
     Get the list of interface extensions (tabs) supporting both 'tabs' and 'tabsInGroups'.
 
-    Merge strategy: flatten each source (base, then external) independently, then
-    concatenate and de-duplicate by package_name to preserve the original order.
+    Precedence: external > latest > base. Implemented by concatenation order with
+    keep-first de-duplication by package_name.
 
     Returns:
         List[Dict[str, Any]]: Ordered, de-duplicated list of interface extensions.
     """
-    # Base (main) file
     base_data = load_extensions_json()
+    catalog_data = load_catalog_extensions_json()
+    external_data = load_json_file(EXTERNAL_EXTENSIONS_FILE) if os.path.exists(EXTERNAL_EXTENSIONS_FILE) else {}
+
     base_tabs = _flatten_interface_tabs(base_data)
+    catalog_tabs = _flatten_interface_tabs(catalog_data)
+    external_tabs = _flatten_interface_tabs(external_data)
 
-    # External (optional)
-    combined = list(base_tabs)
-    if os.path.exists(EXTERNAL_EXTENSIONS_FILE):
-        external_data = load_json_file(EXTERNAL_EXTENSIONS_FILE)
-        if external_data:
-            external_tabs = _flatten_interface_tabs(external_data)
-            combined = _dedupe_by_package_name([*combined, *external_tabs])
-
+    combined = _dedupe_by_package_name([*external_tabs, *catalog_tabs, *base_tabs])
     return combined
 
 

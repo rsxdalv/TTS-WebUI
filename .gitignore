@@ -57,6 +57,9 @@ extensions.external.json
 /data/models/megatts3/
 /data/models/songbloom/
 
+# Extensions catalog repo clone (ignored)
+/data/extensions-catalog/
+
 /data/api/presets/
 
 # Ignore temporary files

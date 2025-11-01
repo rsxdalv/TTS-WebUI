@@ -178,9 +178,6 @@ def extension__tts_generation_webui():
         add_btn = gr.Button("Add to external list", variant="secondary")
         install_btn = gr.Button("Install selected", variant="primary")
 
-    with gr.Row():
-        sync_btn = gr.Button("Sync Catalog via Git", variant="secondary")
-
     parsed_state = gr.State([])  # holds last parsed valid entries
 
     with gr.Accordion("Preview", open=True):
@@ -194,6 +191,8 @@ def extension__tts_generation_webui():
         current_json = gr.Code(language="json")
 
     with gr.Accordion("Catalog JSON (data/extensions-catalog)", open=False):
+        sync_btn = gr.Button("Sync Catalog via Git", variant="secondary")
+
         latest_json = gr.Code(language="json")
 
     def _on_parse(text: str):

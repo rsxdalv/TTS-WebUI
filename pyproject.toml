@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "TTS-WebUI"
-version = "0.2.1"
-description = "TTS WebUI / Harmonica"
+version = "0.2.2"
+description = "TTS WebUI"
 readme = "README.md"
 authors = [
     {name = "rsxdalv"}
@@ -51,12 +51,32 @@ intel = [
     "torchvision",
     "torchaudio",
 ]
+test = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.11.1"
+]
 
 [tool.setuptools]
 packages = ["tts_webui"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = ["-v", "--tb=short", "--strict-markers", "-p", "no:warnings"]
+markers = [
+    "unit: Unit tests for individual functions and classes",
+    "integration: Integration tests for module interactions",
+    "slow: Tests that take more than a few seconds to run",
+    "requires_gpu: Tests that require GPU to run",
+    "requires_network: Tests that require network access"
+]
+norecursedirs = [".git", ".tox", "dist", "build", "*.egg", "__pycache__", "notebooks", "workspace", "outputs"]
 
 # [tool.setuptools.package-data]
 # "*" = ["*.json"]

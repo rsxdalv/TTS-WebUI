@@ -165,6 +165,17 @@ def _extension_management_ui(
                 fn=toggle_extension_state(package_name, disabled_extensions),
                 outputs=[toggle_btn],
             )
+            check_dependencies_btn = gr.Button("Check Dependencies", variant="primary")
+            check_dependencies_btn.click(
+                fn=lambda: gr.Button("Checking...", interactive=False),
+                outputs=[check_dependencies_btn],
+            ).then(
+                pip_install_wrapper(f"--dry-run {requirements}", title_name),
+                outputs=[output],
+            ).then(
+                fn=lambda: gr.Button("Check Dependencies", interactive=True),
+                outputs=[check_dependencies_btn],
+            )
         with gr.Accordion("Console", open=True):
             output.render()
 

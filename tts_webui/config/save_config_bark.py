@@ -11,7 +11,6 @@ def save_config_bark(
     fine_use_small: bool,
     codec_use_gpu: bool,
 ):
-    global config
     config["model"] = {
         "text_use_gpu": text_use_gpu,
         "text_use_small": text_use_small,

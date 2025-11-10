@@ -40,14 +40,9 @@ def set_config_value(namespace: str, key: str, value: Any) -> None:
     Returns:
         None
     """
-    global config
-
-    # Ensure namespace exists
     if namespace not in config:
         config[namespace] = {}
 
-    # Set the value
     config[namespace][key] = value
 
-    # Save to disk
     _save_config(config)

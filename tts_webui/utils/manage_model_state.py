@@ -38,7 +38,6 @@ def manage_model_state(model_namespace):
 
     def decorator(func):
         def wrapper(model_name="default", *args, **kwargs):
-            global model_states
             if model_namespace not in model_states:
                 model_states[model_namespace] = ModelState()
 

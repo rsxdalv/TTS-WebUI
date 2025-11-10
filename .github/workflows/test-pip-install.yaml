@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - feat-extensions
 
 jobs:
   build:
@@ -64,7 +65,7 @@ jobs:
             tts-webui-extension.styletts2>=0.1.0 \
             tts-webui-extension.vall_e_x>=0.1.0 \
             tts-webui-extension.stable_audio>=0.1.1 \
-            --extra-index-url https://tts-webui.github.io/extensions-index/
+            --extra-index-url https://tts-webui.github.io/extensions-index/ --only-binary :all:
 
       - name: Test tts_webui
         run: python -c "import tts_webui"

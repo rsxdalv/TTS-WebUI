@@ -149,7 +149,11 @@ class TestExtensionsDataLoader(unittest.TestCase):
         """Test loading and merging extensions data with external file."""
         mock_exists.return_value = True
         # Mock returns: base (DEFAULT_EXTENSIONS_FILE), catalog (CATALOG_EXTENSIONS_FILE), external (EXTERNAL_EXTENSIONS_FILE)
-        mock_load_json.side_effect = [self.base_extensions, {}, self.external_extensions]
+        mock_load_json.side_effect = [
+            self.base_extensions,
+            {},
+            self.external_extensions,
+        ]
 
         result = load_merged_extensions_data()
 

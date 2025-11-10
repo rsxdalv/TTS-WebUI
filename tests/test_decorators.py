@@ -50,6 +50,7 @@ class TestFilenameDecorators:
         """Test decorator_add_base_filename adds filename to result."""
         # Change to temp_dir and create outputs directory
         import os
+
         original_cwd = os.getcwd()
         try:
             os.chdir(temp_dir)
@@ -82,6 +83,7 @@ class TestFilenameDecorators:
         """Test decorator preserves existing result keys."""
         # Change to temp_dir and create outputs directory
         import os
+
         original_cwd = os.getcwd()
         try:
             os.chdir(temp_dir)

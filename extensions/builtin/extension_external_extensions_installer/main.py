@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Tuple
 import gradio as gr
 
 from tts_webui.utils.pip_install import pip_install_wrapper
+from .messaging_js import messaging_js
 
 EXTERNAL_EXTENSIONS_FILE = "extensions.external.json"
 CATALOG_DIR = os.path.join("data", "extensions-catalog")

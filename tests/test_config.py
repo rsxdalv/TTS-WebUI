@@ -98,8 +98,9 @@ class TestConfigUtils:
     def test_set_config_value(self, mock_config):
         """Test setting a config value."""
         with patch("tts_webui.config.config_utils.config", mock_config):
-            set_config_value("model", "text_use_gpu", True)
-            assert mock_config["model"]["text_use_gpu"] is True
+            with patch("tts_webui.config.config_utils._save_config"):
+                set_config_value("model", "text_use_gpu", True)
+                assert mock_config["model"]["text_use_gpu"] is True
 
 
 class TestSaveConfig:

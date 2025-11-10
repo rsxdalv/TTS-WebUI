@@ -48,50 +48,66 @@ class TestFilenameDecorators:
     @pytest.mark.unit
     def test_decorator_add_base_filename(self, temp_dir):
         """Test decorator_add_base_filename adds filename to result."""
+        # Change to temp_dir and create outputs directory
+        import os
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(temp_dir)
+            os.makedirs("outputs", exist_ok=True)
 
-        @decorator_add_base_filename
-        def test_function(**kwargs):
-            return {
-                "audio_array": "test_audio",
-                "_type": kwargs.get("_type", "default"),
-                "date": datetime.datetime.now(),  # Required by decorator
-            }
+            @decorator_add_base_filename
+            def test_function(**kwargs):
+                return {
+                    "audio_array": "test_audio",
+                    "_type": kwargs.get("_type", "default"),
+                    "date": datetime.datetime.now(),  # Required by decorator
+                }
 
-        # Test the decorator works
-        result = test_function(
-            title="test",
-            output_path=str(temp_dir),
-            model="test_model",
-            _type="test_type",  # Required by decorator
-        )
+            # Test the decorator works
+            result = test_function(
+                title="test",
+                output_path=str(temp_dir),
+                model="test_model",
+                _type="test_type",  # Required by decorator
+            )
 
-        assert "filename" in result
-        assert "audio_array" in result
-        assert isinstance(result["filename"], str)
+            assert "filename" in result
+            assert "audio_array" in result
+            assert isinstance(result["filename"], str)
+        finally:
+            os.chdir(original_cwd)
 
     @pytest.mark.unit
     def test_decorator_add_base_filename_preserves_existing_keys(self, temp_dir):
         """Test decorator preserves existing result keys."""
+        # Change to temp_dir and create outputs directory
+        import os
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(temp_dir)
+            os.makedirs("outputs", exist_ok=True)
 
-        @decorator_add_base_filename
-        def test_function(**kwargs):
-            return {
-                "audio_array": "test_audio",
-                "metadata": {"key": "value"},
-                "_type": kwargs.get("_type", "default"),
-                "date": datetime.datetime.now(),  # Required by decorator
-            }
+            @decorator_add_base_filename
+            def test_function(**kwargs):
+                return {
+                    "audio_array": "test_audio",
+                    "metadata": {"key": "value"},
+                    "_type": kwargs.get("_type", "default"),
+                    "date": datetime.datetime.now(),  # Required by decorator
+                }
 
-        result = test_function(
-            title="test",
-            output_path=str(temp_dir),
-            model="test_model",
-            _type="test_type",  # Required by decorator
-        )
+            result = test_function(
+                title="test",
+                output_path=str(temp_dir),
+                model="test_model",
+                _type="test_type",  # Required by decorator
+            )
 
-        assert result["audio_array"] == "test_audio"
-        assert result["metadata"]["key"] == "value"
-        assert "filename" in result
+            assert result["audio_array"] == "test_audio"
+            assert result["metadata"]["key"] == "value"
+            assert "filename" in result
+        finally:
+            os.chdir(original_cwd)
 
 
 class TestDateDecorators:

@@ -1,8 +1,9 @@
 import json
 import os
 from typing import Any, Dict, Optional, Union
-from tts_webui.config.config import config
+
 from tts_webui.config._save_config import _save_config
+from tts_webui.config.config import config
 
 
 def get_config_value(namespace: str, key: str, default: Any = None) -> Any:

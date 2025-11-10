@@ -1,5 +1,5 @@
-from tts_webui.config.config import config
 from tts_webui.config._save_config import _save_config
+from tts_webui.config.config import config
 
 
 def save_config_bark(

@@ -1,7 +1,7 @@
-import gradio as gr
-
 import os
 import shutil
+
+import gradio as gr
 
 
 def save_to_favorites(directory: str):

@@ -1,7 +1,8 @@
 import gradio as gr
-from tts_webui.gradio.fix_gradio_tabs import fix_gradio_tabs
+
 from tts_webui.gradio.all_tabs import all_tabs
 from tts_webui.gradio.css import full_css
+from tts_webui.gradio.fix_gradio_tabs import fix_gradio_tabs
 from tts_webui.gradio.get_theme import get_theme
 
 

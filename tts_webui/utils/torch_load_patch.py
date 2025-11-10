@@ -4,8 +4,9 @@ This addresses the issue with PyTorch 2.6 changing the default value of weights_
 """
 
 import functools
-import torch
 import logging
+
+import torch
 
 # Store the original torch.load function
 original_torch_load = torch.load

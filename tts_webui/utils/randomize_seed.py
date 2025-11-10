@@ -1,5 +1,5 @@
-import numpy as np
 import gradio as gr
+import numpy as np
 
 
 def randomize_seed(seed, randomize_seed):

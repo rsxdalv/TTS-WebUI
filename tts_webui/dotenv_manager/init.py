@@ -2,7 +2,6 @@ import os
 
 from .writer import generate_env, write_env
 
-
 try:
     from dotenv import load_dotenv
 except ImportError:

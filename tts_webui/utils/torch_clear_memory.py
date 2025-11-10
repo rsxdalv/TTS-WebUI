@@ -1,5 +1,6 @@
-import torch
 import gc
+
+import torch
 
 
 def torch_clear_memory():

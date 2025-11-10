@@ -1,6 +1,7 @@
-import numpy as np
 import json
 from typing import Any
+
+import numpy as np
 
 
 def pack_metadata(metadata: dict[str, Any]):

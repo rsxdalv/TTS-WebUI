@@ -1,19 +1,19 @@
+import functools
 import importlib
 import importlib.util
-from importlib.metadata import version
 import time
+from importlib.metadata import version
 from types import ModuleType
 from typing import Literal
-import functools
 
 import gradio as gr
 
-from tts_webui.utils.pip_install import pip_install_wrapper, pip_uninstall_wrapper
-from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
 from tts_webui.extensions_loader.extensions_data_loader import (
     get_decorator_extensions,
     get_decorator_extensions_by_class,
 )
+from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
+from tts_webui.utils.pip_install import pip_install_wrapper, pip_uninstall_wrapper
 
 
 def check_if_package_installed(package_name):

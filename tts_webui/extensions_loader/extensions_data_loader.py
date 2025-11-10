@@ -8,9 +8,8 @@ such as multiple JSON file merges or fetching from external sources.
 
 import json
 import os
-from typing import Dict, List, Any, Optional, Iterable
 from itertools import chain
-
+from typing import Any, Dict, Iterable, List, Optional
 
 # Default paths for extensions files
 DEFAULT_EXTENSIONS_FILE = "extensions.json"

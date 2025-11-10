@@ -1,6 +1,7 @@
+from typing import Any, List
+
 from tts_webui.config._save_config import _save_config
 from tts_webui.config.config import config
-from typing import List, Any
 
 
 def _convert_empty_strings_to_none(dictionary: dict):

@@ -1,6 +1,7 @@
 import time
-from tts_webui.utils.set_seed import set_seed
 from contextlib import contextmanager
+
+from tts_webui.utils.set_seed import set_seed
 
 
 @contextmanager

@@ -1,6 +1,7 @@
 from deprecated import deprecated
-from tts_webui.utils.open_folder import open_folder
 from gradio_iconbutton import IconButton
+
+from tts_webui.utils.open_folder import open_folder
 
 
 @deprecated(

@@ -1,17 +1,18 @@
 import importlib
 import importlib.util
 from importlib.metadata import version
+
 import gradio as gr
 
-from tts_webui.config.config import config
-from tts_webui.extensions_loader.LoadingIndicator import LoadingIndicator
-from tts_webui.utils.pip_install import pip_install_wrapper, pip_uninstall_wrapper
-from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
-from tts_webui.extensions_loader.extensions_data_loader import (
-    get_interface_extensions,
-    filter_extensions_by_type_and_class,
-)
 from tts_webui.config._save_config import _save_config
+from tts_webui.config.config import config
+from tts_webui.extensions_loader.extensions_data_loader import (
+    filter_extensions_by_type_and_class,
+    get_interface_extensions,
+)
+from tts_webui.extensions_loader.LoadingIndicator import LoadingIndicator
+from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
+from tts_webui.utils.pip_install import pip_install_wrapper, pip_uninstall_wrapper
 
 
 def uninstall_extension(package_name):

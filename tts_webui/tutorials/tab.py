@@ -16,7 +16,7 @@ def tutorial_tab():
     #         ### Coming soon!
     #         """
     #     )
-    # 
+    #
     with gr.Tab("Chat with Chatterbox in SillyTavern!"):
         youtube_video("_0rftbXPJLI")
     # 5:10

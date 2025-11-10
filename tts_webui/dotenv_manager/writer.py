@@ -4,6 +4,7 @@ import os
 def env_entry(name, value, comment, null_if_empty=True):
     return f"# {comment}\n{'# ' if null_if_empty and not value else ''}{name}={value}\n"
 
+
 def generate_env(
     *,
     model_location_hf_env_var: str = "",
@@ -40,7 +41,7 @@ rmvpe_root=data/models/rvc/rmvpe # Root directory for RVC model RMVPE
     )
 
     env += env_entry(
-        "HUGGINGFACE_HUB_CACHE", 
+        "HUGGINGFACE_HUB_CACHE",
         model_location_hf_env_var,
         "Environment variable for HuggingFace model location",
     )
@@ -62,7 +63,6 @@ rmvpe_root=data/models/rvc/rmvpe # Root directory for RVC model RMVPE
 
     env += "\n"
 
-
     # CUDA_VISIBLE_DEVICES
     # env += env_entry(
     #     "CUDA_VISIBLE_DEVICES",
@@ -79,25 +79,28 @@ def write_env(text: str):
         outfile.write(text)
 
 
-
 import json
 import os
 
 JSON_ENV_FILE = "env_store.json"
 DOTENV_FILE = ".env"
 
+
 def load_env_store():
-    if os.path.exists(JSON_ENV_FILE): 
+    if os.path.exists(JSON_ENV_FILE):
         with open(JSON_ENV_FILE, "r") as f:
             return json.load(f)
     return {}
+
 
 def save_env_store(data):
     with open(JSON_ENV_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
+
 def env_entry(name, value, comment="", null_if_empty=True):
     return f"# {comment}\n{'# ' if null_if_empty and not value else ''}{name}={value}\n"
+
 
 def generate_dotenv_text(env_store: dict) -> str:
     text = (
@@ -113,10 +116,12 @@ def generate_dotenv_text(env_store: dict) -> str:
         text += "\n"
     return text
 
+
 def write_dotenv_from_json(env_store):
     dotenv_text = generate_dotenv_text(env_store)
     with open(DOTENV_FILE, "w") as f:
         f.write(dotenv_text)
+
 
 def update_dotenv(namespace: str, values: dict):
     env_store = load_env_store()
@@ -124,6 +129,7 @@ def update_dotenv(namespace: str, values: dict):
     env_store[namespace].update(values)
     save_env_store(env_store)
     write_dotenv_from_json(env_store)
+
 
 def delete_namespace(namespace: str):
     env_store = load_env_store()

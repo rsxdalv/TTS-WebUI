@@ -64,4 +64,3 @@ def decorator_save_wav_generator_accumulated(fn):
             _save_wav(accumulated_result_dict)
 
     return wrapper
-

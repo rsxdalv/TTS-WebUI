@@ -63,7 +63,9 @@ def load_catalog_extensions_json() -> Dict[str, Any]:
     return {}
 
 
-def merge_extensions_data(base_data: Dict[str, Any], additional_data: Dict[str, Any]) -> Dict[str, Any]:
+def merge_extensions_data(
+    base_data: Dict[str, Any], additional_data: Dict[str, Any]
+) -> Dict[str, Any]:
     """
     Merge two extension data dictionaries.
 
@@ -82,7 +84,12 @@ def merge_extensions_data(base_data: Dict[str, Any], additional_data: Dict[str, 
             continue
 
         # Only concatenate decorators; for all other keys, prefer base unless missing
-        if key == "decorators" and key in result and isinstance(value, list) and isinstance(result[key], list):
+        if (
+            key == "decorators"
+            and key in result
+            and isinstance(value, list)
+            and isinstance(result[key], list)
+        ):
             # Concatenate and de-duplicate by package_name preserving order
             result[key] = _dedupe_by_package_name([*result[key], *value])
         elif key not in result:
@@ -106,7 +113,11 @@ def load_merged_extensions_data() -> Dict[str, Any]:
     """
     base = load_extensions_json()
     catalog = load_catalog_extensions_json()
-    external = load_json_file(EXTERNAL_EXTENSIONS_FILE) if os.path.exists(EXTERNAL_EXTENSIONS_FILE) else {}
+    external = (
+        load_json_file(EXTERNAL_EXTENSIONS_FILE)
+        if os.path.exists(EXTERNAL_EXTENSIONS_FILE)
+        else {}
+    )
 
     # Start from base metadata
     result: Dict[str, Any] = base.copy() if isinstance(base, dict) else {}
@@ -114,8 +125,12 @@ def load_merged_extensions_data() -> Dict[str, Any]:
     # Merge decorators with precedence: external > latest > base (keep-first by package_name)
     base_decor = base.get("decorators", []) if isinstance(base, dict) else []
     catalog_decor = catalog.get("decorators", []) if isinstance(catalog, dict) else []
-    external_decor = external.get("decorators", []) if isinstance(external, dict) else []
-    result["decorators"] = _dedupe_by_package_name([*external_decor, *catalog_decor, *base_decor])
+    external_decor = (
+        external.get("decorators", []) if isinstance(external, dict) else []
+    )
+    result["decorators"] = _dedupe_by_package_name(
+        [*external_decor, *catalog_decor, *base_decor]
+    )
 
     # For any other non-tab keys missing in base, fill from latest, then external
     for src in (catalog, external):
@@ -165,7 +180,11 @@ def _flatten_interface_tabs(extensions_data: Dict[str, Any]) -> List[Dict[str, A
     """
     tabs_list = extensions_data.get("tabs", []) or []
     groups = extensions_data.get("tabsInGroups", {}) or {}
-    group_lists = [v for v in groups.values() if isinstance(v, list)] if isinstance(groups, dict) else []
+    group_lists = (
+        [v for v in groups.values() if isinstance(v, list)]
+        if isinstance(groups, dict)
+        else []
+    )
     flattened = chain.from_iterable([tabs_list, *group_lists])
     return _dedupe_by_package_name(flattened)
 
@@ -182,7 +201,11 @@ def get_interface_extensions() -> List[Dict[str, Any]]:
     """
     base_data = load_extensions_json()
     catalog_data = load_catalog_extensions_json()
-    external_data = load_json_file(EXTERNAL_EXTENSIONS_FILE) if os.path.exists(EXTERNAL_EXTENSIONS_FILE) else {}
+    external_data = (
+        load_json_file(EXTERNAL_EXTENSIONS_FILE)
+        if os.path.exists(EXTERNAL_EXTENSIONS_FILE)
+        else {}
+    )
 
     base_tabs = _flatten_interface_tabs(base_data)
     catalog_tabs = _flatten_interface_tabs(catalog_data)
@@ -195,7 +218,7 @@ def get_interface_extensions() -> List[Dict[str, Any]]:
 def filter_extensions_by_type_and_class(
     extensions: List[Dict[str, Any]],
     extension_type: str,
-    extension_class: Optional[str] = None
+    extension_class: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Filter extensions by type and class.
@@ -213,8 +236,10 @@ def filter_extensions_by_type_and_class(
         return [x for x in extensions if x.get("extension_type") == extension_type]
 
     return [
-        x for x in extensions
-        if x.get("extension_type") == extension_type and x.get("extension_class") == extension_class
+        x
+        for x in extensions
+        if x.get("extension_type") == extension_type
+        and x.get("extension_class") == extension_class
     ]
 
 
@@ -267,7 +292,9 @@ def create_empty_external_extensions_file() -> bool:
     if not os.path.exists(EXTERNAL_EXTENSIONS_FILE):
         try:
             with open(EXTERNAL_EXTENSIONS_FILE, "w") as f:
-                json.dump({"tabs": [], "tabsInGroups": {}, "decorators": []}, f, indent=4)
+                json.dump(
+                    {"tabs": [], "tabsInGroups": {}, "decorators": []}, f, indent=4
+                )
             print(f"Created empty {EXTERNAL_EXTENSIONS_FILE}")
             return True
         except Exception as e:

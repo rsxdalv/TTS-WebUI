@@ -72,7 +72,9 @@ def _handle_package(package_name, title_name, requirements):
                 try:
                     main_tab()
                 except Exception as e:
-                    generic_error_tab_advanced(e, name=title_name, requirements=requirements)
+                    generic_error_tab_advanced(
+                        e, name=title_name, requirements=requirements
+                    )
         except Exception as e:
             generic_error_tab_advanced(e, name=title_name, requirements=requirements)
 

@@ -95,6 +95,7 @@ def _get_pretty_time(elapsed):
     seconds = seconds.replace("0.", " .")
     return f"{seconds.rjust(6, ' ')} seconds."
 
+
 def _load_decorators(class_name: Literal["outer", "inner"]):
     """
     Loads all decorators from extensions.

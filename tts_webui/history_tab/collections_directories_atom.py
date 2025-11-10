@@ -17,4 +17,6 @@ def get_collections():
     ]
 
 
-collections_directories_atom = gr.JSON(visible=False, value=get_collections(), render=False)
+collections_directories_atom = gr.JSON(
+    visible=False, value=get_collections(), render=False
+)

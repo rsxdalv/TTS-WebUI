@@ -49,9 +49,9 @@ def start_gradio_server(gr_options, config):
     parsed_options = upgrade_gradio_options(gr_options)
     print_gradio_options(parsed_options)
 
-    from tts_webui.gradio.main_ui import main_ui
+    from tts_webui.gradio.blocks import main_block
 
-    demo = main_ui(config=config)
+    demo = main_block(config=config)
 
     try:
         demo.queue().launch(

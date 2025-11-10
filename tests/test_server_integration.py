@@ -113,9 +113,9 @@ class TestServerGradioUI:
     def test_main_ui_module_imports(self):
         """Test that main_ui module can be imported."""
         try:
-            from tts_webui.gradio.main_ui import main_ui
-            assert main_ui is not None
-            assert callable(main_ui)
+            from tts_webui.gradio.blocks import main_block
+            assert main_block is not None
+            assert callable(main_block)
         except Exception as e:
             pytest.fail(f"Failed to import main_ui: {e}")
 
@@ -123,7 +123,7 @@ class TestServerGradioUI:
     @patch('gradio.Blocks')
     def test_main_ui_creation(self, mock_blocks, mock_config):
         """Test that main_ui can be called with config."""
-        from tts_webui.gradio.main_ui import main_ui
+        from tts_webui.gradio.blocks import main_block
         
         # Mock the Blocks context manager
         mock_blocks_instance = MagicMock()
@@ -131,7 +131,7 @@ class TestServerGradioUI:
         mock_blocks.return_value.__exit__ = MagicMock(return_value=False)
         
         try:
-            result = main_ui(config=mock_config)
+            result = main_block(config=mock_config)
             # Should return blocks instance or similar
             assert result is not None
         except Exception as e:

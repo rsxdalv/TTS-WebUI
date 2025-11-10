@@ -2,30 +2,30 @@
 Tests for the extensions data loader module.
 """
 
+import json
 import os
 import sys
-import json
 import unittest
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
 
 # Add the project root directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from tts_webui.extensions_loader.extensions_data_loader import (
-    load_json_file,
-    load_extensions_json,
-    merge_extensions_data,
-    load_merged_extensions_data,
-    get_decorator_extensions,
-    get_interface_extensions,
-    _flatten_interface_tabs,
-    get_extension_example,
-    filter_extensions_by_type_and_class,
-    get_decorator_extensions_by_class,
-    get_interface_extensions_by_class,
-    create_empty_external_extensions_file,
     DEFAULT_EXTENSIONS_FILE,
     EXTERNAL_EXTENSIONS_FILE,
+    _flatten_interface_tabs,
+    create_empty_external_extensions_file,
+    filter_extensions_by_type_and_class,
+    get_decorator_extensions,
+    get_decorator_extensions_by_class,
+    get_extension_example,
+    get_interface_extensions,
+    get_interface_extensions_by_class,
+    load_extensions_json,
+    load_json_file,
+    load_merged_extensions_data,
+    merge_extensions_data,
 )
 
 

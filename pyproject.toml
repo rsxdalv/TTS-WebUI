@@ -85,3 +85,6 @@ norecursedirs = [".git", ".tox", "dist", "build", "*.egg", "__pycache__", "noteb
 # [tool.setuptools.packages.find]
 # namespaces = true
 # include = ["tts_webui.*"]
+
+[tool.isort]
+profile = "black"

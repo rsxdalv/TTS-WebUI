@@ -4,9 +4,10 @@ Integration tests for server startup and initialization.
 
 import os
 import sys
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import MagicMock, mock_open, patch
+
+import pytest
 
 
 class TestServerInitialization:
@@ -162,10 +163,11 @@ class TestExtensionsLoader:
     @pytest.mark.integration
     def test_load_merged_extensions_data(self, change_to_temp_dir):
         """Test loading extensions data."""
+        import json
+
         from tts_webui.extensions_loader.extensions_data_loader import (
             load_merged_extensions_data,
         )
-        import json
 
         # Create a mock extensions.json
         extensions_data = {"tabs": [], "decorators": [], "example_extension": {}}

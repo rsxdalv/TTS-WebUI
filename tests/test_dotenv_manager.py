@@ -3,9 +3,10 @@ Unit tests for tts_webui.dotenv_manager module.
 """
 
 import os
-import pytest
 from pathlib import Path
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
+
+import pytest
 
 from tts_webui.dotenv_manager.init import init
 from tts_webui.dotenv_manager.writer import generate_env, write_env

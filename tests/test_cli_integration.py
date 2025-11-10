@@ -4,13 +4,13 @@ Integration tests for tts_webui CLI.
 
 import os
 import sys
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 from typer.testing import CliRunner
 
-from tts_webui.cli import app, serve, troubleshoot, extension_list
-
+from tts_webui.cli import app, extension_list, serve, troubleshoot
 
 runner = CliRunner()
 

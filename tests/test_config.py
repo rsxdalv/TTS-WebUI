@@ -4,14 +4,15 @@ Unit tests for tts_webui.config module.
 
 import json
 import os
-import pytest
 from pathlib import Path
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
 
+import pytest
+
+from tts_webui.config._save_config import _save_config, _save_json
 from tts_webui.config.config import config
-from tts_webui.config.load_config import load_config, default_config
 from tts_webui.config.config_utils import get_config_value, set_config_value
-from tts_webui.config._save_config import _save_json, _save_config
+from tts_webui.config.load_config import default_config, load_config
 from tts_webui.config.save_config_gradio import (
     _convert_empty_strings_to_none,
     _recreate_ui_dict,

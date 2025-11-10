@@ -2,16 +2,17 @@
 Unit tests for tts_webui.decorators module.
 """
 
-import os
-import pytest
 import datetime
-from unittest.mock import patch, MagicMock
+import os
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from tts_webui.decorators.decorator_add_base_filename import (
-    format_filename,
-    format_date_for_file,
     decorator_add_base_filename,
+    format_date_for_file,
+    format_filename,
 )
 from tts_webui.decorators.decorator_add_date import decorator_add_date
 from tts_webui.decorators.decorator_add_model_type import decorator_add_model_type

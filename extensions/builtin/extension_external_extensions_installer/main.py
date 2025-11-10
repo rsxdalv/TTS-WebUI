@@ -174,10 +174,7 @@ EXTENSION_CATALOG_IFRAME_ID = "extension-catalog"
 def extension__tts_generation_webui():
     gr.Markdown(
         """
-    ## External Extensions Installer
     Paste one or more extension JSON objects below. We'll validate, preview, and let you add them to `extensions.external.json` and optionally install their requirements right away.
-
-    You can discover and copy extension JSON entries from the [TTS WebUI Extension Catalog](https://rsxdalv.github.io/tts-webui-extension-catalog/).
     """
     )
 
@@ -185,114 +182,21 @@ def extension__tts_generation_webui():
         gr.HTML(
             f"""<iframe id={EXTENSION_CATALOG_IFRAME_ID} 
                  width="100%"
-                 height="600px"
+                 height="800px"
                  src="https://rsxdalv.github.io/tts-webui-extension-catalog/?browse=true&iframe=true"
                  title="TTS WebUI Extension Catalog"
                  frameborder="0"
-            ></iframe>"""
+            ></iframe>
+            <div id="json-container" hidden></div>
+            """
         )
 
-        html = gr.HTML(
-            """
-            <div id="message-log">
-            <h2>📨 Message Log</h2>
-            <div id="messages">
-                <div style="color: #858585; font-style: italic;">
-                Waiting for messages...
-                </div>
-            </div>
-            </div>
-            """
-        )
         init = gr.Timer(0.5)
         init.tick(
             fn=lambda: gr.Timer(active=False),
             inputs=[],
             outputs=[init],
-            js="""
-            () => {{
-                const messagesDiv = document.getElementById('messages');
-    let messageCount = 0;
-
-    // Listen for messages from the iframe
-    window.addEventListener('message', (event) => {
-      // In production, verify the origin:
-      // if (event.origin !== 'http://localhost:3000') return;
-      
-      if (event.data.type === 'install-extension') {
-        messageCount++;
-        
-        // Clear "waiting" message on first message
-        if (messageCount === 1) {
-          messagesDiv.innerHTML = '';
-        }
-        
-        const extension = event.data.data;
-        
-        // Log the message
-        logMessage(event.data);
-        
-        // Show confirmation dialog
-        const confirmed = confirm(
-          `Install Extension?\n\n` +
-          `Name: ${extension.name}\n` +
-          `Author: ${extension.extension_author}\n` +
-          `Type: ${extension.extension_type}\n` +
-          `Class: ${extension.extension_class}\n\n` +
-          `Click OK to simulate installation.`
-        );
-        
-        if (confirmed) {
-          // Simulate installation
-          simulateInstallation(extension);
-        }
-      }
-    });
-
-    function logMessage(messageData) {
-      const timestamp = new Date().toLocaleTimeString();
-      const messageEl = document.createElement('div');
-      messageEl.className = 'message';
-      messageEl.innerHTML = `
-        <div class="timestamp">${timestamp}</div>
-        <div class="message-type">Type: ${messageData.type}</div>
-        <div class="message-data">${JSON.stringify(messageData.data, null, 2)}</div>
-      `;
-      messagesDiv.appendChild(messageEl);
-      
-      // Scroll to bottom
-      document.getElementById('message-log').scrollTop = 
-        document.getElementById('message-log').scrollHeight;
-    }
-
-    async function simulateInstallation(extension) {
-      console.log('Installing extension:', extension);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Log success
-      const successMsg = document.createElement('div');
-      successMsg.className = 'message';
-      successMsg.style.borderLeftColor = '#4ec9b0';
-      successMsg.innerHTML = `
-        <div class="timestamp">${new Date().toLocaleTimeString()}</div>
-        <div style="color: #4ec9b0; font-weight: bold;">✓ Installation Successful</div>
-        <div style="color: #d4d4d4; margin-top: 5px;">
-          ${extension.name} has been installed
-        </div>
-      `;
-      messagesDiv.appendChild(successMsg);
-      
-      // Scroll to bottom
-      document.getElementById('message-log').scrollTop = 
-        document.getElementById('message-log').scrollHeight;
-      
-      alert(`✓ ${extension.name} installed successfully!`);
-    }
-    console.log("Extension catalog iframe messaging initialized.");
-            }}
-            """,
+            js=messaging_js,
         )
 
     with gr.Row():
@@ -301,6 +205,7 @@ def extension__tts_generation_webui():
             lines=16,
             placeholder="Paste JSON object or array of objects here",
         )
+        json_input_automatic = gr.Textbox(visible=False)
     with gr.Row():
         parse_btn = gr.Button("Parse JSON", variant="primary")
         add_btn = gr.Button("Add to external list", variant="secondary")
@@ -326,6 +231,32 @@ def extension__tts_generation_webui():
     def _on_parse(text: str):
         entries, info = _parse_json_input(text)
         return entries, _render_preview(entries), info
+
+    gr.Button("", elem_id="receive_extension_button").click(
+        fn=None,
+        inputs=[],
+        outputs=[json_input, json_input_automatic],
+        js="""
+            () => {
+                json_value = document.getElementById('json-container').innerText;
+                return [json_value, json_value];
+            }
+        """,
+    )
+
+    json_input_automatic.change(
+        fn=_on_parse,
+        inputs=[json_input_automatic],
+        outputs=[parsed_state, preview_md, parse_info],
+    ).then(
+        fn=_add_to_external,
+        inputs=[parsed_state],
+        outputs=[parse_info, current_json],
+    ).then(
+        fn=_install_selected,
+        inputs=[parsed_state],
+        outputs=[console_html],
+    )
 
     parse_btn.click(
         fn=_on_parse,

@@ -148,12 +148,13 @@ class TestExtensionsDataLoader(unittest.TestCase):
     ):
         """Test loading and merging extensions data with external file."""
         mock_exists.return_value = True
-        mock_load_json.side_effect = [self.base_extensions, self.external_extensions]
+        # Mock returns: base (DEFAULT_EXTENSIONS_FILE), catalog (CATALOG_EXTENSIONS_FILE), external (EXTERNAL_EXTENSIONS_FILE)
+        mock_load_json.side_effect = [self.base_extensions, {}, self.external_extensions]
 
         result = load_merged_extensions_data()
 
-        # Verify both files were loaded
-        self.assertEqual(mock_load_json.call_count, 2)
+        # Verify all three files were attempted to be loaded
+        self.assertEqual(mock_load_json.call_count, 3)
         mock_load_json.assert_any_call(DEFAULT_EXTENSIONS_FILE)
         mock_load_json.assert_any_call(EXTERNAL_EXTENSIONS_FILE)
 
@@ -167,12 +168,13 @@ class TestExtensionsDataLoader(unittest.TestCase):
         self, mock_load_json, mock_exists
     ):
         """Test loading extensions data without external file."""
-        mock_exists.return_value = False
+        mock_exists.return_value = False  # No catalog or external files exist
+        # Mock returns: base (DEFAULT_EXTENSIONS_FILE) - catalog and external don't exist so won't be called
         mock_load_json.return_value = self.base_extensions
 
         result = load_merged_extensions_data()
 
-        # Verify only the base file was loaded
+        # Verify only the base file was loaded (catalog doesn't exist, external doesn't exist)
         mock_load_json.assert_called_once_with(DEFAULT_EXTENSIONS_FILE)
 
         # Check that the result is the base extensions

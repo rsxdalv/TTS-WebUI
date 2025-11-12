@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - feat-extensions
 
 jobs:
   build:
@@ -60,8 +59,6 @@ jobs:
         run: |
           python -m pip install -r requirements.txt \
             "tts-webui-extension.bark_voice_clone>=0.0.2" \
-            "tts-webui-extension.rvc>=0.0.5" \
-            "tts-webui-extension.audiocraft>=0.0.2" \
             "tts-webui-extension.styletts2>=0.1.0" \
             "tts-webui-extension.vall_e_x>=0.1.0" \
             "tts-webui-extension.stable_audio>=0.1.1" \

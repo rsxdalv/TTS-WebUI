@@ -1,5 +1,5 @@
-from tts_webui.config.config import config
 from tts_webui.config._save_config import _save_config
+from tts_webui.config.config import config
 
 
 def save_config_bark(
@@ -11,7 +11,6 @@ def save_config_bark(
     fine_use_small: bool,
     codec_use_gpu: bool,
 ):
-    global config
     config["model"] = {
         "text_use_gpu": text_use_gpu,
         "text_use_small": text_use_small,

@@ -40,12 +40,10 @@ WORKDIR /app/tts-webui
 # Install all requirements
 RUN pip3 install --no-cache-dir torch==$TORCH_VERSION -r requirements.txt
 # RUN pip install --no-cache-dir --verbose torch==$TORCH_VERSION -r requirements.txt
-RUN pip install tts-webui-extension.bark_voice_clone>=0.0.1 --extra-index-url https://tts-webui.github.io/extensions-index/
-RUN pip install tts-webui-extension.rvc>=0.0.3 --extra-index-url https://tts-webui.github.io/extensions-index/
-RUN pip install tts-webui-extension.audiocraft>=0.0.2 --extra-index-url https://tts-webui.github.io/extensions-index/
-RUN pip install tts-webui-extension.styletts2>=0.1.0 --extra-index-url https://tts-webui.github.io/extensions-index/
-RUN pip install tts-webui-extension.vall_e_x>=0.1.0 --extra-index-url https://tts-webui.github.io/extensions-index/
-# RUN pip install tts-webui-extension.stable_audio>=0.1.1 --extra-index-url https://tts-webui.github.io/extensions-index/
+RUN pip install "tts-webui-extension.bark_voice_clone>=0.0.2" --extra-index-url https://tts-webui.github.io/extensions-index/
+RUN pip install "tts-webui-extension.rvc>=0.0.6" --extra-index-url https://tts-webui.github.io/extensions-index/
+RUN pip install "tts-webui-extension.styletts2>=0.1.0" --extra-index-url https://tts-webui.github.io/extensions-index/
+# RUN pip install "tts-webui-extension.stable_audio>=0.1.1" --extra-index-url https://tts-webui.github.io/extensions-index/
 
 
 # add postgres & run setup

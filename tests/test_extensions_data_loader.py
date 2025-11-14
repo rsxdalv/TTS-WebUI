@@ -2,30 +2,30 @@
 Tests for the extensions data loader module.
 """
 
+import json
 import os
 import sys
-import json
 import unittest
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
 
 # Add the project root directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from tts_webui.extensions_loader.extensions_data_loader import (
-    load_json_file,
-    load_extensions_json,
-    merge_extensions_data,
-    load_merged_extensions_data,
-    get_decorator_extensions,
-    get_interface_extensions,
-    _flatten_interface_tabs,
-    get_extension_example,
-    filter_extensions_by_type_and_class,
-    get_decorator_extensions_by_class,
-    get_interface_extensions_by_class,
-    create_empty_external_extensions_file,
     DEFAULT_EXTENSIONS_FILE,
     EXTERNAL_EXTENSIONS_FILE,
+    _flatten_interface_tabs,
+    create_empty_external_extensions_file,
+    filter_extensions_by_type_and_class,
+    get_decorator_extensions,
+    get_decorator_extensions_by_class,
+    get_extension_example,
+    get_interface_extensions,
+    get_interface_extensions_by_class,
+    load_extensions_json,
+    load_json_file,
+    load_merged_extensions_data,
+    merge_extensions_data,
 )
 
 
@@ -107,7 +107,7 @@ class TestExtensionsDataLoader(unittest.TestCase):
                         "name": "Base Extension 2 (Dup)",
                         "extension_type": "interface",
                         "extension_class": "audio-music-generation",
-                    }
+                    },
                 ],
             },
         }
@@ -143,15 +143,22 @@ class TestExtensionsDataLoader(unittest.TestCase):
 
     @patch("os.path.exists")
     @patch("tts_webui.extensions_loader.extensions_data_loader.load_json_file")
-    def test_load_merged_extensions_data_with_external(self, mock_load_json, mock_exists):
+    def test_load_merged_extensions_data_with_external(
+        self, mock_load_json, mock_exists
+    ):
         """Test loading and merging extensions data with external file."""
         mock_exists.return_value = True
-        mock_load_json.side_effect = [self.base_extensions, self.external_extensions]
+        # Mock returns: base (DEFAULT_EXTENSIONS_FILE), catalog (CATALOG_EXTENSIONS_FILE), external (EXTERNAL_EXTENSIONS_FILE)
+        mock_load_json.side_effect = [
+            self.base_extensions,
+            {},
+            self.external_extensions,
+        ]
 
         result = load_merged_extensions_data()
 
-        # Verify both files were loaded
-        self.assertEqual(mock_load_json.call_count, 2)
+        # Verify all three files were attempted to be loaded
+        self.assertEqual(mock_load_json.call_count, 3)
         mock_load_json.assert_any_call(DEFAULT_EXTENSIONS_FILE)
         mock_load_json.assert_any_call(EXTERNAL_EXTENSIONS_FILE)
 
@@ -161,20 +168,25 @@ class TestExtensionsDataLoader(unittest.TestCase):
 
     @patch("os.path.exists")
     @patch("tts_webui.extensions_loader.extensions_data_loader.load_json_file")
-    def test_load_merged_extensions_data_without_external(self, mock_load_json, mock_exists):
+    def test_load_merged_extensions_data_without_external(
+        self, mock_load_json, mock_exists
+    ):
         """Test loading extensions data without external file."""
-        mock_exists.return_value = False
+        mock_exists.return_value = False  # No catalog or external files exist
+        # Mock returns: base (DEFAULT_EXTENSIONS_FILE) - catalog and external don't exist so won't be called
         mock_load_json.return_value = self.base_extensions
 
         result = load_merged_extensions_data()
 
-        # Verify only the base file was loaded
+        # Verify only the base file was loaded (catalog doesn't exist, external doesn't exist)
         mock_load_json.assert_called_once_with(DEFAULT_EXTENSIONS_FILE)
 
         # Check that the result is the base extensions
         self.assertEqual(result, self.base_extensions)
 
-    @patch("tts_webui.extensions_loader.extensions_data_loader.load_merged_extensions_data")
+    @patch(
+        "tts_webui.extensions_loader.extensions_data_loader.load_merged_extensions_data"
+    )
     def test_get_decorator_extensions(self, mock_load_merged):
         """Test getting decorator extensions."""
         mock_load_merged.return_value = self.base_extensions
@@ -190,7 +202,9 @@ class TestExtensionsDataLoader(unittest.TestCase):
         result = get_interface_extensions()
         self.assertEqual(result, self.base_extensions["tabs"])
 
-    @patch("tts_webui.extensions_loader.extensions_data_loader.load_merged_extensions_data")
+    @patch(
+        "tts_webui.extensions_loader.extensions_data_loader.load_merged_extensions_data"
+    )
     def test_get_extension_example(self, mock_load_merged):
         """Test getting the example extension template."""
         mock_load_merged.return_value = self.base_extensions
@@ -207,23 +221,33 @@ class TestExtensionsDataLoader(unittest.TestCase):
         self.assertTrue(all(x["extension_type"] == "interface" for x in result))
 
         # Filter by type and class
-        result = filter_extensions_by_type_and_class(extensions, "interface", "text-to-speech")
+        result = filter_extensions_by_type_and_class(
+            extensions, "interface", "text-to-speech"
+        )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["package_name"], "extension_base1")
 
-    @patch("tts_webui.extensions_loader.extensions_data_loader.get_decorator_extensions")
+    @patch(
+        "tts_webui.extensions_loader.extensions_data_loader.get_decorator_extensions"
+    )
     def test_get_decorator_extensions_by_class(self, mock_get_decorators):
         """Test getting decorator extensions by class."""
-        mock_get_decorators.return_value = self.base_extensions["decorators"] + self.external_extensions["decorators"]
+        mock_get_decorators.return_value = (
+            self.base_extensions["decorators"] + self.external_extensions["decorators"]
+        )
 
         result = get_decorator_extensions_by_class("outer")
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["package_name"], "decorator_base1")
 
-    @patch("tts_webui.extensions_loader.extensions_data_loader.get_interface_extensions")
+    @patch(
+        "tts_webui.extensions_loader.extensions_data_loader.get_interface_extensions"
+    )
     def test_get_interface_extensions_by_class(self, mock_get_interfaces):
         """Test getting interface extensions by class."""
-        mock_get_interfaces.return_value = self.base_extensions["tabs"] + self.external_extensions["tabs"]
+        mock_get_interfaces.return_value = (
+            self.base_extensions["tabs"] + self.external_extensions["tabs"]
+        )
 
         result = get_interface_extensions_by_class("audio-music-generation")
         self.assertEqual(len(result), 1)
@@ -251,7 +275,9 @@ class TestExtensionsDataLoader(unittest.TestCase):
 
     @patch("os.path.exists")
     @patch("tts_webui.extensions_loader.extensions_data_loader.load_extensions_json")
-    def test_get_interface_extensions_flattens_groups(self, mock_load_base, mock_exists):
+    def test_get_interface_extensions_flattens_groups(
+        self, mock_load_base, mock_exists
+    ):
         """Test get_interface_extensions flattens tabsInGroups and deduplicates by package_name."""
         mock_exists.return_value = False
         # deep copy of base and add grouped tabs including a duplicate
@@ -277,15 +303,31 @@ class TestExtensionsDataLoader(unittest.TestCase):
     def test_flatten_interface_tabs_helper(self):
         data = {
             "tabs": [
-                {"package_name": "a", "extension_type": "interface", "extension_class": "text-to-speech"}
+                {
+                    "package_name": "a",
+                    "extension_type": "interface",
+                    "extension_class": "text-to-speech",
+                }
             ],
             "tabsInGroups": {
                 "g1": [
-                    {"package_name": "b", "extension_type": "interface", "extension_class": "text-to-speech"},
-                    {"package_name": "a", "extension_type": "interface", "extension_class": "text-to-speech"},
+                    {
+                        "package_name": "b",
+                        "extension_type": "interface",
+                        "extension_class": "text-to-speech",
+                    },
+                    {
+                        "package_name": "a",
+                        "extension_type": "interface",
+                        "extension_class": "text-to-speech",
+                    },
                 ],
                 "g2": [
-                    {"package_name": "c", "extension_type": "interface", "extension_class": "audio-music-generation"}
+                    {
+                        "package_name": "c",
+                        "extension_type": "interface",
+                        "extension_class": "audio-music-generation",
+                    }
                 ],
             },
         }

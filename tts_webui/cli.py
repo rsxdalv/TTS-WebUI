@@ -19,7 +19,9 @@ def _run_process(cmd: List[str]) -> int:
 
 
 @app.command()
-def serve(extra_args: Optional[List[str]] = typer.Argument(None)) -> int:  # pragma: no cover - manual run
+def serve(
+    extra_args: Optional[List[str]] = typer.Argument(None),
+) -> int:  # pragma: no cover - manual run
     """Start the web UI server by delegating to `server.py` in the project root."""
     project_root = Path.cwd()
     server = project_root / "server.py"
@@ -45,7 +47,11 @@ def troubleshoot() -> None:
     req = project_root / "requirements.txt"
     if req.exists():
         try:
-            lines = [l.strip() for l in req.read_text(encoding="utf-8").splitlines() if l.strip() and not l.startswith("#")]
+            lines = [
+                l.strip()
+                for l in req.read_text(encoding="utf-8").splitlines()
+                if l.strip() and not l.startswith("#")
+            ]
             typer.echo(f"Found requirements.txt with {len(lines)} entries.")
         except Exception:
             typer.echo("Unable to read requirements.txt")
@@ -66,7 +72,9 @@ def troubleshoot() -> None:
 
         torch_spec = importlib.util.find_spec("torch")
         if torch_spec is None:
-            typer.echo("PyTorch not installed. If you expect GPU acceleration, install torch.")
+            typer.echo(
+                "PyTorch not installed. If you expect GPU acceleration, install torch."
+            )
             errors += 1
         else:
             import torch  # type: ignore

@@ -1,11 +1,12 @@
 import gradio as gr
-from tts_webui.gradio.fix_gradio_tabs import fix_gradio_tabs
+
 from tts_webui.gradio.all_tabs import all_tabs
 from tts_webui.gradio.css import full_css
+from tts_webui.gradio.fix_gradio_tabs import fix_gradio_tabs
 from tts_webui.gradio.get_theme import get_theme
 
 
-def main_ui(config):
+def main_block(config):
     fix_gradio_tabs()
 
     with gr.Blocks(
@@ -37,6 +38,6 @@ def main_ui(config):
 if __name__ == "__main__":
     from tts_webui.config.config import config
 
-    main_ui(config).launch(
+    main_block(config).launch(
         server_port=7770,
     )

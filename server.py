@@ -1,10 +1,11 @@
 import os
-import tts_webui.dotenv_manager.init as dotenv_init
 
+import tts_webui.dotenv_manager.init as dotenv_init
 from tts_webui.config.config import config
 from tts_webui.gradio.print_gradio_options import print_gradio_options
 from tts_webui.utils.suppress_warnings import suppress_warnings
 from tts_webui.utils.torch_load_patch import apply_torch_load_patch
+
 
 def create_output_folders():
     if not os.path.exists("outputs"):
@@ -12,12 +13,16 @@ def create_output_folders():
     if not os.path.exists("favorites"):
         os.makedirs("favorites")
 
+
 print("Starting TTS WebUI... ", end="")
+
+
 def tts_webui_init_environment():
     create_output_folders()
     dotenv_init.init()
     apply_torch_load_patch()
     suppress_warnings()
+
 
 tts_webui_init_environment()
 
@@ -49,9 +54,9 @@ def start_gradio_server(gr_options, config):
     parsed_options = upgrade_gradio_options(gr_options)
     print_gradio_options(parsed_options)
 
-    from tts_webui.gradio.main_ui import main_ui
+    from tts_webui.gradio.blocks import main_block
 
-    demo = main_ui(config=config)
+    demo = main_block(config=config)
 
     try:
         demo.queue().launch(
@@ -64,8 +69,8 @@ def start_gradio_server(gr_options, config):
 
 
 def server_hypervisor():
-    import subprocess
     import signal
+    import subprocess
     import sys
 
     if "--no-react" not in argv:

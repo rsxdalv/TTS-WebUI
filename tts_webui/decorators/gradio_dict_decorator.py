@@ -1,5 +1,5 @@
-import inspect
 import functools
+import inspect
 
 
 def gradio_dict_decorator(fn, gradio_fn_input_dictionary, outputs):

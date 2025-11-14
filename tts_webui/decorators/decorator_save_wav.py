@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.io.wavfile import write as write_wav
+
 from tts_webui.utils.outputs.path import get_relative_output_path_ext
 
 
@@ -64,4 +65,3 @@ def decorator_save_wav_generator_accumulated(fn):
             _save_wav(accumulated_result_dict)
 
     return wrapper
-

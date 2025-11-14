@@ -2,13 +2,14 @@
 Pytest configuration and fixtures for tts_webui tests.
 """
 
+import json
 import os
+import shutil
 import sys
 import tempfile
-import shutil
-import json
 from pathlib import Path
-from typing import Generator, Dict, Any
+from typing import Any, Dict, Generator
+
 import pytest
 
 # Add project root to Python path
@@ -118,9 +119,18 @@ def mock_extensions_data() -> Dict[str, Any]:
 @pytest.fixture
 def original_cwd():
     """Preserve and restore the original working directory."""
-    original = os.getcwd()
+    try:
+        original = os.getcwd()
+    except (FileNotFoundError, OSError):
+        # If current directory doesn't exist (e.g., in CI), use project root
+        original = str(project_root)
+        os.chdir(original)
     yield original
-    os.chdir(original)
+    try:
+        os.chdir(original)
+    except (FileNotFoundError, OSError):
+        # If original directory no longer exists, change to project root
+        os.chdir(str(project_root))
 
 
 @pytest.fixture

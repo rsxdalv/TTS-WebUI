@@ -1,8 +1,9 @@
 import io
+
 import matplotlib
 import matplotlib.figure as mpl_fig
-from matplotlib import pyplot as plt
 import numpy as np
+from matplotlib import pyplot as plt
 
 matplotlib.use("agg")
 

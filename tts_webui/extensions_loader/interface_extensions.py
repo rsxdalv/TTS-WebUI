@@ -1,17 +1,18 @@
 import importlib
 import importlib.util
 from importlib.metadata import version
+
 import gradio as gr
 
-from tts_webui.config.config import config
-from tts_webui.extensions_loader.LoadingIndicator import LoadingIndicator
-from tts_webui.utils.pip_install import pip_install_wrapper, pip_uninstall_wrapper
-from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
-from tts_webui.extensions_loader.extensions_data_loader import (
-    get_interface_extensions,
-    filter_extensions_by_type_and_class,
-)
 from tts_webui.config._save_config import _save_config
+from tts_webui.config.config import config
+from tts_webui.extensions_loader.extensions_data_loader import (
+    filter_extensions_by_type_and_class,
+    get_interface_extensions,
+)
+from tts_webui.extensions_loader.LoadingIndicator import LoadingIndicator
+from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
+from tts_webui.utils.pip_install import pip_install_wrapper, pip_uninstall_wrapper
 
 
 def uninstall_extension(package_name):
@@ -72,7 +73,9 @@ def _handle_package(package_name, title_name, requirements):
                 try:
                     main_tab()
                 except Exception as e:
-                    generic_error_tab_advanced(e, name=title_name, requirements=requirements)
+                    generic_error_tab_advanced(
+                        e, name=title_name, requirements=requirements
+                    )
         except Exception as e:
             generic_error_tab_advanced(e, name=title_name, requirements=requirements)
 
@@ -164,6 +167,17 @@ def _extension_management_ui(
             toggle_btn.click(
                 fn=toggle_extension_state(package_name, disabled_extensions),
                 outputs=[toggle_btn],
+            )
+            check_dependencies_btn = gr.Button("Check Dependencies", variant="primary")
+            check_dependencies_btn.click(
+                fn=lambda: gr.Button("Checking...", interactive=False),
+                outputs=[check_dependencies_btn],
+            ).then(
+                pip_install_wrapper(f"--dry-run {requirements}", title_name),
+                outputs=[output],
+            ).then(
+                fn=lambda: gr.Button("Check Dependencies", interactive=True),
+                outputs=[check_dependencies_btn],
             )
         with gr.Accordion("Console", open=True):
             output.render()

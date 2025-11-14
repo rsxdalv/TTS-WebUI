@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Tuple
 import gradio as gr
 
 from tts_webui.utils.pip_install import pip_install_wrapper
+from .messaging_js import messaging_js
 
 EXTERNAL_EXTENSIONS_FILE = "extensions.external.json"
 CATALOG_DIR = os.path.join("data", "extensions-catalog")
@@ -99,17 +100,24 @@ def _render_preview(entries: List[Dict[str, Any]]) -> str:
     header = "| Name | Package | Class | Type |\n|---|---|---|---|\n"
     rows = []
     for e in entries:
-        rows.append(f"| {e['name']} | {e['package_name']} | {e['extension_class']} | {e['extension_type']} |")
+        rows.append(
+            f"| {e['name']} | {e['package_name']} | {e['extension_class']} | {e['extension_type']} |"
+        )
     return gr.Markdown(header + "\n".join(rows))
+
 
 def _sync_catalog_via_git() -> Tuple[str, str]:
     # Try: clone if missing, else pull fast-forward; return output or error.
     try:
-        if not os.path.isdir(CATALOG_DIR) or not os.path.isdir(os.path.join(CATALOG_DIR, ".git")):
+        if not os.path.isdir(CATALOG_DIR) or not os.path.isdir(
+            os.path.join(CATALOG_DIR, ".git")
+        ):
             cmd = ["git", "clone", "--depth=1", CATALOG_REPO, CATALOG_DIR]
         else:
             cmd = ["git", "-C", CATALOG_DIR, "pull", "--ff-only"]
-        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        proc = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
         if proc.returncode != 0:
             msg = proc.stderr.strip() or proc.stdout.strip() or "Unknown git error"
             return f"Git failed: {msg}", ""
@@ -143,7 +151,10 @@ def _add_to_external(entries: List[Dict[str, Any]]) -> Tuple[str, str]:
             added.append(e.get("package_name"))
     data["tabs"] = tabs
     ok, msg = _save_external_extensions(data)
-    status = ("Saved" if ok else msg) + f" | Added: {', '.join(added) if added else 'none'} | Skipped (exists): {', '.join(skipped) if skipped else 'none'}"
+    status = (
+        ("Saved" if ok else msg)
+        + f" | Added: {', '.join(added) if added else 'none'} | Skipped (exists): {', '.join(skipped) if skipped else 'none'}"
+    )
     return status, json.dumps(data, indent=2, ensure_ascii=False)
 
 
@@ -158,21 +169,44 @@ def _install_selected(entries: List[Dict[str, Any]]):
         yield from pip_install_wrapper(req, name)()
 
 
-def extension__tts_generation_webui():
-    gr.Markdown("""
-    ## External Extensions Installer
-    Paste one or more extension JSON objects below. We'll validate, preview, and let you add them to `extensions.external.json` and optionally install their requirements right away.
+EXTENSION_CATALOG_IFRAME_ID = "extension-catalog"
 
-    You can discover and copy extension JSON entries from the [TTS WebUI Extension Catalog](https://rsxdalv.github.io/tts-webui-extension-catalog/).
-    """)
-    
+
+def extension__tts_generation_webui():
+    gr.Markdown(
+        """
+    Paste one or more extension JSON objects below. We'll validate, preview, and let you add them to `extensions.external.json` and optionally install their requirements right away.
+    """
+    )
+
     with gr.Accordion("Browse Extension Catalog", open=True):
         gr.HTML(
-            """<iframe width="100%" height="600px" src="https://rsxdalv.github.io/tts-webui-extension-catalog/?browse=true" title="TTS WebUI Extension Catalog" frameborder="0" allowfullscreen></iframe>"""
+            f"""<iframe id={EXTENSION_CATALOG_IFRAME_ID} 
+                 width="100%"
+                 height="800px"
+                 src="https://rsxdalv.github.io/tts-webui-extension-catalog/?browse=true&iframe=true"
+                 title="TTS WebUI Extension Catalog"
+                 frameborder="0"
+            ></iframe>
+            <div id="json-container" hidden></div>
+            """
+        )
+
+        init = gr.Timer(0.5)
+        init.tick(
+            fn=lambda: gr.Timer(active=False),
+            inputs=[],
+            outputs=[init],
+            js=messaging_js,
         )
 
     with gr.Row():
-        json_input = gr.Textbox(label="Extension JSON", lines=16, placeholder="Paste JSON object or array of objects here")
+        json_input = gr.Textbox(
+            label="Extension JSON",
+            lines=16,
+            placeholder="Paste JSON object or array of objects here",
+        )
+        json_input_automatic = gr.Textbox(visible=False)
     with gr.Row():
         parse_btn = gr.Button("Parse JSON", variant="primary")
         add_btn = gr.Button("Add to external list", variant="secondary")
@@ -198,6 +232,32 @@ def extension__tts_generation_webui():
     def _on_parse(text: str):
         entries, info = _parse_json_input(text)
         return entries, _render_preview(entries), info
+
+    gr.Button("", elem_id="receive_extension_button").click(
+        fn=None,
+        inputs=[],
+        outputs=[json_input, json_input_automatic],
+        js="""
+            () => {
+                json_value = document.getElementById('json-container').innerText;
+                return [json_value, json_value];
+            }
+        """,
+    )
+
+    json_input_automatic.change(
+        fn=_on_parse,
+        inputs=[json_input_automatic],
+        outputs=[parsed_state, preview_md, parse_info],
+    ).then(
+        fn=_add_to_external,
+        inputs=[parsed_state],
+        outputs=[parse_info, current_json],
+    ).then(
+        fn=_install_selected,
+        inputs=[parsed_state],
+        outputs=[console_html],
+    )
 
     parse_btn.click(
         fn=_on_parse,
@@ -231,7 +291,7 @@ def extension__tts_generation_webui():
         "package_name": "extensions.builtin.extension_external_extensions_installer",
         "name": "External Extensions Installer",
         "requirements": "builtin",
-    "description": "Add external extension entries via JSON and install them without restarts. Sync and apply the public extensions catalog via Git.",
+        "description": "Add external extension entries via JSON and install them without restarts. Sync and apply the public extensions catalog via Git.",
         "extension_type": "interface",
         "extension_class": "settings",
         "author": "rsxdalv",
@@ -245,7 +305,7 @@ def extension__tts_generation_webui():
 
 if __name__ == "__main__":
     if "demo" in locals():
-        demo.close()  # type: ignore
+        locals()["demo"].close()
     with gr.Blocks() as demo:
         with gr.Tab("External Extensions Installer"):
             extension__tts_generation_webui()

@@ -176,7 +176,8 @@ November:
 * Add extension marketplace directly in the Gradio UI using iframe
 * Move voices-tortoise to voices/tortoise/ (and maha-tts to voices/maha_tts/)
 * feat: add comprehensive test suite for tts_webui modules
-
+* feat: implement install button for extension marketplace
+* feat: add button to check dependencies in extension management UI
 
 October:
 * Update Gradio to 5.49.1

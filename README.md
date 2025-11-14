@@ -246,6 +246,33 @@ Updates need to be done manually by using the mini-control panel:
 
 Using the instructions above, you can install an OpenAI compatible API, and use it with Silly Tavern or other OpenAI compatible clients.
 
+### MCP (Model Context Protocol) Server
+
+TTS WebUI includes an MCP server that allows AI assistants like Claude to interact with TTS functionality directly.
+
+**Quick Start:**
+
+```bash
+tts-webui mcp
+```
+
+**Claude Desktop Integration:**
+
+Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "tts-webui": {
+      "command": "tts-webui",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+For detailed documentation, see [MCP Server Documentation](./documentation/mcp-server.md).
+
 ## Compatibility / Errors
 
 ### Red messages in console

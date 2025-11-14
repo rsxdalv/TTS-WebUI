@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "tts-webui": {
+      "command": "tts-webui",
+      "args": ["mcp"],
+      "description": "TTS WebUI - Text-to-Speech generation with multiple models",
+      "capabilities": {
+        "tools": true,
+        "resources": true,
+        "prompts": true
+      }
+    }
+  }
+}

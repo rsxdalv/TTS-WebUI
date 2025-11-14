@@ -1,0 +1,165 @@
+TTS WebUI MCP Server Integration Diagram
+=========================================
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                         AI Assistant                                │
+│                    (Claude Desktop, etc.)                           │
+│                                                                     │
+│  User: "Generate speech saying 'Hello World' using Maha TTS"       │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               │ MCP Protocol
+                               │ (JSON-RPC 2.0)
+                               │
+┌──────────────────────────────▼──────────────────────────────────────┐
+│                      MCP Server (stdio)                             │
+│                    tts_webui/mcp_server/                            │
+│                                                                     │
+│  ┌───────────────────────────────────────────────────────────┐    │
+│  │ Protocol Handler                                          │    │
+│  │ - Receives: {"method":"tools/call", "name":"generate_..   │    │
+│  │ - Parses request and validates parameters                 │    │
+│  │ - Routes to appropriate tool handler                      │    │
+│  └─────────────────────────┬─────────────────────────────────┘    │
+│                            │                                        │
+│  ┌─────────────────────────▼─────────────────────────────────┐    │
+│  │ Tool: generate_speech                                     │    │
+│  │ Parameters:                                               │    │
+│  │   - text: "Hello World"                                   │    │
+│  │   - model: "maha"                                         │    │
+│  │   - language: "english"                                   │    │
+│  │   - voice: "default"                                      │    │
+│  └─────────────────────────┬─────────────────────────────────┘    │
+└────────────────────────────┼──────────────────────────────────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+    ┌─────────▼────┐  ┌──────▼─────┐  ┌────▼───────┐
+    │ list_models  │  │list_voices │  │get_audio...│
+    └──────────────┘  └────────────┘  └────────────┘
+
+                             │
+                             │ [Future: Connect to TTS Core]
+                             │
+┌────────────────────────────▼──────────────────────────────────────┐
+│                    TTS WebUI Core                                 │
+│                    (Future Integration)                           │
+│                                                                   │
+│  ┌─────────────┐  ┌──────────────┐  ┌─────────────────────┐     │
+│  │   Maha TTS  │  │   Bark TTS   │  │   Other Models...   │     │
+│  └──────┬──────┘  └──────┬───────┘  └──────────┬──────────┘     │
+│         │                │                      │                 │
+│         └────────────────┴──────────────────────┘                 │
+│                          │                                        │
+│         ┌────────────────▼────────────────┐                       │
+│         │    Audio Generation Pipeline    │                       │
+│         │  - Load model                   │                       │
+│         │  - Process text                 │                       │
+│         │  - Generate audio               │                       │
+│         │  - Save to file                 │                       │
+│         └────────────────┬────────────────┘                       │
+└──────────────────────────┼──────────────────────────────────────┘
+                           │
+           ┌───────────────▼───────────────┐
+           │    outputs/generated_audio.wav │
+           └───────────────────────────────┘
+
+
+Data Flow Example:
+==================
+
+1. User Request → AI Assistant
+   "Generate speech saying 'Hello World'"
+
+2. AI Assistant → MCP Server
+   {
+     "method": "tools/call",
+     "name": "generate_speech",
+     "arguments": {
+       "text": "Hello World",
+       "model": "maha"
+     }
+   }
+
+3. MCP Server → [Future] TTS Core
+   generate_maha_tts(
+     text="Hello World",
+     language="english",
+     voice="default"
+   )
+
+4. TTS Core → Audio File
+   outputs/maha_hello_world_20250114_123456.wav
+
+5. MCP Server → AI Assistant
+   {
+     "result": {
+       "content": [{
+         "type": "text",
+         "text": "Generated audio: outputs/maha_hello_world_20250114_123456.wav"
+       }]
+     }
+   }
+
+6. AI Assistant → User
+   "I've generated the speech and saved it to outputs/maha_hello_world_20250114_123456.wav"
+
+
+Current vs Future State:
+========================
+
+CURRENT (v1.0 - This Implementation):
+┌─────────┐      ┌──────────┐
+│  Client │─────▶│   MCP    │─────▶ Placeholder responses
+│         │◀─────│  Server  │       (Protocol working, no actual TTS)
+└─────────┘      └──────────┘
+
+FUTURE (v2.0 - Full Integration):
+┌─────────┐      ┌──────────┐      ┌──────────┐
+│  Client │─────▶│   MCP    │─────▶│   TTS    │─────▶ Real audio files
+│         │◀─────│  Server  │◀─────│   Core   │
+└─────────┘      └──────────┘      └──────────┘
+
+
+Available Tools:
+================
+
+┌──────────────────┬────────────────────────────────────────────────┐
+│ Tool Name        │ Description                                    │
+├──────────────────┼────────────────────────────────────────────────┤
+│ generate_speech  │ Convert text to speech using TTS models        │
+│ list_models      │ Get available TTS models and their features    │
+│ list_voices      │ Get available voices for a model               │
+│ get_audio_file   │ Get information about generated audio files    │
+└──────────────────┴────────────────────────────────────────────────┘
+
+
+Resources:
+==========
+
+┌──────────────────┬────────────────────────────────────────────────┐
+│ Resource URI     │ Description                                    │
+├──────────────────┼────────────────────────────────────────────────┤
+│ file:///outputs  │ Generated audio files                          │
+│ file:///voices   │ Voice library and configurations               │
+└──────────────────┴────────────────────────────────────────────────┘
+
+
+Configuration:
+==============
+
+Claude Desktop Config:
+  Location: ~/Library/Application Support/Claude/claude_desktop_config.json
+
+{
+  "mcpServers": {
+    "tts-webui": {
+      "command": "tts-webui",
+      "args": ["mcp"]
+    }
+  }
+}
+
+  ↓ Restart Claude Desktop ↓
+
+  MCP Server available in Claude!

@@ -42,7 +42,7 @@ tts_webui_extension.seamless_m4t>=0.0.6
 tts_webui_extension.vocos>=0.0.3
 tts_webui_extension.openai_tts_api>=0.15.0
 tts_webui_extension.log_viewer>=0.1.0
-tts-webui-extension.audiocraft>=0.0.4
+# tts-webui-extension.audiocraft>=0.0.4
 tts-webui-extension.vall_e_x>=0.1.0
 
 gradio-goodtabs>=0.0.5

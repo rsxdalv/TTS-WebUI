@@ -174,10 +174,8 @@ const extensions = [
     name: "Bark Voice Clone",
     package: '"tts-webui-extension.bark_voice_clone>=0.0.1"',
   },
-  { name: "RVC", package: '"tts-webui-extension.rvc>=0.0.3"' },
-  { name: "Audiocraft", package: '"tts-webui-extension.audiocraft>=0.0.2"' },
-  { name: "StyleTTS", package: '"tts-webui-extension.styletts2>=0.1.0"' },
-  { name: "Vall-E-X", package: '"tts-webui-extension.vall_e_x>=0.1.0"' },
+  { name: "RVC", package: '"tts-webui-extension.rvc>=0.0.5"' },
+  { name: "StyleTTS", package: '"tts-webui-extension.styletts2>=0.1.1"' }, // pypi
   {
     name: "Stable Audio",
     package: '"tts-webui-extension.stable_audio>=0.1.1"',

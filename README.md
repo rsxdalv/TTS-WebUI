@@ -179,7 +179,8 @@ November:
 * feat: implement install button for extension marketplace
 * feat: add button to check dependencies in extension management UI
 * feat(cli): add extension-manager command to launch GUI tool
-* chore: remove frozen-requirements.txt file and remove uv from google colab
+* chore: remove uv from google colab
+* chore: move logging directory to installer_scripts/logs/
 
 October:
 * Update Gradio to 5.49.1

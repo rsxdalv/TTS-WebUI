@@ -178,6 +178,7 @@ November:
 * feat: add comprehensive test suite for tts_webui modules
 * feat: implement install button for extension marketplace
 * feat: add button to check dependencies in extension management UI
+* feat(cli): add extension-manager command to launch GUI tool
 
 October:
 * Update Gradio to 5.49.1

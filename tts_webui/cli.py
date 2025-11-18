@@ -35,6 +35,25 @@ def serve(
 
 
 @app.command()
+def extension_manager(
+    extra_args: Optional[List[str]] = typer.Argument(None),
+) -> int:  # pragma: no cover - manual run
+    """Launch the Extension Manager GUI."""
+    project_root = Path.cwd()
+    manager = project_root / "tools" / "extension_manager.py"
+    if not manager.exists():
+        typer.secho(
+            "Error: tools/extension_manager.py not found in project root.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=2)
+
+    cmd = [sys.executable, str(manager)] + (extra_args or [])
+    typer.secho("Starting extension manager with: " + " ".join(cmd))
+    raise typer.Exit(code=_run_process(cmd))
+
+
+@app.command()
 def troubleshoot() -> None:
     """Run basic troubleshooting checks and print recommendations."""
     project_root = Path.cwd()

@@ -40,10 +40,13 @@ def extension_manager(
 ) -> int:  # pragma: no cover - manual run
     """Launch the Extension Manager GUI."""
     project_root = Path.cwd()
-    manager = project_root / "tools" / "extension_manager.py"
+    # New location under installer_scripts/tools with fallback to old tools/
+    manager_new = project_root / "installer_scripts" / "tools" / "extension_manager.py"
+    manager_old = project_root / "tools" / "extension_manager.py"
+    manager = manager_new if manager_new.exists() else manager_old
     if not manager.exists():
         typer.secho(
-            "Error: tools/extension_manager.py not found in project root.",
+            "Error: extension_manager.py not found (checked installer_scripts/tools and tools).",
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=2)

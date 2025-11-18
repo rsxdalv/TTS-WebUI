@@ -1,9 +1,12 @@
 #!/bin/bash
 echo "Starting Extension Management UI..."
 
+# Move to repo root
+ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$ROOT_DIR"
+
 echo "Activating conda environment..."
-cd ..
 source "./installer_scripts/activate.sh"
 
 echo "Running Extension server..."
-python ./tools/extension_manager.py
+python ./installer_scripts/tools/extension_manager.py

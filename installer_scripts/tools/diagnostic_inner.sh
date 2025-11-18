@@ -1,6 +1,8 @@
 #!/bin/bash
 
-cd "$(dirname "$0")/.."
+# Move to repository root
+ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$ROOT_DIR"
 
 echo "Starting diagnostic..." > ./installer_scripts/diagnostic.txt
 echo "" >> ./installer_scripts/diagnostic.txt
@@ -24,7 +26,7 @@ echo "which node (before calling activate.sh):" >> ./installer_scripts/diagnosti
 which node >> ./installer_scripts/diagnostic.txt 2>&1
 echo "" >> ./installer_scripts/diagnostic.txt
 
-source "$(dirname "$0")/activate.sh"
+source "$ROOT_DIR/installer_scripts/activate.sh"
 
 echo "" >> ./installer_scripts/diagnostic.txt
 echo "which git (after calling activate.sh):" >> ./installer_scripts/diagnostic.txt

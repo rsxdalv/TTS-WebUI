@@ -24,6 +24,7 @@ extensions.external.json
 /collections/
 /outputs-rvc/
 /voices-tortoise/
+/installer_scripts/logs/
 
 # Ignore model checkpoints
 /data/models/hubert/

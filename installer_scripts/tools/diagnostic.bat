@@ -1,6 +1,6 @@
 @echo off
 
-cd %~dp0..
+cd %~dp0..\..
 
 echo Starting diagnostic... > .\installer_scripts\diagnostic.txt 2>&1
 echo: >> .\installer_scripts\diagnostic.txt
@@ -24,7 +24,7 @@ echo where node (before calling activate.bat): >> .\installer_scripts\diagnostic
 call where node >> .\installer_scripts\diagnostic.txt 2>&1
 echo: >> .\installer_scripts\diagnostic.txt
 
-call %~dp0activate.bat
+call .\installer_scripts\activate.bat
 
 echo: >> .\installer_scripts\diagnostic.txt
 echo where git (after calling activate.bat): >> .\installer_scripts\diagnostic.txt 2>&1

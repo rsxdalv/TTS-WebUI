@@ -18,7 +18,7 @@
   [![GitHub stars](https://img.shields.io/github/stars/rsxdalv/tts-webui?style=social)](https://github.com/rsxdalv/tts-webui/stargazers)
   [![GitHub](https://img.shields.io/github/license/rsxdalv/tts-webui)](https://github.com/rsxdalv/tts-webui/blob/main/LICENSE)
   [![Discord](https://img.shields.io/discord/1258772280071295018?label=discord&logo=discord&logoColor=white)](https://discord.gg/V8BKTVRtJ9)
-  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rsxdalv/tts-webui/blob/main/notebooks/google_colab.ipynb)
+  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rsxdalv/tts-webui/blob/main/documentation/notebooks/google_colab.ipynb)
   [![GitHub forks](https://img.shields.io/github/forks/rsxdalv/tts-webui?style=social)](https://github.com/rsxdalv/tts-webui/network/members)
   [![YouTube](https://img.shields.io/badge/YouTube-%23FF0000.svg?logo=YouTube&logoColor=white)](https://www.youtube.com/@TTS-WebUI)
 
@@ -178,6 +178,9 @@ November:
 * feat: add comprehensive test suite for tts_webui modules
 * feat: implement install button for extension marketplace
 * feat: add button to check dependencies in extension management UI
+* feat(cli): add extension-manager command to launch GUI tool
+* chore: remove uv from google colab
+* chore: move logging directory to installer_scripts/logs/
 
 October:
 * Update Gradio to 5.49.1

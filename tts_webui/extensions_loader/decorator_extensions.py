@@ -8,6 +8,7 @@ from typing import Literal
 
 import gradio as gr
 
+from tts_webui.config.config import config
 from tts_webui.extensions_loader.extensions_data_loader import (
     get_decorator_extensions,
     get_decorator_extensions_by_class,
@@ -22,7 +23,8 @@ def check_if_package_installed(package_name):
 
 
 # A list of disabled extensions and decorators
-disabled_extensions = ["decorator_disabled"]
+# disabled_extensions = ["decorator_disabled"]
+disabled_extensions: list[str] = config.get("extensions", {}).get("disabled_decorators", [])
 
 
 # Get the decorator extensions list from the data loader

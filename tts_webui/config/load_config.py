@@ -38,6 +38,7 @@ default_config = {
     },
     "extensions": {
         "disabled": [],
+        "disabled_decorators": [],
     },
 }
 

@@ -33,13 +33,6 @@ def _check_ffmpegg():
         )
 
 
-def decorator_disabled(fn):
-    def wrapper(*args, **kwargs):
-        return fn(*args, **kwargs)
-
-    return wrapper
-
-
 def _save(kwargs, result_dict: Dict[str, Any], format: Literal["ogg", "flac"]):
     if kwargs.get("_type", None) == "bark":
         callback_save_generation_bark(

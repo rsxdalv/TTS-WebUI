@@ -181,6 +181,7 @@ November:
 * feat(cli): add extension-manager command to launch GUI tool
 * chore: remove uv from google colab
 * chore: move logging directory to installer_scripts/logs/
+* feat: add ability to disable decorator extensions via config.json
 
 October:
 * Update Gradio to 5.49.1

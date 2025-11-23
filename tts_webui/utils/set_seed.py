@@ -35,6 +35,8 @@ def set_seed(seed: int = 0):
         # Use default_rng() because it is independent of np.random.seed()
         seed = np.random.default_rng().integers(1, 2**32 - 1)
 
+    seed = int(seed)
+
     assert 0 < seed < 2**32
 
     np.random.seed(seed)

@@ -72,6 +72,7 @@ def server_hypervisor():
     import signal
     import subprocess
     import sys
+    import threading
 
     if "--no-react" not in argv:
         print("\nStarting React UI...")
@@ -92,14 +93,28 @@ def server_hypervisor():
             print("skipping SQLite (--no-database flag detected) \n", end="")
         return
 
-    # SQLite doesn't require a separate server process - it's file-based
-    # Initialize database directory if needed
+    # Initialize SQLite database and start REST API server
     sqlite_dir = os.path.join("data", "sqlite")
     if not os.path.exists(sqlite_dir):
         os.makedirs(sqlite_dir)
         print(f"Created SQLite database directory: {sqlite_dir}")
     else:
         print(f"Using SQLite database directory: {sqlite_dir}")
+
+    # Start Database REST API server in a separate thread
+    if "--no-api" not in argv:
+        def start_api_server():
+            try:
+                from tts_webui.database.api_server import start_api_server as run_api
+                run_api()
+            except Exception as e:
+                print(f"Warning: Failed to start Database API server: {e}")
+        
+        api_thread = threading.Thread(target=start_api_server, daemon=True)
+        api_thread.start()
+        print("Database REST API server starting on http://127.0.0.1:7774")
+    else:
+        print("Skipping Database API server (--no-api flag detected)")
 
 
 def start():

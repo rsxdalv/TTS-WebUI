@@ -8,9 +8,9 @@ deprecated>=1.2.13
 matplotlib
 typer
 
-# Database API
-flask>=3.0.0
-flask-cors>=4.0.0
+# Database API (FastAPI/Uvicorn - same as OpenAI TTS API)
+fastapi>=0.109.0
+uvicorn>=0.27.0
 mutagen>=1.47.0  # Audio metadata extraction
 
 ffmpeg-python # Apache 2.0

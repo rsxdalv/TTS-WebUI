@@ -110,11 +110,8 @@ def ui():
             label="height: Height in pixels of the iframe element",
             value=gradio_interface_options.get("height", None),
         ),
-        "width": gr.Slider(
-            minimum=100,
-            maximum=1000,
-            step=10,
-            label="width: Width in pixels of the iframe element",
+        "width": gr.Textbox(
+            label="width: Width in pixels or percentage (e.g., '100%') of the iframe element",
             value=gradio_interface_options.get("width", None),
         ),
         "ssl_keyfile": gr.Textbox(

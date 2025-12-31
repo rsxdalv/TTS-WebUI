@@ -32,7 +32,6 @@ class TestLoadConfig:
 
         assert (Path.cwd() / "config.json").exists()
         assert result == default_config
-        assert "model" in result
         assert "gradio_interface_options" in result
         assert "extensions" in result
 
@@ -44,20 +43,14 @@ class TestLoadConfig:
         result = load_config()
 
         assert result is not None
-        assert "model" in result
         assert "gradio_interface_options" in result
         assert result["gradio_interface_options"]["server_port"] == 7770
 
     @pytest.mark.unit
     def test_default_config_structure(self):
         """Test that default config has expected structure."""
-        assert "model" in default_config
         assert "gradio_interface_options" in default_config
         assert "extensions" in default_config
-
-        # Check model config
-        assert "text_use_gpu" in default_config["model"]
-        assert isinstance(default_config["model"]["text_use_gpu"], bool)
 
         # Check gradio options
         assert "server_port" in default_config["gradio_interface_options"]
@@ -75,15 +68,15 @@ class TestConfigUtils:
     def test_get_config_value_existing_key(self, mock_config):
         """Test getting a value that exists in config."""
         with patch("tts_webui.config.config_utils.config", mock_config):
-            result = get_config_value("model", "text_use_gpu")
-            assert result is False
+            result = get_config_value("test_extension", "test_key")
+            assert result is True
 
     @pytest.mark.unit
     def test_get_config_value_missing_key_returns_default(self, mock_config):
         """Test getting a value that doesn't exist returns default."""
         with patch("tts_webui.config.config_utils.config", mock_config):
             result = get_config_value(
-                "model", "nonexistent_key", default="default_value"
+                "test_extension", "nonexistent_key", default="default_value"
             )
             assert result == "default_value"
 
@@ -99,8 +92,8 @@ class TestConfigUtils:
         """Test setting a config value."""
         with patch("tts_webui.config.config_utils.config", mock_config):
             with patch("tts_webui.config.config_utils._save_config"):
-                set_config_value("model", "text_use_gpu", True)
-                assert mock_config["model"]["text_use_gpu"] is True
+                set_config_value("test_extension", "new_key", "new_value")
+                assert mock_config["test_extension"]["new_key"] == "new_value"
 
 
 class TestSaveConfig:

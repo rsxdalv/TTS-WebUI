@@ -174,6 +174,7 @@ Please note that the docker-compose needs to be edited to use the image you just
 
 December:
 * Minor bug fixes and improvements
+* refactor: extract bark config loading to separate function from WebUI
 
 November:
 * Add extension marketplace directly in the Gradio UI using iframe

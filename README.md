@@ -112,7 +112,7 @@ Prerequisites:
 * PyTorch
 * ffmpeg (with vorbis support)
 * (Optional) NodeJS 22.9.0 for React UI
-* (Optional) PostgreSQL 16.4+ for database support
+* SQLite (bundled with Python) for database support
 
 1. Clone the repository:
    ```bash

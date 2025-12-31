@@ -89,50 +89,17 @@ def server_hypervisor():
 
     if "--no-database" in argv or "--docker" in argv:
         if "--no-database" in argv:
-            print("skipping Postgres (--no-database flag detected) \n", end="")
+            print("skipping SQLite (--no-database flag detected) \n", end="")
         return
 
-    print("\nStarting Postgres...")
-    postgres_dir = os.path.join("data", "postgres")
-    postgres_process = subprocess.Popen(
-        f"postgres -D {postgres_dir} -p 7773", shell=True
-    )
-    try:
-
-        def stop_postgres(postgres_process):
-            try:
-                subprocess.check_call(
-                    f"pg_ctl stop -D {postgres_dir} -m fast", shell=True
-                )
-                print("PostgreSQL stopped gracefully.")
-            except Exception as e:
-                print(f"Error stopping PostgreSQL: {e}")
-                postgres_process.terminate()
-
-        def signal_handler(signal, frame, postgres_process):
-            print("Shutting down...")
-            stop_postgres(postgres_process)
-            sys.exit(0)
-
-        signal.signal(
-            signal.SIGINT,
-            lambda sig, frame: signal_handler(sig, frame, postgres_process),
-        )  # Ctrl+C
-        signal.signal(
-            signal.SIGTERM,
-            lambda sig, frame: signal_handler(sig, frame, postgres_process),
-        )  # Termination signals
-        if os.name != "nt":
-            signal.signal(
-                signal.SIGHUP,
-                lambda sig, frame: signal_handler(sig, frame, postgres_process),
-            )  # Terminal closure
-            signal.signal(
-                signal.SIGQUIT,
-                lambda sig, frame: signal_handler(sig, frame, postgres_process),
-            )  # Quit
-    except (ValueError, OSError) as e:
-        print(f"Failed to set signal handlers: {e}")
+    # SQLite doesn't require a separate server process - it's file-based
+    # Initialize database directory if needed
+    sqlite_dir = os.path.join("data", "sqlite")
+    if not os.path.exists(sqlite_dir):
+        os.makedirs(sqlite_dir)
+        print(f"Created SQLite database directory: {sqlite_dir}")
+    else:
+        print(f"Using SQLite database directory: {sqlite_dir}")
 
 
 def start():

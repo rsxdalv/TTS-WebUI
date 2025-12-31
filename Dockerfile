@@ -46,7 +46,7 @@ RUN pip install "tts-webui-extension.styletts2>=0.1.0" --extra-index-url https:/
 # RUN pip install "tts-webui-extension.stable_audio>=0.1.1" --extra-index-url https://tts-webui.github.io/extensions-index/
 
 
-# add postgres & run setup
+# SQLite is included with Python, no additional setup needed
 # Build the React UI
 RUN cd react-ui && npm install && npm run build
 

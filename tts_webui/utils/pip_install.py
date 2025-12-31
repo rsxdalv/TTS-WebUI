@@ -2,11 +2,17 @@ import os
 import subprocess
 
 
+import re
+
 def write_log(output, name, type):
     script_dir = os.path.dirname((__file__))
     logs_dir = os.path.join(script_dir, "..", "..", "installer_scripts", "logs")
     os.makedirs(logs_dir, exist_ok=True)
-    with open(os.path.join(logs_dir, f"{type}-{name}.log"), "w") as outfile:
+    
+    # Sanitize the name to be safe for filenames
+    safe_name = re.sub(r'[<>:"/\\|?*]', '_', name)
+    
+    with open(os.path.join(logs_dir, f"{type}-{safe_name}.log"), "w") as outfile:
         outfile.write("\n".join(output))
 
 

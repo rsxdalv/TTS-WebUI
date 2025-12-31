@@ -172,6 +172,9 @@ Please note that the docker-compose needs to be edited to use the image you just
 
 ## Changelog
 
+December:
+* Minor bug fixes and improvements
+
 November:
 * Add extension marketplace directly in the Gradio UI using iframe
 * Move voices-tortoise to voices/tortoise/ (and maha-tts to voices/maha_tts/)

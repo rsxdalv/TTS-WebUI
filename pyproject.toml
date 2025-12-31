@@ -88,3 +88,6 @@ norecursedirs = [".git", ".tox", "dist", "build", "*.egg", "__pycache__", "noteb
 
 [tool.isort]
 profile = "black"
+
+[tool.black]
+line-length = 88

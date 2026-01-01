@@ -77,7 +77,11 @@ def ui():
         ),
         "auth": gr.Textbox(
             label="auth: Username and password required to access interface, username:password",
-            value=gradio_interface_options.get("auth", None),
+            value=(
+                ":".join(gradio_interface_options.get("auth"))
+                if isinstance(gradio_interface_options.get("auth"), (tuple, list))
+                else gradio_interface_options.get("auth", None)
+            ),
         ),
         "auth_message": gr.Textbox(
             label="auth_message: HTML message provided on login page",

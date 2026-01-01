@@ -44,7 +44,11 @@ def start_gradio_server(gr_options, config):
     def upgrade_gradio_options(options):
         if gr_options["auth"] is not None:
             # split username:password into (username, password)
-            gr_options["auth"] = tuple(gr_options["auth"].split(":"))
+            # Handle both string format and already-split tuple/list format
+            if isinstance(gr_options["auth"], str):
+                gr_options["auth"] = tuple(gr_options["auth"].split(":"))
+            elif isinstance(gr_options["auth"], (list, tuple)):
+                gr_options["auth"] = tuple(gr_options["auth"])
             print("Gradio server authentication enabled")
         for key in ["file_directories", "favicon_path", "show_tips", "enable_queue"]:
             if key in options:

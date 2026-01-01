@@ -2,15 +2,6 @@ import json
 import os
 
 default_config = {
-    "model": {
-        "text_use_gpu": True,
-        "text_use_small": True,
-        "coarse_use_gpu": True,
-        "coarse_use_small": True,
-        "fine_use_gpu": True,
-        "fine_use_small": True,
-        "codec_use_gpu": True,
-    },
     "gradio_interface_options": {
         "inline": False,
         "inbrowser": True,

@@ -112,7 +112,7 @@ Prerequisites:
 * PyTorch
 * ffmpeg (with vorbis support)
 * (Optional) NodeJS 22.9.0 for React UI
-* (Optional) PostgreSQL 16.4+ for database support
+* SQLite (bundled with Python) for database support
 
 1. Clone the repository:
    ```bash
@@ -174,6 +174,9 @@ Please note that the docker-compose needs to be edited to use the image you just
 
 December:
 * Minor bug fixes and improvements
+* refactor: extract bark config loading to separate function from WebUI
+* chore: remove postgres from tts-webui as it is a heavy dependency not needed for most users
+* feat: add database API server to manage generated audio files and metadata
 
 November:
 * Add extension marketplace directly in the Gradio UI using iframe

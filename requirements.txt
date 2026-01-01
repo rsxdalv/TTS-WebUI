@@ -8,6 +8,11 @@ deprecated>=1.2.13
 matplotlib
 typer
 
+# Database API (FastAPI/Uvicorn - same as OpenAI TTS API)
+fastapi>=0.109.0
+uvicorn>=0.27.0
+mutagen>=1.47.0  # Audio metadata extraction
+
 ffmpeg-python # Apache 2.0
 gradio==5.49.1 # MIT License
 pydantic==2.10.6 # for gradio 5.5.0 fix

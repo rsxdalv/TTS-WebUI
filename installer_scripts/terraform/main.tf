@@ -1,26 +1,5 @@
-# This file is not currently (to avoid adding Terraform for now) in use but is kept for future reference.
+# This file is not currently in use but is kept for future reference.
+# Note: The application now uses SQLite instead of PostgreSQL.
+# SQLite is file-based and doesn't require terraform configuration.
 
-terraform {
-  required_providers {
-    postgresql = {
-      source = "cyrilgdn/postgresql"
-      version = "1.23.0"
-    }
-  }
-}
-
-provider "postgresql" {
-  host            = "localhost"
-  port            = 5432
-  database        = "postgres"
-  username        = "postgres"
-  password        = ""
-  sslmode         = "disable"
-  connect_timeout = 15
-}
-
-resource "postgresql_database" "webui" {
-  name = "webui"
-}
-# equal to
-# CREATE DATABASE webui;
+# The SQLite database is stored at: data/sqlite/webui.db

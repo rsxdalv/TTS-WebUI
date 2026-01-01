@@ -44,7 +44,11 @@ def start_gradio_server(gr_options, config):
     def upgrade_gradio_options(options):
         if gr_options["auth"] is not None:
             # split username:password into (username, password)
-            gr_options["auth"] = tuple(gr_options["auth"].split(":"))
+            # Handle both string format and already-split tuple/list format
+            if isinstance(gr_options["auth"], str):
+                gr_options["auth"] = tuple(gr_options["auth"].split(":"))
+            elif isinstance(gr_options["auth"], (list, tuple)):
+                gr_options["auth"] = tuple(gr_options["auth"])
             print("Gradio server authentication enabled")
         for key in ["file_directories", "favicon_path", "show_tips", "enable_queue"]:
             if key in options:
@@ -72,6 +76,7 @@ def server_hypervisor():
     import signal
     import subprocess
     import sys
+    import threading
 
     if "--no-react" not in argv:
         print("\nStarting React UI...")
@@ -89,50 +94,31 @@ def server_hypervisor():
 
     if "--no-database" in argv or "--docker" in argv:
         if "--no-database" in argv:
-            print("skipping Postgres (--no-database flag detected) \n", end="")
+            print("skipping SQLite (--no-database flag detected) \n", end="")
         return
 
-    print("\nStarting Postgres...")
-    postgres_dir = os.path.join("data", "postgres")
-    postgres_process = subprocess.Popen(
-        f"postgres -D {postgres_dir} -p 7773", shell=True
-    )
-    try:
+    # Initialize SQLite database and start REST API server
+    sqlite_dir = os.path.join("data", "sqlite")
+    if not os.path.exists(sqlite_dir):
+        os.makedirs(sqlite_dir)
+        print(f"Created SQLite database directory: {sqlite_dir}")
+    else:
+        print(f"Using SQLite database directory: {sqlite_dir}")
 
-        def stop_postgres(postgres_process):
+    # Start Database REST API server in a separate thread
+    if "--no-api" not in argv:
+        def start_api_server():
             try:
-                subprocess.check_call(
-                    f"pg_ctl stop -D {postgres_dir} -m fast", shell=True
-                )
-                print("PostgreSQL stopped gracefully.")
+                from tts_webui.database.api_server import start_api_server as run_api
+                run_api()
             except Exception as e:
-                print(f"Error stopping PostgreSQL: {e}")
-                postgres_process.terminate()
-
-        def signal_handler(signal, frame, postgres_process):
-            print("Shutting down...")
-            stop_postgres(postgres_process)
-            sys.exit(0)
-
-        signal.signal(
-            signal.SIGINT,
-            lambda sig, frame: signal_handler(sig, frame, postgres_process),
-        )  # Ctrl+C
-        signal.signal(
-            signal.SIGTERM,
-            lambda sig, frame: signal_handler(sig, frame, postgres_process),
-        )  # Termination signals
-        if os.name != "nt":
-            signal.signal(
-                signal.SIGHUP,
-                lambda sig, frame: signal_handler(sig, frame, postgres_process),
-            )  # Terminal closure
-            signal.signal(
-                signal.SIGQUIT,
-                lambda sig, frame: signal_handler(sig, frame, postgres_process),
-            )  # Quit
-    except (ValueError, OSError) as e:
-        print(f"Failed to set signal handlers: {e}")
+                print(f"Warning: Failed to start Database API server: {e}")
+        
+        api_thread = threading.Thread(target=start_api_server, daemon=True)
+        api_thread.start()
+        print("Database REST API server starting on http://127.0.0.1:7774")
+    else:
+        print("Skipping Database API server (--no-api flag detected)")
 
 
 def start():

@@ -83,6 +83,7 @@ log.out
 
 # Database
 /data/postgres/
+/data/sqlite/
 
 # Ignore integration workspace
 workspace/

@@ -77,7 +77,11 @@ def ui():
         ),
         "auth": gr.Textbox(
             label="auth: Username and password required to access interface, username:password",
-            value=gradio_interface_options.get("auth", None),
+            value=(
+                ":".join(gradio_interface_options.get("auth"))
+                if isinstance(gradio_interface_options.get("auth"), (tuple, list))
+                else gradio_interface_options.get("auth", None)
+            ),
         ),
         "auth_message": gr.Textbox(
             label="auth_message: HTML message provided on login page",
@@ -110,11 +114,8 @@ def ui():
             label="height: Height in pixels of the iframe element",
             value=gradio_interface_options.get("height", None),
         ),
-        "width": gr.Slider(
-            minimum=100,
-            maximum=1000,
-            step=10,
-            label="width: Width in pixels of the iframe element",
+        "width": gr.Textbox(
+            label="width: Width in pixels or percentage (e.g., '100%') of the iframe element",
             value=gradio_interface_options.get("width", None),
         ),
         "ssl_keyfile": gr.Textbox(

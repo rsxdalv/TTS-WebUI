@@ -32,10 +32,6 @@ def temp_config_file(temp_dir: Path) -> Generator[Path, None, None]:
     """Create a temporary config.json file."""
     config_path = temp_dir / "config.json"
     config_data = {
-        "model": {
-            "text_use_gpu": False,
-            "text_use_small": True,
-        },
         "gradio_interface_options": {
             "server_name": "127.0.0.1",
             "server_port": 7770,
@@ -55,14 +51,8 @@ def temp_config_file(temp_dir: Path) -> Generator[Path, None, None]:
 def mock_config() -> Dict[str, Any]:
     """Provide a mock configuration dictionary."""
     return {
-        "model": {
-            "text_use_gpu": False,
-            "text_use_small": True,
-            "coarse_use_gpu": False,
-            "coarse_use_small": True,
-            "fine_use_gpu": False,
-            "fine_use_small": True,
-            "codec_use_gpu": False,
+        "test_extension": {
+            "test_key": True,
         },
         "gradio_interface_options": {
             "inline": False,

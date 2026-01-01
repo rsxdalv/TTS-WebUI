@@ -40,7 +40,7 @@ def print_gradio_options(options):
             "favicon_path",
             "show_api",
         ],
-        "Access": ["share", "auth", "auth_message", "auth_dependency", "max_file_size"],
+        "Access": ["share", "auth_message", "auth_dependency", "max_file_size"],
         "Security": [
             "ssl_keyfile",
             "ssl_certfile",

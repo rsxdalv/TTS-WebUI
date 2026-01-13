@@ -235,7 +235,6 @@
             },
             {
                 "package_name": "tts_webui_extension.bark",
-                "recommended": true,
                 "name": "Bark",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.bark@main",
                 "description": "Bark: A text-to-speech model",
@@ -851,7 +850,6 @@
             },
             {
                 "package_name": "tts_webui_extension.bark_voice_clone",
-                "recommended": true,
                 "name": "Bark Voice Clone",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.bark_voice_clone@main",
                 "description": "Bark Voice Clone allows cloning voices for use with Bark TTS",

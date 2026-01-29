@@ -1,20 +1,18 @@
 /**
- * Unified Node.js Proxy and Process Manager
+ * Unified Node.js Proxy
  *
- * This module provides a unified entry point that:
- * 1. Manages child processes for Gradio UI, React UI, and Update status page
- * 2. Proxies all requests through a single host with different paths:
+ * This module provides a unified proxy that routes requests to different backends:
  *    - /gradio/* -> Gradio backend (port 7770)
  *    - /update/* -> Update status page (port 7771)
  *    - /* -> React UI (port 3000)
  *
  * Uses only native Node.js modules (no npm packages required).
+ * 
+ * Note: The update port (7771) is fixed in server.js and cannot be changed via environment variables.
  */
 
 const http = require("http");
 const net = require("net");
-const { spawn } = require("child_process");
-const path = require("path");
 const url = require("url");
 
 // Configuration
@@ -22,68 +20,17 @@ const CONFIG = {
   proxyPort: parseInt(process.env.PROXY_PORT, 10) || 7860,
   gradioPort: parseInt(process.env.GRADIO_PORT, 10) || 7770,
   reactPort: parseInt(process.env.REACT_PORT, 10) || 3000,
-  updatePort: parseInt(process.env.UPDATE_PORT, 10) || 7771,
+  // Note: updatePort is fixed at 7771 (hardcoded in server.js)
+  updatePort: 7771,
   gradioHost: process.env.GRADIO_HOST || "127.0.0.1",
   reactHost: process.env.REACT_HOST || "127.0.0.1",
   updateHost: process.env.UPDATE_HOST || "127.0.0.1",
 };
 
-// Track managed processes
-const managedProcesses = new Map();
-
 // Logging utility
 function log(level, message, ...args) {
   const timestamp = new Date().toISOString();
   console[level](`[${timestamp}] [UnifiedProxy] ${message}`, ...args);
-}
-
-/**
- * Starts a child process and manages its lifecycle
- * @param {string} name - Process name for identification
- * @param {string} command - Command to run
- * @param {string[]} args - Arguments for the command
- * @param {object} options - spawn options
- * @returns {ChildProcess}
- */
-function startProcess(name, command, args, options = {}) {
-  log("info", `Starting process: ${name} (${command} ${args.join(" ")})`);
-
-  const proc = spawn(command, args, {
-    stdio: ["pipe", "pipe", "pipe"],
-    shell: true,
-    ...options,
-  });
-
-  proc.stdout.on("data", (data) => {
-    process.stdout.write(`[${name}] ${data}`);
-  });
-
-  proc.stderr.on("data", (data) => {
-    process.stderr.write(`[${name}:err] ${data}`);
-  });
-
-  proc.on("close", (code) => {
-    log("info", `Process ${name} exited with code ${code}`);
-    managedProcesses.delete(name);
-  });
-
-  proc.on("error", (err) => {
-    log("error", `Process ${name} error:`, err.message);
-  });
-
-  managedProcesses.set(name, proc);
-  return proc;
-}
-
-/**
- * Stops all managed processes gracefully
- */
-function stopAllProcesses() {
-  log("info", "Stopping all managed processes...");
-  for (const [name, proc] of managedProcesses) {
-    log("info", `Stopping ${name}...`);
-    proc.kill("SIGTERM");
-  }
 }
 
 /**
@@ -173,8 +120,9 @@ function proxyWebSocket(req, socket, head, targetHost, targetPort, pathPrefix = 
   }
 
   const serverSocket = net.connect(targetPort, targetHost, () => {
-    // Build the HTTP upgrade request
+    // Build the HTTP upgrade request, filtering out 'host' header to avoid duplication
     const headers = Object.keys(req.headers)
+      .filter((key) => key.toLowerCase() !== "host")
       .map((key) => `${key}: ${req.headers[key]}`)
       .join("\r\n");
 
@@ -295,22 +243,20 @@ function waitForServer(host, port, timeout = 30000, interval = 1000) {
 }
 
 /**
- * Main entry point - starts all services and the proxy
+ * Main entry point - starts the proxy only
  */
 async function main() {
-  log("info", "Starting Unified Proxy and Process Manager");
+  log("info", "Starting Unified Proxy");
   log("info", `Configuration: ${JSON.stringify(CONFIG)}`);
 
   // Set up signal handlers for graceful shutdown
   process.on("SIGINT", () => {
     log("info", "Received SIGINT, shutting down...");
-    stopAllProcesses();
     process.exit(0);
   });
 
   process.on("SIGTERM", () => {
     log("info", "Received SIGTERM, shutting down...");
-    stopAllProcesses();
     process.exit(0);
   });
 
@@ -332,12 +278,11 @@ async function main() {
 module.exports = {
   main,
   createProxyServer,
-  startProcess,
-  stopAllProcesses,
   waitForServer,
   proxyRequest,
   proxyWebSocket,
   getBackend,
+  rewritePath,
   CONFIG,
 };
 

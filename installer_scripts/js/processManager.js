@@ -131,15 +131,15 @@ function startReactUI() {
 /**
  * Starts the update status server
  * Note: This is typically started by init_app.js during initialization.
- * If running standalone, we can start a minimal version.
+ * If running standalone, we start it ourselves.
  */
 function startUpdateServer() {
   // The update server is started by the startServer function in server.js
   // during initialization. For the unified proxy, we assume it's already running
-  // or we start it ourselves.
+  // or we start it ourselves with skipBrowser=true since we'll open the proxy URL.
   try {
     const { startServer } = require("./server.js");
-    return startServer();
+    return startServer({ skipBrowser: true });
   } catch (err) {
     log("warn", "Could not start update server:", err.message);
     return null;

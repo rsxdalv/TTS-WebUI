@@ -5,21 +5,11 @@
  * to the appropriate backend services based on URL paths.
  */
 
-const http = require("http");
 const {
   getBackend,
   rewritePath,
   CONFIG,
 } = require("../js/unifiedProxy.js");
-
-// Helper to import the rewritePath function (need to export it)
-function testRewritePath(originalPath, prefix) {
-  let newPath = originalPath.slice(prefix.length);
-  if (!newPath.startsWith("/")) {
-    newPath = "/" + newPath;
-  }
-  return newPath;
-}
 
 describe("Unified Proxy", () => {
   describe("getBackend", () => {
@@ -66,29 +56,29 @@ describe("Unified Proxy", () => {
     });
   });
 
-  describe("path rewriting", () => {
+  describe("rewritePath", () => {
     it("should rewrite /gradio to /", () => {
-      const result = testRewritePath("/gradio", "/gradio");
+      const result = rewritePath("/gradio", "/gradio");
       expect(result).toBe("/");
     });
 
     it("should rewrite /gradio/ to /", () => {
-      const result = testRewritePath("/gradio/", "/gradio");
+      const result = rewritePath("/gradio/", "/gradio");
       expect(result).toBe("/");
     });
 
     it("should rewrite /gradio/api/predict to /api/predict", () => {
-      const result = testRewritePath("/gradio/api/predict", "/gradio");
+      const result = rewritePath("/gradio/api/predict", "/gradio");
       expect(result).toBe("/api/predict");
     });
 
     it("should rewrite /update/poll to /poll", () => {
-      const result = testRewritePath("/update/poll", "/update");
+      const result = rewritePath("/update/poll", "/update");
       expect(result).toBe("/poll");
     });
 
     it("should rewrite /update/stream-log to /stream-log", () => {
-      const result = testRewritePath("/update/stream-log", "/update");
+      const result = rewritePath("/update/stream-log", "/update");
       expect(result).toBe("/stream-log");
     });
   });

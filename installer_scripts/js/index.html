@@ -141,9 +141,19 @@
       const autoScrollCheckbox = document.getElementById("auto-scroll");
       let isFirstLoad = true;
 
+      // Get the base path (handles both direct access and proxied access via /update)
+      function getBasePath() {
+        const path = window.location.pathname;
+        if (path.startsWith('/update')) {
+          return '/update';
+        }
+        return '';
+      }
+
       function fetchLogs() {
+        const basePath = getBasePath();
         const xhr = new XMLHttpRequest();
-        xhr.open("GET", "/stream-log", true);
+        xhr.open("GET", basePath + "/stream-log", true);
         xhr.onprogress = function () {
           if (xhr.responseText) {
             logContainer.textContent = xhr.responseText;
@@ -165,7 +175,8 @@
 
       // Long polling functionality
       function poll() {
-        fetch("/poll")
+        const basePath = getBasePath();
+        fetch(basePath + "/poll")
           .then((response) => response.json())
           .then((data) => {
             // Update messages

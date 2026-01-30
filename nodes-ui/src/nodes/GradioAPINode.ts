@@ -2,6 +2,11 @@ import { ClassicPreset } from 'rete';
 import { BaseNode } from './BaseNode';
 import { audioSocket, textSocket, AudioData } from '../types';
 
+// Validate endpoint to prevent path traversal
+function isValidEndpoint(endpoint: string): boolean {
+  return /^[a-zA-Z0-9_\-\/]+$/.test(endpoint) && !endpoint.includes('..');
+}
+
 export class GradioAPINode extends BaseNode {
   readonly category = 'API';
   
@@ -28,16 +33,21 @@ export class GradioAPINode extends BaseNode {
   async execute(inputs: Record<string, any>): Promise<Record<string, AudioData | null>> {
     const input = inputs.input;
     const endpoint = this.getControlValue<string>('endpoint') || '';
-    const backendUrl = this.getControlValue<string>('backendUrl') || 'http://localhost:7860';
     
     if (!endpoint) {
       console.error('Endpoint is required');
       return { output: null };
     }
     
+    if (!isValidEndpoint(endpoint)) {
+      console.error('Invalid endpoint format');
+      return { output: null };
+    }
+    
     try {
       // Call the Gradio API through our Next.js proxy
-      const response = await fetch(`/api/gradio/${endpoint}`, {
+      const encodedEndpoint = encodeURIComponent(endpoint).replace(/%2F/g, '/');
+      const response = await fetch(`/api/gradio?endpoint=${encodedEndpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

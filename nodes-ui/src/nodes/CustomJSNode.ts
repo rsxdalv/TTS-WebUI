@@ -2,6 +2,16 @@ import { ClassicPreset } from 'rete';
 import { BaseNode } from './BaseNode';
 import { textSocket, numberSocket, audioSocket } from '../types';
 
+/**
+ * CustomJSNode allows executing user-defined JavaScript code.
+ * 
+ * SECURITY WARNING: This node executes arbitrary JavaScript code using the Function constructor.
+ * It should only be used in trusted environments where the user has full control over the code.
+ * The execution is not sandboxed and has access to the global scope.
+ * 
+ * For production use with untrusted input, consider using a Web Worker with restricted
+ * permissions or a proper JavaScript sandboxing library.
+ */
 export class CustomJSNode extends BaseNode {
   readonly category = 'Processing';
   
@@ -23,6 +33,7 @@ export class CustomJSNode extends BaseNode {
       initial: `// Custom JavaScript code
 // Available variables: input1, input2
 // Return an object with output values
+// WARNING: This executes in the browser context
 
 return {
   output: input1 + " " + input2
@@ -36,7 +47,8 @@ return {
     const input2 = inputs.input2 ?? 0;
     
     try {
-      // Create a sandboxed function to execute the code
+      // Note: This uses the Function constructor which is not sandboxed
+      // For untrusted code, consider using a Web Worker or sandbox library
       const fn = new Function('input1', 'input2', code);
       const result = fn(input1, input2);
       

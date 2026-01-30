@@ -2,6 +2,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 const GRADIO_BACKEND = process.env.GRADIO_BACKEND || 'http://localhost:7860';
 
+// Validate endpoint to prevent path traversal
+function isValidEndpoint(endpoint: string): boolean {
+  // Only allow alphanumeric, hyphens, underscores, and forward slashes (for namespaced endpoints)
+  return /^[a-zA-Z0-9_\-\/]+$/.test(endpoint) && !endpoint.includes('..');
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -12,17 +18,25 @@ export default async function handler(
     return res.status(400).json({ error: 'Missing endpoint parameter' });
   }
   
+  if (!isValidEndpoint(endpoint)) {
+    return res.status(400).json({ error: 'Invalid endpoint format' });
+  }
+  
   try {
-    const url = `${GRADIO_BACKEND}/api/${endpoint}`;
+    const url = `${GRADIO_BACKEND}/api/${encodeURIComponent(endpoint).replace(/%2F/g, '/')}`;
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    // GRADIO_AUTH should be in username:password format
+    if (process.env.GRADIO_AUTH) {
+      headers['Authorization'] = `Basic ${Buffer.from(process.env.GRADIO_AUTH).toString('base64')}`;
+    }
     
     const response = await fetch(url, {
       method: req.method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(process.env.GRADIO_AUTH ? {
-          'Authorization': `Basic ${Buffer.from(process.env.GRADIO_AUTH).toString('base64')}`
-        } : {}),
-      },
+      headers,
       body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
     });
     
@@ -37,7 +51,7 @@ export default async function handler(
   } catch (error) {
     console.error('Gradio proxy error:', error);
     return res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Internal server error' 
+      error: 'Internal server error' 
     });
   }
 }

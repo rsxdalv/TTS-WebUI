@@ -56,7 +56,7 @@ export class OpenAITTSNode extends BaseNode {
     }
     
     if (!apiKey) {
-      console.error('OpenAI API key is required');
+      // Return null without exposing implementation details in console
       return { audio: null };
     }
     

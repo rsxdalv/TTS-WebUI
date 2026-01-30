@@ -145,6 +145,15 @@ export async function deserializeGraph(
   }
 }
 
+// Sanitize filename to remove problematic characters
+function sanitizeFilename(name: string): string {
+  return name
+    .replace(/[^a-zA-Z0-9\s\-_]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .toLowerCase()
+    .substring(0, 100) || 'untitled'; // Limit length
+}
+
 // Save graph state to JSON file
 export function downloadGraphAsJson(graphState: GraphState): void {
   const json = JSON.stringify(graphState, null, 2);
@@ -153,7 +162,7 @@ export function downloadGraphAsJson(graphState: GraphState): void {
   
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${graphState.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+  a.download = `${sanitizeFilename(graphState.name)}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -166,11 +175,16 @@ export async function loadGraphFromJson(file: File): Promise<GraphState> {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const json = event.target?.result as string;
-        const graphState = JSON.parse(json) as GraphState;
+        const result = event.target?.result;
+        if (typeof result !== 'string') {
+          reject(new Error('Failed to read file: invalid result type'));
+          return;
+        }
+        const graphState = JSON.parse(result) as GraphState;
         resolve(graphState);
       } catch (error) {
-        reject(new Error('Failed to parse graph JSON'));
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        reject(new Error(`Failed to parse graph JSON: ${message}`));
       }
     };
     reader.onerror = () => reject(new Error('Failed to read file'));
@@ -194,7 +208,8 @@ export function loadSessionFromStorage(): SessionState | null {
   if (stored) {
     try {
       return JSON.parse(stored) as SessionState;
-    } catch {
+    } catch (error) {
+      console.warn('Failed to parse session from localStorage:', error);
       return null;
     }
   }

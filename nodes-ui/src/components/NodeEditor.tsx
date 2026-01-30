@@ -22,17 +22,16 @@ export function NodeEditor({ onEditorReady, className }: NodeEditorProps) {
       if (!containerRef.current) return;
       
       try {
-        // Create a temporary factory to pass to createEditor
-        // We'll update it after the editor is created
-        const tempEditor = await import('@/editor/createEditor');
-        const nodeFactory = await import('@/editor/nodeFactory');
+        // Import the editor and factory modules
+        const editorModule = await import('@/editor/createEditor');
+        const nodeFactoryModule = await import('@/editor/nodeFactory');
         
         // Create editor first with a placeholder factory
         const placeholderFactory = {
-          createNode: async () => { throw new Error('Not ready'); },
+          createNode: async () => { throw new Error('Editor factory not initialized yet'); },
         } as any;
         
-        instance = await tempEditor.createEditor(containerRef.current, placeholderFactory);
+        instance = await editorModule.createEditor(containerRef.current, placeholderFactory);
         
         if (!mounted) {
           instance.destroy();
@@ -40,7 +39,7 @@ export function NodeEditor({ onEditorReady, className }: NodeEditorProps) {
         }
         
         // Now create the real factory with the editor
-        const realFactory = nodeFactory.createNodeFactory(instance.editor, instance.area);
+        const realFactory = nodeFactoryModule.createNodeFactory(instance.editor, instance.area);
         
         setEditorInstance(instance);
         setFactory(realFactory);

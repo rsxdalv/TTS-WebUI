@@ -1,0 +1,21 @@
+{
+  "name": "tts-webui-node-mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": "src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@gradio/client": "^1.19.1",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

@@ -12,7 +12,6 @@ Tables:
 
 from .connection import get_db
 
-
 SCHEMA_VERSION = 1
 
 
@@ -22,8 +21,7 @@ def create_tables():
     cursor = conn.cursor()
 
     # Users table (for future authentication)
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
@@ -35,20 +33,16 @@ def create_tables():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             settings JSON DEFAULT '{}'
         )
-    """
-    )
+    """)
 
     # Create default user if not exists
-    cursor.execute(
-        """
+    cursor.execute("""
         INSERT OR IGNORE INTO users (id, username, email, is_admin)
         VALUES (1, 'default', 'default@localhost', 1)
-    """
-    )
+    """)
 
     # API Keys table for REST API authentication
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS api_keys (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -60,12 +54,10 @@ def create_tables():
             last_used_at TIMESTAMP,
             expires_at TIMESTAMP
         )
-    """
-    )
+    """)
 
     # Generations table - stores TTS generation history
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS generations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER REFERENCES users(id) ON DELETE SET NULL DEFAULT 1,
@@ -95,32 +87,24 @@ def create_tables():
             status TEXT DEFAULT 'completed',
             error_message TEXT
         )
-    """
-    )
+    """)
 
     # Index for faster lookups
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_generations_created_at 
         ON generations(created_at DESC)
-    """
-    )
-    cursor.execute(
-        """
+    """)
+    cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_generations_filepath 
         ON generations(filepath)
-    """
-    )
-    cursor.execute(
-        """
+    """)
+    cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_generations_model 
         ON generations(model_name, model_type)
-    """
-    )
+    """)
 
     # Favorites table
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS favorites (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE DEFAULT 1,
@@ -131,12 +115,10 @@ def create_tables():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(user_id, generation_id)
         )
-    """
-    )
+    """)
 
     # Voice profiles table - stores voice configurations
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS voice_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE DEFAULT 1,
@@ -154,12 +136,10 @@ def create_tables():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    """
-    )
+    """)
 
     # User preferences table - stores UI and app settings
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_preferences (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE DEFAULT 1,
@@ -169,18 +149,15 @@ def create_tables():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(user_id, category, key)
         )
-    """
-    )
+    """)
 
     # Schema version tracking
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS schema_version (
             version INTEGER PRIMARY KEY,
             applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    """
-    )
+    """)
 
     cursor.execute(
         """

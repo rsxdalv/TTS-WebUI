@@ -10,6 +10,7 @@ def all_tabs(config):
         ("🎙️ Audio Conversion", "audio-conversion"),
         ("🤖 Conversational AI", "conversational-ai"),
         ("📁 Outputs", "outputs"),
+        ("🧩 Extensions", "extensions"),
         ("🔧 Tools", "tools"),
         ("⚙️ Settings", "settings"),
         ("📚 Tutorials", "tutorials"),

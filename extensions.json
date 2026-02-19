@@ -1,13 +1,27 @@
 {
     "tabsInGroups": {
-        "settings": [
+        "extensions": [
+            {
+                "package_name": "extensions.builtin.extension_external_extensions_installer",
+                "name": "External Extensions Installer",
+                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.external_extensions_installer@main",
+                "description": "Add external extension entries via JSON and install them without restarts.",
+                "extension_type": "interface",
+                "extension_class": "extensions",
+                "author": "rsxdalv",
+                "extension_author": "rsxdalv",
+                "license": "MIT",
+                "website": "https://github.com/rsxdalv/tts-generation-webui.external_extensions_installer",
+                "extension_website": "https://github.com/rsxdalv/tts_webui_extension.external_extensions_installer",
+                "extension_platform_version": "0.0.1"
+            },
             {
                 "package_name": "extensions.builtin.extension_extension_list_tab",
                 "name": "Extensions List",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.extension_list_tab@main",
                 "description": "Extensions List shows the list of interface extensions in the web UI",
                 "extension_type": "interface",
-                "extension_class": "settings",
+                "extension_class": "extensions",
                 "author": "rsxdalv",
                 "extension_author": "rsxdalv",
                 "license": "MIT",
@@ -21,7 +35,7 @@
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.extension_decorator_list_tab@main",
                 "description": "Decorator Extensions List shows the list of decorator extensions in the web UI",
                 "extension_type": "interface",
-                "extension_class": "settings",
+                "extension_class": "extensions",
                 "author": "rsxdalv",
                 "extension_author": "rsxdalv",
                 "license": "MIT",
@@ -29,6 +43,8 @@
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.extension_decorator_list_tab",
                 "extension_platform_version": "0.0.1"
             },
+        ],
+        "settings": [
             {
                 "package_name": "extensions.builtin.extension_gradio_settings",
                 "name": "Gradio Settings",
@@ -83,20 +99,6 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.model_location",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.model_location",
-                "extension_platform_version": "0.0.1"
-            },
-            {
-                "package_name": "extensions.builtin.extension_external_extensions_installer",
-                "name": "External Extensions Installer",
-                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.external_extensions_installer@main",
-                "description": "Add external extension entries via JSON and install them without restarts.",
-                "extension_type": "interface",
-                "extension_class": "settings",
-                "author": "rsxdalv",
-                "extension_author": "rsxdalv",
-                "license": "MIT",
-                "website": "https://github.com/rsxdalv/tts-generation-webui.external_extensions_installer",
-                "extension_website": "https://github.com/rsxdalv/tts_webui_extension.external_extensions_installer",
                 "extension_platform_version": "0.0.1"
             },
             {

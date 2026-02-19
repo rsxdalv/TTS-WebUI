@@ -12,7 +12,6 @@ Tables:
 
 from .connection import get_db
 
-
 SCHEMA_VERSION = 1
 
 
@@ -20,7 +19,7 @@ def create_tables():
     """Create all database tables if they don't exist."""
     conn = get_db()
     cursor = conn.cursor()
-    
+
     # Users table (for future authentication)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -35,13 +34,13 @@ def create_tables():
             settings JSON DEFAULT '{}'
         )
     """)
-    
+
     # Create default user if not exists
     cursor.execute("""
         INSERT OR IGNORE INTO users (id, username, email, is_admin)
         VALUES (1, 'default', 'default@localhost', 1)
     """)
-    
+
     # API Keys table for REST API authentication
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS api_keys (
@@ -56,7 +55,7 @@ def create_tables():
             expires_at TIMESTAMP
         )
     """)
-    
+
     # Generations table - stores TTS generation history
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS generations (
@@ -89,7 +88,7 @@ def create_tables():
             error_message TEXT
         )
     """)
-    
+
     # Index for faster lookups
     cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_generations_created_at 
@@ -103,7 +102,7 @@ def create_tables():
         CREATE INDEX IF NOT EXISTS idx_generations_model 
         ON generations(model_name, model_type)
     """)
-    
+
     # Favorites table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS favorites (
@@ -117,7 +116,7 @@ def create_tables():
             UNIQUE(user_id, generation_id)
         )
     """)
-    
+
     # Voice profiles table - stores voice configurations
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS voice_profiles (
@@ -138,7 +137,7 @@ def create_tables():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
+
     # User preferences table - stores UI and app settings
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_preferences (
@@ -151,7 +150,7 @@ def create_tables():
             UNIQUE(user_id, category, key)
         )
     """)
-    
+
     # Schema version tracking
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS schema_version (
@@ -159,11 +158,14 @@ def create_tables():
             applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
-    cursor.execute("""
+
+    cursor.execute(
+        """
         INSERT OR IGNORE INTO schema_version (version) VALUES (?)
-    """, (SCHEMA_VERSION,))
-    
+    """,
+        (SCHEMA_VERSION,),
+    )
+
     conn.commit()
     cursor.close()
 

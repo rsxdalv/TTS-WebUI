@@ -9,14 +9,14 @@ Provides SQLite database functionality for:
 - User authentication (future)
 """
 
-from .connection import get_db, init_db, close_db
-from .models import Generation, UserPreference, VoiceProfile, User, Favorite
+from .connection import close_db, get_db, init_db
 from .decorators import log_generation
+from .models import Favorite, Generation, User, UserPreference, VoiceProfile
 from .rescan import rescan_outputs
 
 __all__ = [
     "get_db",
-    "init_db", 
+    "init_db",
     "close_db",
     "Generation",
     "UserPreference",

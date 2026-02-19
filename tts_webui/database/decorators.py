@@ -18,27 +18,28 @@ def log_generation(
     model_type: Optional[str] = None,
     extract_text: Optional[Callable[[Any], str]] = None,
     extract_filepath: Optional[Callable[[Any], str]] = None,
-    extract_params: Optional[Callable[[Any], Dict]] = None
+    extract_params: Optional[Callable[[Any], Dict]] = None,
 ):
     """
     Decorator to log TTS generations to the database.
-    
+
     Designed to be non-blocking and fail-safe - any database errors
     are logged but don't affect the generation result.
-    
+
     Args:
         model_name: Name of the model (e.g., "kokoro", "bark")
         model_type: Type of model (e.g., "tts", "voice_conversion", "music")
         extract_text: Function to extract text from generation args/kwargs
         extract_filepath: Function to extract output filepath from result
         extract_params: Function to extract parameters from args/kwargs
-    
+
     Example:
         @log_generation(model_name="bark", model_type="tts")
         def generate_bark(text, voice, **kwargs):
             # ... generation code ...
             return output_path
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -46,17 +47,17 @@ def log_generation(
             result = None
             error_message = None
             status = "completed"
-            
+
             try:
                 # Run the actual generation
                 result = func(*args, **kwargs)
                 return result
-            
+
             except Exception as e:
                 error_message = str(e)
                 status = "failed"
                 raise
-            
+
             finally:
                 # Log to database (fail-safe)
                 try:
@@ -71,13 +72,14 @@ def log_generation(
                         extract_params=extract_params,
                         generation_time=time.time() - start_time,
                         status=status,
-                        error_message=error_message
+                        error_message=error_message,
                     )
                 except Exception as log_error:
                     # Never let logging errors affect the generation
                     print(f"[Database] Warning: Failed to log generation: {log_error}")
-        
+
         return wrapper
+
     return decorator
 
 
@@ -92,18 +94,18 @@ def _log_to_database(
     extract_params: Optional[Callable],
     generation_time: float,
     status: str,
-    error_message: Optional[str]
+    error_message: Optional[str],
 ):
     """Internal function to log generation to database."""
-    from .models import Generation
     from .connection import init_db
-    
+    from .models import Generation
+
     # Ensure database is initialized
     try:
         init_db()
     except Exception:
         pass
-    
+
     # Extract filepath
     filepath = None
     if result is not None:
@@ -117,20 +119,20 @@ def _log_to_database(
             # Often the first element is the path
             first = result[0]
             if isinstance(first, (str, Path)) and (
-                str(first).endswith(('.wav', '.mp3', '.flac', '.ogg'))
+                str(first).endswith((".wav", ".mp3", ".flac", ".ogg"))
             ):
                 filepath = str(first)
-    
+
     if not filepath and status != "failed":
         # Can't log without a filepath
         return
-    
+
     if not filepath:
         filepath = f"error_{int(time.time())}"
-    
+
     # Extract filename
     filename = os.path.basename(filepath) if filepath else "unknown"
-    
+
     # Extract text
     text = None
     if extract_text:
@@ -141,7 +143,7 @@ def _log_to_database(
         text = kwargs["text"]
     elif "prompt" in kwargs:
         text = kwargs["prompt"]
-    
+
     # Extract parameters
     parameters = {}
     if extract_params:
@@ -158,7 +160,7 @@ def _log_to_database(
                 if isinstance(v, (list, dict)) and len(str(v)) > 1000:
                     continue
                 parameters[k] = v
-    
+
     # Get file size if exists
     file_size = None
     if filepath and os.path.exists(filepath):
@@ -166,26 +168,27 @@ def _log_to_database(
             file_size = os.path.getsize(filepath)
         except Exception:
             pass
-    
+
     # Get audio duration (if mutagen is available)
     duration_seconds = None
     if filepath and os.path.exists(filepath):
         try:
             from mutagen import File as MutagenFile
+
             audio = MutagenFile(filepath)
-            if audio is not None and hasattr(audio.info, 'length'):
+            if audio is not None and hasattr(audio.info, "length"):
                 duration_seconds = audio.info.length
         except ImportError:
             pass
         except Exception:
             pass
-    
+
     # Extract voice
     voice = kwargs.get("voice") or kwargs.get("speaker") or kwargs.get("voice_name")
-    
+
     # Extract language
     language = kwargs.get("language") or kwargs.get("lang")
-    
+
     # Create database record
     Generation.create(
         filename=filename,
@@ -200,7 +203,7 @@ def _log_to_database(
         file_size=file_size,
         duration_seconds=duration_seconds,
         status=status,
-        error_message=error_message
+        error_message=error_message,
     )
 
 
@@ -214,29 +217,29 @@ def log_generation_manual(
     parameters: Optional[Dict] = None,
     generation_time_seconds: Optional[float] = None,
     status: str = "completed",
-    error_message: Optional[str] = None
+    error_message: Optional[str] = None,
 ) -> Optional[int]:
     """
     Manually log a generation to the database.
-    
+
     Use this when the decorator approach doesn't fit.
     Returns the generation ID or None if logging failed.
     """
     try:
-        from .models import Generation
         from .connection import init_db
-        
+        from .models import Generation
+
         init_db()
-        
+
         filename = os.path.basename(filepath)
-        
+
         file_size = None
         if os.path.exists(filepath):
             try:
                 file_size = os.path.getsize(filepath)
             except Exception:
                 pass
-        
+
         return Generation.create(
             filename=filename,
             filepath=filepath,
@@ -249,9 +252,9 @@ def log_generation_manual(
             generation_time_seconds=generation_time_seconds,
             file_size=file_size,
             status=status,
-            error_message=error_message
+            error_message=error_message,
         )
-    
+
     except Exception as e:
         print(f"[Database] Warning: Failed to log generation: {e}")
         return None

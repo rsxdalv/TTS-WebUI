@@ -13,6 +13,22 @@ $title    = 'Confirmation'
 $question = 'Are you sure you want to proceed?'
 $choices  = '&Yes', '&No'
 
+try {
+    # check if filesystem is not exFAT
+    $drive = Get-PSDrive -Name ($PSScriptRoot.Substring(0,1))
+    if ($drive.FileSystem -eq "exFAT") {
+        Write-Host "Warning: The installation directory is on an exFAT filesystem. Conda will fail to install. Please change the directory to NTFS."
+        Write-Host "For example, C:\AI\tts-webui\"
+        # ask user if they still want to continue
+        $decision = $Host.UI.PromptForChoice($title, $question, $choices, 1)
+        if ($decision -eq 1) {
+            exit 1
+        }
+    }
+} catch {
+    Write-Host "An error occurred while checking the filesystem: $_"
+}
+
 # check if there are spaces in the path
 if ($PSScriptRoot -match " ") {
     Write-Host "Warning: The installation directory's path contains a space character. Conda will fail to install. Please change the directory."

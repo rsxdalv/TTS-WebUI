@@ -24,7 +24,9 @@ def check_if_package_installed(package_name):
 
 # A list of disabled extensions and decorators
 # disabled_extensions = ["decorator_disabled"]
-disabled_extensions: list[str] = config.get("extensions", {}).get("disabled_decorators", [])
+disabled_extensions: list[str] = config.get("extensions", {}).get(
+    "disabled_decorators", []
+)
 
 
 # Get the decorator extensions list from the data loader

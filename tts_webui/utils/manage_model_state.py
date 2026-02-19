@@ -38,7 +38,9 @@ def manage_model_state(model_namespace):
 
     def decorator(func):
         def wrapper(model_name="default", *args, **kwargs):
-            model_state: ModelState = model_states.setdefault(model_namespace, ModelState())
+            model_state: ModelState = model_states.setdefault(
+                model_namespace, ModelState()
+            )
 
             if not model_state.is_model_loaded(model_name):
                 show(f"Loading model '{model_name}'...")

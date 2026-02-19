@@ -20,7 +20,7 @@ def _generate_gradio_settings(keys: List[str], inputs: List[Any]):
     gradio_interface_options["server_port"] = int(
         gradio_interface_options["server_port"]
     )
-    
+
     # Ensure auth is always saved as a string, not as a tuple/list
     if "auth" in gradio_interface_options:
         auth_value = gradio_interface_options["auth"]

@@ -16,7 +16,7 @@ from .rescan import rescan_outputs
 
 __all__ = [
     "get_db",
-    "init_db", 
+    "init_db",
     "close_db",
     "Generation",
     "UserPreference",

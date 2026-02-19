@@ -31,9 +31,7 @@ def get_db() -> sqlite3.Connection:
     if not hasattr(_local, "connection") or _local.connection is None:
         db_path = get_db_path()
         _local.connection = sqlite3.connect(
-            str(db_path),
-            check_same_thread=False,
-            timeout=30.0
+            str(db_path), check_same_thread=False, timeout=30.0
         )
         _local.connection.row_factory = sqlite3.Row
         # Enable foreign keys
@@ -68,35 +66,38 @@ def close_db():
 def init_db():
     """Initialize the database schema."""
     from .schema import create_tables
+
     create_tables()
     print(f"Database initialized at: {get_db_path()}")
 
 
-def execute_query(query: str, params: tuple = (), fetch_one: bool = False, fetch_all: bool = True):
+def execute_query(
+    query: str, params: tuple = (), fetch_one: bool = False, fetch_all: bool = True
+):
     """
     Execute a query with parameters safely.
-    
+
     Args:
         query: SQL query with ? placeholders
         params: Tuple of parameters
         fetch_one: Return single row
         fetch_all: Return all rows
-    
+
     Returns:
         Query results or lastrowid for INSERT
     """
     with get_db_cursor() as cursor:
         cursor.execute(query, params)
-        
+
         if query.strip().upper().startswith(("INSERT", "UPDATE", "DELETE")):
             return cursor.lastrowid
-        
+
         if fetch_one:
             row = cursor.fetchone()
             return dict(row) if row else None
-        
+
         if fetch_all:
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
-        
+
         return None

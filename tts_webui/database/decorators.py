@@ -97,8 +97,8 @@ def _log_to_database(
     error_message: Optional[str],
 ):
     """Internal function to log generation to database."""
-    from .models import Generation
     from .connection import init_db
+    from .models import Generation
 
     # Ensure database is initialized
     try:
@@ -226,8 +226,8 @@ def log_generation_manual(
     Returns the generation ID or None if logging failed.
     """
     try:
-        from .models import Generation
         from .connection import init_db
+        from .models import Generation
 
         init_db()
 

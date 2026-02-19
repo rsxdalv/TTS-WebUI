@@ -6,21 +6,21 @@ Uses FastAPI/Uvicorn for consistency with OpenAI TTS API.
 Runs separately from the Gradio server on a different port.
 """
 
-import os
 import hashlib
-import secrets
 import logging
-from typing import Optional, List, Dict, Any
+import os
+import secrets
 from contextlib import asynccontextmanager
+from typing import Any, Dict, List, Optional
 
 import uvicorn
-from fastapi import FastAPI, Request, HTTPException, Depends, Header
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from .connection import init_db, get_db_path
-from .models import Generation, Favorite, VoiceProfile, UserPreference, User, ApiKey
+from .connection import get_db_path, init_db
+from .models import ApiKey, Favorite, Generation, User, UserPreference, VoiceProfile
 
 logger = logging.getLogger(__name__)
 

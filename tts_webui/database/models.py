@@ -6,7 +6,8 @@ Provides CRUD operations for all database tables.
 
 import json
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
+
 from .connection import execute_query, get_db_cursor
 
 

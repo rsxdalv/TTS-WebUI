@@ -1,8 +1,6 @@
 import os
-import subprocess
-
-
 import re
+import subprocess
 
 
 def write_log(output, name, type):

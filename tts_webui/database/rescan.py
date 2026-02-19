@@ -41,8 +41,8 @@ def rescan_outputs(
         - already_tracked: number already in database
         - errors: list of errors encountered
     """
-    from .models import Generation
     from .connection import init_db
+    from .models import Generation
 
     # Ensure database is initialized
     init_db()

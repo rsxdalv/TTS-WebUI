@@ -5,9 +5,9 @@ SQLite Database Connection Management
 import os
 import sqlite3
 import threading
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
-from contextlib import contextmanager
 
 # Thread-local storage for connections
 _local = threading.local()

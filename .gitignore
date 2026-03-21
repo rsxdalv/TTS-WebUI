@@ -73,6 +73,7 @@ node_modules/
 .vscode/
 .idea/
 .sourcery.yaml
+.playwright-mcp/
 
 # Ignore temporary Jupiter notebooks
 *.temp.ipynb
@@ -87,3 +88,7 @@ log.out
 
 # Ignore integration workspace
 workspace/
+
+# CI
+.coverage
+coverage.xml

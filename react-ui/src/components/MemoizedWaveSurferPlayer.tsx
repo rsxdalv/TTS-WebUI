@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useWavesurfer } from "@/components/useWavesurfer";
-import Timeline from "wavesurfer.js/dist/plugins/timeline";
+import Timeline from "wavesurfer.js/dist/plugins/timeline.js";
 import { WaveSurferOptions } from "wavesurfer.js";
 import { DownloadButton } from "./DownloadButton";
 

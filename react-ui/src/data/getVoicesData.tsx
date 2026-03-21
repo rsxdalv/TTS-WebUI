@@ -1,5 +1,9 @@
 import fs from "fs";
 import path from "path";
+// music-metadata v8: "node" condition (lib/index.js) has parseFile, but TS resolves
+// the "default" condition (lib/core.js) which is browser-only. Works fine at runtime.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import { parseFile } from "music-metadata";
 import { parseMetadataDate } from "../components/parseMetadataDate";
 import * as AdmZip from "adm-zip";
@@ -8,7 +12,9 @@ import { npyToUtf8 } from "./npyToUtf8";
 import { getWebuiURL } from "./getWebuiURL";
 import { baseUrlPath } from "./baseUrlPath";
 
-const __next__base__dirname = __dirname.split(".next")[0];
+// In Next.js 16 (Turbopack), __dirname is virtualized and may not contain ".next".
+// Use process.cwd() (the Next.js project root) to reliably compute paths instead.
+const __next__base__dirname = process.cwd();
 const basePath = path.join(__next__base__dirname, "public");
 export const webuiBasePath = path.join(__next__base__dirname, "..");
 
@@ -87,14 +93,22 @@ export const getNpzData = async () =>
       .join("/"),
   }));
 
-export const getNpzDataSimpleVoices = async () =>
-  getNpzs(npzPathWebui)
+export const getNpzDataSimpleVoices = async () => {
+  let files: string[] = [];
+  try {
+    files = getNpzs(npzPathWebui);
+  } catch {
+    // Directory may not exist in build environments
+    return [];
+  }
+  return files
     .filter((file) => file.endsWith(".npz"))
     .map((npz) => ({
       ...parseToNpzData(fs.readFileSync(path.join(npzPathWebui, npz)), npz),
       filename: path.join(baseUrlPath, "voices", npz).split(path.sep).join("/"),
       url: getWebuiURL("voices", npz),
     }));
+};
 
 export const getDataFromJSON = async (collection = "outputs") => {
   const basePath = getWebuiPath(collection);

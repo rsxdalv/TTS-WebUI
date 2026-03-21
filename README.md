@@ -172,6 +172,9 @@ Please note that the docker-compose needs to be edited to use the image you just
 
 ## Changelog
 
+March:
+* feat: Next.js 13.5 → 16.2.1 Upgrade
+
 December:
 * Minor bug fixes and improvements
 * refactor: extract bark config loading to separate function from WebUI

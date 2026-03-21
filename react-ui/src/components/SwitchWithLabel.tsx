@@ -1,3 +1,4 @@
+import { JSX } from "react";
 import { HandleChange } from "../types/HandleChange";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";

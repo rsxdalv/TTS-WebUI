@@ -73,6 +73,7 @@ node_modules/
 .vscode/
 .idea/
 .sourcery.yaml
+.playwright-mcp/
 
 # Ignore temporary Jupiter notebooks
 *.temp.ipynb

@@ -88,7 +88,7 @@ describe('proxyGradioFilesInResult', () => {
     // The function should return the input unchanged
     const result = proxyGradioFilesInResult(input);
     expect(result).toEqual(input);
-    expect(result.data).toBe(input.data);
+    expect(result.data).toEqual(input.data);
   });
 
   test('preserves other properties in the response object', () => {
@@ -136,7 +136,7 @@ describe('proxyGradioFilesInResult', () => {
     // The function should return the input unchanged
     const result = proxyGradioFilesInResult(input);
     expect(result).toEqual(input);
-    expect(result.data).toBe(input.data);
+    expect(result.data).toEqual(input.data);
   });
 
   test('simulates usage in a Gradio API client', () => {

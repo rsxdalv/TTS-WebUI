@@ -57,6 +57,7 @@ extensions.external.json
 /data/models/fireredtts2/
 /data/models/megatts3/
 /data/models/songbloom/
+/data/models/*/
 
 # Extensions catalog repo clone (ignored)
 /data/extensions-catalog/

@@ -118,6 +118,20 @@
         ],
         "text-to-speech": [
             {
+                "package_name": "extensions.builtin.extension_minimax_cloud_tts",
+                "name": "MiniMax Cloud TTS",
+                "requirements": "",
+                "description": "Cloud-based text-to-speech using MiniMax API with speech-2.8-hd and speech-2.8-turbo models",
+                "extension_type": "interface",
+                "extension_class": "text-to-speech",
+                "author": "MiniMax",
+                "extension_author": "octo-patch",
+                "license": "MIT",
+                "website": "https://www.minimaxi.com",
+                "extension_website": "https://github.com/rsxdalv/TTS-WebUI",
+                "extension_platform_version": "0.0.1"
+            },
+            {
                 "package_name": "tts_webui_extension.vall_e_x",
                 "recommended": true,
                 "name": "Vall-E-X",

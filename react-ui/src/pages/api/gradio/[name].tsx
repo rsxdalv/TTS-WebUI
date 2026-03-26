@@ -585,6 +585,15 @@ const endpoints = {
     })
   ),
 
+  minimax_cloud_tts: resolvedPassThroughWithParamsLoopback(
+    "/minimax_cloud_tts",
+    (result) => ({
+      audio: result?.data?.[0],
+      metadata: result?.data?.[1],
+      folder_root: result?.data?.[2],
+    })
+  ),
+
   //   api/gradio/open_ai_api_load_presets
   // api/gradio/open_ai_api_save_presets
   // api/gradio/get_chatterbox_voices

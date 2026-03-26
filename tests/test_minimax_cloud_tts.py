@@ -7,7 +7,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -21,8 +21,8 @@ from extensions.builtin.extension_minimax_cloud_tts.main import (
     MINIMAX_VOICES,
     _get_api_key,
     _save_audio,
-    generate_minimax_tts,
     extension__tts_generation_webui,
+    generate_minimax_tts,
 )
 
 
@@ -202,10 +202,12 @@ class TestGenerateMiniMaxTTS:
         os.makedirs(tmp_path / "outputs", exist_ok=True)
 
         fake_audio_hex = b"fake mp3 audio content here".hex()
-        mock_response = json.dumps({
-            "base_resp": {"status_code": 0, "status_msg": "success"},
-            "data": {"audio": fake_audio_hex},
-        }).encode("utf-8")
+        mock_response = json.dumps(
+            {
+                "base_resp": {"status_code": 0, "status_msg": "success"},
+                "data": {"audio": fake_audio_hex},
+            }
+        ).encode("utf-8")
 
         mock_resp = MagicMock()
         mock_resp.read.return_value = mock_response
@@ -229,9 +231,11 @@ class TestGenerateMiniMaxTTS:
     def test_api_error_response(self):
         os.environ["MINIMAX_API_KEY"] = "test_key"
 
-        mock_response = json.dumps({
-            "base_resp": {"status_code": 1001, "status_msg": "Invalid API key"},
-        }).encode("utf-8")
+        mock_response = json.dumps(
+            {
+                "base_resp": {"status_code": 1001, "status_msg": "Invalid API key"},
+            }
+        ).encode("utf-8")
 
         mock_resp = MagicMock()
         mock_resp.read.return_value = mock_response
@@ -270,9 +274,11 @@ class TestGenerateMiniMaxTTS:
         os.makedirs(tmp_path / "outputs", exist_ok=True)
 
         fake_audio_hex = b"test".hex()
-        mock_response = json.dumps({
-            "data": {"audio": fake_audio_hex},
-        }).encode("utf-8")
+        mock_response = json.dumps(
+            {
+                "data": {"audio": fake_audio_hex},
+            }
+        ).encode("utf-8")
 
         mock_resp = MagicMock()
         mock_resp.read.return_value = mock_response

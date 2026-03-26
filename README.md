@@ -87,6 +87,7 @@
 | [VoxCPM\*](https://github.com/rsxdalv/tts_webui_extension.vox_cpm)                  |                                                                                       |                                                                              |
 | [FireRedTTS2\*](https://github.com/rsxdalv/tts_webui_extension.fireredtts2)         |                                                                                       |                                                                              |
 | [MegaTTS3\*](https://github.com/rsxdalv/tts_webui_extension.megatts3)               |                                                                                       |                                                                              |
+| [MiniMax Cloud TTS](https://www.minimaxi.com) (built-in)                            |                                                                                       |                                                                              |
 
 \* These models are not installed by default, instead they are available as extensions.
 

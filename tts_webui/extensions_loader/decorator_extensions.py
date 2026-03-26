@@ -153,7 +153,7 @@ def _load_decorators(class_name: Literal["outer", "inner"]):
         return loaded, skipped
 
     # Get decorator extensions filtered by class from the data loader
-    filtered_extensions = get_decorator_extensions_by_class(class_name)
+    filtered_extensions =  get_decorator_extensions_by_class(class_name)
 
     for x in filtered_extensions:
         print(f"Loading decorator {x['name'].ljust(30, '.')}...", end="")

@@ -200,7 +200,6 @@ def dictionarize_wraps(fn, inputs: dict, outputs: dict, **kwargs):
 
             return _apply_sig_with_defaults(gen_wrapper, inputs, original_fn=fn)
         else:
-
             # @functools.wraps(fn)
             def wrapper(*list_args):
                 mapped_args = _get_mapped_args(inputs, list_args)

@@ -86,15 +86,9 @@ norecursedirs = [".git", ".tox", "dist", "build", "*.egg", "__pycache__", "noteb
 # namespaces = true
 # include = ["tts_webui.*"]
 
-[tool.isort]
-profile = "black"
-
-[tool.black]
+[tool.ruff]
 line-length = 88
-
-[tool.flake8]
-max-line-length = 88
-extend-ignore = ["E501", "F401", "E402"]
+target-version = "py310"
 exclude = [
     ".git",
     "__pycache__",
@@ -118,3 +112,11 @@ exclude = [
     "react-ui-vite",
     "server.py",
 ]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]  # pycodestyle (E,F,W) + isort (I)
+ignore = ["E501", "F401", "E402"]
+
+[tool.ruff.format]
+quote-style = "double"  # Match black's default
+

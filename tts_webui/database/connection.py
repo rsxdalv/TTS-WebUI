@@ -7,7 +7,6 @@ import sqlite3
 import threading
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
 
 # Thread-local storage for connections
 _local = threading.local()

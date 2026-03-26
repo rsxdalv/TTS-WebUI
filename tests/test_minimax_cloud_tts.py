@@ -2,18 +2,19 @@
 Tests for MiniMax Cloud TTS extension.
 """
 
-import json
-import os
 import sys
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
-
-import pytest
 
 # Ensure project root is on sys.path so 'extensions' is importable
+# This must be before any project imports
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+import json
+import os
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from extensions.builtin.extension_minimax_cloud_tts.main import (
     MINIMAX_API_URL,

@@ -38,6 +38,12 @@ def tutorial_tab():
 def youtube_video(video_id, width="100%", height="500px"):
     if video_id.startswith("https://"):
         video_id = video_id.split("v=")[1]
-    gr.HTML(
-        f"""<iframe width="{width}" height="{height}" src="https://www.youtube.com/embed/{video_id}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>"""
+    iframe = (
+        f'<iframe width="{width}" height="{height}" '
+        f'src="https://www.youtube.com/embed/{video_id}" '
+        f'title="YouTube video player" frameborder="0" '
+        f'allow="accelerometer; autoplay; clipboard-write; encrypted-media; '
+        f'gyroscope; picture-in-picture; web-share" '
+        f'referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>'
     )
+    gr.HTML(iframe)

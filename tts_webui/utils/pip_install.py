@@ -72,7 +72,7 @@ def _pip_install(requirements, name):
         # yield from pip_shell(f"uv pip install {requirements}")
         print(f"Successfully installed {name} dependencies")
         yield f"Successfully installed {name} dependencies"
-        yield f"Please restart the webui to see the changes"
+        yield "Please restart the webui to see the changes"
         yield True
     except Exception:
         print(f"Failed to install {name} dependencies")

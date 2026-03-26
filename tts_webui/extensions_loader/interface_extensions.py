@@ -29,7 +29,7 @@ def _handle_package(package_name, title_name, requirements):
         with LoadingIndicator(title_name, skipped=True):
             with gr.Tab(f"[Disabled] {title_name}"):
                 gr.Markdown(f"## {title_name} Extension is disabled")
-                enable_btn = gr.Button(f"Enable")
+                enable_btn = gr.Button("Enable")
                 enable_btn.click(
                     fn=toggle_extension_state(package_name, disabled_extensions),
                     outputs=[enable_btn],

@@ -1,3 +1,4 @@
+import json
 import os
 
 
@@ -79,9 +80,6 @@ def write_env(text: str):
         outfile.write(text)
 
 
-import json
-import os
-
 JSON_ENV_FILE = "env_store.json"
 DOTENV_FILE = ".env"
 
@@ -96,10 +94,6 @@ def load_env_store():
 def save_env_store(data):
     with open(JSON_ENV_FILE, "w") as f:
         json.dump(data, f, indent=2)
-
-
-def env_entry(name, value, comment="", null_if_empty=True):
-    return f"# {comment}\n{'# ' if null_if_empty and not value else ''}{name}={value}\n"
 
 
 def generate_dotenv_text(env_store: dict) -> str:

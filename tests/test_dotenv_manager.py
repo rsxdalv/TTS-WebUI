@@ -4,7 +4,6 @@ Unit tests for tts_webui.dotenv_manager module.
 
 import os
 from pathlib import Path
-from unittest.mock import mock_open, patch
 
 import pytest
 

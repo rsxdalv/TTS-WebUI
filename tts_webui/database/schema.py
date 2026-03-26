@@ -61,28 +61,28 @@ def create_tables():
         CREATE TABLE IF NOT EXISTS generations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER REFERENCES users(id) ON DELETE SET NULL DEFAULT 1,
-            
+
             -- File information
             filename TEXT NOT NULL,
             filepath TEXT NOT NULL,
             file_exists BOOLEAN DEFAULT 1,
             file_size INTEGER,
             duration_seconds REAL,
-            
+
             -- Generation metadata
             model_name TEXT,
             model_type TEXT,
             text TEXT,
             language TEXT,
             voice TEXT,
-            
+
             -- Full parameters as JSON for flexibility
             parameters JSON DEFAULT '{}',
-            
+
             -- Timing
             generation_time_seconds REAL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            
+
             -- Status
             status TEXT DEFAULT 'completed',
             error_message TEXT
@@ -91,15 +91,15 @@ def create_tables():
 
     # Index for faster lookups
     cursor.execute("""
-        CREATE INDEX IF NOT EXISTS idx_generations_created_at 
+        CREATE INDEX IF NOT EXISTS idx_generations_created_at
         ON generations(created_at DESC)
     """)
     cursor.execute("""
-        CREATE INDEX IF NOT EXISTS idx_generations_filepath 
+        CREATE INDEX IF NOT EXISTS idx_generations_filepath
         ON generations(filepath)
     """)
     cursor.execute("""
-        CREATE INDEX IF NOT EXISTS idx_generations_model 
+        CREATE INDEX IF NOT EXISTS idx_generations_model
         ON generations(model_name, model_type)
     """)
 
@@ -125,13 +125,13 @@ def create_tables():
             name TEXT NOT NULL,
             description TEXT,
             model_type TEXT,
-            
+
             -- Voice configuration as JSON (flexible for different models)
             config JSON NOT NULL DEFAULT '{}',
-            
+
             -- Optional reference file
             reference_audio_path TEXT,
-            
+
             is_default BOOLEAN DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

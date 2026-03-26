@@ -2,7 +2,6 @@ import functools
 import importlib
 import importlib.util
 import time
-from importlib.metadata import version
 from types import ModuleType
 from typing import Literal
 
@@ -13,7 +12,6 @@ from tts_webui.extensions_loader.extensions_data_loader import (
     get_decorator_extensions,
     get_decorator_extensions_by_class,
 )
-from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
 from tts_webui.utils.pip_install import pip_install_wrapper, pip_uninstall_wrapper
 
 
@@ -169,7 +167,7 @@ def _load_decorators(class_name: Literal["outer", "inner"]):
             if skipped:
                 print(f"  Skipped: {', '.join(skipped)}")
         except Exception as e:
-            print("Failed.")
+            print(f"Failed to load: {e}")
 
     wrappers.reverse()
     gen_wrappers.reverse()

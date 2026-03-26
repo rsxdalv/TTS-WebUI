@@ -91,3 +91,30 @@ profile = "black"
 
 [tool.black]
 line-length = 88
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E501", "F401", "E402"]
+exclude = [
+    ".git",
+    "__pycache__",
+    ".tox",
+    "build",
+    "dist",
+    "*.egg-info",
+    "notebooks",
+    "workspace",
+    "outputs",
+    "outputs-rvc",
+    "installer_files",
+    "installer_scripts",
+    "extensions",
+    "data",
+    "voices",
+    "favorites",
+    "collections",
+    "temp",
+    "react-ui",
+    "react-ui-vite",
+    "server.py",
+]

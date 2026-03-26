@@ -14,13 +14,12 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
 import uvicorn
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from .connection import get_db_path, init_db
-from .models import ApiKey, Favorite, Generation, User, UserPreference, VoiceProfile
+from .models import ApiKey, Favorite, Generation, UserPreference, VoiceProfile
 
 logger = logging.getLogger(__name__)
 
@@ -588,7 +587,7 @@ def start_api_server(host: Optional[str] = None, port: Optional[int] = None):
     h = host or API_HOST
     p = port or API_PORT
 
-    print(f"\nStarting TTS WebUI Database API server...")
+    print("\nStarting TTS WebUI Database API server...")
     print(f"  • URL: http://{h}:{p}")
     print(f"  • Database: {get_db_path()}")
     print(f"  • Docs: http://{h}:{p}/docs")

@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from .connection import execute_query, get_db_cursor
+from .connection import execute_query
 
 
 class Generation:
@@ -33,7 +33,7 @@ class Generation:
     ) -> int:
         """Create a new generation record."""
         query = """
-            INSERT INTO generations 
+            INSERT INTO generations
             (filename, filepath, model_name, model_type, text, language, voice,
              parameters, generation_time_seconds, file_size, duration_seconds,
              user_id, status, error_message)
@@ -187,7 +187,7 @@ class Favorite:
     def get_by_id(favorite_id: int) -> Optional[Dict[str, Any]]:
         """Get a favorite by ID."""
         query = """
-            SELECT f.*, g.* 
+            SELECT f.*, g.*
             FROM favorites f
             JOIN generations g ON f.generation_id = g.id
             WHERE f.id = ?
@@ -200,7 +200,7 @@ class Favorite:
     ) -> List[Dict[str, Any]]:
         """List all favorites for a user."""
         query = """
-            SELECT f.id as favorite_id, f.name as favorite_name, f.notes, f.tags, 
+            SELECT f.id as favorite_id, f.name as favorite_name, f.notes, f.tags,
                    f.created_at as favorited_at, g.*
             FROM favorites f
             JOIN generations g ON f.generation_id = g.id
@@ -245,7 +245,7 @@ class VoiceProfile:
     ) -> int:
         """Create a new voice profile."""
         query = """
-            INSERT INTO voice_profiles 
+            INSERT INTO voice_profiles
             (name, model_type, config, description, reference_audio_path, user_id, is_default)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """
@@ -326,7 +326,7 @@ class UserPreference:
         query = """
             INSERT INTO user_preferences (user_id, category, key, value, updated_at)
             VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(user_id, category, key) 
+            ON CONFLICT(user_id, category, key)
             DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
         """
         return execute_query(query, (user_id, category, key, json.dumps(value)))
@@ -444,7 +444,7 @@ class ApiKey:
     def get_by_hash(key_hash: str) -> Optional[Dict[str, Any]]:
         """Get an API key by its hash."""
         query = """
-            SELECT ak.*, u.username, u.is_admin 
+            SELECT ak.*, u.username, u.is_admin
             FROM api_keys ak
             JOIN users u ON ak.user_id = u.id
             WHERE ak.key_hash = ? AND ak.is_active = 1

@@ -5,12 +5,11 @@ Unit tests for tts_webui.config module.
 import json
 import os
 from pathlib import Path
-from unittest.mock import mock_open, patch
+from unittest.mock import patch
 
 import pytest
 
 from tts_webui.config._save_config import _save_config, _save_json
-from tts_webui.config.config import config
 from tts_webui.config.config_utils import get_config_value, set_config_value
 from tts_webui.config.load_config import default_config, load_config
 from tts_webui.config.save_config_gradio import (

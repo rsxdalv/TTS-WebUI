@@ -7,10 +7,9 @@ Can be applied to any generation function.
 
 import os
 import time
-import traceback
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional
 
 
 def log_generation(

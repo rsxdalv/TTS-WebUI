@@ -18,18 +18,22 @@ def suppress_warnings():
     # UserWarning: torch.utils._pytree._register_pytree_node is deprecated. Please use torch.utils._pytree.register_pytree_node instead.
     warnings.filterwarnings(
         "ignore",
-        message="torch.utils._pytree._register_pytree_node is deprecated. Please use torch.utils._pytree.register_pytree_node instead.",
+        message="torch.utils._pytree._register_pytree_node is deprecated. "
+        "Please use torch.utils._pytree.register_pytree_node instead.",
     )
     # FutureWarning: transformers.deepspeed module is deprecated and will be removed in a future version. Please import deepspeed modules directly from transformers.integrations
     warnings.filterwarnings(
         "ignore",
-        message="transformers.deepspeed module is deprecated and will be removed in a future version. Please import deepspeed modules directly from transformers.integrations",
+        message="transformers.deepspeed module is deprecated and will be removed "
+        "in a future version. Please import deepspeed modules directly from "
+        "transformers.integrations",
     )
     # UserWarning: torch.nn.utils.weight_norm is deprecated in favor of torch.nn.utils.parametrizations.weight_norm.
     # warnings.warn("torch.nn.utils.weight_norm is deprecated in favor of torch.nn.utils.parametrizations.weight_norm.")
     warnings.filterwarnings(
         "ignore",
-        message="torch.nn.utils.weight_norm is deprecated in favor of torch.nn.utils.parametrizations.weight_norm.",
+        message="torch.nn.utils.weight_norm is deprecated in favor of "
+        "torch.nn.utils.parametrizations.weight_norm.",
     )
 
     # suppress warning from logging "A matching Triton is not available, some optimizations will not be enabled"

@@ -3,7 +3,8 @@ name: Test if React UI builds
 on:
   push:
     branches: ["main"]
-
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:

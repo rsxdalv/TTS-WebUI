@@ -73,6 +73,7 @@ def generate_minimax_tts(
     model: str,
     voice_id: str,
     api_key: str,
+    **kwargs,
 ) -> tuple:
     key = _get_api_key(api_key)
     if not key:

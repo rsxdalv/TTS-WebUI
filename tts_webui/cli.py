@@ -70,9 +70,9 @@ def troubleshoot() -> None:
     if req.exists():
         try:
             lines = [
-                l.strip()
-                for l in req.read_text(encoding="utf-8").splitlines()
-                if l.strip() and not l.startswith("#")
+                line.strip()
+                for line in req.read_text(encoding="utf-8").splitlines()
+                if line.strip() and not line.startswith("#")
             ]
             typer.echo(f"Found requirements.txt with {len(lines)} entries.")
         except Exception:

@@ -2,10 +2,9 @@
 Integration tests for server startup and initialization.
 """
 
-import os
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -73,10 +72,9 @@ class TestServerInitialization:
     @pytest.mark.integration
     def test_upgrade_gradio_options_auth_parsing(self):
         """Test that gradio options auth is correctly parsed."""
-        from server import start_gradio_server
 
         # Create a mock config
-        gr_options = {
+        {
             "auth": "username:password",
             "server_name": "127.0.0.1",
             "server_port": 7770,
@@ -97,16 +95,12 @@ class TestServerInitialization:
     @patch("sys.argv", ["server.py", "--share"])
     def test_share_flag_detection(self):
         """Test that --share flag is detected."""
-        import sys
-
         assert "--share" in sys.argv
 
     @pytest.mark.integration
     @patch("sys.argv", ["server.py", "--docker"])
     def test_docker_flag_detection(self):
         """Test that --docker flag is detected."""
-        import sys
-
         assert "--docker" in sys.argv
 
 
@@ -141,7 +135,7 @@ class TestServerGradioUI:
             result = main_block(config=mock_config)
             # Should return blocks instance or similar
             assert result is not None
-        except Exception as e:
+        except Exception:
             # It's okay if this fails due to missing dependencies in test environment
             # The key is that the module structure is correct
             pass

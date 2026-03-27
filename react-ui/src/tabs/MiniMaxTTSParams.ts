@@ -9,11 +9,13 @@ import { generateWithMiniMaxTTS } from "../functions/generateWithMiniMaxTTS";
 export const minimaxTTSId = "minimaxTTSParams.v1";
 
 export interface MiniMaxTTSParams {
-  [key: string]: string;
   text: string;
   model: string;
   voice_id: string;
   api_key: string;
+  seed: number;
+  use_random_seed: boolean;
+  [key: string]: string | number | boolean;
 }
 
 export const defaultMiniMaxTTSParams: MiniMaxTTSParams = {
@@ -21,6 +23,8 @@ export const defaultMiniMaxTTSParams: MiniMaxTTSParams = {
   model: "speech-2.8-hd",
   voice_id: "English_Graceful_Lady",
   api_key: "",
+  seed: 0,
+  use_random_seed: true,
 };
 
 export type MiniMaxTTSResult = {

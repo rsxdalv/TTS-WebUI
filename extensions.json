@@ -837,6 +837,20 @@
                 "extension_platform_version": "0.0.1"
             },
             {
+                "package_name": "extensions.builtin.extension_voice_manager",
+                "name": "Voice Manager",
+                "requirements": "",
+                "description": "Upload, browse, and manage voice reference files for TTS models",
+                "extension_type": "interface",
+                "extension_class": "tools",
+                "author": "local",
+                "extension_author": "local",
+                "license": "MIT",
+                "website": "",
+                "extension_website": "",
+                "extension_platform_version": "0.0.1"
+            },
+            {
                 "package_name": "extensions.builtin.extension_conda_storage_optimizer",
                 "name": "Conda Storage Optimizer",
                 "requirements": "",

@@ -10,7 +10,8 @@ let outputBuffer = [];
 let clients = [];
 
 // Function to start the unified server (combines log streaming and polling)
-function startServer() {
+// options.skipBrowser - if true, don't open browser automatically
+function startServer(options = {}) {
   // Hook into stdout to capture output
   const originalStdoutWrite = process.stdout.write;
   process.stdout.write = function (chunk, encoding, callback) {
@@ -129,8 +130,10 @@ function startServer() {
   console.log("Unified server started on port 7771");
   console.log(`Web console and log viewer available at ${serverUrl}`);
 
-  // Open the browser
-  openBrowser(serverUrl);
+  // Open the browser (unless disabled via options or environment variable)
+  if (!options.skipBrowser && !process.env.SKIP_UPDATE_BROWSER) {
+    openBrowser(serverUrl);
+  }
 
   return server;
 }

@@ -26,7 +26,7 @@ ENV TORCH_VERSION=2.7.0
 ENV PATH="/root/.cargo/bin:$PATH"
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # add xformers?
-RUN pip install --no-cache-dir setuptools torch==$TORCH_VERSION torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+RUN pip install --no-cache-dir setuptools torch==$TORCH_VERSION torchvision torchaudio==$TORCH_VERSION --index-url https://download.pytorch.org/whl/cu128
 
 # Set working directory
 WORKDIR /app

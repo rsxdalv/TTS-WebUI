@@ -1,5 +1,3 @@
-# TTS-WebUI Dockerfile
-
 # Python 3.10 w/ Nvidia Cuda
 FROM nvidia/cuda:12.8.0-devel-ubuntu22.04 AS env_base
 

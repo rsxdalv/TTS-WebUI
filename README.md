@@ -173,6 +173,9 @@ Please note that the docker-compose needs to be edited to use the image you just
 
 ## Changelog
 
+April:
+* Update pin TorchAudio to 2.7.0
+
 March:
 * feat: Next.js 13.5 → 16.2.1 Upgrade
 

@@ -56,7 +56,7 @@ const installDependencies = async (gpuchoice) => {
   try {
     if (gpuchoice === PyTorchChoice.NVIDIA) {
       await $(
-        `pip install -U ${torch}+${cudaVersionTag} torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
+        `pip install -U ${torch}+${cudaVersionTag} torchvision torchaudio==${torchVersion} xformers --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
       );
       // add torchao
       // pip install --dry-run torchao --index-url https://download.pytorch.org/whl/cu124
@@ -65,21 +65,21 @@ const installDependencies = async (gpuchoice) => {
     } else if (gpuchoice === PyTorchChoice.CUSTOM) {
       displayMessage("Please install torch manually");
       displayMessage(
-        `For example with CUDA ${cudaVersion} use: pip install ${torch}+${cudaVersionTag} torchvision torchaudio --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
+        `For example with CUDA ${cudaVersion} use: pip install ${torch}+${cudaVersionTag} torchvision torchaudio==${torchVersion} --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
       );
     } else if (gpuchoice === PyTorchChoice.APPLE_M_SERIES) {
-      await $(`pip install ${torch} torchvision torchaudio`);
+      await $(`pip install ${torch} torchvision torchaudio==${torchVersion}`);
     } else if (gpuchoice === PyTorchChoice.CPU) {
       await $(
-        `pip install ${torch}+cpu torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu`
+        `pip install ${torch}+cpu torchvision torchaudio==${torchVersion} --index-url https://download.pytorch.org/whl/cpu`
       );
     } else if (gpuchoice === PyTorchChoice.AMD_ROCM) {
       await $(
-        `pip install ${torch} torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/${rocmVersionTag[torchVersion]}`
+        `pip install ${torch} torchvision torchaudio==${torchVersion} xformers --index-url https://download.pytorch.org/whl/${rocmVersionTag[torchVersion]}`
       );
     } else if (gpuchoice === PyTorchChoice.INTEL_XPU) {
       await $(
-        `pip install ${torch} torchvision torchaudio --index-url https://download.pytorch.org/whl/test/xpu`
+        `pip install ${torch} torchvision torchaudio==${torchVersion} --index-url https://download.pytorch.org/whl/test/xpu`
       );
     } else {
       displayMessage("Unsupported or cancelled. Exiting...");

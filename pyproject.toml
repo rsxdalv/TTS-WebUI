@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "TTS-WebUI"
-version = "0.5.1"
+version = "1.0.0"
 description = "TTS WebUI"
 readme = "README.md"
 authors = [
@@ -26,28 +26,28 @@ tts-webui = "tts_webui.cli:main"
 
 [project.optional-dependencies]
 cpu = [
-    "torch==2.7.0",
+    "torch==2.11.0",
     "torchvision",
     "torchaudio",
 ]
 cuda = [
-    "torch==2.7.0+cu128",
+    "torch==2.11.0+cu128",
     "torchvision",
     "torchaudio",
-    "xformers",
+    "xformers==0.0.35",
 ]
 mac = [
-    "torch==2.7.0",
+    "torch==2.11.0",
     "torchvision",
     "torchaudio",
 ]
 rocm = [
-    "torch==2.7.0",
+    "torch==2.11.0",
     "torchvision",
     "torchaudio",
 ]
 intel = [
-    "torch==2.7.0",
+    "torch==2.11.0",
     "torchvision",
     "torchaudio",
 ]

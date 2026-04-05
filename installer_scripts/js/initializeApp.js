@@ -6,7 +6,7 @@ const { menu } = require("./menu.js");
 const { $, $$, $sh } = require("./shell.js");
 const { applyDatabaseConfig } = require("./applyDatabaseConfig.js");
 
-const torchVersion = "2.7.0"; // 2.7.1 has no xformers
+const torchVersion = "2.11.0"; // 2.7.1 has no xformers
 const cudaVersion = "12.8";
 const cudaVersionTag = `cu128`;
 const torch = `torch==${torchVersion}`;
@@ -39,6 +39,7 @@ const rocmVersionTag = {
   "2.6.0": "rocm6.2.4",
   "2.7.0": "rocm6.3",
   "2.7.1": "rocm6.3",
+  "2.11.0": "rocm7.2",
 };
 
 const PyTorchChoice = {
@@ -56,7 +57,7 @@ const installDependencies = async (gpuchoice) => {
   try {
     if (gpuchoice === PyTorchChoice.NVIDIA) {
       await $(
-        `pip install -U ${torch}+${cudaVersionTag} torchvision torchaudio==${torchVersion} xformers --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
+        `pip install -U ${torch}+${cudaVersionTag} torchvision torchaudio==${torchVersion} xformers==0.0.35 --index-url https://download.pytorch.org/whl/${cudaVersionTag}`
       );
       // add torchao
       // pip install --dry-run torchao --index-url https://download.pytorch.org/whl/cu124

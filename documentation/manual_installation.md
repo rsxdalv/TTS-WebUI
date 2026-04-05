@@ -80,18 +80,18 @@ Choose the appropriate PyTorch installation for your hardware:
 - **CPU/Mac**:
 
   ```bash
-  pip install -U torch==2.7.0+cpu torchvision torchaudio==2.7.0+cpu --index-url https://download.pytorch.org/whl/cpu
+  pip install -U torch==2.11.0+cpu torchvision torchaudio==2.11.0+cpu --index-url https://download.pytorch.org/whl/cpu
   ```
 
 - **CUDA**:
 
   ```bash
-  pip install -U torch==2.7.0+cu128 torchvision torchaudio==2.7.0+cu128 --index-url https://download.pytorch.org/whl/cu128
+  pip install -U torch==2.11.0+cu128 torchvision torchaudio==2.11.0+cu128 --index-url https://download.pytorch.org/whl/cu128
   ```
 
 - **ROCM on Linux**:
   ```bash
-  pip install -U torch==2.7.0 torchvision torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/rocm6.0
+  pip install -U torch==2.11.0 torchvision torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/rocm6.0
   ```
 
 ### 2. Project Setup

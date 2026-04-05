@@ -174,6 +174,7 @@ Please note that the docker-compose needs to be edited to use the image you just
 ## Changelog
 
 April:
+* Add torchcodec CPU to requirements
 * Upgrade PyTorch to 2.11.0
 * Update pin TorchAudio to 2.7.0
 

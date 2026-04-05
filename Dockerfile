@@ -21,12 +21,11 @@ RUN npm --version
 # RUN /install.sh && rm /install.sh
 
 # Define PyTorch version
-ENV TORCH_VERSION=2.7.0
+ENV TORCH_VERSION=2.11.0
 
 ENV PATH="/root/.cargo/bin:$PATH"
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
-# add xformers?
-RUN pip install --no-cache-dir setuptools torch==$TORCH_VERSION torchvision torchaudio==$TORCH_VERSION --index-url https://download.pytorch.org/whl/cu128
+RUN pip install --no-cache-dir setuptools torch==$TORCH_VERSION torchvision torchaudio==$TORCH_VERSION xformers==0.0.35 --index-url https://download.pytorch.org/whl/cu128
 
 # Set working directory
 WORKDIR /app

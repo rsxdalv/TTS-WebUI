@@ -122,7 +122,7 @@ const getInstallerFilesPath = (...files) => resolve(__dirname, "..", ...files);
 const gpuFile = getInstallerFilesPath(".gpu");
 const majorVersionFile = getInstallerFilesPath(".major_version");
 const pipPackagesFile = getInstallerFilesPath(".pip_packages");
-const majorVersion = "5";
+const majorVersion = "1.0.0";
 
 const versions = JSON.parse(
   fs.readFileSync(getInstallerFilesPath("versions.json"))

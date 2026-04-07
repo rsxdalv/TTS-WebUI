@@ -6,7 +6,7 @@ const { menu } = require("./menu.js");
 const { $, $$, $sh } = require("./shell.js");
 const { applyDatabaseConfig } = require("./applyDatabaseConfig.js");
 
-const torchVersion = "2.11.0"; // 2.7.1 has no xformers
+const torchVersion = "2.11.0";
 const cudaVersion = "12.8";
 const cudaVersionTag = `cu128`;
 const torch = `torch==${torchVersion}`;

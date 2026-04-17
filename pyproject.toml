@@ -120,3 +120,5 @@ ignore = ["E501", "F401", "E402"]
 [tool.ruff.format]
 quote-style = "double"  # Match black's default
 
+[tool.uv]
+cache-dir = "./cache"

@@ -500,6 +500,34 @@
                 "website": "https://github.com/rsxdalv/tts_webui_extension.megatts3",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.megatts3",
                 "extension_platform_version": "0.0.1"
+            },
+            {
+                "package_name": "tts_webui_extension.step_audio_editx_tts",
+                "name": "Step-Audio EditX TTS (Beta)",
+                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.step_audio_editx_tts@main",
+                "description": "Step-Audio EditX TTS is a text-to-speech model with audio editing capabilities",
+                "extension_type": "interface",
+                "extension_class": "text-to-speech",
+                "author": "stepfun-ai",
+                "extension_author": "rsxdalv",
+                "license": "MIT",
+                "website": "https://github.com/stepfun-ai/Step-Audio",
+                "extension_website": "https://github.com/rsxdalv/tts_webui_extension.step_audio_editx_tts",
+                "extension_platform_version": "0.0.1"
+            },
+            {
+                "package_name": "tts_webui_extension.fish_audio_s2",
+                "name": "Fish Audio S2 (Beta)",
+                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.fish_audio_s2@main",
+                "description": "Fish Audio S2 is a high-quality text-to-speech and voice cloning model",
+                "extension_type": "interface",
+                "extension_class": "text-to-speech",
+                "author": "fishaudio",
+                "extension_author": "rsxdalv",
+                "license": "MIT",
+                "website": "https://github.com/fishaudio/fish-speech",
+                "extension_website": "https://github.com/rsxdalv/tts_webui_extension.fish_audio_s2",
+                "extension_platform_version": "0.0.1"
             }
         ],
         "audio-music-generation": [
@@ -601,6 +629,34 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.songbloom",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.songbloom",
+                "extension_platform_version": "0.0.1"
+            },
+            {
+                "package_name": "tts_webui_extension.soulx_singer",
+                "name": "SoulX Singer (Beta)",
+                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.soulx_singer@main",
+                "description": "SoulX Singer is a singing voice synthesis model for generating high-quality vocal audio",
+                "extension_type": "interface",
+                "extension_class": "audio-music-generation",
+                "author": "SoulX",
+                "extension_author": "rsxdalv",
+                "license": "MIT",
+                "website": "https://github.com/Saganaki22/ComfyUI-SoulX-Singer",
+                "extension_website": "https://github.com/rsxdalv/tts_webui_extension.soulx_singer",
+                "extension_platform_version": "0.0.1"
+            },
+            {
+                "package_name": "tts_webui_extension.stable_audio_x",
+                "name": "StableAudioX (Beta)",
+                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.stable_audio_x@main",
+                "description": "StableAudioX is an extended text-to-audio model for generating music and sound effects",
+                "extension_type": "interface",
+                "extension_class": "audio-music-generation",
+                "author": "Stability AI",
+                "extension_author": "rsxdalv",
+                "license": "MIT",
+                "website": "https://github.com/lum3on/ComfyUI-StableAudioX",
+                "extension_website": "https://github.com/rsxdalv/tts_webui_extension.stable_audio_x",
                 "extension_platform_version": "0.0.1"
             }
         ],

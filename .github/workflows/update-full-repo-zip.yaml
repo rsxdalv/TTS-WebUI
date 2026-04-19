@@ -28,6 +28,9 @@ jobs:
           # Verify the changes
           git config --list
 
+          # Stop file mode changes from being included in the zip
+          # git config core.fileMode false
+
       - name: Create zip file with full git history
         run: |
           # Create a zip file containing the entire repository including .git folder

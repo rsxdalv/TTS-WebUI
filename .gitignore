@@ -93,3 +93,10 @@ workspace/
 # CI
 .coverage
 coverage.xml
+
+package-lock.json
+tts-webui-installer.zip
+
+# Neutralino
+.tmp
+neutralinojs.log

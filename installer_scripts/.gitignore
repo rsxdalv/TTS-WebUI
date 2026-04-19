@@ -12,6 +12,7 @@ output.log
 .pip_packages
 .db_version
 .git_version
+.preflight_ok
 
 # Diagnostic
 diagnostic.txt

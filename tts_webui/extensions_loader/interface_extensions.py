@@ -11,6 +11,7 @@ from tts_webui.extensions_loader.extensions_data_loader import (
     get_interface_extensions,
 )
 from tts_webui.extensions_loader.LoadingIndicator import LoadingIndicator
+from tts_webui.extensions_loader.setup_proxy_extension import setup_proxy_extension
 from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
 from tts_webui.utils.pip_install import pip_install_wrapper, pip_uninstall_wrapper
 
@@ -24,7 +25,7 @@ def check_if_package_installed(package_name):
     return spec is not None
 
 
-def _handle_package(package_name, title_name, requirements):
+def _handle_package(package_name, title_name, requirements, proxy=None):
     if package_name in disabled_extensions:
         with LoadingIndicator(title_name, skipped=True):
             with gr.Tab(f"[Disabled] {title_name}"):
@@ -55,7 +56,7 @@ def _handle_package(package_name, title_name, requirements):
                 "0.0.1" if "builtin" in package_name else version(package_name)
             )
             main_tab = getattr(module, "extension__tts_generation_webui")
-            with gr.Tab(title_name):
+            with gr.Tab(title_name) as tab:
                 if "builtin" in package_name:
                     pass
                 else:
@@ -71,7 +72,12 @@ def _handle_package(package_name, title_name, requirements):
                             show=False,
                         )
                 try:
-                    main_tab()
+                    if proxy:
+                        setup_proxy_extension(package_name, title_name, tab)
+                    else:
+                        # @gr.render(triggers=[tab.select], trigger_mode="once")
+                        # def load_extension():
+                        main_tab()
                 except Exception as e:
                     generic_error_tab_advanced(
                         e, name=title_name, requirements=requirements
@@ -194,7 +200,7 @@ def handle_extension_class(extension_class, config):
         extension_list_json, "interface", extension_class
     )
     for x in filtered_extensions:
-        _handle_package(x["package_name"], x["name"], x["requirements"])
+        _handle_package(x["package_name"], x["name"], x["requirements"], x.get("proxy"))
 
 
 def extension_list_tab():

@@ -183,13 +183,14 @@
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.mms@main",
                 "description": "MMS (Massively Multilingual Speech) is a text-to-speech model supporting over 1000 languages",
                 "extension_type": "interface",
-                "extension_class": "text-to-speech",
+                "extension_class": "audio-music-generation",
                 "author": "Facebook",
                 "extension_author": "rsxdalv",
                 "license": "MIT",
                 "website": "https://huggingface.co/facebook/mms-tts",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.mms",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": true
             },
             {
                 "package_name": "tts_webui_extension.tortoise_tts",
@@ -233,7 +234,8 @@
                 "license": "MIT",
                 "website": "https://github.com/resemble-ai/chatterbox",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.chatterbox",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": true
             },
             {
                 "package_name": "tts_webui_extension.kokoro",
@@ -247,7 +249,8 @@
                 "license": "MIT",
                 "website": "https://huggingface.co/hexgrad/Kokoro-82M",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.kokoro",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": true
             },
             {
                 "package_name": "tts_webui_extension.bark",
@@ -778,7 +781,8 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.whisper",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.whisper",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.2",
+                "proxy": true
             },
             {
                 "package_name": "tts_webui_extension.xtts_ft_demo",

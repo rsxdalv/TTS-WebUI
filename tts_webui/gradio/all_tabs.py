@@ -16,4 +16,7 @@ def all_tabs(config):
         ("📚 Tutorials", "tutorials"),
     ]:
         with gr.Tab(name), gr.Tabs():
+            with gr.Tab("Main"):
+                gr.Markdown(f"## {name}")
+                gr.Markdown("Select a tab to start.")
             handle_extension_class(extension_class, config)

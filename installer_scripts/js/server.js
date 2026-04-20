@@ -101,8 +101,25 @@ function startServer() {
     res.end("404 Not Found");
   }
 
+  // Helper to add CORS headers for cross-origin requests from vite dev server
+  function setCorsHeaders(res) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  }
+
   // Function to handle routing
   function handleRouting(req, res) {
+    // Handle preflight OPTIONS requests
+    if (req.method === "OPTIONS") {
+      setCorsHeaders(res);
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    setCorsHeaders(res);
+
     switch(req.url) {
       case "/stream-log":
         handleStreamLog(req, res);
@@ -129,8 +146,11 @@ function startServer() {
   console.log("Unified server started on port 7771");
   console.log(`Web console and log viewer available at ${serverUrl}`);
 
-  // Open the browser
-  openBrowser(serverUrl);
+  if (process.argv.includes("--silent")) {
+    console.log("Silent mode enabled, not opening browser.");
+  } else {
+    openBrowser(serverUrl);
+  }
 
   return server;
 }

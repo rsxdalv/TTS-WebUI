@@ -13,7 +13,7 @@ ROCM_VERSION_TAG = {
 
 PYTORCH_CHOICE_MAP = {
     "NVIDIA GPU": {
-        "package": f"torch=={TORCH_VERSION}+{CUDA_VERSION_TAG} torchvision torchaudio=={TORCH_VERSION}+{CUDA_VERSION_TAG} xformers==0.0.35",
+        "package": f"torch=={TORCH_VERSION}+{CUDA_VERSION_TAG} torchvision torchaudio=={TORCH_VERSION}+{CUDA_VERSION_TAG} xformers",
         "index_url": f"https://download.pytorch.org/whl/{CUDA_VERSION_TAG}",
     },
     "Custom (Manual torch install)": {

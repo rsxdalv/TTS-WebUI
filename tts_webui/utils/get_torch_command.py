@@ -13,12 +13,12 @@ ROCM_VERSION_TAG = {
 
 PYTORCH_CHOICE_MAP = {
     "NVIDIA GPU": {
-        "package": f"torch=={TORCH_VERSION}+{CUDA_VERSION_TAG} torchvision torchaudio=={TORCH_VERSION} xformers==0.0.35",
+        "package": f"torch=={TORCH_VERSION}+{CUDA_VERSION_TAG} torchvision torchaudio=={TORCH_VERSION}+{CUDA_VERSION_TAG} xformers==0.0.35",
         "index_url": f"https://download.pytorch.org/whl/{CUDA_VERSION_TAG}",
     },
     "Custom (Manual torch install)": {
-        "package": f"torch=={TORCH_VERSION}+{CUDA_VERSION_TAG} torchvision torchaudio=={TORCH_VERSION}",
-        "index_url": f"https://download.pytorch.org/whl/{CUDA_VERSION_TAG}",
+        "package": f"torch=={TORCH_VERSION} torchvision torchaudio=={TORCH_VERSION}",
+        "index_url": None,
         "manual": True,
     },
     "Apple M Series Chip": {

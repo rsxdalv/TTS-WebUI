@@ -29,11 +29,19 @@ def wait_for_server(port, timeout=30):
                 return True
         except Exception:
             pass
-        time.sleep(0.5)
+        time.sleep(0.25)
     return False
 
 
-def setup_proxy_extension(package_name, title_name, tab, autostart=False):
+def setup_proxy_extension(
+    package_name,
+    title_name,
+    tab,
+    autostart=False,
+    autoload=True,
+    install_trigger=None,
+    is_installed=False,
+):
     extension_ran = False
     global PORT_ROUTER
     PORT_ROUTER += 1
@@ -67,7 +75,10 @@ def setup_proxy_extension(package_name, title_name, tab, autostart=False):
             gr.Error(f"Error stopping extension: {e}")
             return gr.skip(), gr.skip(), gr.skip()
 
-    page = gr.HTML("Loading Extension, please wait...")
+    page = gr.HTML(
+        "Please install extension" if not is_installed else 
+        "Loading Extension, please wait..." if autoload else "Press 'Start Extension'"
+    )
 
     @functools.lru_cache(maxsize=1)
     def add_route_once():
@@ -94,9 +105,11 @@ def setup_proxy_extension(package_name, title_name, tab, autostart=False):
                 "TTS_WEBUI_EXTENSION_PACKAGE": package_name,
             },
         )
+        # Somehow lift up the errors to gr.Error and yield
+        # process.stdout
         extension_ran = True
 
-        if not wait_for_server(port):
+        if not wait_for_server(port, timeout=120):
             gr.Error(f"Warning: Server on port {port} did not start within timeout")
         add_route_once()
         yield (
@@ -122,11 +135,12 @@ def setup_proxy_extension(package_name, title_name, tab, autostart=False):
         inputs=[first_load_guard],
         outputs=[run_guard, first_load_guard],
     )
-    tab.select(
-        fn=run_extension_guard,
-        inputs=[first_load_guard],
-        outputs=[run_guard, first_load_guard],
-    )
+    if autoload:
+        tab.select(
+            fn=run_extension_guard,
+            inputs=[first_load_guard],
+            outputs=[run_guard, first_load_guard],
+        )
     run_guard.change(fn=run_extension, outputs=[page, start_btn, shutdown_btn])
 
     if autostart:
@@ -135,3 +149,9 @@ def setup_proxy_extension(package_name, title_name, tab, autostart=False):
             inputs=[first_load_guard],
             outputs=[run_guard, first_load_guard],
         )
+
+    gr.on(triggers=[install_trigger.change], fn=lambda: None).then(
+        run_extension_guard,
+        inputs=[first_load_guard],
+        outputs=[run_guard, first_load_guard],
+    )

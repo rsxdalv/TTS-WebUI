@@ -336,7 +336,7 @@
             },
             {
                 "package_name": "tts_webui_extension.gpt_sovits",
-                "name": "GPT-SoVITS [low compatibility]",
+                "name": "GPT-SoVITS (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.gpt_sovits@main",
                 "description": "GPT-SoVITS: A TTS solution powered by GPT and SoftVC VITS Singing Voice Conversion.",
                 "extension_type": "interface",
@@ -346,7 +346,8 @@
                 "license": "MIT",
                 "website": "https://github.com/X-T-E-R/GPT-SoVITS-Inference",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.gpt_sovits",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.maha_tts",
@@ -364,7 +365,7 @@
             },
             {
                 "package_name": "tts_webui_extension.openvoice",
-                "name": "OpenVoice",
+                "name": "OpenVoice (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.openvoice@main",
                 "description": "OpenVoice: A versatile instant voice cloning approach",
                 "extension_type": "interface",
@@ -374,7 +375,8 @@
                 "license": "MIT",
                 "website": "https://github.com/myshell-ai/OpenVoice",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.openvoice",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.openvoice_v2",
@@ -448,7 +450,7 @@
             },
             {
                 "package_name": "tts_webui_extension.index_tts",
-                "name": "Index TTS (uv-venv)",
+                "name": "Index TTS (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.index_tts@main",
                 "description": "A template extension for TTS Generation WebUI",
                 "extension_type": "interface",

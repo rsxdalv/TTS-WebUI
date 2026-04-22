@@ -13,7 +13,7 @@ ROCM_VERSION_TAG = {
 
 PYTORCH_CHOICE_MAP = {
     "NVIDIA GPU": {
-        "package": f"torch=={TORCH_VERSION}+{CUDA_VERSION_TAG} torchvision torchaudio=={TORCH_VERSION}+{CUDA_VERSION_TAG} xformers",
+        "package": f"torch=={TORCH_VERSION}+{CUDA_VERSION_TAG} torchvision torchaudio=={TORCH_VERSION}+{CUDA_VERSION_TAG}",
         "index_url": f"https://download.pytorch.org/whl/{CUDA_VERSION_TAG}",
     },
     "Custom (Manual torch install)": {
@@ -30,7 +30,7 @@ PYTORCH_CHOICE_MAP = {
         "index_url": "https://download.pytorch.org/whl/cpu",
     },
     "AMD GPU (ROCM, Linux only)": {
-        "package": f"torch=={TORCH_VERSION} torchvision torchaudio=={TORCH_VERSION} xformers",
+        "package": f"torch=={TORCH_VERSION} torchvision torchaudio=={TORCH_VERSION}",
         "index_url": f"https://download.pytorch.org/whl/{ROCM_VERSION_TAG[TORCH_VERSION]}",
     },
     "Intel GPU (XPU)": {

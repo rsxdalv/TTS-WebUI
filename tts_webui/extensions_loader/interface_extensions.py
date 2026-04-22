@@ -37,7 +37,6 @@ def check_if_package_installed(package_name, proxy):
         return spec is not None
 
 
-
 def _get_version(package_name, proxy):
     try:
         if "builtin" in package_name:

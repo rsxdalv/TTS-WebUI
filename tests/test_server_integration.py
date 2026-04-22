@@ -148,7 +148,9 @@ class TestExtensionsLoader:
     def test_extensions_loader_imports(self):
         """Test that extensions loader module can be imported."""
         try:
-            from tts_webui.extensions_loader import extensions_data_loader
+            from tts_webui.extensions_loader.extensions_data_loader import (
+                extensions_data_loader,
+            )
 
             assert extensions_data_loader is not None
         except Exception as e:

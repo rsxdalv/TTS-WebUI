@@ -300,3 +300,7 @@ def create_empty_external_extensions_file() -> bool:
             print(f"Failed to create {EXTERNAL_EXTENSIONS_FILE}: {e}")
             return False
     return False
+
+
+# Alias for backwards compatibility
+extensions_data_loader = load_merged_extensions_data

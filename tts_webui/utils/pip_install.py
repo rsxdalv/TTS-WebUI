@@ -2,6 +2,8 @@ import os
 import re
 import subprocess
 
+from tts_webui.utils.get_torch_command import get_torch_command
+
 
 def write_log(output, name, type):
     script_dir = os.path.dirname((__file__))
@@ -26,6 +28,42 @@ def pip_install_wrapper(requirements, name, include_gradio=True):
         write_log(output, name, type="pip-install")
         return line
         # verify installation by importing the package or drying run install
+
+    return fn
+
+
+def venv_setup_wrapper(requirements, name, package_name):
+    def fn():
+        output = []
+        venv = f".venvs/{package_name}"
+        torch = get_torch_command()
+        torchcodec = (
+            "torchcodec --index-url=https://download.pytorch.org/whl/cpu"  # safe option
+        )
+        xformers = "xformers==0.0.35"  # no index-url needed
+        compatibility = '"gradio<=5.49.1" "gradio-goodtabs>=0.0.5" "gradio-goodtab>=0.0.5" "gradio-iconbutton>=0.0.1" "ffmpeg-python==0.2.0" "matplotlib"'
+        uv_install_cmd = f"uv pip install --python {venv}/Scripts/python.exe"
+        commands = [
+            f"uv venv {venv} --allow-existing",
+            f"{uv_install_cmd} {torch}",
+            f"{uv_install_cmd} {torchcodec}",
+            f"{uv_install_cmd} {xformers}",
+            f"{uv_install_cmd} {requirements} {compatibility}",
+        ]
+        for cmd in commands:
+            for line in _stream_shell_command(cmd):
+                output.append(str(line))
+                yield "<br />".join(output)
+
+        message = (
+            f"\nSuccessfully set up virtual environment for {name} with dependencies\n"
+        )
+        print(message)
+        yield message
+        output.append(message)
+
+        write_log(output, name, type="uv-venv-install")
+        return line
 
     return fn
 
@@ -68,8 +106,7 @@ def _pip_install(requirements, name):
     #     yield f"Failed to install {name}"
     try:
         print(f"Installing {name} dependencies...")
-        yield from pip_shell(f"pip install {requirements}")
-        # yield from pip_shell(f"uv pip install {requirements}")
+        yield from _stream_shell_command(f"pip install {requirements}")
         print(f"Successfully installed {name} dependencies")
         yield f"Successfully installed {name} dependencies"
         yield "Please restart the webui to see the changes"
@@ -83,8 +120,8 @@ def _pip_install(requirements, name):
 def _pip_uninstall(package_name, name):
     try:
         print(f"Uninstalling {name} ({package_name})...")
-        yield from pip_shell(f"pip uninstall -y {package_name}")
-        # yield from pip_shell(f"uv pip uninstall {package_name}")
+        yield from _stream_shell_command(f"pip uninstall -y {package_name}")
+        # yield from _stream_shell_command(f"uv pip uninstall {package_name}")
         print(f"Successfully uninstalled {name} ({package_name})")
         yield f"Successfully uninstalled {name} ({package_name})"
     except Exception:
@@ -92,7 +129,7 @@ def _pip_uninstall(package_name, name):
         yield f"Failed to uninstall {name} ({package_name})"
 
 
-def pip_shell(command):
+def _stream_shell_command(command):
     process = subprocess.Popen(
         command,
         shell=True,

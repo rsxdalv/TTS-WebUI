@@ -14,12 +14,6 @@ from tts_webui.extensions_loader.extensions_data_loader import (
 )
 from tts_webui.utils.pip_install import pip_install_wrapper, pip_uninstall_wrapper
 
-
-def check_if_package_installed(package_name):
-    spec = importlib.util.find_spec(package_name)
-    return spec is not None
-
-
 # A list of disabled extensions and decorators
 # disabled_extensions = ["decorator_disabled"]
 disabled_extensions: list[str] = config.get("extensions", {}).get(

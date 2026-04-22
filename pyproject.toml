@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "TTS-WebUI"
-version = "1.0.1"
+version = "1.2.0"
 description = "TTS WebUI"
 readme = "README.md"
 authors = [
@@ -120,3 +120,6 @@ ignore = ["E501", "F401", "E402"]
 [tool.ruff.format]
 quote-style = "double"  # Match black's default
 
+[tool.uv]
+cache-dir = "./cache"
+python-downloads = "manual"

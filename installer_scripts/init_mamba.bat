@@ -114,7 +114,7 @@ set USERPROFILE=%cd%\installer_files\profile
 @rem figure out whether git and conda needs to be installed
 if exist "%INSTALL_ENV_DIR%" set PATH=%INSTALL_ENV_DIR%;%INSTALL_ENV_DIR%\Library\bin;%INSTALL_ENV_DIR%\Scripts;%INSTALL_ENV_DIR%\Library\usr\bin;%PATH%
 
-set PACKAGES_TO_INSTALL=git python=3.10.11 conda-forge::nodejs=22.9.0 conda conda-forge::uv=0.4.17 ninja conda-forge::postgresql=16.4 conda-forge::vswhere conda-forge::ffmpeg=4.4.2[build=lgpl*]
+set PACKAGES_TO_INSTALL=git python=3.10.11 conda-forge::nodejs=22.9.0 conda ninja conda-forge::postgresql=16.4 conda-forge::vswhere conda-forge::ffmpeg=4.4.2[build=lgpl*]
 
 @REM if not exist "%MAMBA_ROOT_PREFIX%\micromamba.exe" set umamba_exists=F
 if not exist "temp" mkdir temp

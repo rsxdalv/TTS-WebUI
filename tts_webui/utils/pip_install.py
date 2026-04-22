@@ -42,7 +42,10 @@ def venv_setup_wrapper(requirements, name, package_name):
         )
         xformers = "xformers==0.0.35"  # no index-url needed
         compatibility = '"gradio<=5.49.1" "gradio-goodtabs>=0.0.5" "gradio-goodtab>=0.0.5" "gradio-iconbutton>=0.0.1" "ffmpeg-python==0.2.0" "matplotlib"'
-        uv_install_cmd = f"uv pip install --python {venv}/Scripts/python.exe"
+        if os.name == "nt":
+            uv_install_cmd = f"uv pip install --python {venv}/Scripts/python.exe"
+        else:
+            uv_install_cmd = f"uv pip install --python {venv}/bin/python"
         commands = [
             f"uv venv {venv} --allow-existing",
             f"{uv_install_cmd} {torch}",

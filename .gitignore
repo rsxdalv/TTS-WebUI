@@ -8,6 +8,10 @@ dist/
 build/
 *.egg-info/
 
+# Virtual environments
+.venv/
+.venvs/
+
 # Ignore Conda environment
 installer_files/
 

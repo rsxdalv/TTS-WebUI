@@ -2,17 +2,31 @@
     "tabsInGroups": {
         "extensions": [
             {
-                "package_name": "extensions.builtin.extension_external_extensions_installer",
-                "name": "External Extensions Installer",
-                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.external_extensions_installer@main",
-                "description": "Add external extension entries via JSON and install them without restarts.",
+                "package_name": "extensions.builtin.extension_extension_catalog",
+                "name": "Extension Catalog",
+                "requirements": "builtin",
+                "description": "Browse and import extensions from the online catalog",
                 "extension_type": "interface",
                 "extension_class": "extensions",
                 "author": "rsxdalv",
                 "extension_author": "rsxdalv",
                 "license": "MIT",
-                "website": "https://github.com/rsxdalv/tts-generation-webui.external_extensions_installer",
-                "extension_website": "https://github.com/rsxdalv/tts_webui_extension.external_extensions_installer",
+                "website": "https://github.com/rsxdalv/tts-webui-extension-catalog",
+                "extension_website": "",
+                "extension_platform_version": "0.0.1"
+            },
+            {
+                "package_name": "extensions.builtin.extension_custom_extensions_installer",
+                "name": "Custom Extensions Installer",
+                "requirements": "builtin",
+                "description": "Add external extension entries via JSON and install them without restarts. Sync and apply the public extensions catalog via Git.",
+                "extension_type": "interface",
+                "extension_class": "extensions",
+                "author": "rsxdalv",
+                "extension_author": "rsxdalv",
+                "license": "MIT",
+                "website": "https://github.com/rsxdalv/tts-generation-webui",
+                "extension_website": "",
                 "extension_platform_version": "0.0.1"
             },
             {
@@ -290,7 +304,8 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.parler_tts",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.parler_tts",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.cosyvoice",
@@ -446,7 +461,8 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.kitten_tts",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.kitten_tts",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.index_tts",
@@ -999,34 +1015,6 @@
             "license": "MIT",
             "website": "https://github.com/rsxdalv/tts_webui_extension.decorator_save_ffmpeg",
             "extension_website": "https://github.com/rsxdalv/tts_webui_extension.decorator_save_ffmpeg",
-            "extension_platform_version": "0.0.1"
-        },
-        {
-            "package_name": "extensions.builtin.extension_decorator_save_waveform",
-            "name": "Save Waveform",
-            "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.decorator_save_waveform@main",
-            "description": "Decorator Save Waveform",
-            "extension_type": "decorator",
-            "extension_class": "outer",
-            "author": "rsxdalv",
-            "extension_author": "rsxdalv",
-            "license": "MIT",
-            "website": "https://github.com/rsxdalv/tts_webui_extension.decorator_save_waveform",
-            "extension_website": "https://github.com/rsxdalv/tts_webui_extension.decorator_save_waveform",
-            "extension_platform_version": "0.0.1"
-        },
-        {
-            "package_name": "extensions.builtin.extension_decorator_average_execution_time",
-            "name": "Average Time",
-            "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.decorator_average_execution_time@main",
-            "description": "Decorator Average Execution Time",
-            "extension_type": "decorator",
-            "extension_class": "outer",
-            "author": "rsxdalv",
-            "extension_author": "rsxdalv",
-            "license": "MIT",
-            "website": "https://github.com/rsxdalv/tts_webui_extension.decorator_average_execution_time",
-            "extension_website": "https://github.com/rsxdalv/tts_webui_extension.decorator_average_execution_time",
             "extension_platform_version": "0.0.1"
         }
     ],

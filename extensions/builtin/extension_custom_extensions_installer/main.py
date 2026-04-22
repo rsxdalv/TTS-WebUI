@@ -6,13 +6,8 @@ from typing import Any, Dict, List, Tuple
 import gradio as gr
 
 from tts_webui.utils.pip_install import pip_install_wrapper
-from .messaging_js import messaging_js
 
 EXTERNAL_EXTENSIONS_FILE = "extensions.external.json"
-CATALOG_DIR = os.path.join("data", "extensions-catalog")
-CATALOG_REPO = "https://github.com/rsxdalv/tts-webui-extension-catalog.git"
-CATALOG_JSON_PATH = os.path.join(CATALOG_DIR, "lib", "extensions.json")
-
 
 def _load_external_extensions() -> Dict[str, Any]:
     try:
@@ -106,34 +101,6 @@ def _render_preview(entries: List[Dict[str, Any]]) -> str:
     return gr.Markdown(header + "\n".join(rows))
 
 
-def _sync_catalog_via_git() -> Tuple[str, str]:
-    # Try: clone if missing, else pull fast-forward; return output or error.
-    try:
-        if not os.path.isdir(CATALOG_DIR) or not os.path.isdir(
-            os.path.join(CATALOG_DIR, ".git")
-        ):
-            cmd = ["git", "clone", "--depth=1", CATALOG_REPO, CATALOG_DIR]
-        else:
-            cmd = ["git", "-C", CATALOG_DIR, "pull", "--ff-only"]
-        proc = subprocess.run(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )
-        if proc.returncode != 0:
-            msg = proc.stderr.strip() or proc.stdout.strip() or "Unknown git error"
-            return f"Git failed: {msg}", ""
-
-        # Read catalog JSON from cloned repo
-        if not os.path.exists(CATALOG_JSON_PATH):
-            return f"Catalog JSON not found at {CATALOG_JSON_PATH}", ""
-
-        with open(CATALOG_JSON_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        return "Synced catalog via Git", json.dumps(data, indent=2, ensure_ascii=False)
-    except Exception as e:
-        return f"Git sync error: {e}", ""
-
-
 def _add_to_external(entries: List[Dict[str, Any]]) -> Tuple[str, str]:
     if not entries:
         return "Nothing to add.", ""
@@ -169,36 +136,14 @@ def _install_selected(entries: List[Dict[str, Any]]):
         yield from pip_install_wrapper(req, name)()
 
 
-EXTENSION_CATALOG_IFRAME_ID = "extension-catalog"
 
 
-def extension__tts_generation_webui():
+def ui():
     gr.Markdown(
         """
     Paste one or more extension JSON objects below. We'll validate, preview, and let you add them to `extensions.external.json` and optionally install their requirements right away.
     """
     )
-
-    with gr.Accordion("Browse Extension Catalog", open=True):
-        gr.HTML(
-            f"""<iframe id={EXTENSION_CATALOG_IFRAME_ID} 
-                 width="100%"
-                 height="800px"
-                 src="https://rsxdalv.github.io/tts-webui-extension-catalog/?browse=true&iframe=true"
-                 title="TTS WebUI Extension Catalog"
-                 frameborder="0"
-            ></iframe>
-            <div id="json-container" hidden></div>
-            """
-        )
-
-        init = gr.Timer(0.5)
-        init.tick(
-            fn=lambda: gr.Timer(active=False),
-            inputs=[],
-            outputs=[init],
-            js=messaging_js,
-        )
 
     with gr.Row():
         json_input = gr.Textbox(
@@ -223,11 +168,6 @@ def extension__tts_generation_webui():
 
     with gr.Accordion("Current extensions.external.json", open=False):
         current_json = gr.Code(language="json")
-
-    with gr.Accordion("Catalog JSON (data/extensions-catalog)", open=False):
-        sync_btn = gr.Button("Sync Catalog via Git", variant="secondary")
-
-        latest_json = gr.Code(language="json")
 
     def _on_parse(text: str):
         entries, info = _parse_json_input(text)
@@ -277,23 +217,17 @@ def extension__tts_generation_webui():
         outputs=[console_html],
     )
 
-    def _on_sync():
-        status, content = _sync_catalog_via_git()
-        return status, content
 
-    sync_btn.click(
-        fn=_on_sync,
-        inputs=[],
-        outputs=[parse_info, latest_json],
-    )
+def extension__tts_generation_webui():
+    ui()
 
     return {
-        "package_name": "extensions.builtin.extension_external_extensions_installer",
-        "name": "External Extensions Installer",
+        "package_name": "extensions.builtin.extension_custom_extensions_installer",
+        "name": "Custom Extensions Installer",
         "requirements": "builtin",
         "description": "Add external extension entries via JSON and install them without restarts. Sync and apply the public extensions catalog via Git.",
         "extension_type": "interface",
-        "extension_class": "settings",
+        "extension_class": "extensions",
         "author": "rsxdalv",
         "extension_author": "rsxdalv",
         "license": "MIT",

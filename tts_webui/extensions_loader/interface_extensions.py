@@ -37,6 +37,37 @@ def check_if_package_installed(package_name, proxy):
         return spec is not None
 
 
+def _get_version(package_name, proxy):
+    try:
+        if "builtin" in package_name:
+            return "Built-in"
+        if proxy == "native":
+            return ""
+            import os
+            import subprocess
+
+            venv_python = (
+                f".venvs/{package_name}/Scripts/python.exe"
+                if os.name == "nt"
+                else f".venvs/{package_name}/bin/python"
+            )
+            result = subprocess.run(
+                [
+                    venv_python,
+                    "-c",
+                    f"import importlib.metadata; print(importlib.metadata.version('{package_name}'))",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            return result.stdout.strip()  # "0.0.3"
+        else:
+            return f"v{version(package_name)}"
+    except Exception as e:
+        print(f"Error getting version for {package_name}: {e}")
+        return "Unknown"
+
+
 def _handle_package(package_name, title_name, requirements, proxy=None):
     if package_name in disabled_extensions:
         with LoadingIndicator(title_name, skipped=True):
@@ -82,11 +113,7 @@ def _handle_package(package_name, title_name, requirements, proxy=None):
                         package_name,
                         title_name,
                         requirements,
-                        version=(
-                            "0.0.1"
-                            if "builtin" in package_name or proxy == "native"
-                            else version(package_name)
-                        ),
+                        version=_get_version(package_name, proxy),
                         show=not is_installed,
                         proxy=proxy,
                         autostart=autostart,
@@ -191,7 +218,7 @@ def _extension_management_ui(
     autostart=False,
     is_installed=True,
 ):
-    with gr.Accordion(f"Manage {title_name} v{version} Extension", open=show):
+    with gr.Accordion(f"Manage {title_name} {version} Extension", open=show):
         with gr.Row():
             output = gr.HTML(render=False)
             install_trigger = gr.State(is_installed)

@@ -7,8 +7,9 @@ def all_tabs(config):
     for name, extension_class in [
         ("🧩 Extensions", "extensions"),
         ("💬 Text-to-Speech", "text-to-speech"),
-        ("🎼 Audio/Music Generation", "audio-music-generation"),
-        ("🎙️ Audio Conversion", "audio-conversion"),
+        ("🎤 Speech-to-Text", "speech-to-text"),
+        ("🎼 Audio & Music", "audio-music-generation"),
+        ("🎙️ Transform", "audio-conversion"),
         ("🤖 Conversational AI", "conversational-ai"),
         ("📁 Outputs", "outputs"),
         ("🔧 Tools", "tools"),

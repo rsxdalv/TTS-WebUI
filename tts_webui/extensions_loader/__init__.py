@@ -1,13 +1,1 @@
-from tts_webui.extensions_loader.decorator_extensions import (
-    extension_decorator_list_tab,
-)
-from tts_webui.extensions_loader.interface_extensions import (
-    extension_list_tab,
-    handle_extension_class,
-)
-
-__all__ = [
-    "extension_list_tab",
-    "extension_decorator_list_tab",
-    "handle_extension_class",
-]
+"""Extensions loader package."""

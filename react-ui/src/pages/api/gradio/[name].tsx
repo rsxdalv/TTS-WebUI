@@ -28,7 +28,7 @@ export default async function handler(
   res: NextApiResponse<Data>
 ) {
   const { name } = req.query;
-  // console.log("gradio api handler", name, req.body);
+  console.log("gradio api handler", name, req.body);
 
   if (!name || typeof name !== "string" || !endpoints[name]) {
     res.status(404).json({ data: { error: "Not found" } });

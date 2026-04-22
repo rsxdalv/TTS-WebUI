@@ -54,3 +54,5 @@ tts-webui-extension.vall_e_x>=0.1.0
 gradio-goodtabs>=0.0.5
 gradio-goodtab>=0.0.5
 gradio-iconbutton>=0.0.1
+
+uv>=0.11.0

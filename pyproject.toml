@@ -122,3 +122,4 @@ quote-style = "double"  # Match black's default
 
 [tool.uv]
 cache-dir = "./cache"
+python-downloads = "manual"

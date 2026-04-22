@@ -1,6 +1,6 @@
 import gradio as gr
 
-from tts_webui.extensions_loader import handle_extension_class
+from tts_webui.extensions_loader.interface_extensions import handle_extension_class
 
 
 def all_tabs(config):

@@ -14,14 +14,25 @@ from starlette.websockets import WebSocket, WebSocketDisconnect
 logger = logging.getLogger("gradio_proxy_tree")
 
 # Hop-by-hop headers that must not be forwarded
-_HOP_BY_HOP = frozenset({
-    "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
-    "te", "trailers", "transfer-encoding", "upgrade",
-    "content-encoding", "content-length",
-})
+_HOP_BY_HOP = frozenset(
+    {
+        "connection",
+        "keep-alive",
+        "proxy-authenticate",
+        "proxy-authorization",
+        "te",
+        "trailers",
+        "transfer-encoding",
+        "upgrade",
+        "content-encoding",
+        "content-length",
+    }
+)
 
 
-def _proxy_headers(raw_headers: list[tuple[bytes, bytes]], scheme: str) -> dict[str, str]:
+def _proxy_headers(
+    raw_headers: list[tuple[bytes, bytes]], scheme: str
+) -> dict[str, str]:
     """Build forwarding headers matching nginx proxy_set_header directives."""
     headers_dict = {k.decode("latin-1"): v.decode("latin-1") for k, v in raw_headers}
     host = headers_dict.get("host", "localhost")
@@ -56,11 +67,14 @@ async def proxy_http(scope, receive, send, *, prefix: str, target: str):
 
     client = httpx.AsyncClient(follow_redirects=False, timeout=httpx.Timeout(300.0))
     try:
-        req = client.build_request(method=scope["method"], url=url, headers=headers, content=body)
+        req = client.build_request(
+            method=scope["method"], url=url, headers=headers, content=body
+        )
         upstream_resp = await client.send(req, stream=True)
 
         resp_headers = {
-            k: v for k, v in upstream_resp.headers.items()
+            k: v
+            for k, v in upstream_resp.headers.items()
             if k.lower() not in _HOP_BY_HOP
         }
 
@@ -72,17 +86,23 @@ async def proxy_http(scope, receive, send, *, prefix: str, target: str):
                 await upstream_resp.aclose()
                 await client.aclose()
 
-        response = StreamingResponse(stream_body(), status_code=upstream_resp.status_code, headers=resp_headers)
+        response = StreamingResponse(
+            stream_body(), status_code=upstream_resp.status_code, headers=resp_headers
+        )
         await response(scope, receive, send)
 
     except httpx.ConnectError as exc:
         await client.aclose()
         logger.error("Upstream %s unavailable: %s", target, exc)
-        await Response("Proxy error: upstream unavailable", status_code=502)(scope, receive, send)
+        await Response("Proxy error: upstream unavailable", status_code=502)(
+            scope, receive, send
+        )
     except Exception as exc:
         await client.aclose()
         logger.error("Proxy error for %s: %s", target, exc)
-        await Response("Proxy error: internal error", status_code=500)(scope, receive, send)
+        await Response("Proxy error: internal error", status_code=500)(
+            scope, receive, send
+        )
 
 
 async def proxy_ws(scope, receive, send, *, prefix: str, target: str):
@@ -98,7 +118,9 @@ async def proxy_ws(scope, receive, send, *, prefix: str, target: str):
     ws_target = target.replace("http://", "ws://").replace("https://", "wss://")
     ws_url = ws_target + upstream_path + (f"?{query}" if query else "")
 
-    headers_dict = {k.decode("latin-1"): v.decode("latin-1") for k, v in scope.get("headers", [])}
+    headers_dict = {
+        k.decode("latin-1"): v.decode("latin-1") for k, v in scope.get("headers", [])
+    }
     host = headers_dict.get("host", "localhost")
 
     logger.info("WS %s -> %s", raw_path, ws_url)
@@ -140,7 +162,10 @@ async def proxy_ws(scope, receive, send, *, prefix: str, target: str):
                     return
 
             done, pending = await asyncio.wait(
-                [asyncio.create_task(client_to_upstream()), asyncio.create_task(upstream_to_client())],
+                [
+                    asyncio.create_task(client_to_upstream()),
+                    asyncio.create_task(upstream_to_client()),
+                ],
                 return_when=asyncio.FIRST_COMPLETED,
             )
             for task in pending:

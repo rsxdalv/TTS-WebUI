@@ -76,8 +76,11 @@ def setup_proxy_extension(
             return gr.skip(), gr.skip(), gr.skip()
 
     page = gr.HTML(
-        "Please install extension" if not is_installed else 
-        "Loading Extension, please wait..." if autoload else "Press 'Start Extension'"
+        "Please install extension"
+        if not is_installed
+        else "Loading Extension, please wait..."
+        if autoload
+        else "Press 'Start Extension'"
     )
 
     @functools.lru_cache(maxsize=1)

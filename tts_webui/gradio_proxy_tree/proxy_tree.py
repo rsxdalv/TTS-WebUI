@@ -110,7 +110,10 @@ class GradioProxyTree:
         )
         async def catch_all(request: Request, path: str = ""):
             return JSONResponse(
-                {"detail": f"Not Found (proxy server - no route matches /{path})", "proxy": True},
+                {
+                    "detail": f"Not Found (proxy server - no route matches /{path})",
+                    "proxy": True,
+                },
                 status_code=404,
             )
 
@@ -140,13 +143,17 @@ class GradioProxyTree:
         for prefix, target in self._dispatcher.routes.items():
             logger.info("  %s -> %s", prefix, target)
 
-        config = uvicorn.Config(self._dispatcher, host=self.host, port=self.port, log_level="info")
+        config = uvicorn.Config(
+            self._dispatcher, host=self.host, port=self.port, log_level="info"
+        )
         self._server = uvicorn.Server(config)
         self._server.run()
 
     def start_background(self) -> threading.Thread:
         """Start the proxy server in a background thread. Returns the thread."""
-        self._thread = threading.Thread(target=self.start, daemon=True, name="proxy-tree")
+        self._thread = threading.Thread(
+            target=self.start, daemon=True, name="proxy-tree"
+        )
         self._thread.start()
         logger.info("Proxy tree started in background thread")
         return self._thread

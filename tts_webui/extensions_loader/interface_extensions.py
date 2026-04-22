@@ -278,6 +278,7 @@ def _extension_management_ui(
             output.render()
             return install_trigger
 
+
 # Get the interface extensions list from the data loader
 extension_list_json = get_interface_extensions()
 disabled_extensions: list[str] = config.get("extensions", {}).get("disabled", [])

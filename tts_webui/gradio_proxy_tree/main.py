@@ -7,6 +7,7 @@ gradio_proxy_tree = GradioProxyTree(host="0.0.0.0", port=GRADIO_TREE_PORT)
 
 print(f"Gradio Proxy Tree initialized on {GRADIO_TREE_HOSTNAME}:{GRADIO_TREE_PORT}")
 
+
 def _setup():
     gradio_proxy_tree.add_route("/main-app", 7770)
     gradio_proxy_tree.start_background()

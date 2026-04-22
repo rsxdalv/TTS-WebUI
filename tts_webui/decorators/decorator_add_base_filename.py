@@ -2,7 +2,6 @@ import os
 from datetime import datetime
 
 # from deprecated import deprecated
-
 from tts_webui.utils.prompt_to_title import prompt_to_title
 
 output_path = "outputs"

@@ -542,7 +542,7 @@
             {
                 "package_name": "tts_webui_extension.audiocraft",
                 "recommended": true,
-                "name": "Audiocraft",
+                "name": "Audiocraft (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.audiocraft@main",
                 "description": "Audiocraft provides MusicGen and MAGNeT models for high-quality music and audio generation",
                 "extension_type": "interface",
@@ -552,7 +552,8 @@
                 "license": "MIT",
                 "website": "https://github.com/facebookresearch/audiocraft",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.audiocraft",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.riffusion",

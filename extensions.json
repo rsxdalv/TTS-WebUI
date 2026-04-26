@@ -250,7 +250,7 @@
             },
             {
                 "package_name": "tts_webui_extension.bark",
-                "name": "Bark",
+                "name": "Bark (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.bark@main",
                 "description": "Bark: A text-to-speech model",
                 "extension_type": "interface",
@@ -855,20 +855,6 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.rvc_training",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.rvc_training",
-                "extension_platform_version": "0.0.1"
-            },
-            {
-                "package_name": "tts_webui_extension.bark_voice_clone",
-                "name": "Bark Voice Clone",
-                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.bark_voice_clone@main",
-                "description": "Bark Voice Clone allows cloning voices for use with Bark TTS",
-                "extension_type": "interface",
-                "extension_class": "tools",
-                "author": "GitMylo",
-                "extension_author": "rsxdalv",
-                "license": "MIT",
-                "website": "https://github.com/gitmylo/bark-voice-cloning-HuBERT-quantizer",
-                "extension_website": "https://github.com/rsxdalv/tts_webui_extension.bark_voice_clone",
                 "extension_platform_version": "0.0.1"
             },
             {

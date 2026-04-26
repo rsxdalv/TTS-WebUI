@@ -1,11 +1,9 @@
 import json
-import os
-import subprocess
 from typing import Any, Dict, List, Tuple
 
 import gradio as gr
 
-from tts_webui.utils.pip_install import pip_install_wrapper
+from tts_webui.utils.pip_install import pip_install_wrapper, venv_setup_wrapper
 
 EXTERNAL_EXTENSIONS_FILE = "extensions.external.json"
 
@@ -126,15 +124,20 @@ def _add_to_external(entries: List[Dict[str, Any]]) -> Tuple[str, str]:
 
 
 def _install_selected(entries: List[Dict[str, Any]]):
-    # Generator to stream console logs using existing wrapper
     if not entries:
         yield "<i>Nothing selected to install.</i>"
         return
     for e in entries:
-        req = e.get("requirements")
+        requirements = e.get("requirements")
         name = e.get("name", e.get("package_name", "extension"))
-        yield from pip_install_wrapper(req, name)()
-
+        proxy = e.get("proxy", None)
+        package_name = e.get("package_name", None)
+        if proxy == "native":
+            yield f"Setting up virtual environment and installing dependencies for {name}..."  # type: ignore
+            yield from venv_setup_wrapper(requirements, name, package_name)()
+        else:
+            yield from pip_install_wrapper(requirements, name)()
+    
 
 
 

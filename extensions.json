@@ -206,21 +206,6 @@
                 "extension_platform_version": "0.0.1"
             },
             {
-                "package_name": "tts_webui_extension.tortoise_tts",
-                "recommended": true,
-                "name": "Tortoise TTS",
-                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.tortoise_tts@main",
-                "description": "Tortoise TTS is a high-quality text-to-speech model with voice cloning capabilities",
-                "extension_type": "interface",
-                "extension_class": "text-to-speech",
-                "author": "neonbjb",
-                "extension_author": "rsxdalv",
-                "license": "MIT",
-                "website": "https://github.com/neonbjb/tortoise-tts",
-                "extension_website": "https://github.com/rsxdalv/tts_webui_extension.tortoise_tts",
-                "extension_platform_version": "0.0.1"
-            },
-            {
                 "package_name": "tts_webui_extension.f5_tts",
                 "recommended": true,
                 "name": "F5-TTS",
@@ -265,7 +250,7 @@
             },
             {
                 "package_name": "tts_webui_extension.bark",
-                "name": "Bark",
+                "name": "Bark (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.bark@main",
                 "description": "Bark: A text-to-speech model",
                 "extension_type": "interface",
@@ -323,7 +308,7 @@
             },
             {
                 "package_name": "tts_webui_extension.mars5",
-                "name": "MARS5",
+                "name": "MARS5 (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.mars5@main",
                 "description": "MARS5: A novel speech model for insane prosody",
                 "extension_type": "interface",
@@ -333,7 +318,8 @@
                 "license": "MIT",
                 "website": "https://github.com/camb-ai/mars5-tts",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.mars5",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.dia",
@@ -366,7 +352,7 @@
             },
             {
                 "package_name": "tts_webui_extension.maha_tts",
-                "name": "Maha TTS",
+                "name": "Maha TTS (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.maha_tts@main",
                 "description": "Maha TTS allows generating speech from text using the MahaTTS model.",
                 "extension_type": "interface",
@@ -376,7 +362,8 @@
                 "license": "MIT",
                 "website": "https://huggingface.co/Dubverse/MahaTTS",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.maha_tts",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.openvoice",
@@ -540,7 +527,7 @@
             {
                 "package_name": "tts_webui_extension.stable_audio",
                 "recommended": true,
-                "name": "Stable Audio",
+                "name": "Stable Audio (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.stable_audio@main",
                 "description": "Stable Audio is a text-to-audio model for generating high-quality music and sound effects",
                 "extension_type": "interface",
@@ -550,12 +537,13 @@
                 "license": "MIT",
                 "website": "https://github.com/Stability-AI/stable-audio-tools",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.stable_audio",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.audiocraft",
                 "recommended": true,
-                "name": "Audiocraft",
+                "name": "Audiocraft (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.audiocraft@main",
                 "description": "Audiocraft provides MusicGen and MAGNeT models for high-quality music and audio generation",
                 "extension_type": "interface",
@@ -565,25 +553,12 @@
                 "license": "MIT",
                 "website": "https://github.com/facebookresearch/audiocraft",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.audiocraft",
-                "extension_platform_version": "0.0.1"
-            },
-            {
-                "package_name": "tts_webui_extension.audiocraft_plus",
-                "name": "AudioCraft Plus",
-                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.audiocraft_plus@main",
-                "description": "AudioCraft Plus is an all-in-one WebUI for the original AudioCraft, adding many quality features on top.",
-                "extension_type": "interface",
-                "extension_class": "audio-music-generation",
-                "author": "GrandaddyShmax",
-                "extension_author": "rsxdalv",
-                "license": "MIT",
-                "website": "https://github.com/GrandaddyShmax/audiocraft_plus",
-                "extension_website": "https://github.com/rsxdalv/tts_webui_extension.audiocraft_plus",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.riffusion",
-                "name": "Riffusion",
+                "name": "Riffusion (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.riffusion@main",
                 "description": "Riffusion allows generating music from text.",
                 "extension_type": "interface",
@@ -593,11 +568,12 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.riffusion",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.riffusion",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.audiocraft_mac",
-                "name": "MusicGen (Mac)",
+                "name": "MusicGen (Mac) (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.audiocraft_mac@main",
                 "description": "MusicGen allows generating music from text",
                 "extension_type": "interface",
@@ -607,11 +583,12 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.audiocraft_mac",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.audiocraft_mac",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.songbloom",
-                "name": "Songbloom (Beta)",
+                "name": "Songbloom (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.songbloom@main",
                 "description": "A template extension for TTS Generation WebUI",
                 "extension_type": "interface",
@@ -621,7 +598,8 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.songbloom",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.songbloom",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             }
         ],
         "audio-conversion": [
@@ -869,20 +847,6 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.rvc_training",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.rvc_training",
-                "extension_platform_version": "0.0.1"
-            },
-            {
-                "package_name": "tts_webui_extension.bark_voice_clone",
-                "name": "Bark Voice Clone",
-                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.bark_voice_clone@main",
-                "description": "Bark Voice Clone allows cloning voices for use with Bark TTS",
-                "extension_type": "interface",
-                "extension_class": "tools",
-                "author": "GitMylo",
-                "extension_author": "rsxdalv",
-                "license": "MIT",
-                "website": "https://github.com/gitmylo/bark-voice-cloning-HuBERT-quantizer",
-                "extension_website": "https://github.com/rsxdalv/tts_webui_extension.bark_voice_clone",
                 "extension_platform_version": "0.0.1"
             },
             {

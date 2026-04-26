@@ -171,16 +171,8 @@ async function pip_install(requirements, name = "", pipFallback = false) {
 }
 
 const extensions = [
-  {
-    name: "Bark Voice Clone",
-    package: '"tts-webui-extension.bark_voice_clone>=0.0.1"',
-  },
   { name: "RVC", package: '"tts-webui-extension.rvc>=0.0.5"' },
   { name: "StyleTTS", package: '"tts-webui-extension.styletts2>=0.1.1"' }, // pypi
-  {
-    name: "Stable Audio",
-    package: '"tts-webui-extension.stable_audio>=0.1.1"',
-  },
 ];
 
 const constructDependencyInstallString = () =>
@@ -284,17 +276,6 @@ async function applyCondaConfig() {
   await installDependencies(gpuchoice);
   await pip_install_all(true); // approximate first install
 }
-
-const extensionsToInstall = [
-  "bark",
-  "bark_voice_clone",
-  "rvc",
-  "audiocraft",
-  "styletts2",
-  "vall_e",
-  "maha_tts",
-  "stable_audio",
-];
 
 async function chooseExtensions() {
   displayMessage("Choose extensions to install...");

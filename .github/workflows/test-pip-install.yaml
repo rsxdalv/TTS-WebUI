@@ -60,7 +60,6 @@ jobs:
           python -m pip install -r requirements.txt \
             "tts-webui-extension.rvc>=0.0.5" \
             "tts-webui-extension.styletts2>=0.1.0" \
-            "tts-webui-extension.stable_audio>=0.1.1" \
             --extra-index-url https://tts-webui.github.io/extensions-index/
 
       - name: Test tts_webui

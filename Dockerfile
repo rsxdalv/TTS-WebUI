@@ -41,7 +41,6 @@ RUN pip3 install --no-cache-dir torch==$TORCH_VERSION -r requirements.txt
 # RUN pip install --no-cache-dir --verbose torch==$TORCH_VERSION -r requirements.txt
 RUN pip install "tts-webui-extension.rvc>=0.0.6" --extra-index-url https://tts-webui.github.io/extensions-index/
 RUN pip install "tts-webui-extension.styletts2>=0.1.0" --extra-index-url https://tts-webui.github.io/extensions-index/
-# RUN pip install "tts-webui-extension.stable_audio>=0.1.1" --extra-index-url https://tts-webui.github.io/extensions-index/
 
 
 # SQLite is included with Python, no additional setup needed

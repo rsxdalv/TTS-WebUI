@@ -173,10 +173,6 @@ async function pip_install(requirements, name = "", pipFallback = false) {
 const extensions = [
   { name: "RVC", package: '"tts-webui-extension.rvc>=0.0.5"' },
   { name: "StyleTTS", package: '"tts-webui-extension.styletts2>=0.1.1"' }, // pypi
-  {
-    name: "Stable Audio",
-    package: '"tts-webui-extension.stable_audio>=0.1.1"',
-  },
 ];
 
 const constructDependencyInstallString = () =>

@@ -140,14 +140,13 @@ To install the default extensions, run and restart the server:
 pip install -r requirements.txt \
    tts-webui-extension.rvc>=0.0.3 \
    tts-webui-extension.styletts2>=0.1.0 \
-   tts-webui-extension.stable_audio>=0.1.1 \
    --extra-index-url https://tts-webui.github.io/extensions-index/
 ```
 
 (One line in case of copy-paste issues)
 
 ```bash
-pip install -r requirements.txt tts-webui-extension.rvc>=0.0.3 tts-webui-extension.styletts2>=0.1.0 tts-webui-extension.stable_audio>=0.1.1 hydra-core==1.3.2 nvidia-ml-py --extra-index-url https://tts-webui.github.io/extensions-index/
+pip install -r requirements.txt tts-webui-extension.rvc>=0.0.3 tts-webui-extension.styletts2>=0.1.0 hydra-core==1.3.2 nvidia-ml-py --extra-index-url https://tts-webui.github.io/extensions-index/
 ```
 
 In case of failures, try installing the extensions one by one.
@@ -156,8 +155,6 @@ In case of failures, try installing the extensions one by one.
 pip install tts-webui-extension.rvc>=0.0.3 --extra-index-url https://tts-webui.github.io/extensions-index/
 pip install tts-webui-extension.audiocraft>=0.0.2 --extra-index-url https://tts-webui.github.io/extensions-index/
 pip install tts-webui-extension.styletts2>=0.1.0 --extra-index-url https://tts-webui.github.io/extensions-index/
-pip install tts-webui-extension.vall_e_x>=0.1.0 --extra-index-url https://tts-webui.github.io/extensions-index/
-pip install tts-webui-extension.stable_audio>=0.1.1 --extra-index-url https://tts-webui.github.io/extensions-index/
 ```
 
 ### 7. Updates

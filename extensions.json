@@ -482,7 +482,7 @@
             },
             {
                 "package_name": "tts_webui_extension.fireredtts2",
-                "name": "FireRedTTS2 (Beta)",
+                "name": "FireRedTTS2 (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.fireredtts2@main",
                 "description": "A template extension for TTS Generation WebUI",
                 "extension_type": "interface",
@@ -492,7 +492,8 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.fireredtts2",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.fireredtts2",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.megatts3",

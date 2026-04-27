@@ -96,7 +96,17 @@
 
 ## Installation
 
-### Using the Installer (Recommended)
+### Using TTS WebUI Ignition (Recommended)
+TTS WebUI Ignition is the new installer and launcher for TTS WebUI.
+
+On Windows:
+```
+winget install TTS-WebUI.Ignition
+```
+
+For other platforms, download the latest release from the [releases page](https://github.com/rsxdalv/tts-webui-ignition/releases/tag/release-v2.2.0) or build it from source using the instructions in the [repository](https://github.com/rsxdalv/tts-webui-ignition).
+
+### Using the Installer (Legacy)
 
 Current base installation size is around 10.7 GB. Each model will require 2-8 GB of space in addition.
 

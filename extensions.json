@@ -498,7 +498,7 @@
             },
             {
                 "package_name": "tts_webui_extension.megatts3",
-                "name": "MegaTTS3 (Alpha)",
+                "name": "MegaTTS3 (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.megatts3@main",
                 "description": "A template extension for TTS Generation WebUI",
                 "extension_type": "interface",
@@ -508,7 +508,8 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.megatts3",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.megatts3",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             }
         ],
         "audio-music-generation": [

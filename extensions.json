@@ -397,7 +397,7 @@
             },
             {
                 "package_name": "tts_webui_extension.piper_tts",
-                "name": "Piper TTS",
+                "name": "Piper TTS (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.piper_tts@main",
                 "description": "Piper TTS is a text-to-speech model by rsxdalv",
                 "extension_type": "interface",
@@ -407,7 +407,8 @@
                 "license": "MIT",
                 "website": "https://github.com/rhasspy/piper",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.piper_tts",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.higgs_v2",

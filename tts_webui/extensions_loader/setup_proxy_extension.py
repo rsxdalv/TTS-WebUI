@@ -5,6 +5,7 @@ import sys
 
 import gradio as gr
 
+from tts_webui.config.config_utils import get_config_value
 from tts_webui.gradio_proxy_tree.main import (
     GRADIO_TREE_HOSTNAME,
     GRADIO_TREE_PORT,
@@ -12,6 +13,11 @@ from tts_webui.gradio_proxy_tree.main import (
 )
 
 PORT_ROUTER = 27770
+
+
+def get_openai_api_host():
+    port = get_config_value("extension_openai_tts_api", "port", 7778)
+    return f"http://localhost:{port}"
 
 
 def wait_for_server(port, timeout=30):
@@ -106,6 +112,7 @@ def setup_proxy_extension(
                 "GRADIO_SERVER_PORT": str(port),
                 "GRADIO_ROOT_PATH": f"/{package_name}",
                 "TTS_WEBUI_EXTENSION_PACKAGE": package_name,
+                "OPENAI_PROXY_HOST": get_openai_api_host(),
             },
         )
         # Somehow lift up the errors to gr.Error and yield

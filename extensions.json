@@ -279,7 +279,7 @@
             },
             {
                 "package_name": "tts_webui_extension.parler_tts",
-                "name": "Parler-TTS",
+                "name": "Parler-TTS (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.parler_tts@main",
                 "description": "Parler-TTS is a training and inference library for high-fidelity text-to-speech (TTS) models.",
                 "extension_type": "interface",

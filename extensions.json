@@ -441,7 +441,7 @@
             },
             {
                 "package_name": "tts_webui_extension.kitten_tts",
-                "name": "Kitten TTS",
+                "name": "Kitten TTS (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.kitten_tts@main",
                 "description": "A template extension for TTS Generation WebUI",
                 "extension_type": "interface",

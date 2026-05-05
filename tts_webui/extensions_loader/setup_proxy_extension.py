@@ -101,10 +101,14 @@ def setup_proxy_extension(
         print(
             f"\nStarting {title_name} extension in a separate process on port {port}/{package_name}..."
         )
-        executable = sys.executable  # "./.venv/Scripts/python.exe"
-        executable_venv = f"./.venvs/{package_name}/Scripts/python.exe"
-        if os.path.exists(executable_venv):
-            executable = executable_venv
+        executable = sys.executable
+        venv_python = (
+            f".venvs/{package_name}/Scripts/python.exe"
+            if os.name == "nt"
+            else f".venvs/{package_name}/bin/python"
+        )
+        if os.path.exists(venv_python):
+            executable = venv_python
         process = subprocess.Popen(
             [executable, "-m", "tts_webui.extensions_loader.proxy_harness"],
             env={

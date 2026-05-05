@@ -7,8 +7,7 @@ import gradio as gr
 
 from tts_webui.config.config_utils import get_config_value
 from tts_webui.gradio_proxy_tree.main import (
-    GRADIO_TREE_HOSTNAME,
-    GRADIO_TREE_PORT,
+    GRADIO_TREE_URL,
     add_extension_route,
 )
 
@@ -52,7 +51,7 @@ def setup_proxy_extension(
     global PORT_ROUTER
     PORT_ROUTER += 1
     port = PORT_ROUTER
-    iframe = f'<iframe src="http://{GRADIO_TREE_HOSTNAME}:{GRADIO_TREE_PORT}/{package_name}/" style="width: 100%; height: 100vh;"></iframe>'
+    iframe = f'<iframe src="{GRADIO_TREE_URL}/{package_name}/" style="width: 100%; height: 100vh;"></iframe>'
     process = None
 
     run_guard = gr.State(False)

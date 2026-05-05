@@ -39,7 +39,9 @@ def start_gradio_server(gr_options, config):
 
     if "--docker" in argv:
         gr_options["server_name"] = "0.0.0.0"
-        gr_options["server_port"] = "7767"
+        gr_options["server_port"] = int("7767")
+        os.environ["GRADIO_TREE_PORT"] = "7770"
+        os.environ["GRADIO_TREE_URL"] = ""
         # gr_options["server_port"] = int(os.environ.get("GRADIO_SERVER_PORT", gr_options["server_port"]))
         print("Info: Docker mode: opening gradio server on all interfaces")
 
@@ -59,6 +61,10 @@ def start_gradio_server(gr_options, config):
 
     parsed_options = upgrade_gradio_options(gr_options)
     print_gradio_options(parsed_options)
+
+    from tts_webui.gradio_proxy_tree.main import setup_gradio_proxy_tree
+
+    setup_gradio_proxy_tree(gr_options)
 
     from tts_webui.gradio.blocks import main_block
 

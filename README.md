@@ -183,6 +183,9 @@ Please note that the docker-compose needs to be edited to use the image you just
 
 ## Changelog
 
+May:
+* Add virtual environment system (uv), preventing extension conflicts.
+
 April:
 * Add torchcodec CPU to requirements
 * Upgrade PyTorch to 2.11.0

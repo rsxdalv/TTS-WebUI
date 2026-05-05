@@ -39,6 +39,8 @@ def start_gradio_server(gr_options, config):
 
     if "--docker" in argv:
         gr_options["server_name"] = "0.0.0.0"
+        gr_options["server_port"] = "7767"
+        # gr_options["server_port"] = int(os.environ.get("GRADIO_SERVER_PORT", gr_options["server_port"]))
         print("Info: Docker mode: opening gradio server on all interfaces")
 
     def upgrade_gradio_options(options):
@@ -92,6 +94,11 @@ def server_hypervisor():
     else:
         print("skipping React UI (--no-react flag detected) ", end="")
 
+    # start_database_and_api()
+    print("Skipping SQLite database due to migration")
+    return
+
+def start_database_and_api():
     if "--no-database" in argv or "--docker" in argv:
         if "--no-database" in argv:
             print("skipping SQLite (--no-database flag detected) \n", end="")

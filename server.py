@@ -37,6 +37,12 @@ def start_gradio_server(gr_options, config):
         print("Gradio share mode enabled")
         gr_options["share"] = True
 
+    if "--no-tree-proxy" not in argv:
+        gr_options["server_port"] = int("7767")
+        os.environ["GRADIO_TREE_PORT"] = "7770"
+        os.environ["GRADIO_TREE_URL"] = ""
+        print("Gradio Proxy Tree enabled")
+
     if "--docker" in argv:
         gr_options["server_name"] = "0.0.0.0"
         gr_options["server_port"] = int("7767")

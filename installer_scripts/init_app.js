@@ -1,6 +1,6 @@
 const fs = require("fs");
 const { resolve } = require("path");
-const { $, $sh } = require("./js/shell");
+const { $, $sh, execCapture } = require("./js/shell");
 const { displayError, displayMessage } = require("./js/displayMessage.js");
 const { processExit } = require("./js/processExit.js");
 const { startServer } = require("./js/server.js");
@@ -37,8 +37,11 @@ const checkConda = async () => {
   }
 };
 
-const getGitCommitHash = () =>
-  fs.readFileSync("./.git/refs/heads/main", "utf8");
+// const getGitCommitHash = () =>
+//   fs.readFileSync("./.git/refs/heads/main", "utf8");
+// use git rev-parse HEAD instead to get the current commit hash, as it works even if the branch is detached
+const getGitCommitHash = async () =>
+  (await execCapture("git rev-parse HEAD")).trim();
 
 const AppliedGitVersion = {
   file: resolve(__dirname, ".git_version"),
@@ -46,7 +49,7 @@ const AppliedGitVersion = {
     fs.existsSync(AppliedGitVersion.file)
       ? fs.readFileSync(AppliedGitVersion.file, "utf8")
       : null,
-  save: () => fs.writeFileSync(AppliedGitVersion.file, getGitCommitHash()),
+  save: async () => fs.writeFileSync(AppliedGitVersion.file, await getGitCommitHash()),
 };
 
 const syncRepo = async () => {
@@ -60,7 +63,7 @@ const syncRepo = async () => {
   displayMessage("Pulling updates from tts-webui");
   try {
     await $sh("git pull");
-    const newHash = getGitCommitHash();
+    const newHash = await getGitCommitHash();
     updateState({ gitHash: newHash });
     if (AppliedGitVersion.get() === newHash) {
       displayMessage("Current git version: " + newHash);
@@ -108,7 +111,7 @@ async function main() {
     updateState({ reactUIReady: true, currentStep: 5 });
     await repairTorch();
 
-    AppliedGitVersion.save();
+    await AppliedGitVersion.save();
     updateState({ status: "ready", currentStep: 5, totalSteps: 5 });
     return true;
   } catch (error) {

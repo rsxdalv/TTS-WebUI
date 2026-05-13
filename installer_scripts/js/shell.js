@@ -74,3 +74,19 @@ function $sh(cmd) {
 }
 
 exports.$sh = $sh;
+
+// Capture stdout from a command and return it as a string (non-blocking)
+function execCapture(cmd) {
+  return new Promise((resolve, reject) => {
+    console.log(`>[capture] ${cmd}`);
+    exec(cmd, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(`Command failed: ${error.message}`));
+        return;
+      }
+      resolve(stdout);
+    });
+  });
+}
+
+exports.execCapture = execCapture;

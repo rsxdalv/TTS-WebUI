@@ -37,10 +37,13 @@ def start_gradio_server(gr_options, config):
         print("Gradio share mode enabled")
         gr_options["share"] = True
 
+    in_browser = gr_options.get("inbrowser", False)
+
     if "--no-tree-proxy" not in argv:
+        os.environ["GRADIO_TREE_PORT"] = str(int(gr_options["server_port"]))
         gr_options["server_port"] = int("7767")
-        os.environ["GRADIO_TREE_PORT"] = "7770"
         os.environ["GRADIO_TREE_URL"] = ""
+        gr_options["inbrowser"] = False
         print("Gradio Proxy Tree enabled")
 
     if "--docker" in argv:
@@ -60,7 +63,7 @@ def start_gradio_server(gr_options, config):
             elif isinstance(gr_options["auth"], (list, tuple)):
                 gr_options["auth"] = tuple(gr_options["auth"])
             print("Gradio server authentication enabled")
-        for key in ["file_directories", "favicon_path", "show_tips", "enable_queue"]:
+        for key in ["file_directories", "favicon_path", "show_tips", "enable_queue", "prevent_thread_lock"]:
             if key in options:
                 del options[key]
         return options
@@ -81,7 +84,19 @@ def start_gradio_server(gr_options, config):
             **parsed_options,
             allowed_paths=["."],
             favicon_path="./react-ui/public/favicon.ico",
+            prevent_thread_lock=True,
         )
+        if in_browser:
+            import webbrowser
+
+
+            print("Opening Gradio interface in browser...")        
+            webbrowser.open(f"http://localhost:{os.environ['GRADIO_TREE_PORT'] if '--no-tree-proxy' not in argv else gr_options['server_port']}")
+            if "--no-react" not in os.sys.argv:
+                webbrowser.open(f"http://localhost:{REACT_UI_PORT}")
+
+        demo.block_thread()
+
     except Exception as e:
         print(f"Failed to launch Gradio server: {e}")
 
@@ -145,8 +160,6 @@ def start():
 
     import webbrowser
 
-    if gr_options["inbrowser"] and "--no-react" not in os.sys.argv:
-        webbrowser.open(f"http://localhost:{REACT_UI_PORT}")
     start_gradio_server(gr_options=gr_options, config=config)
 
 

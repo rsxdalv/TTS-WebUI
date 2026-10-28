@@ -44,7 +44,6 @@ Run the full core rewrite as director, unattended.
 
 Settings:
 - HEAVY_CHECKS = no
-- SCRATCH_ROOT = <e.g. D:\tts-core-scratch>
 - STOP_AFTER = all
 
 Follow .github/agents/director.agent.md exactly. Start from core/c0-scaffold (or resume from

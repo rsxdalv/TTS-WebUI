@@ -7,7 +7,8 @@
 | [PLAN.md](PLAN.md) | Phases, checkpoints, status table, waves, open decisions. Source of truth. |
 | [DECISIONS.md](DECISIONS.md) | Settled decisions. |
 | [notes/](notes/) | One handoff note per finished checkpoint. Memory between sessions. |
-| `.github/agents/core-rewrite.agent.md` | Orchestrator (Sonnet 4.6). Select it in the agent picker. |
+| `.github/agents/director.agent.md` | Unattended director (Sonnet 4.6): runs every wave via nested subagents. |
+| `.github/agents/core-rewrite.agent.md` | Orchestrator (Sonnet 4.6): wave or checkpoint mode; also what the director's subagents follow. |
 | `.github/agents/scout.agent.md` | Read-only fact-finder (Haiku), used as a subagent. |
 | `.github/agents/reviewer.agent.md` | Fresh-context reviewer (Sonnet 4.6), used as a subagent. |
 | `.github/instructions/core-go.instructions.md` | Go rules, applied automatically to `core/**`. |
@@ -33,6 +34,28 @@
 - You merge each PR. The next wave branches from the merged result.
 
 ## Prompts
+
+### Run everything unattended (director)
+
+Select the **director** agent (needs nested subagents), then:
+
+```
+Run the full core rewrite as director, unattended.
+
+Settings:
+- HEAVY_CHECKS = no
+- SCRATCH_ROOT = <e.g. D:\tts-core-scratch>
+- STOP_AFTER = all
+
+Follow .github/agents/director.agent.md exactly. Start from core/c0-scaffold (or resume from
+documentation/core-rewrite/RUN-LOG.md if it exists). Answer open decisions with PLAN.md's recommendations as
+provisional, run every wave and join checkpoint through C8.2 (never C9.x), integrate on core/rewrite with a draft PR
+to main, and keep the run log current after every wave. Do not ask me anything until the final report.
+```
+
+To resume after the chat ends or runs out of context: same prompt in a new chat; the director reads `RUN-LOG.md`
+and continues. Afterwards, the draft PR lists the provisional decisions to confirm, the checks that need you,
+and the milestones that are ready to try.
 
 ### Start a wave (first one: wave 1)
 

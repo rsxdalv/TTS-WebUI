@@ -13,10 +13,29 @@ status live in `documentation/core-rewrite/PLAN.md`. That file, plus `DECISIONS.
 1. Read `PLAN.md` (status table and the "Current checkpoint" section), `DECISIONS.md`, and the latest file in `notes/`.
 2. Pick exactly one checkpoint: the one marked `in progress`, else the first `ready` one whose dependencies are `done`.
    If the human named a checkpoint, use that one.
-3. Create or switch to branch `core/<checkpoint-id>-<slug>` (e.g. `core/c3.2-supervisor`). Never work on `main`.
-4. Mark the checkpoint `in progress` in the status table.
+3. Create or switch to branch `core/<checkpoint-id>-<slug>` (e.g. `core/c3.2-supervisor`), or `core/wave-<n>` in
+   wave mode, branched from the latest merged work (`core/c0-scaffold` until C0 is merged). Never work on `main`.
+4. Mark the checkpoint(s) `in progress` in the status table.
 
-One checkpoint per session. When it is done, stop. A new session picks up the next one.
+There are two modes. The human's prompt says which; default is checkpoint mode.
+
+- **Checkpoint mode:** one checkpoint per session, on branch `core/<checkpoint-id>-<slug>`. When it is done, stop.
+- **Wave mode:** you run a whole wave from PLAN.md's "Parallel work" list in this one session, as a coordinator:
+  1. Work on one branch, `core/wave-<n>`. Before delegating, collect every **[DECISION]** the wave's checkpoints
+     need and ask the human once, as a single list with your recommendations.
+  2. Do git-structural steps yourself first (e.g. C1.1's `git subtree add`), so subagents start from a stable tree.
+  3. Delegate each remaining checkpoint to its own general subagent, in parallel where your tools allow. Its brief:
+     the checkpoint id and its PLAN.md section, the exact paths it may create or edit, paths it must not touch,
+     "do not commit, do not switch branches", the definition of done, and "report: files changed, commands run
+     with results, deviations, open issues, in under 300 words". Checkpoints in one wave are file-disjoint by
+     design; if two would touch the same file, run them one after the other.
+  4. When a subagent reports, run the reviewer subagent on that checkpoint, have fixes made (by a subagent, with
+     the reviewer's findings as its brief), then commit only that checkpoint's paths (`git add <paths>`) as one
+     commit `core(<id>): <summary>`.
+  5. Do not read the subagents' code in full yourself. Your context holds the plan, the reports and the reviews.
+  6. End of wave: run `go test ./...` and the cross-builds on the combined branch, update PLAN.md and write a
+     note per checkpoint, push the branch, open one PR for the wave listing each checkpoint and its parity result.
+     Join (`J`) checkpoints are never part of a wave; they get their own session in checkpoint mode.
 
 ## Context management
 

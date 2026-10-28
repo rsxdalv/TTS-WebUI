@@ -1,37 +1,98 @@
-# Core rewrite — how to run it with Copilot
+# Core rewrite — Copilot guide
 
-Files:
-- [PLAN.md](PLAN.md): phases, checkpoints, status table, open decisions. The source of truth.
-- [DECISIONS.md](DECISIONS.md): settled decisions.
-- [notes/](notes/): one handoff note per finished checkpoint.
-- `.github/agents/core-rewrite.agent.md`: orchestrator (Sonnet). Pick it in the Copilot agent picker.
-- `.github/agents/scout.agent.md`: read-only fact-finder (Haiku), used as a subagent.
-- `.github/agents/reviewer.agent.md`: fresh-context checkpoint reviewer (Sonnet), used as a subagent.
-- `.github/instructions/core-go.instructions.md`: Go rules, applied automatically to `core/**`.
+## Files
 
-Check the `model:` names in the three agent files against your Copilot model picker. If custom agents cannot be
-used as subagents in your VS Code version, the orchestrator should run a plain subagent and paste the agent
-file's instructions into its prompt.
+| File | Role |
+|---|---|
+| [PLAN.md](PLAN.md) | Phases, checkpoints, status table, waves, open decisions. Source of truth. |
+| [DECISIONS.md](DECISIONS.md) | Settled decisions. |
+| [notes/](notes/) | One handoff note per finished checkpoint. Memory between sessions. |
+| `.github/agents/core-rewrite.agent.md` | Orchestrator (Sonnet 4.6). Select it in the agent picker. |
+| `.github/agents/scout.agent.md` | Read-only fact-finder (Haiku), used as a subagent. |
+| `.github/agents/reviewer.agent.md` | Fresh-context reviewer (Sonnet 4.6), used as a subagent. |
+| `.github/instructions/core-go.instructions.md` | Go rules, applied automatically to `core/**`. |
 
-## Starting a session
+## One-time setup
 
-New chat, `core-rewrite` agent selected, then one of:
+1. Check out `core/c0-scaffold` (or `main` once C0 is merged) and open the repo in VS Code.
+2. Check the `model:` lines in the three agent files match names in your Copilot model picker
+   (`Claude Sonnet 4.6`, `Claude Haiku 4.5`). Fix them if your picker spells them differently.
+3. Make sure subagents are enabled (the `runSubagent` tool, and custom agents as subagents if your version has
+   that setting). If custom agents cannot be subagents, the orchestrator pastes the agent file's instructions
+   into a plain subagent's prompt; that works too.
+4. Go 1.27, Node 22 and `gh` on PATH.
 
-**Next checkpoint**
-> Continue the core rewrite. Pick the next checkpoint per PLAN.md, do it end to end, and stop when its
-> definition of done is met.
+## How work flows
 
-**A specific checkpoint (for parallel sessions)**
-> Core rewrite: do checkpoint C2.2 only. Work on its own branch. Do not touch files outside what C2.2 lists.
+- **Wave mode** (default way to make progress): one Copilot chat runs a whole wave. The orchestrator asks you all
+  of the wave's decisions up front, delegates each checkpoint to a parallel subagent, has each one reviewed,
+  commits one commit per checkpoint on `core/wave-<n>`, and opens one PR for the wave.
+- **Checkpoint mode**: one checkpoint per chat. Used for join (`J`) checkpoints, which never run inside a wave,
+  and for redoing a single checkpoint.
+- A new chat for every wave or join checkpoint. The plan, decisions and notes carry over; chat history does not.
+- You merge each PR. The next wave branches from the merged result.
 
-**Resume after a context reset**
-> Resume core-rewrite checkpoint C3.1 from its branch and the latest handoff note. Re-read PLAN.md first.
+## Prompts
 
-**Answer a decision**
-> Decision D-open-1: use port 7700. Record it in DECISIONS.md, update PLAN.md, and continue.
+### Start a wave (first one: wave 1)
 
-## Parallel sessions
+```
+Run the core rewrite in wave mode, wave 1.
 
-Run at most 2–3 at once, each on its own checkpoint from the same wave in PLAN.md's "Parallel work", each in its
-own branch (a separate worktree avoids checkout clashes). Never run a `J` (join) checkpoint in parallel with
-anything else. Merge finished checkpoint PRs before starting checkpoints that depend on them.
+Read documentation/core-rewrite/PLAN.md, DECISIONS.md and the latest notes first. Wave 1 is:
+C1.1, C2.1, C2.2, C2.3, C2.4, P1, P2, C8.0. Branch core/wave-1 from core/c0-scaffold.
+
+Order:
+1. List every [DECISION] these checkpoints need, with your recommendation, and wait for my answers.
+2. Do C1.1 yourself (git subtree add of https://github.com/rsxdalv/tts-webui-ignition into launcher/, plus
+   its workflow and README fixes), commit it.
+3. Delegate C2.1, C2.2, C2.3, C2.4, P1, P2 and C8.0 to parallel subagents, one each, with the brief format
+   from your agent file. Use the scout subagent (Haiku) for any inventory a checkpoint needs before coding.
+   C2.x touch only their own core/internal/<pkg>/ dir, cmd/tts-webui/cmd_<name>.go and a README section.
+   P1 touches only installer_scripts/init_mamba.*. P2 touches only a new sdk/python/ dir plus re-exports in
+   tts_webui/. C8.0 writes only documentation/core-rewrite/notes/C8.0.md.
+4. Review each with the reviewer subagent, get findings fixed, commit each checkpoint separately.
+5. End of wave: full test + cross-builds, PLAN.md statuses, one note per checkpoint, push, open the PR.
+
+Do not stop between checkpoints to ask me anything except decisions and the stop conditions in your agent file.
+```
+
+### Later waves
+
+```
+Run the core rewrite in wave mode, wave <n>. Read PLAN.md, DECISIONS.md and the notes from wave <n-1> first.
+Branch core/wave-<n> from main. Take the wave's checkpoints from PLAN.md "Parallel work", skipping any join (J)
+checkpoint and anything whose dependencies are not done. Same procedure as your agent file's wave mode.
+```
+
+### A join checkpoint (C3.1, C3.2, C5.5, C7.3, C9.x)
+
+```
+Core rewrite, checkpoint mode: do <id> only, on branch core/<id>-<slug> from main. Read PLAN.md, DECISIONS.md
+and every note this checkpoint depends on. Use scout subagents for inventories of legacy code and a reviewer
+subagent at the end. Stop when its definition of done and parity check are met; open the PR.
+```
+
+### Resume after the chat ran out of context
+
+```
+Resume the core rewrite on branch <branch>. Read PLAN.md (in-progress rows), DECISIONS.md, the newest notes and
+`git log --oneline main..HEAD`. Continue from where the last commit left off, same mode as before.
+```
+
+### Answer decisions
+
+```
+Decisions: D-open-1 = 7700. D-open-4 = merge into ui/ at C6.2. Record them in DECISIONS.md, update PLAN.md, continue.
+```
+
+## Where Haiku fits
+
+Only through the `scout` agent: read-only inventories, call-site lists, step-by-step summaries of big legacy files,
+fixture tables. Never Go code, never decisions, never reviews. PLAN.md's "Model use" lists the good fits per checkpoint.
+
+## What you do between waves
+
+- Answer the decision list at the start of each wave.
+- Review and merge the wave PR (CI must be green).
+- At milestones (M1–M4), try the new path yourself on a scratch install root before flipping any default.

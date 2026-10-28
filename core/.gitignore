@@ -1,0 +1,9 @@
+# Build output
+/bin/
+/dist/
+
+# Vite build output lives in ui/dist (kept in git only as a placeholder).
+# The root .gitignore ignores every dist/ directory, so re-include it first.
+!/ui/dist/
+/ui/dist/*
+!/ui/dist/.gitkeep

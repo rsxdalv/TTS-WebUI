@@ -31,7 +31,7 @@ One checkpoint per session.
 | C5.2 | Python-venv engine install (port of `venv_setup_wrapper`) | G | C5.1, C4.2 | done |
 | C5.3 | `router`: reverse proxy replacing `gradio_proxy_tree` | G | C2.1 | done |
 | C5.4 | Engine lifecycle: on-demand start, health, idle stop, cancel | G | C5.1, C2.2 | done |
-| C5.5 | Legacy Gradio host + proxy extensions run as core engines | J | C5.2, C5.3, C5.4, P3 | ready |
+| C5.5 | Legacy Gradio host + proxy extensions run as core engines | J | C5.2, C5.3, C5.4, P3 | done |
 | C6.1 | Core API replacing Next.js API routes | G | C2.1, C5.3 | done |
 | C6.2 | `ui/` Vite SPA scaffold, embed pipeline, `--ui-dev` | U | C2.1 | done |
 | C6.3 | Port pages, one group per checkpoint (see list) | U | C6.1, C6.2 | done |

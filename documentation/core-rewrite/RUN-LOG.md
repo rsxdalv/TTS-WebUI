@@ -121,8 +121,31 @@ Next: Wave 6 — C5.5 (join, alone) · C6.3 page groups · C8.1
 
 ## Wave 6 — 2026-10-29
 
-C5.5: join, alone — core/c5.5-legacyhost
-C6.3 groups + C8.1: core/wave-6
+### C8.1 + C6.3 (core/wave-6)
+Merge commit: 1990de8 | CI: ✅
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C8.1 | done | f107e41 | engine/native: Resolve, verify, extract, Launch |
+| C6.3 | done | 2fa4a71 | ui/ SPA: all 7 page groups; @gradio/client stubs |
+
+### C5.5 (core/c5.5-legacyhost, join, alone)
+Merge commit: 954eda4 | CI: ✅
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C5.5 | done | C5.5 commit | engine/legacy; --proxy=python\|core flag; routes "/" to Gradio |
+
+Needs human verification: C5.5 M3 (proxy:native extensions load via Go router); C6.3 npm build; C8.1 real downloads.
+Provisional decisions: none new.
+Next: Wave 7 — C7.2 · C7.3 · C8.2
+
+---
+
+## Wave 7 — 2026-10-29
+
+Checkpoints: C7.2 · C7.3 · C8.2
+Branch: core/wave-7
 
 Status: **in progress**
 

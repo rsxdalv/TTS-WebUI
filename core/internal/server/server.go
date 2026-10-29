@@ -69,8 +69,15 @@ func (s *Server) Token() string { return s.token }
 func (s *Server) Addr() string { return fmt.Sprintf("127.0.0.1:%d", s.port) }
 
 // Handle registers an additional handler pattern on the mux.
-// Use this from later checkpoints to add /api/* routes.
-func (s *Server) Handle(pattern string, h http.Handler) { s.mux.Handle(pattern, h) }
+// Patterns starting with /api/ (excluding /api/health) are automatically
+// wrapped in the token guard so callers cannot accidentally skip auth.
+func (s *Server) Handle(pattern string, h http.Handler) {
+	if strings.Contains(pattern, "/api/") && !strings.HasSuffix(pattern, "/api/health") {
+		s.mux.Handle(pattern, s.tokenGuard(h))
+	} else {
+		s.mux.Handle(pattern, h)
+	}
+}
 
 // Listen creates and returns a bound TCP listener on Addr().
 // If s.port was 0, it is updated to the actual OS-assigned port.

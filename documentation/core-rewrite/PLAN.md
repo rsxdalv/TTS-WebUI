@@ -48,7 +48,7 @@ One checkpoint per session.
 | P2 | Extract `tts-webui-sdk` Python package | P | none | done |
 | P3 | `setup_proxy_extension` delegates to core when `TTS_WEBUI_CORE_URL` is set | P | C5.4 | done |
 | P4 | Move in-process extensions to `"proxy": "native"`, in batches | P | P2 | done |
-| P5 | Torch-optional main host (lazy imports) | P | P4 | ready |
+| P5 | Torch-optional main host (lazy imports) | P | P4 | done |
 
 Lanes: **L** launcher UI (TypeScript) · **G** Go core · **U** new UI (TypeScript) · **P** Python · **R** research ·
 **J** join (touches several lanes, run alone).

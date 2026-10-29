@@ -85,7 +85,26 @@ Next: Wave 4 — C4.2 · C5.4 · C7.1 · C7.4 · P3
 ## Wave 4 — 2026-10-29
 
 Checkpoints: C4.2 · C5.4 · C7.1 · C7.4 · P3
-Branch: core/wave-4
+Branch: core/wave-4 | Merge commit: 2b4cee7 | CI: ✅
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C4.2 | done | df4493a | internal/env: uv Python + torch variant per GPU label |
+| C5.4 | done | 77f62ea | internal/engine/lifecycle: start/stop/cancel/idle-stop/SSE logs |
+| C7.1 | done | 5563d57 | internal/selfupdate: minisign verify (ed25519), throwaway test key |
+| C7.4 | done | 88465cd | internal/catalog: fetch+cache+schema versioning |
+| P3 | done | 591da02 | setup_proxy_extension delegates to core via TTS_WEBUI_CORE_URL |
+
+Needs human verification: C4.2 real uv install; C5.4 real engine; C7.1 GitHub API; C7.4 network.
+Provisional decisions: none new.
+Next: Wave 5 — C4.3 · C5.2 · C6.1 · P4 batches
+
+---
+
+## Wave 5 — 2026-10-29
+
+Checkpoints: C4.3 · C5.2 · C6.1 · P4
+Branch: core/wave-5
 
 Status: **in progress**
 

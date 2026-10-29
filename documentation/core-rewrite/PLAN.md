@@ -15,13 +15,13 @@ One checkpoint per session.
 | Id | Checkpoint | Lane | Depends on | Status |
 |---|---|---|---|---|
 | C0 | Go toolchain, `core/` scaffold, CI | G | none | done |
-| C1.1 | Vendor tts-webui-ignition into `launcher/` | L | none | ready |
+| C1.1 | Vendor tts-webui-ignition into `launcher/` | L | none | done |
 | C1.2 | Platform adapter in launcher UI | L | C1.1 | waiting |
-| C2.1 | `server`: local HTTP server, embedded UI, security, SSE | G | C0 | ready |
-| C2.2 | `procs`: spawn, log capture, tree-kill, no orphans | G | C0 | ready |
-| C2.3 | `paths` + `state`: install root, marker files, atomic JSON | G | C0 | ready |
-| C2.4 | `gpu`: detection mapped to installer GPU labels | G | C0 | ready |
-| C2.5 | `preflight`: port of ignition preflight checks | G | C2.3 | waiting |
+| C2.1 | `server`: local HTTP server, embedded UI, security, SSE | G | C0 | done |
+| C2.2 | `procs`: spawn, log capture, tree-kill, no orphans | G | C0 | done |
+| C2.3 | `paths` + `state`: install root, marker files, atomic JSON | G | C0 | done |
+| C2.4 | `gpu`: detection mapped to installer GPU labels | G | C0 | done |
+| C2.5 | `preflight`: port of ignition preflight checks | G | C2.3 | ready |
 | C3.1 | Launcher on Go, legacy-compat mode (same steps, same markers) | J | C1.2, C2.1, C2.2, C2.3, C2.5 | waiting |
 | C3.2 | Running app under the Go supervisor | J | C3.1 | waiting |
 | C4.1 | `tools`: pinned uv / ffmpeg / MinGit with checksums | G | C2.3 | waiting |
@@ -39,15 +39,15 @@ One checkpoint per session.
 | C7.2 | Blue/green engine updates | G | C5.2 | waiting |
 | C7.3 | App (Python host) distribution without git pull | J | C4.3, D-open-3 | waiting |
 | C7.4 | Catalog fetch, cache, schema versioning | G | C5.1 | waiting |
-| C8.0 | Research: audio.cpp server lifecycle and cancel | R | none | ready |
+| C8.0 | Research: audio.cpp server lifecycle and cancel | R | none | done |
 | C8.1 | Native engine kind (asset by OS/arch/GPU, verify, launch) | G | C5.4, C4.1 | waiting |
 | C8.2 | audio.cpp engine + cancel | G | C8.0, C8.1 | waiting |
 | C9.1 | Start scripts and release zip launch the Go binary | J | M1–M4 | waiting |
 | C9.2 | Remove micromamba, Node installer, Neutralino build | J | C9.1, human only | waiting |
-| P1 | Drop PostgreSQL from the conda env spec | P | none | ready |
-| P2 | Extract `tts-webui-sdk` Python package | P | none | ready |
+| P1 | Drop PostgreSQL from the conda env spec | P | none | done |
+| P2 | Extract `tts-webui-sdk` Python package | P | none | done |
 | P3 | `setup_proxy_extension` delegates to core when `TTS_WEBUI_CORE_URL` is set | P | C5.4 | waiting |
-| P4 | Move in-process extensions to `"proxy": "native"`, in batches | P | P2 | waiting |
+| P4 | Move in-process extensions to `"proxy": "native"`, in batches | P | P2 | ready |
 | P5 | Torch-optional main host (lazy imports) | P | P4 | waiting |
 
 Lanes: **L** launcher UI (TypeScript) · **G** Go core · **U** new UI (TypeScript) · **P** Python · **R** research ·

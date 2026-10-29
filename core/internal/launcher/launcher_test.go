@@ -105,7 +105,7 @@ func TestStepsStatus_DownloadDone_WhenScriptsExist(t *testing.T) {
 
 func TestGPUEndpoint_WritesMarker(t *testing.T) {
 	root, srv, token := newTestInstall(t)
-	resp := doRequest(t, srv, token, http.MethodPost, "/api/steps/gpu", `{"label":"nvidia"}`)
+	resp := doRequest(t, srv, token, http.MethodPost, "/api/steps/gpu", `{"label":"NVIDIA GPU"}`)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
@@ -113,8 +113,8 @@ func TestGPUEndpoint_WritesMarker(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading .gpu: %v", err)
 	}
-	if !strings.Contains(string(data), "nvidia") {
-		t.Errorf(".gpu does not contain 'nvidia': %q", data)
+	if !strings.Contains(string(data), "NVIDIA GPU") {
+		t.Errorf(".gpu does not contain 'NVIDIA GPU': %q", data)
 	}
 }
 

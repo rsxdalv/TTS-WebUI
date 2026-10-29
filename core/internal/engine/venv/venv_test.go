@@ -53,7 +53,7 @@ func TestInstall_WritesPointerFile(t *testing.T) {
 	fake := &fakeRun{}
 	m := testManifest("tts_webui_extension.kokoro")
 
-	if err := install(context.Background(), root, m, "cpu", fake.run); err != nil {
+	if err := install(context.Background(), root, m, "CPU", fake.run); err != nil {
 		t.Fatalf("install: %v", err)
 	}
 
@@ -76,7 +76,7 @@ func TestInstall_Idempotent(t *testing.T) {
 	venvPath := VenvPath(root, name, venvVersion)
 
 	// First install.
-	if err := install(context.Background(), root, m, "cpu", fake.run); err != nil {
+	if err := install(context.Background(), root, m, "CPU", fake.run); err != nil {
 		t.Fatalf("first install: %v", err)
 	}
 
@@ -87,7 +87,7 @@ func TestInstall_Idempotent(t *testing.T) {
 	firstCount := len(fake.calls)
 
 	// Second install must skip (no new uv calls).
-	if err := install(context.Background(), root, m, "cpu", fake.run); err != nil {
+	if err := install(context.Background(), root, m, "CPU", fake.run); err != nil {
 		t.Fatalf("second install: %v", err)
 	}
 	if len(fake.calls) != firstCount {
@@ -101,7 +101,7 @@ func TestInstall_PointerUpdatedAfterVenvCreation(t *testing.T) {
 	m := testManifest("tts_webui_extension.f5_tts")
 	name := sanitizeName(m.PackageName)
 
-	if err := install(context.Background(), root, m, "nvidia", fake.run); err != nil {
+	if err := install(context.Background(), root, m, "NVIDIA GPU", fake.run); err != nil {
 		t.Fatalf("install: %v", err)
 	}
 

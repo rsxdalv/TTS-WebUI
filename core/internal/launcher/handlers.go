@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/preflight"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
 )
@@ -113,12 +114,16 @@ type gpuRequest struct {
 	Label string `json:"label"`
 }
 
-// handleGPU writes the GPU label to installer_scripts/.gpu.
+// handleGPU writes a validated PyTorchChoice GPU label to installer_scripts/.gpu.
 func (l *Launcher) handleGPU() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req gpuRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Label == "" {
 			http.Error(w, "body must be {\"label\": \"<gpu-label>\"}", http.StatusBadRequest)
+			return
+		}
+		if _, err := gpu.Parse(req.Label); err != nil {
+			http.Error(w, fmt.Sprintf("invalid gpu label: %v", err), http.StatusBadRequest)
 			return
 		}
 		marker := l.root.MarkerFile(".gpu")

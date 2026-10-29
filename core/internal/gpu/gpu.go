@@ -13,15 +13,31 @@ import (
 )
 
 // Label is the GPU kind string understood by the TTS WebUI installer.
+// These must match the PyTorchChoice values written by ignition to the .gpu file.
 type Label string
 
 const (
-	NVIDIA Label = "nvidia"
-	AMD    Label = "amd"
-	Apple  Label = "apple"
-	Intel  Label = "intel_extension_for_pytorch"
-	CPU    Label = "cpu"
+	NVIDIA Label = "NVIDIA GPU"
+	AMD    Label = "AMD GPU (ROCM, Linux only)"
+	Apple  Label = "Apple M Series Chip"
+	Intel  Label = "Intel GPU (XPU)"
+	CPU    Label = "CPU"
+	Custom Label = "Custom (Manual torch install)" // user choice, not auto-detected
 )
+
+// allLabels is the full set of valid PyTorchChoice labels for Parse validation.
+var allLabels = []Label{NVIDIA, AMD, Apple, Intel, CPU, Custom}
+
+// Parse returns the Label for s, or an error if s is not a valid PyTorchChoice string.
+// An unknown label is never silently accepted.
+func Parse(s string) (Label, error) {
+	for _, l := range allLabels {
+		if string(l) == s {
+			return l, nil
+		}
+	}
+	return "", fmt.Errorf("unknown GPU label %q: valid labels are NVIDIA GPU, AMD GPU (ROCM, Linux only), Apple M Series Chip, Intel GPU (XPU), CPU, Custom (Manual torch install)", s)
+}
 
 // Result holds the detected label and an optional human-readable note.
 type Result struct {
@@ -49,7 +65,7 @@ func defaultRunner(ctx context.Context, name string, args ...string) (string, in
 }
 
 // Detect detects the GPU and returns the installer label.
-// Detection failures fall back to Label "cpu" with a note; they are not errors.
+// Detection failures fall back to Label "CPU" with a note; they are not errors.
 func Detect(ctx context.Context) (Result, error) {
 	return detect(ctx, defaultRunner, runtime.GOOS, runtime.GOARCH)
 }

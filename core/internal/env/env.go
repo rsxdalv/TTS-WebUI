@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 )
 
@@ -33,16 +34,18 @@ func execRun(ctx context.Context, bin string, args []string, env []string) ([]by
 // Returns ("", false) for unrecognised labels.
 func TorchIndexURL(gpuLabel string) (url string, known bool) {
 	switch gpuLabel {
-	case "nvidia":
+	case string(gpu.NVIDIA):
 		return "https://download.pytorch.org/whl/cu126", true
-	case "amd":
+	case string(gpu.AMD):
 		return "https://download.pytorch.org/whl/rocm6.2", true
-	case "apple":
+	case string(gpu.Apple):
 		return "", true // MPS support in base torch, default PyPI
-	case "intel_extension_for_pytorch":
+	case string(gpu.Intel):
 		return "", true // default PyPI + intel-extension-for-pytorch package
-	case "cpu":
+	case string(gpu.CPU):
 		return "https://download.pytorch.org/whl/cpu", true
+	case string(gpu.Custom):
+		return "", true // user manages torch manually
 	default:
 		return "", false
 	}
@@ -98,7 +101,7 @@ func installTorch(ctx context.Context, run runFn, uv string, env []string, venvP
 	}
 
 	pkgs := []string{"torch", "torchvision", "torchaudio"}
-	if gpuLabel == "intel_extension_for_pytorch" {
+	if gpuLabel == string(gpu.Intel) {
 		pkgs = append(pkgs, "intel-extension-for-pytorch")
 	}
 

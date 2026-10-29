@@ -144,9 +144,36 @@ Next: Wave 7 — C7.2 · C7.3 · C8.2
 
 ## Wave 7 — 2026-10-29
 
-Checkpoints: C7.2 · C7.3 · C8.2
-Branch: core/wave-7
+### C7.2 + C8.2 (core/wave-7)
+Merge commit: e6ecd89 | CI: ✅
 
-Status: **in progress**
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C7.2 | done | b0cd80f | engine/update: blue/green venv + native swaps, GC |
+| C8.2 | done | 10f2d79 | engine/audiocpp: manifest, disconnect-cancel, chunked fallback |
+
+### C7.3 (core/c7.3-appdist, join, alone)
+Merge commit: c4603b4 | CI: ✅
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C7.3 | done | d2c6e45 | internal/app: PyPI version check, uv pip install, git migration |
+
+### P5 (core/p5-lazy-torch)
+Merge commit: 64ee81f | CI: ✅
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| P5 | done | 5191196 | lazy torch imports in torch_clear_memory, torch_load_patch, set_seed |
+
+Provisional decisions: none new this wave.
+All non-C9.x checkpoints: **done**.
+C9.1, C9.2: skipped (human-only cutover, requires M1–M4 sign-offs).
 
 ---
+
+## Run complete — 2026-10-29
+
+All checkpoints through C8.2, C7.3, P5 are done.
+Draft PR #712: core/rewrite → main. Final report in PR description.
+

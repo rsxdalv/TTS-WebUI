@@ -37,7 +37,7 @@ One checkpoint per session.
 | C6.3 | Port pages, one group per checkpoint (see list) | U | C6.1, C6.2 | done |
 | C7.1 | Core self-update | G | C2.3 | done |
 | C7.2 | Blue/green engine updates | G | C5.2 | done |
-| C7.3 | App (Python host) distribution without git pull | J | C4.3, D-open-3 | ready |
+| C7.3 | App (Python host) distribution without git pull | J | C4.3, D-open-3 | done |
 | C7.4 | Catalog fetch, cache, schema versioning | G | C5.1 | done |
 | C8.0 | Research: audio.cpp server lifecycle and cancel | R | none | done |
 | C8.1 | Native engine kind (asset by OS/arch/GPU, verify, launch) | G | C5.4, C4.1 | done |

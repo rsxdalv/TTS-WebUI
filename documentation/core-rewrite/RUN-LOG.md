@@ -61,6 +61,32 @@ Next: Wave 3 — join checkpoints C3.1 → C3.2
 
 ## Wave 3 — 2026-10-29 (join checkpoints, alone)
 
-C3.1: core/c3.1-launch — Status: **in progress**
+### C3.1
+Branch: core/c3.1-launch | Merge commit: 903595d | CI: ✅
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C3.1 | done | d78100e | Launcher step endpoints; isGitUpdated Go port; 4 ignition bug fixes |
+
+Needs human verification: state parity (fresh Windows install via Go path vs Neutralino).
+
+### C3.2
+Branch: core/c3.2-supervisor | Merge commit: 595b2a9 | CI: ✅
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C3.2 | done | 90bda23 | Supervisor: start/stop/restart/SSE-status; port-7771 fix via freePort() |
+
+Needs human verification: no-orphan proof on live install; M1 milestone sign-off.
+Next: Wave 4 — C4.2 · C5.4 · C7.1 · C7.4 · P3
+
+---
+
+## Wave 4 — 2026-10-29
+
+Checkpoints: C4.2 · C5.4 · C7.1 · C7.4 · P3
+Branch: core/wave-4
+
+Status: **in progress**
 
 ---

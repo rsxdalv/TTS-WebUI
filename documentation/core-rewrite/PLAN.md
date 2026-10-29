@@ -25,20 +25,20 @@ One checkpoint per session.
 | C3.1 | Launcher on Go, legacy-compat mode (same steps, same markers) | J | C1.2, C2.1, C2.2, C2.3, C2.5 | done |
 | C3.2 | Running app under the Go supervisor | J | C3.1 | done |
 | C4.1 | `tools`: pinned uv / ffmpeg / MinGit with checksums | G | C2.3 | done |
-| C4.2 | `env`: uv Python + main venv + torch variant | G | C4.1, C2.4 | ready |
-| C4.3 | App runs from uv env (`--env=uv` next to `--env=conda`) | G | C4.2, C3.2 | waiting |
+| C4.2 | `env`: uv Python + main venv + torch variant | G | C4.1, C2.4 | done |
+| C4.3 | App runs from uv env (`--env=uv` next to `--env=conda`) | G | C4.2, C3.2 | ready |
 | C5.1 | Engine manifest schema + loader over `extensions.json` | G | C2.3 | done |
 | C5.2 | Python-venv engine install (port of `venv_setup_wrapper`) | G | C5.1, C4.2 | ready |
 | C5.3 | `router`: reverse proxy replacing `gradio_proxy_tree` | G | C2.1 | done |
-| C5.4 | Engine lifecycle: on-demand start, health, idle stop, cancel | G | C5.1, C2.2 | ready |
+| C5.4 | Engine lifecycle: on-demand start, health, idle stop, cancel | G | C5.1, C2.2 | done |
 | C5.5 | Legacy Gradio host + proxy extensions run as core engines | J | C5.2, C5.3, C5.4, P3 | waiting |
 | C6.1 | Core API replacing Next.js API routes | G | C2.1, C5.3 | ready |
 | C6.2 | `ui/` Vite SPA scaffold, embed pipeline, `--ui-dev` | U | C2.1 | done |
 | C6.3 | Port pages, one group per checkpoint (see list) | U | C6.1, C6.2 | ready |
-| C7.1 | Core self-update | G | C2.3 | ready |
+| C7.1 | Core self-update | G | C2.3 | done |
 | C7.2 | Blue/green engine updates | G | C5.2 | waiting |
 | C7.3 | App (Python host) distribution without git pull | J | C4.3, D-open-3 | waiting |
-| C7.4 | Catalog fetch, cache, schema versioning | G | C5.1 | ready |
+| C7.4 | Catalog fetch, cache, schema versioning | G | C5.1 | done |
 | C8.0 | Research: audio.cpp server lifecycle and cancel | R | none | done |
 | C8.1 | Native engine kind (asset by OS/arch/GPU, verify, launch) | G | C5.4, C4.1 | waiting |
 | C8.2 | audio.cpp engine + cancel | G | C8.0, C8.1 | waiting |
@@ -46,7 +46,7 @@ One checkpoint per session.
 | C9.2 | Remove micromamba, Node installer, Neutralino build | J | C9.1, human only | waiting |
 | P1 | Drop PostgreSQL from the conda env spec | P | none | done |
 | P2 | Extract `tts-webui-sdk` Python package | P | none | done |
-| P3 | `setup_proxy_extension` delegates to core when `TTS_WEBUI_CORE_URL` is set | P | C5.4 | waiting |
+| P3 | `setup_proxy_extension` delegates to core when `TTS_WEBUI_CORE_URL` is set | P | C5.4 | done |
 | P4 | Move in-process extensions to `"proxy": "native"`, in batches | P | P2 | ready |
 | P5 | Torch-optional main host (lazy imports) | P | P4 | waiting |
 

@@ -10,6 +10,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/catalog"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/lifecycle"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/manifest"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/native"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/venv"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/server"
@@ -35,13 +36,14 @@ func runEngine(ctx context.Context, args []string) error {
 	}
 	if fs.NArg() == 0 {
 		fmt.Fprintln(fs.Output(), "usage: tts-webui engine <subcommand>")
-		fmt.Fprintln(fs.Output(), "  list              print engine manifests as JSON")
-		fmt.Fprintln(fs.Output(), "  catalog           show catalog engines")
-		fmt.Fprintln(fs.Output(), "  catalog --refresh force a catalog refresh")
-		fmt.Fprintln(fs.Output(), "  install <id>      create the Python venv for an engine")
-		fmt.Fprintln(fs.Output(), "  start <id>        start an engine")
-		fmt.Fprintln(fs.Output(), "  stop <id>         stop an engine")
-		fmt.Fprintln(fs.Output(), "  logs <id>         stream engine logs (SSE)")
+		fmt.Fprintln(fs.Output(), "  list                       print engine manifests as JSON")
+		fmt.Fprintln(fs.Output(), "  catalog                    show catalog engines")
+		fmt.Fprintln(fs.Output(), "  catalog --refresh          force a catalog refresh")
+		fmt.Fprintln(fs.Output(), "  install <id>               create the Python venv for an engine")
+		fmt.Fprintln(fs.Output(), "  native install <id>        download/verify/extract native binary")
+		fmt.Fprintln(fs.Output(), "  start <id>                 start an engine")
+		fmt.Fprintln(fs.Output(), "  stop <id>                  stop an engine")
+		fmt.Fprintln(fs.Output(), "  logs <id>                  stream engine logs (SSE)")
 		return nil
 	}
 
@@ -155,6 +157,56 @@ func runEngine(ctx context.Context, args []string) error {
 			}
 			return nil
 		}
+
+	case "native":
+		if fs.NArg() < 3 || fs.Arg(1) != "install" {
+			return fmt.Errorf("usage: tts-webui engine native install <id> [--gpu <label>]")
+		}
+		sub := flag.NewFlagSet("engine native install", flag.ContinueOnError)
+		gpuFlag := sub.String("gpu", "", "GPU label (e.g. cpu, cuda, rocm); auto-detected if empty")
+		if err := sub.Parse(fs.Args()[2:]); err != nil {
+			return err
+		}
+		if sub.NArg() == 0 {
+			return fmt.Errorf("usage: tts-webui engine native install <id>")
+		}
+		engineID := sub.Arg(0)
+		root, err := resolveRoot(*rootDir)
+		if err != nil {
+			return err
+		}
+		manifests, err := manifest.Load(root.Dir())
+		if err != nil {
+			return fmt.Errorf("loading manifests: %w", err)
+		}
+		var m manifest.Manifest
+		found := false
+		for _, mn := range manifests {
+			if mn.PackageName == engineID {
+				m = mn
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("engine %q not found in manifests", engineID)
+		}
+		gpuLabel := *gpuFlag
+		if gpuLabel == "" {
+			gpuResult, gpuErr := gpu.Detect(ctx)
+			if gpuErr != nil {
+				gpuResult = gpu.Result{Label: gpu.CPU}
+			}
+			gpuLabel = string(gpuResult.Label)
+		}
+		cacheDir := root.CoreData() + "/native"
+		fmt.Fprintf(fs.Output(), "resolving native binary for %s (gpu=%s)...\n", engineID, gpuLabel)
+		binPath, err := native.Resolve(ctx, m, gpuLabel, cacheDir)
+		if err != nil {
+			return fmt.Errorf("native resolve: %w", err)
+		}
+		fmt.Fprintf(fs.Output(), "binary ready: %s\n", binPath)
+		return nil
 	}
 	return fmt.Errorf("unknown engine subcommand %q", fs.Arg(0))
 }

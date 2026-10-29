@@ -63,16 +63,31 @@ type Cancel struct {
 	Path string     `json:"path,omitempty"` // endpoint path when Mode == endpoint
 }
 
+// NativeAsset describes the downloadable release asset for a native engine.
+type NativeAsset struct {
+	// URLTemplate is the download URL with {version}, {os}, {arch}, {gpu}, {ext} placeholders.
+	// Example: https://github.com/owner/repo/releases/download/v{version}/{name}-{os}-{arch}-{gpu}.{ext}
+	URLTemplate string `json:"url_template,omitempty"`
+	// Version is the pinned release version (without leading "v").
+	Version string `json:"version,omitempty"`
+	// Checksums maps asset filename to expected SHA-256 hex digest.
+	Checksums map[string]string `json:"checksums,omitempty"`
+	// BinaryPath is the relative path to the main binary inside the extracted archive.
+	// Defaults to PackageName + ".exe" on Windows, PackageName on Unix.
+	BinaryPath string `json:"binary_path,omitempty"`
+}
+
 // Engine holds the engine-specific block for a manifest entry.
 type Engine struct {
-	Kind      Kind     `json:"kind"`
-	Install   *Install `json:"install,omitempty"`
-	Launch    *Launch  `json:"launch,omitempty"`
-	Health    *Health  `json:"health,omitempty"`
-	API       *API     `json:"api,omitempty"`
-	UI        *UI      `json:"ui,omitempty"`
-	Cancel    *Cancel  `json:"cancel,omitempty"`
-	KeepAlive int      `json:"keep_alive,omitempty"` // idle timeout in seconds
+	Kind        Kind         `json:"kind"`
+	Install     *Install     `json:"install,omitempty"`
+	Launch      *Launch      `json:"launch,omitempty"`
+	Health      *Health      `json:"health,omitempty"`
+	API         *API         `json:"api,omitempty"`
+	UI          *UI          `json:"ui,omitempty"`
+	Cancel      *Cancel      `json:"cancel,omitempty"`
+	NativeAsset *NativeAsset `json:"native_asset,omitempty"`
+	KeepAlive   int          `json:"keep_alive,omitempty"` // idle timeout in seconds
 }
 
 // Manifest is a fully resolved engine entry derived from extensions.json.

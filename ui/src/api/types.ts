@@ -11,3 +11,21 @@ export type VersionResponse = {
   /** Human-readable build version string, e.g. "dev (commit none, built unknown)" */
   version: string;
 };
+
+/** Response from GET /api/generations/outputs */
+export type GenerationsResponse = {
+  files: string[];
+};
+
+/** Running state of a single engine */
+export type EngineStatus = {
+  running: boolean;
+  port: number;
+  pid: number;
+};
+
+/** Entry from GET /api/engines */
+export type EngineListEntry = {
+  id: string;
+  status: EngineStatus;
+};

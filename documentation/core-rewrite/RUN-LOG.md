@@ -18,7 +18,30 @@ Open decisions answered as `provisional (director)` in DECISIONS.md:
 ## Wave 1 — 2026-10-29
 
 Checkpoints: C1.1 · C2.1 · C2.2 · C2.3 · C2.4 · P1 · P2 · C8.0
-Branch: core/wave-1
+Branch: core/wave-1 | Merge commit on core/rewrite: 1de74b5
+CI: ✅ Core (Go) green — all 6 cross-build targets, all unit tests
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C1.1 | done | 530576a | launcher/ subtree added; launcher.yaml workflow |
+| C2.1 | done | 31e8e30 | internal/server: token, host/origin guards, SSE |
+| C2.2 | done | 524351e | internal/procs: Job Objects (Win), process groups (Unix) |
+| C2.3 | done | ada76ba | internal/paths + internal/state |
+| C2.4 | done | d537823 | internal/gpu: label detection |
+| P1 | done | ab1d8e0 | postgresql removed from conda env |
+| P2 | done | c5767ce | tts-webui-sdk/ created; tts_webui/ re-exports |
+| C8.0 | done | f5be989 | notes/C8.0.md written; **needs human verification** (rsxdalv/audio.cpp repo private) |
+
+Needs human verification: C8.0 — verify audio.cpp cancel/streaming facts once repo is accessible.
+Provisional decisions: all D-open-1..6 pre-answered; no new ones this wave.
+Next: Wave 2 — C1.2 · C2.5 · C4.1 · C5.1 · C5.3 · C6.2
+
+---
+
+## Wave 2 — 2026-10-29
+
+Checkpoints: C1.2 · C2.5 · C4.1 · C5.1 · C5.3 · C6.2
+Branch: core/wave-2
 
 Status: **in progress**
 

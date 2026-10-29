@@ -1,32 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { os, filesystem } from "@neutralinojs/lib";
+import platform, { OS } from "./platform";
 import { WEBUI_ROOT, joinPath } from "./config";
 
 // ---------------------------------------------------------------------------
 // Platform helpers
 // ---------------------------------------------------------------------------
 
-const PLATFORM = (() => {
-  const p = (window as any).NL_OS;
-  if (p === "Windows") return "Windows" as const;
-  if (p === "Darwin") return "Darwin" as const;
-  return "Linux" as const;
-})();
+type NLPlatform = "Windows" | "Darwin" | "Linux";
 
-type Platform = "Windows" | "Darwin" | "Linux";
+const PLATFORM: NLPlatform = OS === "windows" ? "Windows" : OS === "darwin" ? "Darwin" : "Linux";
 
 // ---------------------------------------------------------------------------
-// Lightweight command runner (os.execCommand returns { stdOut, stdErr, exitCode })
+// Lightweight command runner wrapping the platform adapter.
 // ---------------------------------------------------------------------------
 
 async function execCmd(
   cmd: string,
 ): Promise<{ stdOut: string; stdErr: string; exitCode: number }> {
-  try {
-    return await os.execCommand(cmd);
-  } catch {
-    return { stdOut: "", stdErr: "Command failed to execute", exitCode: 1 };
-  }
+  const r = await platform.exec(cmd);
+  return { stdOut: r.stdout, stdErr: r.stderr, exitCode: r.exitCode };
 }
 
 // ---------------------------------------------------------------------------
@@ -49,7 +41,7 @@ interface CheckDef {
   id: string;
   title: string;
   severity: CheckSeverity;
-  platforms: Platform[];
+  platforms: NLPlatform[];
   run: () => Promise<CheckResult>;
 }
 
@@ -246,7 +238,7 @@ const CHECK_DEFS: CheckDef[] = [
 ];
 
 /** The subset of checks relevant to the current platform. */
-const RELEVANT_CHECKS = CHECK_DEFS.filter((c) =>
+const RELEVANT_CHECKS: CheckDef[] = CHECK_DEFS.filter((c) =>
   c.platforms.includes(PLATFORM),
 );
 
@@ -362,7 +354,7 @@ export function PreflightChecksStep({ onComplete }: PreflightChecksStepProps) {
   const handleContinue = async () => {
     setSaving(true);
     try {
-      await filesystem.writeFile(PREFLIGHT_MARKER, new Date().toISOString());
+      await platform.writeFile(PREFLIGHT_MARKER, new Date().toISOString());
     } catch {
       // Non-fatal — the waterfall will re-run this step next time but that's OK.
     }

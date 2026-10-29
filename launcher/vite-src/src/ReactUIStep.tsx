@@ -1,4 +1,4 @@
-import { os } from "@neutralinojs/lib";
+import platform, { OS } from "./platform";
 import { CondaSpawner } from "./CondaSpawner";
 import { WEBUI_ROOT, OUTPUTS_PATH, joinPath } from "./config";
 
@@ -23,7 +23,7 @@ function ActionButton({ label, onClick }: ActionButtonProps) {
 }
 
 export function ReactUIStep({ }: ReactUIStepProps) {
-  const isWindows = (window as any).NL_OS === "Windows";
+  const isWindows = OS === "windows";
 
   const openTerminal = async () => {
     const cmd = isWindows
@@ -31,7 +31,7 @@ export function ReactUIStep({ }: ReactUIStepProps) {
       : `${joinPath(WEBUI_ROOT, "installer_scripts/tools/open_terminal.sh")}`;
     console.log(`[ReactUIStep] Opening terminal with command: ${cmd}`);
     try {
-      await os.spawnProcess(cmd);
+      await platform.spawn(cmd);
     } catch (error) {
       console.error(`[ReactUIStep] Failed to open terminal: ${error}`);
     }
@@ -55,7 +55,7 @@ export function ReactUIStep({ }: ReactUIStepProps) {
       : `open "${OUTPUTS_PATH}"`;
     console.log(`[ReactUIStep] Opening outputs folder: ${cmd}`);
     try {
-      await os.spawnProcess(cmd);
+      await platform.spawn(cmd);
     } catch (error) {
       console.error(`[ReactUIStep] Failed to open outputs folder: ${error}`);
     }
@@ -65,7 +65,7 @@ export function ReactUIStep({ }: ReactUIStepProps) {
     const cmd = isWindows ? `explorer "${WEBUI_ROOT}"` : `open "${WEBUI_ROOT}"`;
     console.log(`[ReactUIStep] Opening install folder: ${cmd}`);
     try {
-      await os.spawnProcess(cmd);
+      await platform.spawn(cmd);
     } catch (error) {
       console.error(`[ReactUIStep] Failed to open install folder: ${error}`);
     }

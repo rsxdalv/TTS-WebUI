@@ -1,10 +1,24 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <title>TTS WebUI</title>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TTS WebUI Igniter</title>
+    <script>
+      (function () {
+        var t = localStorage.getItem("theme");
+        var dark =
+          t === "dark" ||
+          (!t && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        if (dark) document.documentElement.classList.add("dark");
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-Djciktx8.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-fd9mfdt9.css">
   </head>
   <body>
-    <p>TTS WebUI core: UI bundle not built yet (placeholder).</p>
+    <div id="root"></div>
+    <script src="http://localhost:7789/__neutralino_globals.js"></script>
   </body>
 </html>

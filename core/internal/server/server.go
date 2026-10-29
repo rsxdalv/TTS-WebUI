@@ -13,6 +13,7 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -20,6 +21,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"runtime"
 	"strings"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/webui"
@@ -127,8 +130,13 @@ func (s *Server) routes() {
 
 	// Health check — no token required.
 	s.mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
+		cwd, _ := os.Getwd()
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"ok":true}`))
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":  true,
+			"os":  runtime.GOOS,
+			"cwd": cwd,
+		})
 	})
 
 	// All other /api/* require the token.

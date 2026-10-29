@@ -258,3 +258,16 @@ Needs human verification: start/stop on real install; no orphans after browser c
 **M1 milestone ready for human sign-off.**
 
 Run stops here (STOP_AFTER=R2.3). Next waves: R2.4 (C4.3 → M2 smoke), R2.5 (C6.3b–g, C5.4/C5.5 smoke).
+
+### Review after R2.3 — 2026-10-29 (outside the director)
+
+- The run stopped for M1 sign-off, but M1 does not work. In a browser, the embedded launcher is still the
+  Neutralino build. It hangs on "Detecting installation state…" with no `/api` calls, because the Vite alias never
+  matches. `app/start` binds the app to the request context, so the app would die as soon as the request returns.
+  `m1.ps1` passes only because it skips or downgrades every check that would catch this.
+- C8.2 builds asset URLs that all return 404, and C8.0's `done` is not supported. C4.2's main venv still gets
+  unpinned torch. C2.4 still has silent fallbacks. Commit `ee1a1d2`'s title claims a dated ffmpeg pin it doesn't have.
+- Statuses downgraded: C2.4, C3.1, C3.2, C4.2, C8.0, C8.2 → `reopened`. Details are in PLAN.md "Still open after R2.3".
+  The M1 smoke requirements are now concrete. A browser check for UI checkpoints is required. Reviewer and
+  director must check smoke scripts against the requirements, not just run them.
+- Next: R2.3b (run 3), as listed in PLAN.md "Parallel work".

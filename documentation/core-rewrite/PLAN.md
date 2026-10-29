@@ -32,13 +32,13 @@ needs the package's API to exist.
 | C2.1 | `server`: local HTTP server, embedded UI, security, SSE | G | C0 | done |
 | C2.2 | `procs`: spawn, log capture, tree-kill, no orphans | G | C0 | done |
 | C2.3 | `paths` + `state`: install root, marker files, atomic JSON | G | C0 | done |
-| C2.4 | `gpu`: detection mapped to installer GPU labels | G | C0 | built |
+| C2.4 | `gpu`: detection mapped to installer GPU labels | G | C0 | reopened |
 | C2.5 | `preflight`: port of ignition preflight checks | G | C2.3 | built |
 | C2.6 | Browser auth for SSE, media and downloads (no custom headers) | G | C2.1 | built |
-| C3.1 | Launcher on Go, legacy-compat mode (same steps, same markers) | J | C1.2, C2.4, C2.5, C2.6 | built |
-| C3.2 | Running app under the Go supervisor | J | C3.1 | built |
+| C3.1 | Launcher on Go, legacy-compat mode (same steps, same markers) | J | C1.2, C2.4, C2.5, C2.6 | reopened |
+| C3.2 | Running app under the Go supervisor | J | C3.1 | reopened |
 | C4.1 | `tools`: pinned uv / ffmpeg / MinGit with checksums | G | C2.3 | built |
-| C4.2 | `env`: uv Python + main venv + torch variant | G | C4.1, C2.4 | built |
+| C4.2 | `env`: uv Python + main venv + torch variant | G | C4.1, C2.4 | reopened |
 | C4.3 | App runs from uv env (`--env=uv` next to `--env=conda`) | G | C4.2, C3.2 | reopened |
 | C5.1 | Engine manifest schema + loader over `extensions.json` | G | C2.3 | done |
 | C5.2 | Python-venv engine install (port of `venv_setup_wrapper`) | G | C5.1, C4.2 | built |
@@ -52,9 +52,9 @@ needs the package's API to exist.
 | C7.2 | Blue/green engine updates | G | C5.2 | built |
 | C7.3 | App (Python host) distribution without git pull | J | C4.3, D-open-3 | built |
 | C7.4 | Catalog fetch, cache, schema versioning | G | C5.1 | done |
-| C8.0 | Research: audio.cpp server lifecycle and cancel | R | none | done |
+| C8.0 | Research: audio.cpp server lifecycle and cancel | R | none | reopened |
 | C8.1 | Native engine kind (asset by OS/arch/GPU, verify, launch) | G | C5.4, C4.1 | built |
-| C8.2 | audio.cpp engine + cancel | G | C8.0, C8.1 | built |
+| C8.2 | audio.cpp engine + cancel | G | C8.0, C8.1 | reopened |
 | C9.1 | Start scripts and release zip launch the Go binary | J | M1–M4 | waiting |
 | C9.2 | Remove micromamba, Node installer, Neutralino build | J | C9.1, human only | waiting |
 | P1 | Drop PostgreSQL from the conda env spec | P | none | done |
@@ -154,6 +154,78 @@ Found in a review of `core/rewrite` at `05ae56f`. Each item is what must be true
 
   **After R2.1: `built`.** The revert is exact: `extensions.json` matches `main`. Re-applying is later work.
 
+## Still open after R2.3
+
+Found in a review of `core/rewrite` at `1bad8e0` (2026-10-29). vet, tests and cross-builds pass, and `m1.ps1`
+prints PASS, but the M1 path does not work. Each item is what must be true before the checkpoint can be `done`.
+
+- **C3.1 — the embedded launcher is still the Neutralino build.**
+  - `vite.config.ts` aliases `/.*\/platform\/neutralino/`, but `platform/index.ts` imports `"./neutralino"`, so
+    the alias never matches. The committed bundle (`core/internal/webui/assets/assets/index-*.js`) contains no
+    `/api/` path and four `Neutralino` references. In a browser, `tts-webui launch` loads
+    `localhost:7789/__neutralino_globals.js` (refused), throws on `ws://127.0.0.1:undefined`, and stays on
+    "Detecting installation state…" with zero `/api` requests.
+  - Fix the selection: e.g. `index.ts` re-exports from a `./selected` module that the alias or a
+    `define`-driven import picks. `launcher/vite-src/index.html` must not load the Neutralino globals script in a
+    core build.
+  - `core.ts` is mostly stubs:
+    - `stat` always returns `exists:false`, so no step ever shows as done;
+    - `exec` and `spawn` are fakes, and `kill` and `mkdir` are no-ops;
+    - `readFile` throws;
+    - the `.gpu` write ignores the HTTP status;
+    - `initPlatform` is not awaited (`main.tsx`).
+
+    The step components must call the typed endpoints (`callStep`/`subscribeStep`) instead of the Neutralino-shaped
+    `exec`/`stat` calls. Today nothing imports them.
+  - The streams `GET /api/steps/preflight/stream` and `/gpu/stream` do not exist; either add them or don't call them.
+  - SSE responses send no headers until the first event, and a stream for a process that already exited never
+    ends. Flush headers immediately, and send a final `event: done` with the exit code, then close.
+  - `build-webui.ps1` ignores `$LASTEXITCODE`, so a failed npm build still wipes the assets. CI does not run
+    `build-webui` at all, so the committed bundle can go stale unnoticed. Add a CI step that builds it and fails if the
+    committed assets differ.
+  - `--ui-dev` skips token injection, so every `/api` call returns 403 in dev mode.
+- **C3.2 — `app/start` kills the app it starts.** `handleAppStart` passes `r.Context()` to `Supervisor.Start`,
+  which reaches `exec.CommandContext` (`procs/proc.go:43`). Go cancels that context when the handler returns, so
+  the app dies right after the 200. Child processes need a supervisor-owned context. Check the step handlers for
+  the same bug.
+- **M1 smoke is a false pass** (`core/scripts/smoke/m1.{ps1,sh}`):
+  - only `preflight` and `gpu` are driven; `mamba`, `install`, `update` and `run` are not;
+  - the preflight result is ignored;
+  - the SSE step calls a non-existent stream and treats the 404 as expected; no log line is asserted; it uses the
+    header, not the cookie;
+  - `app/start` returning 500 is printed as INFO (and as PASS in `.sh`);
+  - the orphan check is vacuous because nothing was started;
+  - only `.gpu` is compared, and against a literal, not the legacy flow.
+
+  The new requirements are in "Verification rules", M1.
+- **C2.4** (mostly fixed: `Parse` trims, a real fixture with a newline, the supervisor reads `.gpu`, `env` errors
+  on an unknown label). Still open:
+  - `readGPULabel` silently falls back to `gpu.Detect` when `.gpu` exists but is invalid; that must be an error;
+  - `engine/venv/venv.go`'s `default:` still installs from PyPI for Intel, Custom and unknown;
+  - `cmd_env`, `cmd_app` and `cmd_engine` still pass `--gpu` through without `Parse`.
+- **C4.2 — the main venv still gets unpinned torch.** `env.installTorch` installs `torch torchvision torchaudio`
+  with no version and no xformers. Only `venv.go` pins 2.11.0 and xformers 0.0.35. Intel uses PyPI +
+  `intel-extension-for-pytorch`; legacy uses the XPU index. Keep one torch table and use it in both places.
+- **C4.1** (`built`): commit `ee1a1d2` is titled "pin ffmpeg to dated BtbN release", but the URLs still use
+  `latest`. BtbN does publish dated tags (`autobuild-YYYY-MM-DD-HH-MM`; dailies are pruned after about two
+  weeks, month-end builds are kept). Pin a month-end tag. Also, no uv or ffmpeg entries exist for windows/arm64 or
+  linux/arm64, and `EnsureAll` silently skips a tool with no entry for the platform; that must be an error.
+- **C8.0 — `done` is not supported.**
+  - Section 6 still says there is no load endpoint while citing `/v1/models/load`, and says there is no
+    `idle_unload_ms` (README:432 documents it).
+  - Section 8 says there is no Windows cpu-portable asset (it exists).
+  - "Default port 8080", "localhost bind by default", `idle_stop_s`, the `--host`/`--port` flags and
+    "Arena, Model Manager" are unsupported by the docs.
+  - The server starts with `--config server.json` (README:118).
+- **C8.2 — every asset URL returns 404.** `native.resolveURL` substitutes raw `GOOS`/`GOARCH` (`windows-amd64`,
+  `linux-amd64`, `darwin-arm64`); the real names are `windows-x64`, `ubuntu-x64`, `macos-arm64`.
+  - `audiocpp.osToken`/`archToken` exist but are never called.
+  - Linux NVIDIA must be `cuda12.8-colab`.
+  - Linux Intel has no checksum entry.
+  - The launch uses `--host`/`--port` instead of a generated `server.json`, so no model is registered and streaming
+    cancel is unreachable.
+  - Add a test that HEADs every generated URL (skipped offline) or compares against a recorded asset list.
+
 ## Verification rules
 
 These apply to every checkpoint from run 2 on.
@@ -176,6 +248,21 @@ These apply to every checkpoint from run 2 on.
     `init_app.js` are stub scripts. `GET /` returns the launcher (not the placeholder). Every step endpoint runs and
     writes the same marker files as the legacy flow, with `.gpu` holding a `PyTorchChoice` label. The step SSE
     streams deliver log lines using the C2.6 cookie. `app start/stop` leaves no processes behind.
+    Concretely, the script must:
+    - fail if the embedded bundle has no `/api/steps` string, or has a `Neutralino` string;
+    - drive every step (`preflight`, `mamba`, `gpu`, `install`, `update`, `run`) over HTTP, using only the cookie
+      from `GET /` (no header);
+    - for each step with a stream, assert at least one log line printed by the stub and a final `done` event;
+    - compare every marker file against golden copies of what the legacy flow writes;
+    - start the app with a fake `python` placed by the fixture (a tiny Go program that serves HTTP on the given
+      port and stays up). Assert it still answers 5 s after `app/start` returned, then `app/stop`, then assert that
+      neither its PID nor any descendant is alive;
+    - treat every non-2xx response as a failure. There is no INFO or "expected" path.
+- **UI checkpoints are checked in a real browser.** Load the page served by the real binary in a headless browser
+  (or the agent's browser tool). Record in the note that it leaves its loading state, that the console has no
+  errors, and which `/api` requests it made. Grepping the HTML is not enough.
+- **A commit message describes what the diff does.** If a planned fix turns out impossible, say so in the
+  message and in the note. Never title the commit as if it were done.
   - **M2** (`m2`, heavy): fresh scratch root, `launch --env=uv`, wait for Gradio to answer on its port, generate one
     clip with a builtin tab, stop. Prints the env-parity diff.
   - **M3** (`m3`, heavy): `--proxy=core`, each proxy-native extension's iframe URL loads through the Go router.
@@ -191,7 +278,11 @@ Run 2 waves (ids R2.1–R2.5, branches `core/r2-wave-<n>`), M1 first:
 
 R2.1. C2.4 · C2.6 · C4.1 · C8.0 · P4 revert. Ran 2026-10-29; results are under each item in "Reopened after run 1".
 R2.2. C1.2 smoke (finish to `done`) · C2.5 smoke · C2.4 finish → C4.2 (one worker, both touch `env`/`venv`) · C2.6 tests · C4.1 ffmpeg pin · C8.0 rewrite → C8.2
-R2.3. C3.1 (join, alone) → C3.2 (join, alone) → M1 smoke → **stop for M1 sign-off**
+R2.3. C3.1 (join, alone) → C3.2 (join, alone) → M1 smoke → **stop for M1 sign-off**. Ran 2026-10-29; M1 did not
+work, see "Still open after R2.3".
+R2.3b (redo, run 3). Wave: C2.4 finish + C4.2 (one worker) · C4.1 month-end pin + arm64 error · C8.0 fix → C8.2
+URLs/config. Then C3.1 (join, alone) → C3.2 (join, alone) → rewrite the M1 smoke to the rules above → run it →
+browser check → **stop for M1 sign-off**.
 R2.4. C4.3 → M2 smoke (heavy: `built` unless `HEAVY_CHECKS=yes`) · C6.3a (first page group, sets the pattern)
 R2.5. C6.3b–g in parallel · C5.4/C5.5 smoke towards M3
 

@@ -64,7 +64,11 @@ Treat `reopened` checkpoints as `ready` and address every gap listed for them un
      hit on a user-facing path blocks `done`;
    - every checkpoint reported `done` has a note with the smoke command and its output excerpt. If one doesn't,
      downgrade it to `built`. You may not upgrade a status; only a coordinator or worker that ran the smoke can;
-   - any milestone smoke script in `core/scripts/smoke/` whose path this wave touched: run it.
+   - any milestone smoke script in `core/scripts/smoke/` whose path this wave touched: run it, and have a reviewer
+     subagent check the script itself against the milestone's requirements in "Verification rules". A script that
+     passes without testing a requirement is a failure, not a pass;
+   - before declaring a milestone ready for sign-off, have a reviewer subagent load the UI in a browser and confirm
+     it reaches the milestone's user path (for M1: the launcher shows the steps and drives them through `/api`).
 
    Apply PLAN.md's **Verification rules** strictly. Reporting `built` honestly is success; reporting `done` for
    unexercised work is the failure this run exists to avoid. If anything fails, send the coordinator back with the failure,

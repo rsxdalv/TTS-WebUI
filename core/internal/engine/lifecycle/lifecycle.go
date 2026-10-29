@@ -260,6 +260,33 @@ func (m *Manager) IDs() []string {
 	return ids
 }
 
+// UpdateManifest replaces the registered manifest for a stopped engine.
+// Returns an error if the engine is not registered or is currently running.
+func (m *Manager) UpdateManifest(id string, man manifest.Manifest) error {
+	e := m.getEntry(id)
+	if e == nil {
+		return fmt.Errorf("engine %q not registered", id)
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.running {
+		return fmt.Errorf("engine %q is running; stop before updating manifest", id)
+	}
+	e.man = man
+	return nil
+}
+
+// Manifest returns the registered manifest for id.
+func (m *Manager) Manifest(id string) (manifest.Manifest, bool) {
+	e := m.getEntry(id)
+	if e == nil {
+		return manifest.Manifest{}, false
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.man, true
+}
+
 // getEntry returns the entry for id, or nil if not registered.
 func (m *Manager) getEntry(id string) *entry {
 	m.mu.Lock()

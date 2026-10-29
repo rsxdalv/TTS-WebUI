@@ -11,6 +11,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/lifecycle"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/manifest"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/native"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/update"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/venv"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/server"
@@ -44,6 +45,7 @@ func runEngine(ctx context.Context, args []string) error {
 		fmt.Fprintln(fs.Output(), "  start <id>                 start an engine")
 		fmt.Fprintln(fs.Output(), "  stop <id>                  stop an engine")
 		fmt.Fprintln(fs.Output(), "  logs <id>                  stream engine logs (SSE)")
+		fmt.Fprintln(fs.Output(), "  update <id>                blue/green update (venv or native engine)")
 		return nil
 	}
 
@@ -206,6 +208,53 @@ func runEngine(ctx context.Context, args []string) error {
 			return fmt.Errorf("native resolve: %w", err)
 		}
 		fmt.Fprintf(fs.Output(), "binary ready: %s\n", binPath)
+		return nil
+
+	case "update":
+		if fs.NArg() < 2 {
+			return fmt.Errorf("usage: tts-webui engine update <id> [--root <dir>]")
+		}
+		engineID := fs.Arg(1)
+		root, err := resolveRoot(*rootDir)
+		if err != nil {
+			return err
+		}
+		manifests, err := manifest.Load(root.Dir())
+		if err != nil {
+			return fmt.Errorf("loading manifests: %w", err)
+		}
+		var m manifest.Manifest
+		found := false
+		for _, mm := range manifests {
+			if mm.PackageName == engineID {
+				m = mm
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("engine %q not found in manifests", engineID)
+		}
+		gpuResult, gpuErr := gpu.Detect(ctx)
+		if gpuErr != nil {
+			gpuResult = gpu.Result{Label: gpu.CPU}
+		}
+		switch m.Engine.Kind {
+		case manifest.KindPythonVenv:
+			fmt.Fprintf(fs.Output(), "updating venv for %s (gpu=%s)...\n", engineID, gpuResult.Label)
+			if err := update.UpdateVenv(ctx, root, m, string(gpuResult.Label)); err != nil {
+				return fmt.Errorf("engine update: %w", err)
+			}
+		case manifest.KindNative:
+			cacheDir := root.CoreData() + "/native"
+			fmt.Fprintf(fs.Output(), "updating native binary for %s (gpu=%s)...\n", engineID, gpuResult.Label)
+			if err := update.UpdateNative(ctx, m, string(gpuResult.Label), cacheDir, nil); err != nil {
+				return fmt.Errorf("engine update: %w", err)
+			}
+		default:
+			return fmt.Errorf("engine %q: kind %q does not support update", engineID, m.Engine.Kind)
+		}
+		fmt.Fprintln(fs.Output(), "done")
 		return nil
 	}
 	return fmt.Errorf("unknown engine subcommand %q", fs.Arg(0))

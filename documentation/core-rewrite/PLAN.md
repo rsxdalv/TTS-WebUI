@@ -10,7 +10,7 @@ One checkpoint per session.
 
 ## Status
 
-`ready` = dependencies done, can start · `waiting` = dependencies not done · `in progress` · `done` · `blocked`
+`ready` = dependencies done, can start · `waiting` = dependencies not done · `in progress` · `built` = code+unit tests done, no smoke · `reopened` = gaps found; treat as `ready` · `done` · `blocked`
 
 | Id | Checkpoint | Lane | Depends on | Status |
 |---|---|---|---|---|
@@ -20,11 +20,12 @@ One checkpoint per session.
 | C2.1 | `server`: local HTTP server, embedded UI, security, SSE | G | C0 | done |
 | C2.2 | `procs`: spawn, log capture, tree-kill, no orphans | G | C0 | done |
 | C2.3 | `paths` + `state`: install root, marker files, atomic JSON | G | C0 | done |
-| C2.4 | `gpu`: detection mapped to installer GPU labels | G | C0 | done |
+| C2.4 | `gpu`: detection mapped to installer GPU labels | G | C0 | built |
 | C2.5 | `preflight`: port of ignition preflight checks | G | C2.3 | done |
-| C3.1 | Launcher on Go, legacy-compat mode (same steps, same markers) | J | C1.2, C2.1, C2.2, C2.3, C2.5 | done |
+| C2.6 | Browser auth for SSE, media and downloads (no custom headers) | G | C2.1 | built |
+| C3.1 | Launcher on Go, legacy-compat mode (same steps, same markers) | J | C1.2, C2.1, C2.2, C2.3, C2.5, C2.6 | done |
 | C3.2 | Running app under the Go supervisor | J | C3.1 | done |
-| C4.1 | `tools`: pinned uv / ffmpeg / MinGit with checksums | G | C2.3 | done |
+| C4.1 | `tools`: pinned uv / ffmpeg / MinGit with checksums | G | C2.3 | built |
 | C4.2 | `env`: uv Python + main venv + torch variant | G | C4.1, C2.4 | done |
 | C4.3 | App runs from uv env (`--env=uv` next to `--env=conda`) | G | C4.2, C3.2 | done |
 | C5.1 | Engine manifest schema + loader over `extensions.json` | G | C2.3 | done |
@@ -47,17 +48,34 @@ One checkpoint per session.
 | P1 | Drop PostgreSQL from the conda env spec | P | none | done |
 | P2 | Extract `tts-webui-sdk` Python package | P | none | done |
 | P3 | `setup_proxy_extension` delegates to core when `TTS_WEBUI_CORE_URL` is set | P | C5.4 | done |
-| P4 | Move in-process extensions to `"proxy": "native"`, in batches | P | P2 | done |
+| P4 | Move in-process extensions to `"proxy": "native"`, in batches | P | P2 | reopened |
 | P5 | Torch-optional main host (lazy imports) | P | P4 | done |
 
 Lanes: **L** launcher UI (TypeScript) · **G** Go core · **U** new UI (TypeScript) · **P** Python · **R** research ·
 **J** join (touches several lanes, run alone).
 
 Milestones (human sign-off each):
-- **M1** after C3.2: the Go launcher can replace Neutralino as the default launcher.
+- **M1** after C3.2: the Go launcher can replace Neutralino as the default launcher. Path: C2.4, C2.5, C2.6, C3.1, C3.2.
 - **M2** after C4.3: uv mode can be the default for new installs.
 - **M3** after C5.5: the Python proxy tree is retired behind a flag.
 - **M4** after C6.3: the core serves the whole UI; Next.js leaves the runtime.
+
+## Reopened after run 1 — Wave R2.1 (2026-10-29)
+
+Corrective wave on branch `core/r2-wave-1`. See per-checkpoint notes for details.
+
+- **C2.4** (`built`): GPU labels were old short strings (`nvidia`, `amd`, etc.). Fixed to exact PyTorchChoice
+  strings; `Parse()` added; all consumers updated; test uses real `.gpu` file contents. Status `built` because
+  no binary smoke run yet.
+- **C2.6** (`built`, new): Token travels only in `X-TTS-Token` header. `EventSource`, `<audio src>`, `<img>` and
+  download links cannot send custom headers. Added `SameSite=Strict`, `HttpOnly` cookie set on index.html serve;
+  `tokenGuard` accepts cookie OR header; Origin guard still applies.
+- **C4.1** (`built`): Every SHA256 was empty (skipped verification). Filled: uv 0.13.6, ffmpeg n9.0, MinGit 2.49.0.
+  Added `TestPinnedSHA256NonEmpty` as a build-time gate. Status `built` (no real download run; HEAVY_CHECKS=no).
+- **C8.0** (`done`): Was based on wrong repo (`rsxdalv/audio.cpp`, private). Corrected to `0xShug0/audio.cpp`
+  (Apache-2.0, v0.9.3). All API, cancel, streaming, asset naming facts sourced from the correct repo.
+- **P4** (`reopened`): Five extensions had `"proxy": "native"` added without real audio generation to verify.
+  Reverted all five. Re-application requires HEAVY_CHECKS=yes or human verification.
 
 ## Parallel work
 

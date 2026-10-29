@@ -9,3 +9,6 @@
 !/ui/dist/
 /ui/dist/*
 !/ui/dist/.gitkeep
+
+# Stray test/build executables
+*.exe

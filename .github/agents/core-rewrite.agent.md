@@ -72,10 +72,19 @@ Your context is the scarce resource. Keep the main thread for decisions, Go code
 
 ## End of every checkpoint
 
-1. Definition of done met: tests pass in CI, the checkpoint's CLI demo works, the parity check (if any) is
-   recorded with its result.
+1. Apply PLAN.md's **Verification rules**. `done` needs all of:
+   - tests pass in CI;
+   - the end-to-end smoke was run against the real `tts-webui` binary, and its command and output excerpt are in the note;
+   - the parity check (if any) is recorded with its result;
+   - no TODO, placeholder, missing endpoint, empty checksum or silent fallback on a user-facing path.
+
+   Otherwise the status is `built` (works in unit tests, not exercised) or `in progress`. Never write `done` with
+   "needs human verification"; that is `built`. Anything the UI calls must exist in the Go route table.
+   Anything read from legacy files must be tested with real legacy contents.
 2. Reviewer subagent run; findings fixed or listed as known issues.
-3. Update PLAN.md: status `done` (or `blocked` with the reason), and any newly discovered checkpoints added as `ready`.
+3. Update PLAN.md: status `done`, `built` or `blocked` (with the reason), and add any newly discovered checkpoints as
+   `ready`. For a `reopened` checkpoint, every item listed for it under "Reopened after run 1" must be addressed;
+   say how, item by item, in the note.
 4. Write `documentation/core-rewrite/notes/<checkpoint-id>.md`, at most ~40 lines:
    what now exists (packages, commands, endpoints), decisions made, deviations from the plan,
    known issues, and what the next checkpoint needs to know.

@@ -52,6 +52,26 @@ provisional, run every wave and join checkpoint through C8.2 (never C9.x), integ
 to main, and keep the run log current after every wave. Do not ask me anything until the final report.
 ```
 
+### Run 2 (corrective, M1 first)
+
+```
+Run the core rewrite as director, run 2 (corrective), unattended.
+
+Settings:
+- HEAVY_CHECKS = no
+- STOP_AFTER = R2.3
+
+Follow .github/agents/director.agent.md. Work on core/rewrite (draft PR #712). Read PLAN.md's "Status",
+"Reopened after run 1", "Verification rules" and "Parallel work" first, plus the "Run 2" section of RUN-LOG.md.
+Run waves R2.1 to R2.3 on branches core/r2-wave-<n>. Fix every gap listed for each reopened checkpoint,
+write the M1 smoke script in core/scripts/smoke/ and run it, then stop for my M1 sign-off.
+
+Status discipline: `done` only with a recorded end-to-end smoke against the real binary. Everything else is
+`built`, including anything that only lacks heavy checks. Research cites only what it actually read;
+an unreachable source means `blocked`. Downgrading a status is fine. Overstating one is the failure to avoid.
+Do not ask me anything until the final report.
+```
+
 To resume after the chat ends or runs out of context: same prompt in a new chat; the director reads `RUN-LOG.md`
 and continues. Afterwards, the draft PR lists the provisional decisions to confirm, the checks that need you,
 and the milestones that are ready to try.

@@ -6,72 +6,161 @@ cutover. Decisions already made are in [DECISIONS.md](DECISIONS.md); handoff not
 [notes/](notes/).
 
 Agents: run this with the `core-rewrite` custom agent (`.github/agents/core-rewrite.agent.md`).
-One checkpoint per session.
+Wave mode or checkpoint mode; see the agent files.
 
 ## Status
 
-`ready` = dependencies done, can start · `waiting` = dependencies not done · `in progress` · `done` · `blocked`
+Statuses:
+- `waiting`: dependencies not done.
+- `ready`: dependencies done, can start.
+- `in progress`
+- `built`: code and unit tests exist, but the checkpoint's end-to-end smoke has **not** been run for real.
+  Not a finished state.
+- `reopened`: was marked done, but a review found the gaps listed under "Reopened after run 1". Treat as `ready`.
+- `done`: the definition of done is met, **including** the end-to-end smoke, with its output recorded in the
+  checkpoint's note (see "Verification rules").
+- `blocked`: with the reason.
+
+Dependencies count as satisfied only by `done`, except that `built` satisfies dependencies for work that only
+needs the package's API to exist.
 
 | Id | Checkpoint | Lane | Depends on | Status |
 |---|---|---|---|---|
 | C0 | Go toolchain, `core/` scaffold, CI | G | none | done |
-| C1.1 | Vendor tts-webui-ignition into `launcher/` | L | none | done |
-| C1.2 | Platform adapter in launcher UI | L | C1.1 | done |
+| C1.1 | Vendor tts-webui-ignition into `launcher/` | L | none | done (subtree was squashed; history not kept) |
+| C1.2 | Platform adapter in launcher UI | L | C1.1 | built |
 | C2.1 | `server`: local HTTP server, embedded UI, security, SSE | G | C0 | done |
 | C2.2 | `procs`: spawn, log capture, tree-kill, no orphans | G | C0 | done |
 | C2.3 | `paths` + `state`: install root, marker files, atomic JSON | G | C0 | done |
-| C2.4 | `gpu`: detection mapped to installer GPU labels | G | C0 | done |
-| C2.5 | `preflight`: port of ignition preflight checks | G | C2.3 | done |
-| C3.1 | Launcher on Go, legacy-compat mode (same steps, same markers) | J | C1.2, C2.1, C2.2, C2.3, C2.5 | done |
-| C3.2 | Running app under the Go supervisor | J | C3.1 | done |
-| C4.1 | `tools`: pinned uv / ffmpeg / MinGit with checksums | G | C2.3 | done |
-| C4.2 | `env`: uv Python + main venv + torch variant | G | C4.1, C2.4 | done |
-| C4.3 | App runs from uv env (`--env=uv` next to `--env=conda`) | G | C4.2, C3.2 | done |
+| C2.4 | `gpu`: detection mapped to installer GPU labels | G | C0 | reopened |
+| C2.5 | `preflight`: port of ignition preflight checks | G | C2.3 | built |
+| C2.6 | Browser auth for SSE, media and downloads (no custom headers) | G | C2.1 | ready |
+| C3.1 | Launcher on Go, legacy-compat mode (same steps, same markers) | J | C1.2, C2.4, C2.5, C2.6 | reopened |
+| C3.2 | Running app under the Go supervisor | J | C3.1 | built |
+| C4.1 | `tools`: pinned uv / ffmpeg / MinGit with checksums | G | C2.3 | reopened |
+| C4.2 | `env`: uv Python + main venv + torch variant | G | C4.1, C2.4 | reopened |
+| C4.3 | App runs from uv env (`--env=uv` next to `--env=conda`) | G | C4.2, C3.2 | reopened |
 | C5.1 | Engine manifest schema + loader over `extensions.json` | G | C2.3 | done |
-| C5.2 | Python-venv engine install (port of `venv_setup_wrapper`) | G | C5.1, C4.2 | done |
+| C5.2 | Python-venv engine install (port of `venv_setup_wrapper`) | G | C5.1, C4.2 | built |
 | C5.3 | `router`: reverse proxy replacing `gradio_proxy_tree` | G | C2.1 | done |
-| C5.4 | Engine lifecycle: on-demand start, health, idle stop, cancel | G | C5.1, C2.2 | done |
-| C5.5 | Legacy Gradio host + proxy extensions run as core engines | J | C5.2, C5.3, C5.4, P3 | done |
-| C6.1 | Core API replacing Next.js API routes | G | C2.1, C5.3 | done |
-| C6.2 | `ui/` Vite SPA scaffold, embed pipeline, `--ui-dev` | U | C2.1 | done |
-| C6.3 | Port pages, one group per checkpoint (see list) | U | C6.1, C6.2 | done |
-| C7.1 | Core self-update | G | C2.3 | done |
-| C7.2 | Blue/green engine updates | G | C5.2 | done |
-| C7.3 | App (Python host) distribution without git pull | J | C4.3, D-open-3 | done |
+| C5.4 | Engine lifecycle: on-demand start, health, idle stop, cancel | G | C5.1, C2.2 | built |
+| C5.5 | Legacy Gradio host + proxy extensions run as core engines | J | C5.2, C5.3, C5.4, P3 | built |
+| C6.1 | Core API replacing Next.js API routes | G | C2.1, C2.6, C5.3 | built |
+| C6.2 | `ui/` Vite SPA scaffold, embed pipeline, `--ui-dev` | U | C2.1 | built |
+| C6.3 | Port pages, one group per checkpoint (see list) | U | C6.1, C6.2 | reopened |
+| C7.1 | Core self-update | G | C2.3 | built |
+| C7.2 | Blue/green engine updates | G | C5.2 | built |
+| C7.3 | App (Python host) distribution without git pull | J | C4.3, D-open-3 | built |
 | C7.4 | Catalog fetch, cache, schema versioning | G | C5.1 | done |
-| C8.0 | Research: audio.cpp server lifecycle and cancel | R | none | done |
-| C8.1 | Native engine kind (asset by OS/arch/GPU, verify, launch) | G | C5.4, C4.1 | done |
-| C8.2 | audio.cpp engine + cancel | G | C8.0, C8.1 | done |
+| C8.0 | Research: audio.cpp server lifecycle and cancel | R | none | reopened |
+| C8.1 | Native engine kind (asset by OS/arch/GPU, verify, launch) | G | C5.4, C4.1 | built |
+| C8.2 | audio.cpp engine + cancel | G | C8.0, C8.1 | reopened |
 | C9.1 | Start scripts and release zip launch the Go binary | J | M1–M4 | waiting |
 | C9.2 | Remove micromamba, Node installer, Neutralino build | J | C9.1, human only | waiting |
 | P1 | Drop PostgreSQL from the conda env spec | P | none | done |
-| P2 | Extract `tts-webui-sdk` Python package | P | none | done |
-| P3 | `setup_proxy_extension` delegates to core when `TTS_WEBUI_CORE_URL` is set | P | C5.4 | done |
-| P4 | Move in-process extensions to `"proxy": "native"`, in batches | P | P2 | done |
-| P5 | Torch-optional main host (lazy imports) | P | P4 | done |
+| P2 | Extract `tts-webui-sdk` Python package | P | none | built |
+| P3 | `setup_proxy_extension` delegates to core when `TTS_WEBUI_CORE_URL` is set | P | C5.4 | built |
+| P4 | Move in-process extensions to `"proxy": "native"`, in batches | P | P2 | reopened |
+| P5 | Torch-optional main host (lazy imports) | P | P4 | built |
 
 Lanes: **L** launcher UI (TypeScript) · **G** Go core · **U** new UI (TypeScript) · **P** Python · **R** research ·
 **J** join (touches several lanes, run alone).
 
-Milestones (human sign-off each):
-- **M1** after C3.2: the Go launcher can replace Neutralino as the default launcher.
-- **M2** after C4.3: uv mode can be the default for new installs.
-- **M3** after C5.5: the Python proxy tree is retired behind a flag.
-- **M4** after C6.3: the core serves the whole UI; Next.js leaves the runtime.
+Milestones (human sign-off each). A milestone is ready only when every checkpoint on its path is `done` and its
+smoke script passes:
+- **M1** after C3.2: the Go launcher can replace Neutralino as the default launcher. Path: C1.2, C2.4, C2.5, C2.6, C3.1, C3.2.
+- **M2** after C4.3: uv mode can be the default for new installs. Path: C4.1, C4.2, C4.3.
+- **M3** after C5.5: the Python proxy tree is retired behind a flag. Path: C5.2, C5.4, C5.5, P3.
+- **M4** after C6.3: the core serves the whole UI; Next.js leaves the runtime. Path: C6.1, C6.2, C6.3.
+
+## Reopened after run 1
+
+Found in a review of `core/rewrite` at `05ae56f`. Each item is what must be true before the checkpoint can be `done`.
+
+- **C2.4:** labels are `nvidia`/`amd`/`apple`/`intel_extension_for_pytorch`/`cpu`. The legacy `.gpu` file holds
+  the `PyTorchChoice` labels (`NVIDIA GPU`, `AMD GPU (ROCM, Linux only)`, `Apple M Series Chip`, `Intel GPU (XPU)`,
+  `CPU`, `Custom (Manual torch install)`), which ignition writes too. Detection must return those exact strings, or a
+  single mapping function must convert both ways, with tests using real `.gpu` file contents.
+  Every consumer (`env`, `native`, `cmd_engine`) must use it.
+  An unknown label must be an error, never a silent fallback to default PyPI (that installs CPU torch on Windows).
+- **C2.6 (new):** the token travels only in the `X-TTS-Token` header, which `EventSource`, `<audio src>`, `<img>`
+  and download links cannot send. Add a mechanism that keeps D9's protection: a `SameSite=Strict`, `HttpOnly`
+  cookie set when the UI is served, accepted on `/api/*` together with the existing Host and Origin checks.
+  Tests: an SSE stream and an audio file fetch work with the cookie and fail without it, and from a foreign Origin.
+- **C3.1:** the Go step endpoints exist, but nothing calls them. `launcher/vite-src/src/platform/` has only the
+  Neutralino adapter, and the binary embeds a placeholder `index.html`. Needed:
+  - a `core` platform implementation calling the typed step endpoints and SSE streams;
+  - build selection of the adapter (`VITE_PLATFORM=core|neutralino`);
+  - the launcher's core build copied into `core/internal/webui/assets` by a script used by CI and locally;
+  - `tts-webui launch` serving that UI;
+  - the M1 smoke (below) passing.
+
+  The `ui/` `/setup` route stays a placeholder until C6 (see D10).
+- **C4.1:** every SHA-256 is empty, and empty skips verification. Fill real checksums for every pinned asset;
+  make an empty checksum a build-time test failure. Update the uv pin to a current release (0.7.8 is old) and
+  record the pin date.
+- **C4.2:** the main venv gets unpinned `torch torchvision torchaudio` only. Use the same versions, index URLs and
+  extras as `installer_scripts/js/initializeApp.js` (torch 2.11.0, cu128 + xformers 0.0.35 for NVIDIA, rocm7.2,
+  xpu, cpu, Apple default), driven by the C2.4 label.
+- **C4.3:** uv mode never installs `requirements.txt` or the other packages `init_app.js` installs, so `server.py`
+  cannot start. It also auto-detects the GPU instead of reading the user's `.gpu` choice. Install the same package
+  set as `init_app.js`, read `.gpu`, and run the M2 smoke.
+- **C6.3:** the seven "ported" page groups total about 436 lines against about 21,000 in `react-ui/src`. The TTS
+  page posts to a non-existent `/api/engines/{model}/generate` with a TODO. This is a real port, split into one
+  checkpoint per page group (C6.3a–g), each with UI parity screenshots. Real model calls go through `@gradio/client`
+  against the router, as `react-ui` does today.
+- **C8.0:** the note researched `rsxdalv/audio.cpp` (404) and filled the gaps with guesses ("forked from llama.cpp").
+  The project is **`0xShug0/audio.cpp`** (Apache-2.0, own HTTP server and WebUI). Redo the research against that repo
+  and its releases. Every claim cites a URL or `path:line` that was actually read.
+- **C8.2:** the manifest's URL template points at `rsxdalv/audio.cpp` releases. Rebuild it from the corrected C8.0
+  (real asset names, real endpoints, the real cancel behaviour).
+- **P4:** five extensions (vall_e_x, styletts2, seamless_m4t, mms, chatterbox) were switched to `"proxy": "native"`
+  without generating audio with any of them. Because `extensions.json` changes the legacy app's behaviour at once,
+  revert those five entries. Re-apply one extension at a time, only after it has generated audio through the proxy
+  path on a real install (needs `HEAVY_CHECKS=yes` or the human).
+
+## Verification rules
+
+These apply to every checkpoint from run 2 on.
+
+- **`done` needs an end-to-end smoke** that drives the real `tts-webui` binary over real HTTP, with its command and
+  an output excerpt recorded in the note. Fake engines and fake legacy scripts are fine; fake core packages are not.
+  Unit tests with injected runners do not count as the smoke.
+- **No placeholders on a user-facing path.** Not `done` if any of these is present: a TODO, a placeholder page, an
+  endpoint the UI calls that does not exist, an empty checksum, or a silent fallback for unknown input.
+  The reviewer greps for `TODO|FIXME|placeholder` in the checkpoint's diff and lists every hit.
+- **Contracts with legacy are tested with real legacy data:** golden copies of real marker files, real
+  `extensions.json` entries, real `pip freeze` output. Not invented values.
+- **Research cites what it read.** Every factual claim has a URL or `path:line` that was fetched or opened in this
+  session. If a source is unreachable the checkpoint is `blocked`; never substitute guesses or "general knowledge".
+- **`HEAVY_CHECKS=no` caps the status at `built`** for any checkpoint whose definition of done needs a real install.
+  The heavy check is written as an exact script in the note, for the human or a later `HEAVY_CHECKS=yes` run.
+- **Milestone smoke scripts** live in `core/scripts/smoke/` (bash and PowerShell). Each starts the binary against a
+  scratch root built from fixtures, exercises the milestone's user path, and exits non-zero on failure.
+  - **M1** (`m1`): build with the embedded launcher; `launch --no-browser --root <fixture>` where `init_mamba` and
+    `init_app.js` are stub scripts. `GET /` returns the launcher (not the placeholder). Every step endpoint runs and
+    writes the same marker files as the legacy flow, with `.gpu` holding a `PyTorchChoice` label. The step SSE
+    streams deliver log lines using the C2.6 cookie. `app start/stop` leaves no processes behind.
+  - **M2** (`m2`, heavy): fresh scratch root, `launch --env=uv`, wait for Gradio to answer on its port, generate one
+    clip with a builtin tab, stop. Prints the env-parity diff.
+  - **M3** (`m3`, heavy): `--proxy=core`, each proxy-native extension's iframe URL loads through the Go router.
+  - **M4** (`m4`): `vite build` of `ui/`, embedded, every route returns 200 and calls only endpoints that exist
+    (checked against the Go route table).
 
 ## Parallel work
 
-Checkpoints in different lanes touch disjoint files and can run in parallel sessions, each on its own branch
-(ideally its own worktree). Within lane G, checkpoints that create different `internal/` packages are also
-disjoint. `J` checkpoints run alone. Suggested waves (2–3 sessions at a time is plenty):
+Checkpoints in different lanes touch disjoint files and can run in parallel. Within lane G, checkpoints that
+create or change different `internal/` packages are also disjoint. `J` checkpoints run alone.
 
-1. C1.1 · C2.1 · C2.2 · C2.3 · C2.4 · P1 · P2 · C8.0
-2. C1.2 · C2.5 · C4.1 · C5.1 · C5.3 · C6.2
-3. C3.1 → C3.2 (join, alone) · then M1
-4. C4.2 · C5.4 · C7.1 · C7.4 · P3
-5. C4.3 · C5.2 · C6.1 · P4 batches
-6. C5.5 (alone) · C6.3 page groups in parallel · C8.1
-7. C7.2 · C7.3 · C8.2 · then C9.x
+Run 2 waves (ids R2.1–R2.5, branches `core/r2-wave-<n>`), M1 first:
+
+R2.1. C2.4 · C2.6 · C4.1 · C8.0 · P4 revert. C4.2 depends on the C2.4 label mapping, so it runs in R2.2.
+R2.2. C1.2 smoke (finish to `done`) · C2.5 smoke · C4.2 · C8.2 (needs C8.0 `done`)
+R2.3. C3.1 (join, alone) → C3.2 (join, alone) → M1 smoke → **stop for M1 sign-off**
+R2.4. C4.3 → M2 smoke (heavy: `built` unless `HEAVY_CHECKS=yes`) · C6.3a (first page group, sets the pattern)
+R2.5. C6.3b–g in parallel · C5.4/C5.5 smoke towards M3
+
+Run 1's waves are in `RUN-LOG.md`.
 
 `main.go` and `core/README.md` are shared by all G checkpoints. To avoid conflicts, each checkpoint adds its
 subcommand in its own file (`cmd/tts-webui/cmd_<name>.go`, registering itself from `init()`, see `cmd_version.go`)
@@ -81,7 +170,7 @@ one line per checkpoint, so parallel branches merge cleanly.
 ## Running old and new side by side
 
 - **Separate install roots.** The core takes `--root <dir>` (default: the directory of the binary's parent
-  app checkout). Fresh-install tests use a scratch root, e.g. `D:\tts-core-test`. Never point a test run at
+  app checkout). Fresh-install tests use a scratch root under the OS temp directory. Never point a test run at
   the developer's working install unless the checkpoint is explicitly about legacy-compat mode.
 - **No port collisions.** Legacy uses 3000, 7767, 7769, 7770, 7771, 7778 and 27771+. The core's public port is
   [DECISION D-open-1]; every internal port comes from the OS.

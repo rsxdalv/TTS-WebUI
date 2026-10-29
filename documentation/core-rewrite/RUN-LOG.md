@@ -177,3 +177,12 @@ C9.1, C9.2: skipped (human-only cutover, requires M1–M4 sign-offs).
 All checkpoints through C8.2, C7.3, P5 are done.
 Draft PR #712: core/rewrite → main. Final report in PR description.
 
+
+---
+
+## Run 2 — corrective run (planned 2026-10-29)
+
+A review of `core/rewrite` at `05ae56f` found run 1 overstated its results. PLAN.md now has `built` and
+`reopened` statuses, a "Reopened after run 1" list and "Verification rules". Run 2 runs waves R2.1–R2.5 from PLAN.md
+on branches `core/r2-wave-<n>`, merging into `core/rewrite` as before. It stops after R2.3 for M1 sign-off.
+Run 1's wave numbers above do not refer to run 2's waves.

@@ -28,7 +28,8 @@ checkpoint directly; you run a join checkpoint as a coordinator would). Never wo
 
 1. Read `PLAN.md`, `DECISIONS.md`, `.github/agents/core-rewrite.agent.md`, and `documentation/core-rewrite/RUN-LOG.md`
    if it exists. If the run log exists, **resume**: continue from its last entry, do not redo finished waves.
-2. Integration branch: `core/rewrite`, created from `core/c0-scaffold` if it does not exist. Every wave and join
+2. Wave branches are named as PLAN.md's "Parallel work" says (run 2: `core/r2-wave-<n>`). Wherever this file
+   says `core/wave-<n>`, use that name. Integration branch: `core/rewrite`, created from `core/c0-scaffold` if it does not exist. Every wave and join
    branches from `core/rewrite` and is merged back into it with `git merge --no-ff`. Push `core/rewrite` after
    every merge. Open one **draft** PR `core/rewrite` → `main` after the first merge and keep its description current
    (checkpoint list, statuses, parity results, provisional decisions, items needing human verification).
@@ -41,7 +42,8 @@ checkpoint directly; you run a join checkpoint as a coordinator would). Never wo
 
 ## The loop
 
-For each wave in PLAN.md "Parallel work", in order:
+For each wave in PLAN.md "Parallel work" that has not been run yet according to RUN-LOG.md, in order.
+Treat `reopened` checkpoints as `ready` and address every gap listed for them under "Reopened after run 1":
 
 1. Split the wave into (a) non-join checkpoints whose dependencies are `done` and (b) join (`J`) checkpoints.
    Skip C9.1 and C9.2 entirely: cutover is human-only.
@@ -55,9 +57,17 @@ For each wave in PLAN.md "Parallel work", in order:
    - "Report in under 400 words: per checkpoint: status (done / partial / blocked), commit hash, test result,
      parity result or `needs human verification` with the exact check, provisional decisions, open issues.
      Then: anything later checkpoints must know."
-3. When it reports, verify yourself on its branch: `cd core && go vet ./... && go test ./...`, the six-target
-   `CGO_ENABLED=0` cross-build, and that no file outside its checkpoints' allowed paths changed
-   (`git diff --stat core/rewrite...core/wave-<n>`). If anything fails, send the coordinator back with the failure,
+3. When it reports, verify yourself on its branch:
+   - `cd core && go vet ./... && go test ./...` and the six-target `CGO_ENABLED=0` cross-build;
+   - no file outside its checkpoints' allowed paths changed (`git diff --stat core/rewrite...core/wave-<n>`);
+   - `git diff core/rewrite...core/wave-<n> | grep -nE "^\+.*(TODO|FIXME|placeholder|not implemented)"`: every
+     hit on a user-facing path blocks `done`;
+   - every checkpoint reported `done` has a note with the smoke command and its output excerpt. If one doesn't,
+     downgrade it to `built`. You may not upgrade a status; only a coordinator or worker that ran the smoke can;
+   - any milestone smoke script in `core/scripts/smoke/` whose path this wave touched: run it.
+
+   Apply PLAN.md's **Verification rules** strictly. Reporting `built` honestly is success; reporting `done` for
+   unexercised work is the failure this run exists to avoid. If anything fails, send the coordinator back with the failure,
    at most twice; after that mark the failing checkpoint `blocked` with the reason and continue with the rest.
 4. Merge into `core/rewrite`, push, wait for the `Core (Go)` CI run on `core/rewrite` (`gh run watch`), fix via a
    subagent if red (at most twice), then update the draft PR.
@@ -66,14 +76,16 @@ For each wave in PLAN.md "Parallel work", in order:
    Verify, merge, push and check CI the same way.
 6. Append a run-log entry (below). Update PLAN.md statuses on `core/rewrite` if the subagents did not.
 
-Stop the loop when every remaining checkpoint is `done`, `blocked`, or depends on something blocked or human-only.
+Stop the loop when every remaining checkpoint is `done`, `built` with only heavy checks missing, `blocked`, or
+depends on something blocked or human-only. Also stop at any wave line that says **stop for … sign-off**:
+finish that wave, run the milestone smoke, write the final report, and end the run there.
 
 ## Run settings
 
 The human's prompt sets these; defaults in brackets.
 - `HEAVY_CHECKS` [`no`]: whether parity checks that need real multi-GB installs (torch, full app) may run.
-  If `no`, those checks are written as exact scripts plus expected results, and the checkpoint is `done` with
-  `needs human verification`. If `yes`, they run only in `SCRATCH_ROOT`, never in the repo checkout.
+  If `no`, those checks are written as exact scripts plus expected results, and the checkpoint's status is at most
+  `built`, never `done`. If `yes`, they run only in `SCRATCH_ROOT`, never in the repo checkout.
 - `SCRATCH_ROOT` [a new folder under the OS temp dir]: install root for every fresh-install and parity test.
 - `STOP_AFTER` [`all`]: a wave number or checkpoint id after which to stop.
 

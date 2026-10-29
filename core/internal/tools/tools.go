@@ -66,8 +66,10 @@ var pinned = []Tool{
 		URLTemplate: "https://github.com/astral-sh/uv/releases/download/{version}/uv-aarch64-apple-darwin.tar.gz",
 		SHA256:      "60fbd5c8a1ed681845eea28d9d622fcde03c51e91a43465b64a1e17db1ed3472",
 	},
-	// ffmpeg — BtbN rolling `latest` tag pinned to n9.0 builds (2026-10-29).
-	// WARNING: BtbN's `latest` tag is rolling; SHA256 changes when BtbN rebuilds.
+	// ffmpeg — BtbN n9.0 build.
+	// BtbN publishes only a single rolling `latest` tag; there are no dated release tags.
+	// SHA256s verified against the 2026-10-28 checksums.sha256 file from that tag.
+	// (source: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/checksums.sha256)
 	// Update these hashes whenever bumping the ffmpeg pin.
 	{
 		Name:        "ffmpeg",
@@ -160,18 +162,20 @@ func ensureTool(ctx context.Context, dir string, t Tool, client *http.Client) er
 		}
 	}
 
+	if t.SHA256 == "" {
+		return fmt.Errorf("no checksum available for %s; refusing to install", t.Name)
+	}
+
 	rawURL := t.resolvedURL()
 	data, err := download(ctx, client, rawURL)
 	if err != nil {
 		return fmt.Errorf("downloading %s: %w", rawURL, err)
 	}
 
-	if t.SHA256 != "" {
-		sum := sha256.Sum256(data)
-		got := hex.EncodeToString(sum[:])
-		if got != strings.ToLower(t.SHA256) {
-			return fmt.Errorf("SHA256 mismatch for %s: got %s, want %s", t.Name, got, t.SHA256)
-		}
+	sum := sha256.Sum256(data)
+	got := hex.EncodeToString(sum[:])
+	if got != strings.ToLower(t.SHA256) {
+		return fmt.Errorf("SHA256 mismatch for %s: got %s, want %s", t.Name, got, t.SHA256)
 	}
 
 	destDir := filepath.Join(dir, t.Name)

@@ -115,10 +115,29 @@ func resolveURL(tmpl, version, gpuLabel string) string {
 		"{version}", version,
 		"{os}", runtime.GOOS,
 		"{arch}", runtime.GOARCH,
-		"{gpu}", gpuLabel,
+		"{gpu}", gpuVariant(gpuLabel),
 		"{ext}", ext,
 	)
 	return r.Replace(tmpl)
+}
+
+// gpuVariant maps a PyTorchChoice label to the URL-safe backend token used
+// in native engine asset names (e.g. audio.cpp release assets).
+func gpuVariant(label string) string {
+	switch label {
+	case "NVIDIA GPU":
+		return "cuda12.4"
+	case "AMD GPU (ROCM, Linux only)":
+		return "rocm10.0.0-test"
+	case "Apple M Series Chip":
+		return "metal"
+	case "Intel GPU (XPU)":
+		return "vulkan-portable"
+	case "CPU":
+		return "cpu"
+	default:
+		return "cpu"
+	}
 }
 
 func archiveExt() string {
@@ -166,7 +185,7 @@ func verifyChecksum(ctx context.Context, data []byte, filename, assetURL string,
 		}
 	}
 	if expected == "" {
-		return nil // no checksum available; skip
+		return fmt.Errorf("no checksum available for %s; refusing to install", filename)
 	}
 	sum := sha256.Sum256(data)
 	got := hex.EncodeToString(sum[:])

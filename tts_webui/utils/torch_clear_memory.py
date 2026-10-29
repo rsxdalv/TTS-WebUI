@@ -1,10 +1,9 @@
 import gc
 
-import torch
-
 
 def torch_clear_memory():
     try:
+        import torch  # lazy — torch is optional (P5)
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
     except Exception:

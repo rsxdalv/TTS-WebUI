@@ -146,14 +146,19 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("/", s.uiHandler(uiFS))
 }
 
-// tokenGuard wraps a handler to require the X-TTS-Token header.
+// tokenGuard wraps a handler to require either the X-TTS-Token header or the
+// tts-token cookie (set by serveIndexWithToken for EventSource and media requests).
 func (s *Server) tokenGuard(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-TTS-Token") != s.token {
-			http.Error(w, "forbidden: missing or invalid X-TTS-Token", http.StatusForbidden)
+		if r.Header.Get("X-TTS-Token") == s.token {
+			next.ServeHTTP(w, r)
 			return
 		}
-		next.ServeHTTP(w, r)
+		if c, err := r.Cookie("tts-token"); err == nil && c.Value == s.token {
+			next.ServeHTTP(w, r)
+			return
+		}
+		http.Error(w, "forbidden: missing or invalid token", http.StatusForbidden)
 	}
 }
 
@@ -169,7 +174,8 @@ func (s *Server) uiHandler(files fs.FS) http.HandlerFunc {
 	}
 }
 
-// serveIndexWithToken reads index.html and injects the token meta tag.
+// serveIndexWithToken reads index.html, injects the token meta tag, and sets
+// a SameSite=Strict HttpOnly cookie so EventSource and <audio src> can authenticate.
 func serveIndexWithToken(w http.ResponseWriter, files fs.FS, token string) {
 	data, err := fs.ReadFile(files, "index.html")
 	if err != nil {
@@ -180,6 +186,13 @@ func serveIndexWithToken(w http.ResponseWriter, files fs.FS, token string) {
 	injected := strings.Replace(string(data), "<head>", "<head>\n\t"+meta, 1)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
+	http.SetCookie(w, &http.Cookie{
+		Name:     "tts-token",
+		Value:    token,
+		Path:     "/",
+		SameSite: http.SameSiteStrictMode,
+		HttpOnly: true,
+	})
 	_, _ = w.Write([]byte(injected))
 }
 

@@ -198,6 +198,83 @@ func TestNoCookieNoHeader(t *testing.T) {
 	}
 }
 
+func TestCookieAuthForeignOriginBlocked(t *testing.T) {
+	srv, ts := newTestServer(t)
+	srv.Handle("GET /api/cookietest2", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req, _ := http.NewRequest("GET", ts.URL+"/api/cookietest2", nil)
+	req.AddCookie(&http.Cookie{Name: "tts-token", Value: srv.Token()})
+	req.Header.Set("Origin", "http://evil.com")
+	resp, err := ts.Client().Do(req)
+	if err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("foreign origin + valid cookie: status = %d, want 403", resp.StatusCode)
+	}
+}
+
+func TestSSEWithCookieAuth(t *testing.T) {
+	srv, ts := newTestServer(t)
+
+	srv.Handle("GET /api/ssetest", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ch := make(chan string)
+		close(ch)
+		server.SSE(w, r, ch)
+	}))
+
+	// With cookie → 200 + SSE content-type
+	req, _ := http.NewRequest("GET", ts.URL+"/api/ssetest", nil)
+	req.AddCookie(&http.Cookie{Name: "tts-token", Value: srv.Token()})
+	resp, err := ts.Client().Do(req)
+	if err != nil {
+		t.Fatalf("Do (with cookie): %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("SSE with cookie: status = %d, want 200", resp.StatusCode)
+	}
+
+	// Without auth → 403
+	resp2 := get(t, ts, "/api/ssetest", nil)
+	resp2.Body.Close()
+	if resp2.StatusCode != http.StatusForbidden {
+		t.Errorf("SSE no auth: status = %d, want 403", resp2.StatusCode)
+	}
+}
+
+func TestFileServeWithCookieAuth(t *testing.T) {
+	srv, ts := newTestServer(t)
+
+	srv.Handle("GET /api/filetest", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("file content"))
+	}))
+
+	// With cookie → 200
+	req, _ := http.NewRequest("GET", ts.URL+"/api/filetest", nil)
+	req.AddCookie(&http.Cookie{Name: "tts-token", Value: srv.Token()})
+	resp, err := ts.Client().Do(req)
+	if err != nil {
+		t.Fatalf("Do (with cookie): %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode == http.StatusForbidden {
+		t.Errorf("file with cookie: got 403, want non-403")
+	}
+
+	// Without auth → 403
+	resp2 := get(t, ts, "/api/filetest", nil)
+	resp2.Body.Close()
+	if resp2.StatusCode != http.StatusForbidden {
+		t.Errorf("file no auth: status = %d, want 403", resp2.StatusCode)
+	}
+}
+
 func TestCookieAuthForeignOrigin(t *testing.T) {
 	srv, ts := newTestServer(t)
 

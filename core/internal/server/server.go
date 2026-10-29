@@ -11,6 +11,7 @@ package server
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"io/fs"
@@ -150,11 +151,11 @@ func (s *Server) routes() {
 // tts-token cookie (set by serveIndexWithToken for EventSource and media requests).
 func (s *Server) tokenGuard(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-TTS-Token") == s.token {
+		if subtle.ConstantTimeCompare([]byte(r.Header.Get("X-TTS-Token")), []byte(s.token)) == 1 {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if c, err := r.Cookie("tts-token"); err == nil && c.Value == s.token {
+		if c, err := r.Cookie("tts-token"); err == nil && subtle.ConstantTimeCompare([]byte(c.Value), []byte(s.token)) == 1 {
 			next.ServeHTTP(w, r)
 			return
 		}

@@ -31,6 +31,7 @@ var allLabels = []Label{NVIDIA, AMD, Apple, Intel, CPU, Custom}
 // Parse returns the Label for s, or an error if s is not a valid PyTorchChoice string.
 // An unknown label is never silently accepted.
 func Parse(s string) (Label, error) {
+	s = strings.TrimSpace(s)
 	for _, l := range allLabels {
 		if string(l) == s {
 			return l, nil

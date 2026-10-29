@@ -151,7 +151,7 @@ func TestHashMismatch(t *testing.T) {
 	}
 }
 
-func TestEmptyHashSkipsVerification(t *testing.T) {
+func TestEmptyHashBlocked(t *testing.T) {
 	payload := makeZip(t, "ffmpeg.exe", "fake-ffmpeg")
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -169,11 +169,15 @@ func TestEmptyHashSkipsVerification(t *testing.T) {
 		OS:          "*",
 		Arch:        "*",
 		URLTemplate: srv.URL + "/ffmpeg.zip",
-		SHA256:      "", // should not verify
+		SHA256:      "", // must be blocked
 	}
 
-	if err := ensureTool(context.Background(), dir, tool, http.DefaultClient); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	err := ensureTool(context.Background(), dir, tool, http.DefaultClient)
+	if err == nil {
+		t.Fatal("expected error for empty SHA256, got nil")
+	}
+	if !strings.Contains(err.Error(), "no checksum available") {
+		t.Errorf("error = %q, want \"no checksum available\"", err)
 	}
 }
 

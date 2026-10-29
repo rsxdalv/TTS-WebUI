@@ -69,10 +69,13 @@ func (s *Supervisor) Start(ctx context.Context) error {
 		if err := tools.EnsureAll(ctx, s.root); err != nil {
 			return fmt.Errorf("ensuring tools (uv mode): %w", err)
 		}
-		gpuResult, _ := gpu.Detect(ctx)
+		gpuLabel, err := readGPULabel(ctx, s.root)
+		if err != nil {
+			return fmt.Errorf("determining GPU: %w", err)
+		}
 		mainVenv := filepath.Join(s.root.Venvs(), "main")
 		if _, err := os.Stat(mainVenv); err != nil {
-			if err := env.CreateMain(ctx, s.root, string(gpuResult.Label)); err != nil {
+			if err := env.CreateMain(ctx, s.root, gpuLabel); err != nil {
 				return fmt.Errorf("creating main uv venv: %w", err)
 			}
 		}
@@ -289,4 +292,21 @@ func buildUVEnv(root paths.Root) []string {
 		}
 	}
 	return out
+}
+
+// readGPULabel reads the GPU label from the installer-written .gpu marker file.
+// If the file doesn't exist, it falls back to gpu.Detect.
+func readGPULabel(ctx context.Context, root paths.Root) (string, error) {
+	data, err := os.ReadFile(root.MarkerFile(".gpu"))
+	if err == nil {
+		label, parseErr := gpu.Parse(string(data))
+		if parseErr == nil {
+			return string(label), nil
+		}
+	}
+	result, detectErr := gpu.Detect(ctx)
+	if detectErr != nil {
+		return "", detectErr
+	}
+	return string(result.Label), nil
 }

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
@@ -179,7 +178,7 @@ func TestParse(t *testing.T) {
 }
 
 func TestParseRealGPUFile(t *testing.T) {
-	content := strings.TrimSpace(loadFixture(t, "gpu_real.txt"))
+	content := loadFixture(t, "gpu_real.txt")
 	label, err := gpu.Parse(content)
 	if err != nil {
 		t.Fatalf("Parse of real .gpu file content %q: %v", content, err)

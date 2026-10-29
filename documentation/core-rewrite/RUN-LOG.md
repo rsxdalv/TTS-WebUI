@@ -41,8 +41,26 @@ Next: Wave 2 — C1.2 · C2.5 · C4.1 · C5.1 · C5.3 · C6.2
 ## Wave 2 — 2026-10-29
 
 Checkpoints: C1.2 · C2.5 · C4.1 · C5.1 · C5.3 · C6.2
-Branch: core/wave-2
+Branch: core/wave-2 | Merge commit on core/rewrite: 7bf5aa5
+CI: ✅ Core (Go) green — all 6 cross-build targets
 
-Status: **in progress**
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C1.2 | done | b5b277d | Platform adapter; no Neutralino outside platform/ |
+| C2.5 | done | ba71fc9 | internal/preflight: 7 checks, injectable runner |
+| C4.1 | done | 3e92158 | internal/tools: uv/ffmpeg/MinGit pinned; SHA256 TODOs (needs human verification) |
+| C5.1 | done | ebb45f5 | internal/engine/manifest: schema.json + Load() |
+| C5.3 | done | b20c9d7 | internal/router: ReverseProxy, WS hijack, cancel |
+| C6.2 | done | d3c8666 | ui/ Vite+React scaffold; --ui-dev flag |
+
+Needs human verification: C4.1 SHA256 checksums; C1.2 full TS build; C5.3 HTTP parity.
+Provisional decisions: none new.
+Next: Wave 3 — join checkpoints C3.1 → C3.2
+
+---
+
+## Wave 3 — 2026-10-29 (join checkpoints, alone)
+
+C3.1: core/c3.1-launch — Status: **in progress**
 
 ---

@@ -39,3 +39,13 @@ def restore_original_torch_load():
     """
     torch.load = original_torch_load
     logging.info("Restored original torch.load function")
+
+
+# Re-exported from tts-webui-sdk (P2)
+try:
+    from tts_webui_sdk.torch_load_patch import (  # noqa: F401
+        apply_torch_load_patch as _sdk_apply_torch_load_patch,
+        torch_clear_memory,
+    )
+except ImportError:
+    pass

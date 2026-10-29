@@ -40,15 +40,21 @@ func TestDetect_Table(t *testing.T) {
 	rocmOut := loadFixture(t, "rocm-smi-found.txt")
 
 	cases := []struct {
-		name   string
-		cmds   map[string]struct{ out string; code int }
+		name string
+		cmds map[string]struct {
+			out  string
+			code int
+		}
 		goos   string
 		goarch string
 		want   gpu.Label
 	}{
 		{
 			name: "nvidia wins on any platform",
-			cmds: map[string]struct{ out string; code int }{
+			cmds: map[string]struct {
+				out  string
+				code int
+			}{
 				"nvidia-smi": {out: nvidiaOut, code: 0},
 			},
 			goos: "linux", goarch: "amd64",
@@ -56,13 +62,19 @@ func TestDetect_Table(t *testing.T) {
 		},
 		{
 			name: "apple arm64 darwin",
-			cmds: map[string]struct{ out string; code int }{},
+			cmds: map[string]struct {
+				out  string
+				code int
+			}{},
 			goos: "darwin", goarch: "arm64",
 			want: gpu.Apple,
 		},
 		{
 			name: "amd via rocm-smi on linux",
-			cmds: map[string]struct{ out string; code int }{
+			cmds: map[string]struct {
+				out  string
+				code int
+			}{
 				"rocm-smi": {out: rocmOut, code: 0},
 			},
 			goos: "linux", goarch: "amd64",
@@ -70,7 +82,10 @@ func TestDetect_Table(t *testing.T) {
 		},
 		{
 			name: "intel via xpu-smi",
-			cmds: map[string]struct{ out string; code int }{
+			cmds: map[string]struct {
+				out  string
+				code int
+			}{
 				"xpu-smi": {out: "Intel XPU", code: 0},
 			},
 			goos: "linux", goarch: "amd64",
@@ -78,25 +93,37 @@ func TestDetect_Table(t *testing.T) {
 		},
 		{
 			name: "cpu fallback",
-			cmds: map[string]struct{ out string; code int }{},
+			cmds: map[string]struct {
+				out  string
+				code int
+			}{},
 			goos: "linux", goarch: "amd64",
 			want: gpu.CPU,
 		},
 		{
 			name: "cpu fallback on windows",
-			cmds: map[string]struct{ out string; code int }{},
+			cmds: map[string]struct {
+				out  string
+				code int
+			}{},
 			goos: "windows", goarch: "amd64",
 			want: gpu.CPU,
 		},
 		{
 			name: "cpu fallback on darwin intel",
-			cmds: map[string]struct{ out string; code int }{},
+			cmds: map[string]struct {
+				out  string
+				code int
+			}{},
 			goos: "darwin", goarch: "amd64",
 			want: gpu.CPU,
 		},
 		{
 			name: "nvidia beats apple on darwin arm64",
-			cmds: map[string]struct{ out string; code int }{
+			cmds: map[string]struct {
+				out  string
+				code int
+			}{
 				"nvidia-smi": {out: nvidiaOut, code: 0},
 			},
 			goos: "darwin", goarch: "arm64",

@@ -80,4 +80,3 @@ func (ps *platformState) force() error {
 	ps.job = 0
 	return err
 }
-

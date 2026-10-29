@@ -148,6 +148,16 @@ func (p *Proc) Wait() {
 	}
 }
 
+// PID returns the OS process ID, or 0 if the process has not started.
+func (p *Proc) PID() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.cmd == nil || p.cmd.Process == nil {
+		return 0
+	}
+	return p.cmd.Process.Pid
+}
+
 // Lines returns a snapshot of all buffered output lines.
 func (p *Proc) Lines() []string { return p.ring.lines() }
 

@@ -69,7 +69,7 @@ const venvVersion = "0"
 
 // Install creates or updates the Python venv for the given engine manifest.
 //
-// gpuLabel controls the torch wheel variant (values: "nvidia", "amd", "apple", "cpu").
+// gpuLabel must be a PyTorchChoice string (e.g. gpu.NVIDIA, gpu.CPU).
 // Idempotent: if the versioned directory exists and the pointer file matches, Install returns nil.
 // Uses uv from root.InstallerFiles()/tools/uv/ (D3: uv cache hardlinks within volume).
 func Install(ctx context.Context, root paths.Root, m manifest.Manifest, gpuLabel string) error {
@@ -150,19 +150,19 @@ func installTorch(ctx context.Context, run runFn, uv string, uvEnv []string, pyt
 	var indexURL string
 
 	switch gpuLabel {
-	case "nvidia":
+	case "NVIDIA GPU":
 		pkgs = []string{
 			"torch==" + torchVersion + "+cu128",
 			"torchvision",
 			"torchaudio==" + torchVersion + "+cu128",
 		}
 		indexURL = "https://download.pytorch.org/whl/cu128"
-	case "amd":
+	case "AMD GPU (ROCM, Linux only)":
 		pkgs = []string{"torch==" + torchVersion, "torchvision", "torchaudio==" + torchVersion}
 		indexURL = "https://download.pytorch.org/whl/rocm7.2"
-	case "apple":
+	case "Apple M Series Chip":
 		pkgs = []string{"torch==" + torchVersion, "torchvision", "torchaudio==" + torchVersion}
-	case "cpu":
+	case "CPU":
 		pkgs = []string{
 			"torch==" + torchVersion + "+cpu",
 			"torchvision",
@@ -170,7 +170,7 @@ func installTorch(ctx context.Context, run runFn, uv string, uvEnv []string, pyt
 		}
 		indexURL = "https://download.pytorch.org/whl/cpu"
 	default:
-		// intel or unknown: use default PyPI index.
+		// Intel GPU (XPU), Custom, or unknown: use default PyPI index.
 		pkgs = []string{"torch==" + torchVersion, "torchvision", "torchaudio==" + torchVersion}
 	}
 

@@ -168,3 +168,63 @@ func TestSSE(t *testing.T) {
 		t.Errorf("SSE output missing 'data: world': %q", body)
 	}
 }
+
+func TestCookieAuth(t *testing.T) {
+	srv, ts := newTestServer(t)
+
+	// Register a guarded route to test against.
+	srv.Handle("GET /api/cookietest", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req, _ := http.NewRequest("GET", ts.URL+"/api/cookietest", nil)
+	req.AddCookie(&http.Cookie{Name: "tts-token", Value: srv.Token()})
+	resp, err := ts.Client().Do(req)
+	if err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode == http.StatusForbidden {
+		t.Errorf("cookie auth: got 403, want any non-403")
+	}
+}
+
+func TestNoCookieNoHeader(t *testing.T) {
+	_, ts := newTestServer(t)
+	resp := get(t, ts, "/api/anything", nil)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("no auth: status = %d, want 403", resp.StatusCode)
+	}
+}
+
+func TestCookieAuthForeignOrigin(t *testing.T) {
+	srv, ts := newTestServer(t)
+
+	req, _ := http.NewRequest("GET", ts.URL+"/api/anything", nil)
+	req.AddCookie(&http.Cookie{Name: "tts-token", Value: srv.Token()})
+	req.Header.Set("Origin", "http://evil.com")
+	resp, err := ts.Client().Do(req)
+	if err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("foreign origin with valid cookie: status = %d, want 403", resp.StatusCode)
+	}
+}
+
+func TestIndexSetsCookie(t *testing.T) {
+	srv, ts := newTestServer(t)
+	resp := get(t, ts, "/", nil)
+	defer resp.Body.Close()
+	var found bool
+	for _, c := range resp.Cookies() {
+		if c.Name == "tts-token" && c.Value == srv.Token() {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("GET / did not set tts-token cookie")
+	}
+}

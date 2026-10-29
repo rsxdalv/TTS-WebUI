@@ -34,10 +34,10 @@ needs the package's API to exist.
 | C2.3 | `paths` + `state`: install root, marker files, atomic JSON | G | C0 | done |
 | C2.4 | `gpu`: detection mapped to installer GPU labels | G | C0 | reopened |
 | C2.5 | `preflight`: port of ignition preflight checks | G | C2.3 | built |
-| C2.6 | Browser auth for SSE, media and downloads (no custom headers) | G | C2.1 | ready |
+| C2.6 | Browser auth for SSE, media and downloads (no custom headers) | G | C2.1 | built |
 | C3.1 | Launcher on Go, legacy-compat mode (same steps, same markers) | J | C1.2, C2.4, C2.5, C2.6 | reopened |
 | C3.2 | Running app under the Go supervisor | J | C3.1 | built |
-| C4.1 | `tools`: pinned uv / ffmpeg / MinGit with checksums | G | C2.3 | reopened |
+| C4.1 | `tools`: pinned uv / ffmpeg / MinGit with checksums | G | C2.3 | built |
 | C4.2 | `env`: uv Python + main venv + torch variant | G | C4.1, C2.4 | reopened |
 | C4.3 | App runs from uv env (`--env=uv` next to `--env=conda`) | G | C4.2, C3.2 | reopened |
 | C5.1 | Engine manifest schema + loader over `extensions.json` | G | C2.3 | done |
@@ -60,7 +60,7 @@ needs the package's API to exist.
 | P1 | Drop PostgreSQL from the conda env spec | P | none | done |
 | P2 | Extract `tts-webui-sdk` Python package | P | none | built |
 | P3 | `setup_proxy_extension` delegates to core when `TTS_WEBUI_CORE_URL` is set | P | C5.4 | built |
-| P4 | Move in-process extensions to `"proxy": "native"`, in batches | P | P2 | reopened |
+| P4 | Move in-process extensions to `"proxy": "native"`, in batches | P | P2 | built |
 | P5 | Torch-optional main host (lazy imports) | P | P4 | built |
 
 Lanes: **L** launcher UI (TypeScript) · **G** Go core · **U** new UI (TypeScript) · **P** Python · **R** research ·
@@ -83,10 +83,31 @@ Found in a review of `core/rewrite` at `05ae56f`. Each item is what must be true
   single mapping function must convert both ways, with tests using real `.gpu` file contents.
   Every consumer (`env`, `native`, `cmd_engine`) must use it.
   An unknown label must be an error, never a silent fallback to default PyPI (that installs CPU torch on Windows).
+
+  **Still open after R2.1** (review of `core/r2-wave-1` at `8a2e1b2`). The constants and `gpu.Parse` exist, but:
+  - `Parse` does not trim, and core's own `.gpu` writer (`launcher/handlers.go`) appends `\n`, so a real `.gpu`
+    file fails to parse. `testdata/gpu_real.txt` has no trailing newline and the test trims before parsing, which
+    hides this. Use a fixture written exactly as legacy and ignition write it.
+  - Nothing reads `.gpu` except a marker-existence check. `launcher/supervisor.go` still calls `gpu.Detect` and
+    discards its error. `cmd_env`, `cmd_app` and `cmd_engine` pass `--gpu` through raw, without `Parse`
+    (`cmd_engine` help still says `cpu, cuda, rocm`).
+  - Unknown labels still fall back silently to PyPI in `env.go` (`installTorch` logs a warning and continues) and in
+    `engine/venv/venv.go` (`default:` case, which also sends Intel to PyPI).
+  - Two torch tables disagree: `env.TorchIndexURL` says cu126 / rocm6.2, `venv.go` says cu128 / rocm7.2. Keep one
+    table, matching `installer_scripts/js/initializeApp.js`. This overlaps C4.2, so the same worker does both.
+  - `engine/native` puts labels with spaces and parentheses into asset URLs; map them to asset variants explicitly.
 - **C2.6 (new):** the token travels only in the `X-TTS-Token` header, which `EventSource`, `<audio src>`, `<img>`
   and download links cannot send. Add a mechanism that keeps D9's protection: a `SameSite=Strict`, `HttpOnly`
   cookie set when the UI is served, accepted on `/api/*` together with the existing Host and Origin checks.
   Tests: an SSE stream and an audio file fetch work with the cookie and fail without it, and from a foreign Origin.
+
+  **After R2.1: `built`.** Verified against the real binary (`serve`): `/` sets `tts-token` with `HttpOnly;
+  SameSite=Strict`; `/api/*` gives 403 without it, passes with it, 403 with a foreign Origin, 400 with a foreign
+  Host; `/` with a foreign Host gets 400 and no cookie. Left for `done`: the tests do not cover what was asked
+  (the cookie test asserts only "not 403"; the foreign-Origin test passes even if the cookie is ignored; no SSE or
+  `/api/generations` file test through the guard); compare tokens with `subtle.ConstantTimeCompare`; record the
+  smoke in the note. Known limit, record in the note: any page on another `127.0.0.1` port is same-site, so the
+  browser attaches the cookie to its no-cors GETs. GET handlers under `/api/*` must have no side effects.
 - **C3.1:** the Go step endpoints exist, but nothing calls them. `launcher/vite-src/src/platform/` has only the
   Neutralino adapter, and the binary embeds a placeholder `index.html`. Needed:
   - a `core` platform implementation calling the typed step endpoints and SSE streams;
@@ -99,6 +120,11 @@ Found in a review of `core/rewrite` at `05ae56f`. Each item is what must be true
 - **C4.1:** every SHA-256 is empty, and empty skips verification. Fill real checksums for every pinned asset;
   make an empty checksum a build-time test failure. Update the uv pin to a current release (0.7.8 is old) and
   record the pin date.
+
+  **After R2.1: `built`.** uv 0.13.6 checksums match upstream `.sha256` files; pin date recorded. Left for `done`:
+  ffmpeg uses BtbN's rolling `latest` tag, so its checksums break on BtbN's next rebuild; pin a dated BtbN
+  release tag instead. `tools.go` still skips verification at runtime when a checksum is empty; make that an
+  error. MinGit has no upstream checksum (trust on first use); say so in the note.
 - **C4.2:** the main venv gets unpinned `torch torchvision torchaudio` only. Use the same versions, index URLs and
   extras as `installer_scripts/js/initializeApp.js` (torch 2.11.0, cu128 + xformers 0.0.35 for NVIDIA, rocm7.2,
   xpu, cpu, Apple default), driven by the C2.4 label.
@@ -112,12 +138,21 @@ Found in a review of `core/rewrite` at `05ae56f`. Each item is what must be true
 - **C8.0:** the note researched `rsxdalv/audio.cpp` (404) and filled the gaps with guesses ("forked from llama.cpp").
   The project is **`0xShug0/audio.cpp`** (Apache-2.0, own HTTP server and WebUI). Redo the research against that repo
   and its releases. Every claim cites a URL or `path:line` that was actually read.
+
+  **Still open after R2.1.** Sections 1–5 of the note check out (release v0.9.3, asset names and digests, endpoints,
+  SSE-disconnect cancel). Sections 6–10 are stale run-1 text and wrong: `POST /v1/models/load` and unload endpoints
+  exist, `idle_unload_ms` exists, the repo is reachable, the "loading_model" health state is unsourced, and the
+  draft manifest uses `rsxdalv`, `/completion` and `cancel: null`. Delete them and rewrite from the repo. Also: the
+  Linux NVIDIA asset is `…-bin-ubuntu-x64-cuda12.8-colab.tar.gz`; the Windows list omits the cpu-portable and
+  vulkan zips; "default port 8080" and "localhost-only by default" need a source or must go.
 - **C8.2:** the manifest's URL template points at `rsxdalv/audio.cpp` releases. Rebuild it from the corrected C8.0
   (real asset names, real endpoints, the real cancel behaviour).
 - **P4:** five extensions (vall_e_x, styletts2, seamless_m4t, mms, chatterbox) were switched to `"proxy": "native"`
   without generating audio with any of them. Because `extensions.json` changes the legacy app's behaviour at once,
   revert those five entries. Re-apply one extension at a time, only after it has generated audio through the proxy
   path on a real install (needs `HEAVY_CHECKS=yes` or the human).
+
+  **After R2.1: `built`.** The revert is exact: `extensions.json` matches `main`. Re-applying is later work.
 
 ## Verification rules
 
@@ -154,8 +189,8 @@ create or change different `internal/` packages are also disjoint. `J` checkpoin
 
 Run 2 waves (ids R2.1–R2.5, branches `core/r2-wave-<n>`), M1 first:
 
-R2.1. C2.4 · C2.6 · C4.1 · C8.0 · P4 revert. C4.2 depends on the C2.4 label mapping, so it runs in R2.2.
-R2.2. C1.2 smoke (finish to `done`) · C2.5 smoke · C4.2 · C8.2 (needs C8.0 `done`)
+R2.1. C2.4 · C2.6 · C4.1 · C8.0 · P4 revert. Ran 2026-10-29; results are under each item in "Reopened after run 1".
+R2.2. C1.2 smoke (finish to `done`) · C2.5 smoke · C2.4 finish → C4.2 (one worker, both touch `env`/`venv`) · C2.6 tests · C4.1 ffmpeg pin · C8.0 rewrite → C8.2
 R2.3. C3.1 (join, alone) → C3.2 (join, alone) → M1 smoke → **stop for M1 sign-off**
 R2.4. C4.3 → M2 smoke (heavy: `built` unless `HEAVY_CHECKS=yes`) · C6.3a (first page group, sets the pattern)
 R2.5. C6.3b–g in parallel · C5.4/C5.5 smoke towards M3

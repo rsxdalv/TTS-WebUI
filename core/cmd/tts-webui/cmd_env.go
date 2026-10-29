@@ -19,7 +19,7 @@ func init() {
 func runEnv(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("env", flag.ContinueOnError)
 	rootDir := fs.String("root", "", "install root (default: binary location)")
-	gpu := fs.String("gpu", "", "GPU label: nvidia, amd, apple, intel_extension_for_pytorch, cpu")
+	gpu := fs.String("gpu", "", `GPU label: "NVIDIA GPU", "AMD GPU (ROCM, Linux only)", "Apple M Series Chip", "Intel GPU (XPU)", "CPU", "Custom (Manual torch install)"`)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}

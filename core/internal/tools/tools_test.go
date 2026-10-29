@@ -191,3 +191,11 @@ func TestExtractTarGz(t *testing.T) {
 		t.Errorf("content = %q", data)
 	}
 }
+
+func TestPinnedSHA256NonEmpty(t *testing.T) {
+	for _, tool := range pinned {
+		if tool.SHA256 == "" {
+			t.Errorf("tool %s/%s/%s has empty SHA256", tool.Name, tool.OS, tool.Arch)
+		}
+	}
+}

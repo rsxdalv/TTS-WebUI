@@ -24,7 +24,7 @@ func TestIntegration_UVPythonInstall(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := CreateMain(context.Background(), root, "cpu"); err != nil {
+	if err := CreateMain(context.Background(), root, "CPU"); err != nil {
 		t.Fatalf("CreateMain: %v", err)
 	}
 

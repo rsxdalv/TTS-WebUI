@@ -186,3 +186,16 @@ A review of `core/rewrite` at `05ae56f` found run 1 overstated its results. PLAN
 `reopened` statuses, a "Reopened after run 1" list and "Verification rules". Run 2 runs waves R2.1–R2.5 from PLAN.md
 on branches `core/r2-wave-<n>`, merging into `core/rewrite` as before. It stops after R2.3 for M1 sign-off.
 Run 1's wave numbers above do not refer to run 2's waves.
+
+### R2.1 — 2026-10-29
+
+- Ran C2.4, C2.6, C4.1, C8.0 and the P4 revert on `core/r2-wave-1` (`42633e2`…`8a2e1b2`). The wave branched from
+  `05ae56f`, not from `6e69f7d`, so its workers did not see "Verification rules". The director's session ended
+  while merging, on a `PLAN.md` conflict.
+- Merge finished outside the director: the corrected `PLAN.md` was kept, and statuses were set from an
+  independent review. vet, tests and the six cross-builds pass. The C2.6 cookie was smoke-tested against the real
+  `serve` binary.
+- Results: C2.6 `built`, C4.1 `built`, P4 `built` (revert exact). C2.4 and C8.0 stay `reopened`. What is left is
+  listed under each item in PLAN.md's "Reopened after run 1".
+- Next: R2.2, as rewritten in PLAN.md "Parallel work". It now includes finishing C2.4 together with C4.2, and
+  rewriting C8.0 before C8.2.

@@ -17,11 +17,12 @@ func TestTorchIndexURL(t *testing.T) {
 		wantURL string
 		wantOK  bool
 	}{
-		{"nvidia", "https://download.pytorch.org/whl/cu126", true},
-		{"amd", "https://download.pytorch.org/whl/rocm6.2", true},
-		{"apple", "", true},
-		{"intel_extension_for_pytorch", "", true},
-		{"cpu", "https://download.pytorch.org/whl/cpu", true},
+		{"NVIDIA GPU", "https://download.pytorch.org/whl/cu126", true},
+		{"AMD GPU (ROCM, Linux only)", "https://download.pytorch.org/whl/rocm6.2", true},
+		{"Apple M Series Chip", "", true},
+		{"Intel GPU (XPU)", "", true},
+		{"CPU", "https://download.pytorch.org/whl/cpu", true},
+		{"Custom (Manual torch install)", "", true},
 		{"unknown_gpu", "", false},
 		{"", "", false},
 	}
@@ -59,7 +60,7 @@ func TestCreateMain_CallSequence(t *testing.T) {
 	}
 
 	root := makeRoot(t)
-	if err := createMain(context.Background(), root, "nvidia", fakeRun); err != nil {
+	if err := createMain(context.Background(), root, "NVIDIA GPU", fakeRun); err != nil {
 		t.Fatal(err)
 	}
 
@@ -86,7 +87,7 @@ func TestCreateMain_CPUNoIndexURL(t *testing.T) {
 	}
 
 	root := makeRoot(t)
-	if err := createMain(context.Background(), root, "cpu", fakeRun); err != nil {
+	if err := createMain(context.Background(), root, "CPU", fakeRun); err != nil {
 		t.Fatal(err)
 	}
 
@@ -104,7 +105,7 @@ func TestCreateMain_AppleNoIndexURL(t *testing.T) {
 	}
 
 	root := makeRoot(t)
-	if err := createMain(context.Background(), root, "apple", fakeRun); err != nil {
+	if err := createMain(context.Background(), root, "Apple M Series Chip", fakeRun); err != nil {
 		t.Fatal(err)
 	}
 
@@ -122,7 +123,7 @@ func TestCreateMain_Intel(t *testing.T) {
 	}
 
 	root := makeRoot(t)
-	if err := createMain(context.Background(), root, "intel_extension_for_pytorch", fakeRun); err != nil {
+	if err := createMain(context.Background(), root, "Intel GPU (XPU)", fakeRun); err != nil {
 		t.Fatal(err)
 	}
 
@@ -145,7 +146,7 @@ func TestCreateMain_UVCacheDir(t *testing.T) {
 		return nil, fmt.Errorf("UV_CACHE_DIR not set to %q in env", wantCacheDir)
 	}
 
-	if err := createMain(context.Background(), root, "cpu", fakeRun); err != nil {
+	if err := createMain(context.Background(), root, "CPU", fakeRun); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -156,7 +157,7 @@ func TestCreateMain_CopyWarning(t *testing.T) {
 	}
 	root := makeRoot(t)
 	// Should not return error, only warn.
-	if err := createMain(context.Background(), root, "cpu", fakeRun); err != nil {
+	if err := createMain(context.Background(), root, "CPU", fakeRun); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

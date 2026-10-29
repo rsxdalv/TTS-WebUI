@@ -52,7 +52,7 @@ func TestUpdateVenv_PointerSwap(t *testing.T) {
 	m := testVenvManifest("myengine")
 	now := time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC)
 
-	if err := updateVenv(context.Background(), root, m, "cpu", fakeBuild, okHealth, fixedNow(now)); err != nil {
+	if err := updateVenv(context.Background(), root, m, "CPU", fakeBuild, okHealth, fixedNow(now)); err != nil {
 		t.Fatalf("updateVenv: %v", err)
 	}
 
@@ -83,7 +83,7 @@ func TestUpdateVenv_HealthFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := updateVenv(context.Background(), root, m, "cpu", fakeBuild, failHealth, fixedNow(now))
+	err := updateVenv(context.Background(), root, m, "CPU", fakeBuild, failHealth, fixedNow(now))
 	if err == nil {
 		t.Fatal("expected error from health failure, got nil")
 	}

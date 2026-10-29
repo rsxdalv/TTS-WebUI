@@ -31,67 +31,68 @@ type Tool struct {
 }
 
 // pinned is the tool table embedded at build time.
-// SHA256 values are listed per platform below; "" means "TODO: fill in after first download".
+// Pinned 2026-10-29. Update SHA256 when bumping a tool version.
 var pinned = []Tool{
-	// uv — Python package manager
+	// uv — Python package manager (v0.13.6)
 	{
-		Name:    "uv",
-		Version: "0.7.8",
-		OS:      "windows",
-		Arch:    "amd64",
-		// TODO: fill SHA256 from https://github.com/astral-sh/uv/releases/tag/0.7.8
+		Name:        "uv",
+		Version:     "0.13.6",
+		OS:          "windows",
+		Arch:        "amd64",
 		URLTemplate: "https://github.com/astral-sh/uv/releases/download/{version}/uv-x86_64-pc-windows-msvc.zip",
-		SHA256:      "",
+		SHA256:      "a2a8820d5eea32f08ef467ef3b7f66883a9b076d5737a2fc2fbb5f458d1bb50f",
 	},
 	{
 		Name:        "uv",
-		Version:     "0.7.8",
+		Version:     "0.13.6",
 		OS:          "linux",
 		Arch:        "amd64",
 		URLTemplate: "https://github.com/astral-sh/uv/releases/download/{version}/uv-x86_64-unknown-linux-gnu.tar.gz",
-		SHA256:      "",
+		SHA256:      "f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645",
 	},
 	{
 		Name:        "uv",
-		Version:     "0.7.8",
+		Version:     "0.13.6",
 		OS:          "darwin",
 		Arch:        "amd64",
 		URLTemplate: "https://github.com/astral-sh/uv/releases/download/{version}/uv-x86_64-apple-darwin.tar.gz",
-		SHA256:      "",
+		SHA256:      "63ba17fdda55ad1a230d4b37fc6017ffa10c23688c83818bd3bfdf914c652a02",
 	},
 	{
 		Name:        "uv",
-		Version:     "0.7.8",
+		Version:     "0.13.6",
 		OS:          "darwin",
 		Arch:        "arm64",
 		URLTemplate: "https://github.com/astral-sh/uv/releases/download/{version}/uv-aarch64-apple-darwin.tar.gz",
-		SHA256:      "",
+		SHA256:      "60fbd5c8a1ed681845eea28d9d622fcde03c51e91a43465b64a1e17db1ed3472",
 	},
-	// ffmpeg — audio/video processing
+	// ffmpeg — BtbN rolling `latest` tag pinned to n9.0 builds (2026-10-29).
+	// WARNING: BtbN's `latest` tag is rolling; SHA256 changes when BtbN rebuilds.
+	// Update these hashes whenever bumping the ffmpeg pin.
 	{
 		Name:        "ffmpeg",
-		Version:     "7.1",
+		Version:     "9.0",
 		OS:          "windows",
 		Arch:        "amd64",
-		URLTemplate: "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-gpl-7.1.zip",
-		SHA256:      "", // TODO: fill from BtbN release page (varies by rebuild date)
+		URLTemplate: "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-win64-gpl-9.0.zip",
+		SHA256:      "601b23208f04a2aaeb37aa6685bf98846b6cb257f6c7563234a81eb928b23b47",
 	},
 	{
 		Name:        "ffmpeg",
-		Version:     "7.1",
+		Version:     "9.0",
 		OS:          "linux",
 		Arch:        "amd64",
-		URLTemplate: "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-linux64-gpl-7.1.tar.xz",
-		SHA256:      "",
+		URLTemplate: "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz",
+		SHA256:      "a53ef3a880a6ecec05265061efe6372153666528115dd4696609c939db8e64eb",
 	},
-	// MinGit — Windows only
+	// MinGit — Windows only (v2.49.0; SHA256 computed from the release zip 2026-10-29)
 	{
 		Name:        "mingit",
 		Version:     "2.49.0",
 		OS:          "windows",
 		Arch:        "amd64",
 		URLTemplate: "https://github.com/git-for-windows/git/releases/download/v{version}.windows.1/MinGit-{version}-64-bit.zip",
-		SHA256:      "",
+		SHA256:      "971cdee7c0feaa1e41369c46da88d1000a24e79a6f50191c820100338fb7eca5",
 	},
 }
 

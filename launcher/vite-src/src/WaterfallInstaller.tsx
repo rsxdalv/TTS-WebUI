@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, ReactNode } from "react";
-import { filesystem } from "@neutralinojs/lib";
+import platform from "./platform";
 import { WEBUI_ROOT, joinPath } from "./config";
 
 // ---------------------------------------------------------------------------
@@ -28,14 +28,10 @@ export interface WaterfallStepDef {
 // Condition helpers
 // ---------------------------------------------------------------------------
 
-/** Returns `true` when a file or directory exists (uses filesystem.getStats). */
+/** Returns `true` when a file or directory exists (uses platform.stat). */
 export async function pathExists(path: string): Promise<boolean> {
-  try {
-    await filesystem.getStats(path);
-    return true;
-  } catch {
-    return false;
-  }
+  const info = await platform.stat(path);
+  return info.exists;
 }
 
 /**

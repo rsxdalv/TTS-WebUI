@@ -17,21 +17,37 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"strings"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/webui"
 )
 
+// Options holds optional configuration for the server.
+type Options struct {
+	// UIDev, when non-empty, is a URL (e.g. "http://localhost:5173") to which
+	// all non-/api requests are reverse-proxied instead of serving the embedded
+	// UI. Pass this with the --ui-dev flag during development.
+	UIDev string
+}
+
 // Server is the local HTTP server.
 type Server struct {
 	port  int
 	token string
+	opts  Options
 	mux   *http.ServeMux
 }
 
 // New creates a Server that will listen on port (0 = OS-assigned).
 // A fresh 32-byte random token is generated for every call.
 func New(port int) (*Server, error) {
+	return NewWithOptions(port, Options{})
+}
+
+// NewWithOptions creates a Server with the given options.
+func NewWithOptions(port int, opts Options) (*Server, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		return nil, fmt.Errorf("generating token: %w", err)
@@ -39,6 +55,7 @@ func New(port int) (*Server, error) {
 	s := &Server{
 		port:  port,
 		token: hex.EncodeToString(raw),
+		opts:  opts,
 		mux:   http.NewServeMux(),
 	}
 	s.routes()
@@ -109,7 +126,16 @@ func (s *Server) routes() {
 	// All other /api/* require the token.
 	s.mux.HandleFunc("/api/", s.tokenGuard(http.NotFoundHandler()))
 
-	// UI files; inject token into index.html.
+	// UI: in dev mode proxy to the Vite dev server; otherwise serve embedded.
+	if s.opts.UIDev != "" {
+		devTarget, err := url.Parse(s.opts.UIDev)
+		if err == nil {
+			rp := httputil.NewSingleHostReverseProxy(devTarget)
+			s.mux.Handle("/", rp)
+			return
+		}
+		slog.Error("invalid --ui-dev URL, falling back to embedded", "url", s.opts.UIDev, "err", err)
+	}
 	s.mux.HandleFunc("/", s.uiHandler(uiFS))
 }
 

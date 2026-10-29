@@ -1,5 +1,5 @@
-﻿import { useState, useEffect, useRef } from "react";
-import { os, events, debug, filesystem } from "@neutralinojs/lib";
+﻿import { useState, useRef } from "react";
+import platform, { OS } from "./platform";
 import { WEBUI_ROOT, joinPath } from "./config";
 import { Button } from "./components/ReleaseDownloader/Button";
 import { Status } from "./components/ReleaseDownloader/Status";
@@ -19,21 +19,27 @@ function getDownloadCommand(url: string, outputPath: string): string {
 }
 
 function getUnzipCommand(zipPath: string, destPath: string): string {
-  const isWindows = (window as any).NL_OS === "Windows";
-  if (isWindows) {
+  if (OS === "windows") {
     return `powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${destPath}' -Force"`;
   }
   return `unzip -o '${zipPath}' -d '${destPath}'`;
 }
 
 interface ProcessState {
-  procId: number | null;
   pid: number | null;
   stdout: string[];
   stderr: string[];
   exitCode: number | null;
   isRunning: boolean;
 }
+
+const idle: ProcessState = {
+  pid: null,
+  stdout: [],
+  stderr: [],
+  exitCode: null,
+  isRunning: false,
+};
 
 export function ReleaseDownloader({
   name,
@@ -42,171 +48,88 @@ export function ReleaseDownloader({
   cwd = WEBUI_ROOT,
   onSuccess,
 }: ReleaseDownloaderProps) {
-  const [download, setDownload] = useState<ProcessState>({
-    procId: null,
-    pid: null,
-    stdout: [],
-    stderr: [],
-    exitCode: null,
-    isRunning: false,
-  });
-  const [unzip, setUnzip] = useState<ProcessState>({
-    procId: null,
-    pid: null,
-    stdout: [],
-    stderr: [],
-    exitCode: null,
-    isRunning: false,
-  });
-  const [gitConfig, setGitConfig] = useState<ProcessState>({
-    procId: null,
-    pid: null,
-    stdout: [],
-    stderr: [],
-    exitCode: null,
-    isRunning: false,
-  });
-
-  const downloadRef = useRef(download);
-  const unzipRef = useRef(unzip);
-  const gitConfigRef = useRef(gitConfig);
+  const [download, setDownload] = useState<ProcessState>(idle);
+  const [unzip, setUnzip] = useState<ProcessState>(idle);
+  const [gitConfig, setGitConfig] = useState<ProcessState>(idle);
   const onSuccessRef = useRef(onSuccess);
-
-  useEffect(() => {
-    downloadRef.current = download;
-  }, [download]);
-  useEffect(() => {
-    unzipRef.current = unzip;
-  }, [unzip]);
-  useEffect(() => {
-    gitConfigRef.current = gitConfig;
-  }, [gitConfig]);
-  useEffect(() => {
-    onSuccessRef.current = onSuccess;
-  }, [onSuccess]);
-
-  useEffect(() => {
-    const handler = (evt: any) => {
-      const { id, action, data } = evt.detail;
-      const numId = typeof id === "string" ? parseInt(id, 10) : id;
-
-      // Download process events
-      if (
-        downloadRef.current.procId !== null &&
-        downloadRef.current.procId === numId
-      ) {
-        setDownload((prev) => {
-          if (action === "stdOut")
-            return { ...prev, stdout: [...prev.stdout, data] };
-          if (action === "stdErr")
-            return { ...prev, stderr: [...prev.stderr, data] };
-          if (action === "exit")
-            return { ...prev, exitCode: data, isRunning: false, procId: null };
-          return prev;
-        });
-      }
-
-      // Unzip process events
-      if (
-        unzipRef.current.procId !== null &&
-        unzipRef.current.procId === numId
-      ) {
-        setUnzip((prev) => {
-          if (action === "stdOut")
-            return { ...prev, stdout: [...prev.stdout, data] };
-          if (action === "stdErr")
-            return { ...prev, stderr: [...prev.stderr, data] };
-          if (action === "exit") {
-            if (data === 0 && (window as any).NL_OS !== "Windows") onSuccessRef.current?.();
-            return { ...prev, exitCode: data, isRunning: false, procId: null };
-          }
-          return prev;
-        });
-      }
-
-      // Git config process events
-      if (
-        gitConfigRef.current.procId !== null &&
-        gitConfigRef.current.procId === numId
-      ) {
-        setGitConfig((prev) => {
-          if (action === "stdOut")
-            return { ...prev, stdout: [...prev.stdout, data] };
-          if (action === "stdErr")
-            return { ...prev, stderr: [...prev.stderr, data] };
-          if (action === "exit") {
-            if (data === 0) onSuccessRef.current?.();
-            return { ...prev, exitCode: data, isRunning: false, procId: null };
-          }
-          return prev;
-        });
-      }
-    };
-
-    events.on("spawnedProcess", handler);
-    return () => {
-      events.off("spawnedProcess", handler);
-    };
-  }, []);
+  onSuccessRef.current = onSuccess;
 
   const spawnDownload = async () => {
     const zipPath = joinPath(cwd, zipName);
-    await filesystem.createDirectory(cwd).catch(() => {}); // Neutralino always throws
+    await platform.mkdir(cwd).catch(() => {});
     const command = getDownloadCommand(downloadUrl, zipPath);
     console.log(`[ReleaseDownloader] Downloading: ${command}`);
-    const result = await os.spawnProcess(command, { cwd });
-    setDownload({
-      procId: result.id,
-      pid: result.pid,
-      stdout: [],
-      stderr: [],
-      exitCode: null,
-      isRunning: true,
+    setDownload({ ...idle, isRunning: true });
+    const pid = await platform.spawn(command, {
+      cwd,
+      onStdout: (data) =>
+        setDownload((prev) => ({ ...prev, stdout: [...prev.stdout, data] })),
+      onStderr: (data) =>
+        setDownload((prev) => ({ ...prev, stderr: [...prev.stderr, data] })),
+      onExit: (code) =>
+        setDownload((prev) => ({
+          ...prev,
+          exitCode: code,
+          isRunning: false,
+          pid: null,
+        })),
     });
+    setDownload((prev) => ({ ...prev, pid }));
   };
 
   const spawnUnzip = async () => {
     const zipPath = joinPath(cwd, zipName);
     const command = getUnzipCommand(zipPath, cwd);
     console.log(`[ReleaseDownloader] Unzipping: ${command}`);
-    const result = await os.spawnProcess(command, { cwd });
-    setUnzip({
-      procId: result.id,
-      pid: result.pid,
-      stdout: [],
-      stderr: [],
-      exitCode: null,
-      isRunning: true,
+    setUnzip({ ...idle, isRunning: true });
+    const pid = await platform.spawn(command, {
+      cwd,
+      onStdout: (data) =>
+        setUnzip((prev) => ({ ...prev, stdout: [...prev.stdout, data] })),
+      onStderr: (data) =>
+        setUnzip((prev) => ({ ...prev, stderr: [...prev.stderr, data] })),
+      onExit: (code) => {
+        if (code === 0 && OS !== "windows") onSuccessRef.current?.();
+        setUnzip((prev) => ({
+          ...prev,
+          exitCode: code,
+          isRunning: false,
+          pid: null,
+        }));
+      },
     });
+    setUnzip((prev) => ({ ...prev, pid }));
   };
 
   const spawnGitConfig = async () => {
     const command = `git config core.fileMode false`;
     console.log(`[ReleaseDownloader] Fixing git core.fileMode: ${command}`);
     try {
-      const result = await os.spawnProcess(command, { cwd });
-      setGitConfig({
-        procId: result.id,
-        pid: result.pid,
-        stdout: [],
-        stderr: [],
-        exitCode: null,
-        isRunning: true,
+      setGitConfig({ ...idle, isRunning: true });
+      const pid = await platform.spawn(command, {
+        cwd,
+        onStdout: (data) =>
+          setGitConfig((prev) => ({ ...prev, stdout: [...prev.stdout, data] })),
+        onStderr: (data) =>
+          setGitConfig((prev) => ({ ...prev, stderr: [...prev.stderr, data] })),
+        onExit: (code) => {
+          if (code === 0) onSuccessRef.current?.();
+          setGitConfig((prev) => ({
+            ...prev,
+            exitCode: code,
+            isRunning: false,
+            pid: null,
+          }));
+        },
       });
+      setGitConfig((prev) => ({ ...prev, pid }));
     } catch (error) {
-      debug.log(
-        `[ReleaseDownloader] Error spawning git config process: ${error}`,
-      );
       console.error(`[ReleaseDownloader] Failed to fix git config: ${error}`);
-      return;
     }
   };
 
-  const terminate = async (_procId: number, pid: number) => {
-    const isWindows = (window as any).NL_OS === "Windows";
-    if (isWindows) {
-      await os.execCommand(`taskkill /F /T /PID ${pid}`).catch(() => {});
-    }
+  const terminate = async (pid: number) => {
+    await platform.kill(pid).catch(() => {});
     setDownload((prev) => ({ ...prev, isRunning: false }));
     setUnzip((prev) => ({ ...prev, isRunning: false }));
     setGitConfig((prev) => ({ ...prev, isRunning: false }));
@@ -221,8 +144,8 @@ export function ReleaseDownloader({
         label={download.isRunning ? "Cancel Download" : "Download Release"}
         isRunning={download.isRunning}
         onClick={() =>
-          download.isRunning
-            ? terminate(download.procId!, download.pid!)
+          download.isRunning && download.pid != null
+            ? terminate(download.pid)
             : spawnDownload()
         }
         variant={download.isRunning ? "red" : "green"}
@@ -231,7 +154,9 @@ export function ReleaseDownloader({
         label={unzip.isRunning ? "Cancel Extract" : "Extract ZIP"}
         isRunning={unzip.isRunning}
         onClick={() =>
-          unzip.isRunning ? terminate(unzip.procId!, unzip.pid!) : spawnUnzip()
+          unzip.isRunning && unzip.pid != null
+            ? terminate(unzip.pid)
+            : spawnUnzip()
         }
         disabled={!download.isRunning && download.exitCode === null}
         variant="purple"
@@ -242,12 +167,12 @@ export function ReleaseDownloader({
         }
         isRunning={gitConfig.isRunning}
         onClick={() =>
-          gitConfig.isRunning
-            ? terminate(gitConfig.procId!, gitConfig.pid!)
+          gitConfig.isRunning && gitConfig.pid != null
+            ? terminate(gitConfig.pid)
             : spawnGitConfig()
         }
         disabled={
-          (window as any).NL_OS !== "Windows" ||
+          OS !== "windows" ||
           unzip.isRunning ||
           unzip.exitCode !== 0
         }
@@ -255,12 +180,12 @@ export function ReleaseDownloader({
       />
       <Status label="Download" exitCode={download.exitCode} running={download.isRunning} />
       <Status label="Extract" exitCode={unzip.exitCode} running={unzip.isRunning} />
-      {(window as any).NL_OS === "Windows" && unzip.exitCode === 0 && (
+      {OS === "windows" && unzip.exitCode === 0 && (
         <Status label="Git config" exitCode={gitConfig.exitCode} running={gitConfig.isRunning} />
       )}
       <Log stdout={download.stdout} stderr={download.stderr} label="Download log" />
       <Log stdout={unzip.stdout} stderr={unzip.stderr} label="Extract log" />
-      {(window as any).NL_OS === "Windows" && (
+      {OS === "windows" && (
         <Log stdout={gitConfig.stdout} stderr={gitConfig.stderr} label="Git config log" />
       )}
     </div>

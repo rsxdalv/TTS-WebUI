@@ -20,11 +20,12 @@ func init() {
 func runServe(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	port := fs.Int("port", 7700, "port to listen on (default: D-open-1)")
+	uiDev := fs.String("ui-dev", "", "proxy non-/api requests to this Vite dev server URL (e.g. http://localhost:5173)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
-	srv, err := server.New(*port)
+	srv, err := server.NewWithOptions(*port, server.Options{UIDev: *uiDev})
 	if err != nil {
 		return fmt.Errorf("creating server: %w", err)
 	}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { filesystem } from "@neutralinojs/lib";
+import platform from "./platform";
 import { WEBUI_ROOT, joinPath } from "./config";
 
 const GPU_FILE_PATH = joinPath(WEBUI_ROOT, "installer_scripts", ".gpu");
@@ -38,7 +38,7 @@ export function GPUSelectStep({ onComplete }: GPUSelectStepProps) {
     try {
       //   const config = JSON.stringify({ pythonVersion, gpuChoice, torchVersion }, null, 2);
       //   await filesystem.writeFile(GPU_CONFIG_PATH, config);
-      await filesystem.writeFile(GPU_FILE_PATH, gpuChoice);
+      await platform.writeFile(GPU_FILE_PATH, gpuChoice);
       onComplete();
     } catch (e: any) {
       setError(e?.message ?? "Failed to write config");

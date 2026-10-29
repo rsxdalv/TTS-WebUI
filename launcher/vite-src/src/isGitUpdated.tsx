@@ -1,24 +1,22 @@
-import { os, filesystem } from "@neutralinojs/lib";
+import platform from "./platform";
 import { WEBUI_ROOT } from "./config";
 
 /**
- * Check via Neutralino if the git repository has updates (fetch + compare).
+ * Check via the platform adapter if the git repository has updates (fetch + compare).
  * Returns true if up-to-date, false if updates available.
  */
 
 export async function isGitUpdated(): Promise<boolean> {
   try {
-    await os.execCommand("git fetch origin", { cwd: WEBUI_ROOT });
+    await platform.exec(`git fetch origin`);
 
-    const localFile = await filesystem.readFile(
+    const localFile = await platform.readFile(
       WEBUI_ROOT + "\\installer_scripts\\.git_version",
     );
     const localHash = localFile.trim();
 
-    const remoteResult = await os.execCommand("git rev-parse origin/main", {
-      cwd: WEBUI_ROOT,
-    });
-    const remoteHash = remoteResult.stdOut.trim();
+    const remoteResult = await platform.exec(`git rev-parse origin/main`);
+    const remoteHash = remoteResult.stdout.trim();
     console.log("Local Git Hash:", localHash);
     console.log("Remote Git Hash:", remoteHash);
 
@@ -40,17 +38,15 @@ export async function checkGitUpdateStatus(): Promise<{
   remoteHash: string;
 }> {
   try {
-    await os.execCommand("git fetch origin", { cwd: WEBUI_ROOT });
+    await platform.exec(`git fetch origin`);
 
-    const localResult = await filesystem.readFile(
+    const localResult = await platform.readFile(
       WEBUI_ROOT + "\\installer_scripts\\.git_version",
     );
-    const remoteResult = await os.execCommand("git rev-parse origin/main", {
-      cwd: WEBUI_ROOT,
-    });
+    const remoteResult = await platform.exec(`git rev-parse origin/main`);
 
     const localHash = localResult.trim();
-    const remoteHash = remoteResult.stdOut.trim();
+    const remoteHash = remoteResult.stdout.trim();
 
     return { hasUpdates: localHash !== remoteHash, localHash, remoteHash };
   } catch {

@@ -83,8 +83,14 @@ Settings:
 
 Follow .github/agents/director.agent.md. Work on core/rewrite (draft PR #712); branches core/r3-<name>.
 Read PLAN.md's "Status", "Still open after R2.3", "Verification rules" and "Parallel work", plus the last two
-entries of RUN-LOG.md. Run R2.3b: fix every item under "Still open after R2.3", rewrite the M1 smoke to the
-M1 rules, run it, and have a reviewer load the launcher in a browser. Then stop for my M1 sign-off.
+entries of RUN-LOG.md, and DECISIONS.md D12. Run R2.3b: fix every item under "Still open after R2.3", rewrite
+the M1 smoke to the M1 rules, run it, and have a reviewer load the launcher in a browser. Then stop for my M1
+sign-off.
+
+C3.1 follows D12. The core launcher is a separate entry whose components call only /api/steps/* and /api/app/*.
+Go does the work. Delete platform/core.ts and the VITE_PLATFORM alias; do not re-implement exec, stat or
+readFile in the browser, and add no Go endpoint that runs a command or reads a path sent by the client. Leave the
+Neutralino entry untouched.
 
 Run 2 reported M1 ready while the launcher UI was still the Neutralino build and app/start killed the app.
 The smoke passed because it skipped those checks. Do not repeat that. A PASS only counts if the script tests

@@ -35,7 +35,7 @@ needs the package's API to exist.
 | C2.4 | `gpu`: detection mapped to installer GPU labels | G | C0 | reopened |
 | C2.5 | `preflight`: port of ignition preflight checks | G | C2.3 | built |
 | C2.6 | Browser auth for SSE, media and downloads (no custom headers) | G | C2.1 | built |
-| C3.1 | Launcher on Go, legacy-compat mode (same steps, same markers) | J | C1.2, C2.4, C2.5, C2.6 | reopened |
+| C3.1 | Launcher on Go, legacy-compat mode (same steps, same markers) | J | C2.4, C2.5, C2.6 | reopened |
 | C3.2 | Running app under the Go supervisor | J | C3.1 | reopened |
 | C4.1 | `tools`: pinned uv / ffmpeg / MinGit with checksums | G | C2.3 | built |
 | C4.2 | `env`: uv Python + main venv + torch variant | G | C4.1, C2.4 | reopened |
@@ -68,7 +68,7 @@ Lanes: **L** launcher UI (TypeScript) · **G** Go core · **U** new UI (TypeScri
 
 Milestones (human sign-off each). A milestone is ready only when every checkpoint on its path is `done` and its
 smoke script passes:
-- **M1** after C3.2: the Go launcher can replace Neutralino as the default launcher. Path: C1.2, C2.4, C2.5, C2.6, C3.1, C3.2.
+- **M1** after C3.2: the Go launcher can replace Neutralino as the default launcher. Path: C2.4, C2.5, C2.6, C3.1, C3.2.
 - **M2** after C4.3: uv mode can be the default for new installs. Path: C4.1, C4.2, C4.3.
 - **M3** after C5.5: the Python proxy tree is retired behind a flag. Path: C5.2, C5.4, C5.5, P3.
 - **M4** after C6.3: the core serves the whole UI; Next.js leaves the runtime. Path: C6.1, C6.2, C6.3.
@@ -108,15 +108,9 @@ Found in a review of `core/rewrite` at `05ae56f`. Each item is what must be true
   `/api/generations` file test through the guard); compare tokens with `subtle.ConstantTimeCompare`; record the
   smoke in the note. Known limit, record in the note: any page on another `127.0.0.1` port is same-site, so the
   browser attaches the cookie to its no-cors GETs. GET handlers under `/api/*` must have no side effects.
-- **C3.1:** the Go step endpoints exist, but nothing calls them. `launcher/vite-src/src/platform/` has only the
-  Neutralino adapter, and the binary embeds a placeholder `index.html`. Needed:
-  - a `core` platform implementation calling the typed step endpoints and SSE streams;
-  - build selection of the adapter (`VITE_PLATFORM=core|neutralino`);
-  - the launcher's core build copied into `core/internal/webui/assets` by a script used by CI and locally;
-  - `tts-webui launch` serving that UI;
-  - the M1 smoke (below) passing.
-
-  The `ui/` `/setup` route stays a placeholder until C6 (see D10).
+- **C3.1:** the Go step endpoints exist, but nothing calls them, and the binary embeds a placeholder
+  `index.html`. Superseded by the step-level design (D12); see C3.1 under "Checkpoints" and "Still open after
+  R2.3". The `ui/` `/setup` route stays a placeholder until C6 (see D10).
 - **C4.1:** every SHA-256 is empty, and empty skips verification. Fill real checksums for every pinned asset;
   make an empty checksum a build-time test failure. Update the uv pin to a current release (0.7.8 is old) and
   record the pin date.
@@ -159,25 +153,19 @@ Found in a review of `core/rewrite` at `05ae56f`. Each item is what must be true
 Found in a review of `core/rewrite` at `1bad8e0` (2026-10-29). vet, tests and cross-builds pass, and `m1.ps1`
 prints PASS, but the M1 path does not work. Each item is what must be true before the checkpoint can be `done`.
 
-- **C3.1 — the embedded launcher is still the Neutralino build.**
-  - `vite.config.ts` aliases `/.*\/platform\/neutralino/`, but `platform/index.ts` imports `"./neutralino"`, so
-    the alias never matches. The committed bundle (`core/internal/webui/assets/assets/index-*.js`) contains no
-    `/api/` path and four `Neutralino` references. In a browser, `tts-webui launch` loads
-    `localhost:7789/__neutralino_globals.js` (refused), throws on `ws://127.0.0.1:undefined`, and stays on
+- **C3.1 — the embedded launcher is still the Neutralino build, and the approach was wrong.**
+  - What exists: `platform/core.ts` re-implements Neutralino's OS-level interface in the browser (`exec`, `spawn`,
+    `kill`, `stat`, `readFile`, `mkdir`) as stubs and fakes, selected by a Vite alias that never matches
+    (`platform/index.ts` imports `"./neutralino"`). The committed bundle has no `/api/` path. In a browser,
+    `tts-webui launch` loads the Neutralino globals script, throws on `ws://127.0.0.1:undefined`, and stays on
     "Detecting installation state…" with zero `/api` requests.
-  - Fix the selection: e.g. `index.ts` re-exports from a `./selected` module that the alias or a
-    `define`-driven import picks. `launcher/vite-src/index.html` must not load the Neutralino globals script in a
-    core build.
-  - `core.ts` is mostly stubs:
-    - `stat` always returns `exists:false`, so no step ever shows as done;
-    - `exec` and `spawn` are fakes, and `kill` and `mkdir` are no-ops;
-    - `readFile` throws;
-    - the `.gpu` write ignores the HTTP status;
-    - `initPlatform` is not awaited (`main.tsx`).
-
-    The step components must call the typed endpoints (`callStep`/`subscribeStep`) instead of the Neutralino-shaped
-    `exec`/`stat` calls. Today nothing imports them.
-  - The streams `GET /api/steps/preflight/stream` and `/gpu/stream` do not exist; either add them or don't call them.
+  - Do not fix the stubs. Delete `platform/core.ts`, the `VITE_PLATFORM` alias and the `vite.config.ts` changes,
+    and restore `platform/index.ts`, `main.tsx` and `index.html` to their Neutralino-only form. Then build the
+    separate core entry described under C3.1 in "Checkpoints" (D12): step components that call only
+    `/api/steps/*` and `/api/app/*`, take state from `/api/steps/status`, and stream logs with `EventSource`.
+  - Go side: move into Go steps or `status` anything the Neutralino components did in the browser. That includes
+    the marker checks behind "Detecting installation state", `isGitUpdated` and file reads. Add the missing
+    streams for steps that run a process.
   - SSE responses send no headers until the first event, and a stream for a process that already exited never
     ends. Flush headers immediately, and send a final `event: done` with the exit code, then close.
   - `build-webui.ps1` ignores `$LASTEXITCODE`, so a failed npm build still wipes the assets. CI does not run
@@ -343,6 +331,8 @@ cwd. One implementation: `neutralino`. Pure refactor, no behaviour change. Steps
 small change, because the Go backend will implement those operations, not a generic shell.
 Scout task: re-inventory every `Neutralino.*`, `NL_*` and `__neutralino_globals` use with `path:line`.
 Done when: no Neutralino import or `NL_*` global outside `platform/`; launcher builds and runs as before.
+Since D12 this serves only the Neutralino build. The core launcher (C3.1) does not use `platform/`, so C1.2 is
+off the M1 path.
 
 ### Phase 2 — Go core primitives (lane G, packages are file-disjoint)
 
@@ -377,13 +367,27 @@ Parity: on the same machine, same pass/fail per check as ignition. Writes `.pref
 
 ### Phase 3 — Launcher on Go (join)
 
-**C3.1 Launcher in legacy-compat mode.** Add a `core` implementation of the launcher's platform adapter that
-talks to the Go server over HTTP + SSE using **typed step endpoints** (`POST /api/steps/preflight`,
-`/api/steps/gpu`, …), never a generic "run this shell string" endpoint. Go implements each step doing what
-the legacy path does today: download the release zip (with TLS verification, unlike `curl -k`), preflight,
-`init_mamba`, write `.gpu`, `micromamba run node installer_scripts/init_app.js`, git update check.
-The Go binary serves the launcher's Vite build (copied into `internal/webui/assets` at build time) and opens
-the browser: `tts-webui launch`. The Neutralino build keeps working from the same source.
+**C3.1 Launcher in legacy-compat mode.** The seam is the **step**, not the operating system (D12). Go does all
+the work on the server; the browser only shows progress and asks for steps to run.
+- **Go:** each step is a typed endpoint that does what the legacy path does today: download the release zip
+  (with TLS verification, unlike `curl -k`), preflight, `init_mamba`, write `.gpu`,
+  `micromamba run node installer_scripts/init_app.js`, the git update check.
+  - `GET /api/steps/status` reports which steps are done, from the same markers the legacy flow checks.
+  - Every step with a process has a log stream that sends headers at once, replays history, and ends with
+    `event: done` carrying the exit code.
+  - Anything ignition's components did in the browser (`stat` on markers, `isGitUpdated`, reading files) becomes
+    part of a Go step or of `status`.
+  - Never a generic "run this command", "read this file" or "stat this path" endpoint.
+- **UI:** a separate core entry in `launcher/vite-src` (for example `src/core-app/` with its own `core.html`,
+  built with `vite build` for that entry).
+  - Its step components call only `/api/steps/*` and `/api/app/*`.
+  - It reuses the purely visual components (`LogViewer`, `ProcessDisplay`, the `ReleaseDownloader/` status and log
+    pieces, the theme). It does not import `platform/`, Neutralino, or any step logic from the Neutralino components.
+- **Neutralino stays frozen.** The existing entry, components and `platform/neutralino.ts` are unchanged and keep
+  building through `launcher.yaml` until C9.2 deletes them.
+- **Build:** a script used by CI and locally builds the core entry and copies it into `core/internal/webui/assets`.
+  The Go binary serves it and opens the browser: `tts-webui launch`. CI rebuilds it and fails if the committed
+  assets differ.
 Fix the known ignition bugs on the Go path and list them in the notes: Windows-only `\\` path in
 `isGitUpdated` (update never runs on macOS/Linux), mamba step "done" when only the directory exists
 (check for the micromamba binary), backslash paths in the extension-manager command, `start` via spawn.

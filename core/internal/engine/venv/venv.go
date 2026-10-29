@@ -76,6 +76,12 @@ func Install(ctx context.Context, root paths.Root, m manifest.Manifest, gpuLabel
 	return install(ctx, root, m, gpuLabel, execRun)
 }
 
+// BuildVenv creates the Python venv at the given version directory without writing the
+// pointer file. Used by internal/engine/update for blue/green updates.
+func BuildVenv(ctx context.Context, root paths.Root, m manifest.Manifest, gpuLabel, version string) error {
+	return buildVenv(ctx, root, m, gpuLabel, version, execRun)
+}
+
 func install(ctx context.Context, root paths.Root, m manifest.Manifest, gpuLabel string, run runFn) error {
 	name := sanitizeName(m.PackageName)
 	venvPath := VenvPath(root, name, venvVersion)
@@ -87,37 +93,42 @@ func install(ctx context.Context, root paths.Root, m manifest.Manifest, gpuLabel
 		}
 	}
 
+	if err := buildVenv(ctx, root, m, gpuLabel, venvVersion, run); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(root.Venvs(), 0o755); err != nil {
+		return fmt.Errorf("creating venvs dir: %w", err)
+	}
+	return os.WriteFile(pointerPath(root, name), []byte(venvVersion+"\n"), 0o644)
+}
+
+// buildVenv creates the Python venv at the given version path without touching pointer files.
+func buildVenv(ctx context.Context, root paths.Root, m manifest.Manifest, gpuLabel, version string, run runFn) error {
+	name := sanitizeName(m.PackageName)
+	venvPath := VenvPath(root, name, version)
+
 	uv := uvBinary(root)
 	cacheDir := filepath.Join(root.InstallerFiles(), "uvcache")
 	uvEnv := append(os.Environ(), "UV_CACHE_DIR="+cacheDir)
 	python := pythonBin(venvPath)
 
-	// Step 1: create the venv.
 	if out, err := run(ctx, uv, []string{"venv", venvPath, "--allow-existing"}, uvEnv); err != nil {
 		return fmt.Errorf("uv venv: %w\n%s", err, out)
 	}
-
-	// Step 2: install torch for the GPU label.
 	if err := installTorch(ctx, run, uv, uvEnv, python, gpuLabel); err != nil {
 		return err
 	}
-
-	// Step 3: torchcodec (CPU index — safe, as in venv_setup_wrapper).
 	if out, err := run(ctx, uv, []string{
 		"pip", "install", "--python", python,
 		"torchcodec", "--index-url=https://download.pytorch.org/whl/cpu",
 	}, uvEnv); err != nil {
 		return fmt.Errorf("uv pip install torchcodec: %w\n%s", err, out)
 	}
-
-	// Step 4: xformers.
 	if out, err := run(ctx, uv, []string{
 		"pip", "install", "--python", python, "xformers==0.0.35",
 	}, uvEnv); err != nil {
 		return fmt.Errorf("uv pip install xformers: %w\n%s", err, out)
 	}
-
-	// Step 5: engine requirements + compatibility pins.
 	reqs := compatPins()
 	if m.Engine.Install != nil {
 		reqs = append(reqs, m.Engine.Install.Requirements...)
@@ -128,12 +139,7 @@ func install(ctx context.Context, root paths.Root, m manifest.Manifest, gpuLabel
 			return fmt.Errorf("uv pip install requirements: %w\n%s", err, out)
 		}
 	}
-
-	// Write pointer file after successful install.
-	if err := os.MkdirAll(root.Venvs(), 0o755); err != nil {
-		return fmt.Errorf("creating venvs dir: %w", err)
-	}
-	return os.WriteFile(pointerPath(root, name), []byte(venvVersion+"\n"), 0o644)
+	return nil
 }
 
 // installTorch installs torch/torchvision/torchaudio for the given GPU label.
@@ -194,3 +200,6 @@ func compatPins() []string {
 func sanitizeName(packageName string) string {
 	return strings.NewReplacer("/", "_", ".", "_").Replace(packageName)
 }
+
+// SanitizeName is the exported form of sanitizeName.
+func SanitizeName(packageName string) string { return sanitizeName(packageName) }

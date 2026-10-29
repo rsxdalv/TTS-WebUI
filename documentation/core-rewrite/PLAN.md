@@ -36,12 +36,12 @@ One checkpoint per session.
 | C6.2 | `ui/` Vite SPA scaffold, embed pipeline, `--ui-dev` | U | C2.1 | done |
 | C6.3 | Port pages, one group per checkpoint (see list) | U | C6.1, C6.2 | done |
 | C7.1 | Core self-update | G | C2.3 | done |
-| C7.2 | Blue/green engine updates | G | C5.2 | ready |
+| C7.2 | Blue/green engine updates | G | C5.2 | done |
 | C7.3 | App (Python host) distribution without git pull | J | C4.3, D-open-3 | ready |
 | C7.4 | Catalog fetch, cache, schema versioning | G | C5.1 | done |
 | C8.0 | Research: audio.cpp server lifecycle and cancel | R | none | done |
 | C8.1 | Native engine kind (asset by OS/arch/GPU, verify, launch) | G | C5.4, C4.1 | done |
-| C8.2 | audio.cpp engine + cancel | G | C8.0, C8.1 | ready |
+| C8.2 | audio.cpp engine + cancel | G | C8.0, C8.1 | done |
 | C9.1 | Start scripts and release zip launch the Go binary | J | M1–M4 | waiting |
 | C9.2 | Remove micromamba, Node installer, Neutralino build | J | C9.1, human only | waiting |
 | P1 | Drop PostgreSQL from the conda env spec | P | none | done |

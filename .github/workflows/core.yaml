@@ -1,0 +1,77 @@
+name: Core (Go)
+
+on:
+  push:
+    paths:
+      - "core/**"
+      - ".github/workflows/core.yaml"
+  pull_request:
+    paths:
+      - "core/**"
+      - ".github/workflows/core.yaml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache-dependency-path: core/go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test ./...
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: windows, goarch: amd64, ext: ".exe" }
+          - { goos: windows, goarch: arm64, ext: ".exe" }
+          - { goos: linux, goarch: amd64, ext: "" }
+          - { goos: linux, goarch: arm64, ext: "" }
+          - { goos: darwin, goarch: amd64, ext: "" }
+          - { goos: darwin, goarch: arm64, ext: "" }
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache-dependency-path: core/go.mod
+      - name: Build
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -trimpath \
+            -ldflags "-s -w \
+              -X github.com/rsxdalv/TTS-WebUI/core/internal/version.Version=${{ github.ref_name }} \
+              -X github.com/rsxdalv/TTS-WebUI/core/internal/version.Commit=${{ github.sha }} \
+              -X github.com/rsxdalv/TTS-WebUI/core/internal/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o dist/tts-webui-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} \
+            ./cmd/tts-webui
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tts-webui-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: core/dist/tts-webui-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+          if-no-files-found: error

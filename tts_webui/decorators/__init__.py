@@ -29,3 +29,12 @@ from .decorator_save_wav import (
 )
 from .gradio_dict_decorator import dictionarize, dictionarize_wraps
 from .log_function_time import log_function_time, log_generator_time
+
+# Re-exported from tts-webui-sdk (P2) — allows SDK-aware imports
+try:
+    from tts_webui_sdk.decorators import (  # noqa: F401
+        get_interruption_flag,
+        InterruptionFlag,
+    )
+except ImportError:
+    pass  # SDK not installed in this environment

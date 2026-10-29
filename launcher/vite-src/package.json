@@ -18,6 +18,7 @@
 		"@eslint/js": "^9.9.0",
 		"@neutralinojs/neu": "^11.7.1",
 		"@tailwindcss/vite": "^4.2.2",
+		"@types/node": "^26.6.6",
 		"@types/react": "^19.2.0",
 		"@types/react-dom": "^19.2.0",
 		"@vitejs/plugin-react-swc": "^4.2.0",

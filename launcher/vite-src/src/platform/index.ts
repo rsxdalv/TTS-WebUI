@@ -28,3 +28,4 @@ export interface Platform {
 export { OS, CWD, initPlatform } from "./neutralino";
 
 export { default as platform } from "./neutralino";
+export { default } from "./neutralino";

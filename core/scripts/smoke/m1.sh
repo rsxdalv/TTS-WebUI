@@ -71,4 +71,13 @@ curl -s -X POST -H "Cookie: tts-token=$TOKEN" "http://127.0.0.1:$PORT/api/app/st
 curl -s -X POST -H "Cookie: tts-token=$TOKEN" "http://127.0.0.1:$PORT/api/app/stop" > /dev/null
 echo "PASS: app start/stop"
 
+# 11. Orphan-process check: wait for any supervised children to exit, then verify
+sleep 2
+CHILDREN=$(pgrep -P "$SRV_PID" 2>/dev/null || true)
+if [ -n "$CHILDREN" ]; then
+    echo "FAIL: orphan processes after app/stop (pids: $CHILDREN)"
+    exit 1
+fi
+echo "PASS: no orphan processes after app/stop"
+
 echo "M1 smoke complete."

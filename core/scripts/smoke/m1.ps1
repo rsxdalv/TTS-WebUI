@@ -94,6 +94,16 @@ try {
     Write-Host "PASS: app stop (responded)"
 } catch { Write-Host "INFO: app/stop returned error (expected in scratch root): $($_.Exception.Message)" }
 
+# 11. Orphan-process check: wait for any supervised children to exit, then verify
+Start-Sleep -Seconds 2
+$children = Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $proc.Id } |
+    Where-Object { $_.Name -notin @("conhost.exe") }
+if ($children) {
+    Write-Host "FAIL: orphan processes after app/stop: $($children.Name -join ', ')"
+    exit 1
+}
+Write-Host "PASS: no orphan processes after app/stop"
+
 Write-Host "M1 smoke complete."
 
 } finally { Cleanup }

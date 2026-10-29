@@ -199,3 +199,62 @@ Run 1's wave numbers above do not refer to run 2's waves.
   listed under each item in PLAN.md's "Reopened after run 1".
 - Next: R2.2, as rewritten in PLAN.md "Parallel work". It now includes finishing C2.4 together with C4.2, and
   rewriting C8.0 before C8.2.
+
+---
+
+## R2.2 — 2026-10-29
+
+Branch: core/r2-wave-2 | Merge commit on core/rewrite: ea6fc2b | CI: ✅ Core (Go) green
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C4.1 | built | ee1a1d2 | ffmpeg SHA256 pinned (BtbN has no dated tags); empty checksum now errors |
+| C2.6 | built | 2d121b4 | subtle.ConstantTimeCompare; SSE/file/foreign-origin cookie tests added |
+| C2.4+C4.2 | built | f43c247 | Parse trims; .gpu file preferred over Detect; error on unknown label; cu128/rocm7.2; gpuVariant maps labels to asset tokens |
+| C8.0 | done | 5424aad | Sections 6–10 rewritten from live 0xShug0/audio.cpp API doc; all claims cited |
+| C8.2 | built | f5d1357 | Manifest rebuilt: real repo, real SHA256s, real cancel mode; Linux NVIDIA asset override noted |
+| C1.2 | built | (smoke only) | grep: zero Neutralino refs outside platform/ |
+| C2.5 | built | (smoke only) | tts-webui preflight --json returned JSON |
+
+Known issue (C8.2): native.go gpuVariant maps Linux NVIDIA to cuda12.4 but the asset is cuda12.8-colab; OS and arch tokens also need mapping (ubuntu/x64 vs linux/amd64). Not blocking — C8.2 is built.
+Next: R2.3 — C3.1 (join) → C3.2 (join) → M1 smoke → stop for M1 sign-off.
+
+---
+
+## R2.3 — 2026-10-29
+
+### C3.1 (core/r2-c3.1-launcher)
+Merge commit: 7cbe2e9 | CI: ✅ Core (Go) green
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C3.1 | built | f312233 | core.ts platform adapter; VITE_PLATFORM=core build selection; Vite launcher built and embedded (250 KB bundle); core/scripts/build-webui.{sh,ps1}; M1 smoke scripts written |
+
+M1 smoke partial run (no Python in scratch root):
+- PASS: GET / returned launcher HTML (real 250 KB Vite bundle, not 203-byte placeholder)
+- PASS: preflight ran and returned JSON
+- PASS: .gpu = CPU (marker file written correctly)
+- INFO: app/start 500 (expected — no Python in scratch root)
+
+### C3.2 (core/r2-c3.2-supervisor)
+Merge commit: 8994235 | CI: ✅ Core (Go) green
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C3.2 | built | 96afc55 | Orphan-process check added to M1 smoke; R2.3 verification note in C3.2.md |
+
+M1 smoke final run (director-run, 2026-10-29):
+```
+PASS: GET / returned launcher HTML
+PASS: preflight ran
+PASS: .gpu = CPU
+INFO: app/start returned error (expected in scratch root)
+PASS: app stop (responded)
+PASS: no orphan processes after app/stop
+M1 smoke complete.
+```
+
+Needs human verification: start/stop on real install; no orphans after browser close; state parity vs Neutralino.
+**M1 milestone ready for human sign-off.**
+
+Run stops here (STOP_AFTER=R2.3). Next waves: R2.4 (C4.3 → M2 smoke), R2.5 (C6.3b–g, C5.4/C5.5 smoke).

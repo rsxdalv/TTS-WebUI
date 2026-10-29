@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
@@ -130,6 +131,31 @@ func TestMicromambaPath(t *testing.T) {
 		}
 		if filepath.Base(filepath.Dir(p)) != "bin" {
 			t.Errorf("expected .../bin/micromamba on Unix, got %q", p)
+		}
+	}
+}
+
+func TestUVPythonPath(t *testing.T) {
+	root := newTestRoot(t)
+	p := uvPythonPath(root)
+	// Must be under root.Venvs()/main.
+	mainVenv := filepath.Join(root.Venvs(), "main")
+	if !strings.HasPrefix(p, mainVenv) {
+		t.Errorf("uvPythonPath = %q, want prefix %q", p, mainVenv)
+	}
+	if runtime.GOOS == "windows" {
+		if filepath.Base(p) != "python.exe" {
+			t.Errorf("expected python.exe on Windows, got %q", p)
+		}
+		if !strings.Contains(p, "Scripts") {
+			t.Errorf("expected Scripts dir on Windows, got %q", p)
+		}
+	} else {
+		if filepath.Base(p) != "python" {
+			t.Errorf("expected python on Unix, got %q", p)
+		}
+		if !strings.Contains(p, "bin") {
+			t.Errorf("expected bin dir on Unix, got %q", p)
 		}
 	}
 }

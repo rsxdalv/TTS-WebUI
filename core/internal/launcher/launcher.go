@@ -25,20 +25,37 @@ type StepStatus struct {
 
 // Launcher holds shared mutable state for the step handlers.
 type Launcher struct {
-	root   paths.Root
-	mu     sync.Mutex
-	sprocs map[string]*procs.Proc // subprocess steps: mamba, install, update, run
-	slogs  map[string]*Log        // log-only steps: download
-	sup    *Supervisor            // C3.2: app process supervisor
+	root    paths.Root
+	envMode string
+	mu      sync.Mutex
+	sprocs  map[string]*procs.Proc // subprocess steps: mamba, install, update, run
+	slogs   map[string]*Log        // log-only steps: download
+	sup     *Supervisor            // C3.2: app process supervisor
 }
 
-// New creates a Launcher for the given install root.
+// LauncherOptions holds optional configuration for the Launcher.
+type LauncherOptions struct {
+	// EnvMode selects the Python environment: "conda" (default) or "uv".
+	EnvMode string
+}
+
+// New creates a Launcher for the given install root with default options.
 func New(root paths.Root) *Launcher {
+	return NewWithOptions(root, LauncherOptions{})
+}
+
+// NewWithOptions creates a Launcher with explicit options.
+func NewWithOptions(root paths.Root, opts LauncherOptions) *Launcher {
+	mode := opts.EnvMode
+	if mode == "" {
+		mode = "conda"
+	}
 	return &Launcher{
-		root:   root,
-		sprocs: make(map[string]*procs.Proc),
-		slogs:  make(map[string]*Log),
-		sup:    newSupervisor(root),
+		root:    root,
+		envMode: mode,
+		sprocs:  make(map[string]*procs.Proc),
+		slogs:   make(map[string]*Log),
+		sup:     newSupervisor(root, mode),
 	}
 }
 

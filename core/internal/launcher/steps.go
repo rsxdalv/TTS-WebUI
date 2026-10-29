@@ -67,3 +67,12 @@ func installDone(root paths.Root) bool {
 	_, err := os.Stat(root.MarkerFile(".git_version"))
 	return err == nil
 }
+
+// uvPythonPath returns the Python binary inside the uv-managed main venv
+// (root.Venvs()/main). This is the Python used when --env=uv is active.
+func uvPythonPath(root paths.Root) string {
+	if runtime.GOOS == "windows" {
+		return filepath.Join(root.Venvs(), "main", "Scripts", "python.exe")
+	}
+	return filepath.Join(root.Venvs(), "main", "bin", "python")
+}

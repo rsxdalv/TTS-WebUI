@@ -158,7 +158,8 @@
                 "license": "MIT",
                 "website": "https://github.com/Plachtaa/VALL-E-X",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.vall_e_x",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.styletts2",
@@ -173,7 +174,8 @@
                 "license": "MIT",
                 "website": "https://styletts2.github.io/",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.styletts2",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.seamless_m4t",
@@ -188,7 +190,8 @@
                 "license": "MIT",
                 "website": "https://github.com/facebookresearch/seamless_communication",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.seamless_m4t",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.mms",
@@ -203,7 +206,8 @@
                 "license": "MIT",
                 "website": "https://huggingface.co/facebook/mms-tts",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.mms",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.f5_tts",
@@ -232,7 +236,8 @@
                 "license": "MIT",
                 "website": "https://github.com/resemble-ai/chatterbox",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.chatterbox",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native"
             },
             {
                 "package_name": "tts_webui_extension.kokoro",

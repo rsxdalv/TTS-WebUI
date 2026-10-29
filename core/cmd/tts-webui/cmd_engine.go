@@ -10,6 +10,8 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/catalog"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/lifecycle"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/manifest"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/venv"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/server"
 )
 
@@ -36,6 +38,7 @@ func runEngine(ctx context.Context, args []string) error {
 		fmt.Fprintln(fs.Output(), "  list              print engine manifests as JSON")
 		fmt.Fprintln(fs.Output(), "  catalog           show catalog engines")
 		fmt.Fprintln(fs.Output(), "  catalog --refresh force a catalog refresh")
+		fmt.Fprintln(fs.Output(), "  install <id>      create the Python venv for an engine")
 		fmt.Fprintln(fs.Output(), "  start <id>        start an engine")
 		fmt.Fprintln(fs.Output(), "  stop <id>         stop an engine")
 		fmt.Fprintln(fs.Output(), "  logs <id>         stream engine logs (SSE)")
@@ -83,6 +86,42 @@ func runEngine(ctx context.Context, args []string) error {
 		enc := json.NewEncoder(fs.Output())
 		enc.SetIndent("", "  ")
 		return enc.Encode(manifests)
+
+	case "install":
+		if fs.NArg() < 2 {
+			return fmt.Errorf("usage: tts-webui engine install <id>")
+		}
+		engineID := fs.Arg(1)
+		root, err := resolveRoot(*rootDir)
+		if err != nil {
+			return err
+		}
+		manifests, err := manifest.Load(root.Dir())
+		if err != nil {
+			return fmt.Errorf("loading manifests: %w", err)
+		}
+		var m manifest.Manifest
+		found := false
+		for _, mm := range manifests {
+			if mm.PackageName == engineID {
+				m = mm
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("engine %q not found in manifests", engineID)
+		}
+		gpuResult, gpuErr := gpu.Detect(ctx)
+		if gpuErr != nil {
+			gpuResult = gpu.Result{Label: gpu.CPU}
+		}
+		fmt.Fprintf(fs.Output(), "installing venv for %s (gpu=%s)...\n", engineID, gpuResult.Label)
+		if err := venv.Install(ctx, root, m, string(gpuResult.Label)); err != nil {
+			return fmt.Errorf("venv install: %w", err)
+		}
+		fmt.Fprintln(fs.Output(), "done")
+		return nil
 
 	case "start", "stop", "logs":
 		// These subcommands require a running server; handled via HTTP in daemon mode.

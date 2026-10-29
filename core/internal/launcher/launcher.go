@@ -37,6 +37,9 @@ type Launcher struct {
 type LauncherOptions struct {
 	// EnvMode selects the Python environment: "conda" (default) or "uv".
 	EnvMode string
+	// ProxyMode selects how proxy extensions are started: "python" (default) or "core".
+	// In "core" mode the lifecycle manager starts server.py and native extensions.
+	ProxyMode string
 }
 
 // New creates a Launcher for the given install root with default options.

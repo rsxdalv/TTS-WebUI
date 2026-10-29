@@ -108,7 +108,7 @@ func (r *Router) proxy(target *url.URL) *httputil.ReverseProxy {
 			removeHopByHop(req.Header)
 			setXForwarded(req)
 		},
-		FlushInterval:  -1,                     // flush immediately for SSE/streaming
+		FlushInterval:  -1, // flush immediately for SSE/streaming
 		ModifyResponse: stripHopByHopResponse,
 		ErrorHandler: func(w http.ResponseWriter, req *http.Request, err error) {
 			if req.Context().Err() != nil {

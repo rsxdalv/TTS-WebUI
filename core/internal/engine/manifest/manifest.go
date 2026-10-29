@@ -33,9 +33,9 @@ type Launch struct {
 
 // Health describes how to probe the engine's readiness.
 type Health struct {
-	Path       string `json:"path,omitempty"`       // HTTP path, e.g. "/health"
-	IntervalS  int    `json:"interval_s,omitempty"` // probe interval in seconds
-	TimeoutS   int    `json:"timeout_s,omitempty"`  // per-probe timeout in seconds
+	Path      string `json:"path,omitempty"`       // HTTP path, e.g. "/health"
+	IntervalS int    `json:"interval_s,omitempty"` // probe interval in seconds
+	TimeoutS  int    `json:"timeout_s,omitempty"`  // per-probe timeout in seconds
 }
 
 // API describes the engine's HTTP API surface.
@@ -65,14 +65,14 @@ type Cancel struct {
 
 // Engine holds the engine-specific block for a manifest entry.
 type Engine struct {
-	Kind      Kind              `json:"kind"`
-	Install   *Install          `json:"install,omitempty"`
-	Launch    *Launch           `json:"launch,omitempty"`
-	Health    *Health           `json:"health,omitempty"`
-	API       *API              `json:"api,omitempty"`
-	UI        *UI               `json:"ui,omitempty"`
-	Cancel    *Cancel           `json:"cancel,omitempty"`
-	KeepAlive int               `json:"keep_alive,omitempty"` // idle timeout in seconds
+	Kind      Kind     `json:"kind"`
+	Install   *Install `json:"install,omitempty"`
+	Launch    *Launch  `json:"launch,omitempty"`
+	Health    *Health  `json:"health,omitempty"`
+	API       *API     `json:"api,omitempty"`
+	UI        *UI      `json:"ui,omitempty"`
+	Cancel    *Cancel  `json:"cancel,omitempty"`
+	KeepAlive int      `json:"keep_alive,omitempty"` // idle timeout in seconds
 }
 
 // Manifest is a fully resolved engine entry derived from extensions.json.
@@ -84,10 +84,10 @@ type Manifest struct {
 
 // extensionEntry is the raw structure of a single extensions.json entry.
 type extensionEntry struct {
-	PackageName string          `json:"package_name"`
-	Name        string          `json:"name"`
-	Proxy       string          `json:"proxy,omitempty"`
-	Engine      *Engine         `json:"engine,omitempty"`
+	PackageName string  `json:"package_name"`
+	Name        string  `json:"name"`
+	Proxy       string  `json:"proxy,omitempty"`
+	Engine      *Engine `json:"engine,omitempty"`
 	// remaining fields ignored
 }
 

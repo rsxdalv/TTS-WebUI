@@ -288,9 +288,9 @@ func TestNoRouteReturns502(t *testing.T) {
 
 func TestParseRoute(t *testing.T) {
 	for _, tc := range []struct {
-		input  string
-		prefix string
-		host   string
+		input   string
+		prefix  string
+		host    string
 		errWant bool
 	}{
 		{"/gradio=http://127.0.0.1:7860", "/gradio", "127.0.0.1:7860", false},

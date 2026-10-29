@@ -37,7 +37,10 @@ func fixedRunner(stdout, stderr string, exitCode int) Runner {
 }
 
 // dispatchRunner returns a Runner that picks from a map[command]→fixed outputs.
-func dispatchRunner(table map[string]struct{ stdout, stderr string; exit int }) Runner {
+func dispatchRunner(table map[string]struct {
+	stdout, stderr string
+	exit           int
+}) Runner {
 	return func(_ context.Context, name string, args ...string) (string, string, int, error) {
 		key := name
 		if v, ok := table[key]; ok {

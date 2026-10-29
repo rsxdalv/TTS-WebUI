@@ -3,7 +3,8 @@
 //
 // It exposes typed step endpoints on the internal/server.Server and
 // implements each step doing what the legacy installer path does today
-// (legacy-compat mode, C3.1).
+// (legacy-compat mode, C3.1). The Supervisor (C3.2) manages the running
+// app processes after installation.
 package launcher
 
 import (
@@ -28,6 +29,7 @@ type Launcher struct {
 	mu     sync.Mutex
 	sprocs map[string]*procs.Proc // subprocess steps: mamba, install, update, run
 	slogs  map[string]*Log        // log-only steps: download
+	sup    *Supervisor            // C3.2: app process supervisor
 }
 
 // New creates a Launcher for the given install root.
@@ -36,10 +38,11 @@ func New(root paths.Root) *Launcher {
 		root:   root,
 		sprocs: make(map[string]*procs.Proc),
 		slogs:  make(map[string]*Log),
+		sup:    newSupervisor(root),
 	}
 }
 
-// Register adds all /api/steps/* endpoints to srv.
+// Register adds all /api/steps/* and /api/app/* endpoints to srv.
 // The server's existing token guard covers these because they are registered
 // under /api/.
 func (l *Launcher) Register(srv *server.Server) {
@@ -63,6 +66,14 @@ func (l *Launcher) Register(srv *server.Server) {
 
 	srv.Handle("POST /api/steps/run", l.handleRun())
 	srv.Handle("GET /api/steps/run/stream", l.handleProcStream("run"))
+
+	// C3.2: app supervisor endpoints (start/stop/restart/status/stream).
+	// These replace the legacy /poll endpoint with SSE.
+	srv.Handle("POST /api/app/start", l.handleAppStart())
+	srv.Handle("POST /api/app/stop", l.handleAppStop())
+	srv.Handle("POST /api/app/restart", l.handleAppRestart())
+	srv.Handle("GET /api/app/status", l.handleAppStatus())
+	srv.Handle("GET /api/app/status/stream", l.handleAppStatusStream())
 }
 
 // handleStatus returns [{step, done}] for all 7 steps.
@@ -153,7 +164,54 @@ func (l *Launcher) handleProcStream(step string) http.Handler {
 	})
 }
 
-// handleLogStream is an SSE handler for Log-backed steps (download).
+// --- C3.2: app supervisor HTTP handlers ---
+
+func (l *Launcher) handleAppStart() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := l.sup.Start(r.Context()); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	})
+}
+
+func (l *Launcher) handleAppStop() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		l.sup.Stop()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	})
+}
+
+func (l *Launcher) handleAppRestart() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := l.sup.Restart(r.Context()); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	})
+}
+
+func (l *Launcher) handleAppStatus() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(l.sup.Statuses())
+	})
+}
+
+// handleAppStatusStream replaces the legacy /poll endpoint with an SSE stream.
+// Clients receive a JSON ProcessStatus slice whenever a process starts or stops.
+func (l *Launcher) handleAppStatusStream() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ch, cancel := l.sup.SubscribeStatus()
+		defer cancel()
+		server.SSE(w, r, ch)
+	})
+}
 func (l *Launcher) handleLogStream(step string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lg := l.getLog(step)

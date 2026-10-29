@@ -17,8 +17,8 @@ func TestTorchIndexURL(t *testing.T) {
 		wantURL string
 		wantOK  bool
 	}{
-		{"NVIDIA GPU", "https://download.pytorch.org/whl/cu126", true},
-		{"AMD GPU (ROCM, Linux only)", "https://download.pytorch.org/whl/rocm6.2", true},
+		{"NVIDIA GPU", "https://download.pytorch.org/whl/cu128", true},
+		{"AMD GPU (ROCM, Linux only)", "https://download.pytorch.org/whl/rocm7.2", true},
 		{"Apple M Series Chip", "", true},
 		{"Intel GPU (XPU)", "", true},
 		{"CPU", "https://download.pytorch.org/whl/cpu", true},
@@ -74,8 +74,8 @@ func TestCreateMain_CallSequence(t *testing.T) {
 		t.Errorf("call[1]: expected 'venv', got %q", calls[1][1])
 	}
 	thirdCall := strings.Join(calls[2], " ")
-	if !strings.Contains(thirdCall, "cu126") {
-		t.Errorf("nvidia pip install call missing cu126: %v", calls[2])
+	if !strings.Contains(thirdCall, "cu128") {
+		t.Errorf("nvidia pip install call missing cu128: %v", calls[2])
 	}
 }
 

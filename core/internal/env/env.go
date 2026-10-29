@@ -35,9 +35,9 @@ func execRun(ctx context.Context, bin string, args []string, env []string) ([]by
 func TorchIndexURL(gpuLabel string) (url string, known bool) {
 	switch gpuLabel {
 	case string(gpu.NVIDIA):
-		return "https://download.pytorch.org/whl/cu126", true
+		return "https://download.pytorch.org/whl/cu128", true
 	case string(gpu.AMD):
-		return "https://download.pytorch.org/whl/rocm6.2", true
+		return "https://download.pytorch.org/whl/rocm7.2", true
 	case string(gpu.Apple):
 		return "", true // MPS support in base torch, default PyPI
 	case string(gpu.Intel):
@@ -97,7 +97,7 @@ func createMain(ctx context.Context, root paths.Root, gpuLabel string, run runFn
 func installTorch(ctx context.Context, run runFn, uv string, env []string, venvPath, gpuLabel string) error {
 	indexURL, known := TorchIndexURL(gpuLabel)
 	if !known {
-		slog.Warn("unknown GPU label, using default PyPI for torch", "gpu", gpuLabel)
+		return fmt.Errorf("unknown GPU label %q: cannot install torch", gpuLabel)
 	}
 
 	pkgs := []string{"torch", "torchvision", "torchaudio"}

@@ -165,7 +165,7 @@ func runEngine(ctx context.Context, args []string) error {
 			return fmt.Errorf("usage: tts-webui engine native install <id> [--gpu <label>]")
 		}
 		sub := flag.NewFlagSet("engine native install", flag.ContinueOnError)
-		gpuFlag := sub.String("gpu", "", "GPU label (e.g. cpu, cuda, rocm); auto-detected if empty")
+		gpuFlag := sub.String("gpu", "", `GPU label: "NVIDIA GPU", "AMD GPU (ROCM, Linux only)", "Apple M Series Chip", "Intel GPU (XPU)", "CPU"; auto-detected if empty`)
 		if err := sub.Parse(fs.Args()[2:]); err != nil {
 			return err
 		}

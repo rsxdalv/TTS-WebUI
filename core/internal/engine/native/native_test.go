@@ -81,10 +81,10 @@ func TestResolve_ZipDownloadAndExtract(t *testing.T) {
 	assetFilename := "test-engine-" + runtime.GOOS + "-" + runtime.GOARCH + "-cpu.zip"
 	binaryContent := "#!/bin/sh\necho ok\n"
 
-	srv, _ := fakeAssetServer(t, assetFilename, binRelPath, binaryContent, false)
+	// Use sidecar so verifyChecksum has a hash to verify against.
+	srv, _ := fakeAssetServer(t, assetFilename, binRelPath, binaryContent, true)
 	defer srv.Close()
 
-	// Use no checksums; just test download+extract.
 	urlTemplate := srv.URL + "/test-engine-{os}-{arch}-{gpu}.zip"
 	m := makeManifest(urlTemplate, "1.0.0", binRelPath, nil)
 
@@ -93,7 +93,7 @@ func TestResolve_ZipDownloadAndExtract(t *testing.T) {
 	defer func() { HTTPClient = origClient }()
 
 	cacheDir := t.TempDir()
-	binPath, err := Resolve(context.Background(), m, "cpu", cacheDir)
+	binPath, err := Resolve(context.Background(), m, "CPU", cacheDir)
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -165,7 +165,8 @@ func TestResolve_SidecarChecksum(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		binRelPath = "engine.exe"
 	}
-	assetFilename := "engine-" + runtime.GOOS + "-" + runtime.GOARCH + "-cuda.zip"
+	// "NVIDIA GPU" maps to "cuda12.4" via gpuVariant.
+	assetFilename := "engine-" + runtime.GOOS + "-" + runtime.GOARCH + "-cuda12.4.zip"
 	srv, _ := fakeAssetServer(t, assetFilename, binRelPath, "sidecar-test", true)
 	defer srv.Close()
 
@@ -177,7 +178,7 @@ func TestResolve_SidecarChecksum(t *testing.T) {
 	defer func() { HTTPClient = origClient }()
 
 	cacheDir := t.TempDir()
-	_, err := Resolve(context.Background(), m, "cuda", cacheDir)
+	_, err := Resolve(context.Background(), m, "NVIDIA GPU", cacheDir)
 	if err != nil {
 		t.Fatalf("Resolve with sidecar checksum: %v", err)
 	}
@@ -186,24 +187,25 @@ func TestResolve_SidecarChecksum(t *testing.T) {
 // TestResolve_CacheHit verifies that a second Resolve call skips the download.
 func TestResolve_CacheHit(t *testing.T) {
 	downloads := 0
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, ".sha256") {
-			http.NotFound(w, r)
-			return
-		}
-		downloads++
-		binRelPath := "cached-bin"
-		if runtime.GOOS == "windows" {
-			binRelPath = "cached-bin.exe"
-		}
-		_, _ = w.Write(makeZipArchive(binRelPath, "cached"))
-	}))
-	defer srv.Close()
-
 	binRelPath := "cached-bin"
 	if runtime.GOOS == "windows" {
 		binRelPath = "cached-bin.exe"
 	}
+	assetFilename := "cached-bin-" + runtime.GOOS + "-" + runtime.GOARCH + "-cpu.zip"
+	archive := makeZipArchive(binRelPath, "cached")
+	sum := sha256.Sum256(archive)
+	hex256 := hex.EncodeToString(sum[:])
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, ".sha256") {
+			_, _ = w.Write([]byte(hex256 + "  " + assetFilename + "\n"))
+			return
+		}
+		downloads++
+		_, _ = w.Write(archive)
+	}))
+	defer srv.Close()
+
 	urlTemplate := srv.URL + "/cached-bin-{os}-{arch}-{gpu}.zip"
 	m := makeManifest(urlTemplate, "1.1.0", binRelPath, nil)
 
@@ -212,10 +214,10 @@ func TestResolve_CacheHit(t *testing.T) {
 	defer func() { HTTPClient = origClient }()
 
 	cacheDir := t.TempDir()
-	if _, err := Resolve(context.Background(), m, "cpu", cacheDir); err != nil {
+	if _, err := Resolve(context.Background(), m, "CPU", cacheDir); err != nil {
 		t.Fatalf("first Resolve: %v", err)
 	}
-	if _, err := Resolve(context.Background(), m, "cpu", cacheDir); err != nil {
+	if _, err := Resolve(context.Background(), m, "CPU", cacheDir); err != nil {
 		t.Fatalf("second Resolve: %v", err)
 	}
 	if downloads != 1 {

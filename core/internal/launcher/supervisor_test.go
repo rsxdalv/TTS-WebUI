@@ -25,7 +25,7 @@ func makeRoot(t *testing.T) paths.Root {
 
 func TestSupervisorDoubleStart(t *testing.T) {
 	root := makeRoot(t)
-	sup := newSupervisor(root)
+	sup := newSupervisor(root, "conda")
 
 	ctx := context.Background()
 
@@ -42,7 +42,7 @@ func TestSupervisorDoubleStart(t *testing.T) {
 
 func TestSupervisorStopIdempotent(t *testing.T) {
 	root := makeRoot(t)
-	sup := newSupervisor(root)
+	sup := newSupervisor(root, "conda")
 
 	// Stop before start should not panic.
 	sup.Stop()
@@ -51,7 +51,7 @@ func TestSupervisorStopIdempotent(t *testing.T) {
 
 func TestSupervisorStatusesEmpty(t *testing.T) {
 	root := makeRoot(t)
-	sup := newSupervisor(root)
+	sup := newSupervisor(root, "conda")
 
 	statuses := sup.Statuses()
 	if len(statuses) == 0 {
@@ -66,7 +66,7 @@ func TestSupervisorStatusesEmpty(t *testing.T) {
 
 func TestSupervisorSubscribeStatus(t *testing.T) {
 	root := makeRoot(t)
-	sup := newSupervisor(root)
+	sup := newSupervisor(root, "conda")
 
 	ch, cancel := sup.SubscribeStatus()
 	defer cancel()

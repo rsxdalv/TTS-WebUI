@@ -8,11 +8,15 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/rsxdalv/TTS-WebUI/core/internal/env"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/tools"
 )
 
 // ProcessStatus describes one supervised process.
@@ -31,23 +35,25 @@ type appProcess struct {
 // It is separate from the step-by-step installer flow so C3.2 can be developed
 // and tested independently.
 type Supervisor struct {
-	root  paths.Root
-	mu    sync.Mutex
-	procs []*appProcess
+	root    paths.Root
+	envMode string // "conda" (default) or "uv"
+	mu      sync.Mutex
+	procs   []*appProcess
 
 	// Status fan-out: Supervisor publishes a JSON ProcessStatus slice whenever
 	// a process starts or stops. Subscribers receive those snapshots.
 	statusSubs []*logSub
 }
 
-// newSupervisor creates a Supervisor for root.
-func newSupervisor(root paths.Root) *Supervisor {
-	return &Supervisor{root: root}
+// newSupervisor creates a Supervisor for root with the given env mode.
+func newSupervisor(root paths.Root, envMode string) *Supervisor {
+	return &Supervisor{root: root, envMode: envMode}
 }
 
 // Start launches all app processes under supervision.
 // Gradio is started first; React UI and extension manager run in parallel.
 // All processes share a parent context so cancelling ctx stops them all.
+// In uv mode (--env=uv) it ensures tools and the main venv are present first.
 func (s *Supervisor) Start(ctx context.Context) error {
 	s.mu.Lock()
 	if len(s.procs) > 0 {
@@ -56,20 +62,43 @@ func (s *Supervisor) Start(ctx context.Context) error {
 	}
 	s.mu.Unlock()
 
+	// uv mode: ensure pinned tools and main venv, then use uv Python.
+	var python string
+	var baseEnvOverride []string
+	if s.envMode == "uv" {
+		if err := tools.EnsureAll(ctx, s.root); err != nil {
+			return fmt.Errorf("ensuring tools (uv mode): %w", err)
+		}
+		gpuResult, _ := gpu.Detect(ctx)
+		mainVenv := filepath.Join(s.root.Venvs(), "main")
+		if _, err := os.Stat(mainVenv); err != nil {
+			if err := env.CreateMain(ctx, s.root, string(gpuResult.Label)); err != nil {
+				return fmt.Errorf("creating main uv venv: %w", err)
+			}
+		}
+		python = uvPythonPath(s.root)
+		baseEnvOverride = buildUVEnv(s.root)
+	} else {
+		python = appPython(s.root)
+	}
+
 	// Get an OS-assigned port for the extension manager to avoid the legacy
-	// port 7771 collision (7771 was shared between the installer console server
-	// and the extension manager).
+	// port 7771 collision.
 	extPort, err := freePort()
 	if err != nil {
 		return fmt.Errorf("allocating extension manager port: %w", err)
 	}
 
-	python := appPython(s.root)
 	serverPy := filepath.Join(s.root.Dir(), "server.py")
 	cwd := s.root.Dir()
 
-	// Base env for all processes: inherit + extension manager port.
-	baseEnv := append(os.Environ(), fmt.Sprintf("TTS_EXTENSION_MANAGER_PORT=%d", extPort))
+	// Base env: inherit (+ tool paths if uv mode) + extension manager port.
+	var baseEnv []string
+	if len(baseEnvOverride) > 0 {
+		baseEnv = append(baseEnvOverride, fmt.Sprintf("TTS_EXTENSION_MANAGER_PORT=%d", extPort))
+	} else {
+		baseEnv = append(os.Environ(), fmt.Sprintf("TTS_EXTENSION_MANAGER_PORT=%d", extPort))
+	}
 
 	defs := []struct {
 		name string
@@ -234,4 +263,30 @@ func npmCmd() string {
 // npmReactArgs returns npm args to start the React UI.
 func npmReactArgs(root paths.Root) []string {
 	return []string{"--prefix", filepath.Join(root.Dir(), "react-ui"), "start", "--", "-p", "3000"}
+}
+
+// buildUVEnv returns an inherited environment with tool binary directories
+// prepended to PATH for uv-mode processes.
+func buildUVEnv(root paths.Root) []string {
+	toolsBase := filepath.Join(root.InstallerFiles(), "tools")
+	extraDirs := []string{
+		filepath.Join(toolsBase, "uv"),
+		filepath.Join(toolsBase, "ffmpeg"),
+	}
+	if runtime.GOOS == "windows" {
+		extraDirs = append(extraDirs, filepath.Join(toolsBase, "mingit", "cmd"))
+	}
+
+	sep := string(os.PathListSeparator)
+	prefix := strings.Join(extraDirs, sep)
+
+	out := make([]string, 0, len(os.Environ()))
+	for _, e := range os.Environ() {
+		if strings.HasPrefix(strings.ToUpper(e), "PATH=") {
+			out = append(out, "PATH="+prefix+sep+e[5:])
+		} else {
+			out = append(out, e)
+		}
+	}
+	return out
 }

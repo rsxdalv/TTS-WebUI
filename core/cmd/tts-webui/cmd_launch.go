@@ -25,8 +25,13 @@ func runLaunch(ctx context.Context, args []string) error {
 	port := fs.Int("port", 7700, "port to listen on (default: D-open-1)")
 	noBrowser := fs.Bool("no-browser", false, "do not open the browser automatically")
 	uiDev := fs.String("ui-dev", "", "proxy non-/api requests to this Vite dev server URL")
+	envMode := fs.String("env", "conda", "Python environment to use: conda (default) or uv")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+
+	if *envMode != "conda" && *envMode != "uv" {
+		return fmt.Errorf("--env must be 'conda' or 'uv', got %q", *envMode)
 	}
 
 	var root paths.Root
@@ -48,7 +53,7 @@ func runLaunch(ctx context.Context, args []string) error {
 		return fmt.Errorf("creating server: %w", err)
 	}
 
-	l := launcher.New(root)
+	l := launcher.NewWithOptions(root, launcher.LauncherOptions{EnvMode: *envMode})
 	l.Register(srv)
 
 	ln, err := srv.Listen()

@@ -104,7 +104,25 @@ Next: Wave 5 — C4.3 · C5.2 · C6.1 · P4 batches
 ## Wave 5 — 2026-10-29
 
 Checkpoints: C4.3 · C5.2 · C6.1 · P4
-Branch: core/wave-5
+Branch: core/wave-5 | Merge commit: 567b3ea | CI: ✅
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C5.2 | done | 7a880ba | engine/venv: Install() with versioned dirs + pointer files |
+| C6.1 | done | 5cc7603 | internal/api: generations, upload, version endpoints |
+| C4.3 | done | 782cb32 | --env=uv flag; tools+env wired into supervisor |
+| P4 | done | f293fd0 | 5 extensions (vall_e_x, styletts2, seamless_m4t, mms, chatterbox) → proxy:native |
+
+Needs human verification: C4.3 M2 (uv mode produces audio); C5.2 real venv; C6.1 file serving.
+Provisional decisions: none new.
+Next: Wave 6 — C5.5 (join, alone) · C6.3 page groups · C8.1
+
+---
+
+## Wave 6 — 2026-10-29
+
+C5.5: join, alone — core/c5.5-legacyhost
+C6.3 groups + C8.1: core/wave-6
 
 Status: **in progress**
 

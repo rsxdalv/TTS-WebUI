@@ -1,0 +1,63 @@
+package audiocpp
+
+import (
+	"testing"
+
+	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/manifest"
+)
+
+func TestAudioCPPManifest_Kind(t *testing.T) {
+	m := AudioCPPManifest("cpu", "1.0.0")
+	if m.Engine.Kind != manifest.KindNative {
+		t.Errorf("kind = %q, want %q", m.Engine.Kind, manifest.KindNative)
+	}
+}
+
+func TestAudioCPPManifest_URLTemplate(t *testing.T) {
+	m := AudioCPPManifest("cuda", "2.0.0")
+	const want = "https://github.com/rsxdalv/audio.cpp/releases/download/v{version}/audio-cpp-{os}-{arch}-{gpu}.{ext}"
+	if m.Engine.NativeAsset.URLTemplate != want {
+		t.Errorf("URLTemplate:\n got %q\nwant %q", m.Engine.NativeAsset.URLTemplate, want)
+	}
+}
+
+func TestAudioCPPManifest_Version(t *testing.T) {
+	m := AudioCPPManifest("cpu", "3.0.0")
+	if m.Engine.NativeAsset.Version != "3.0.0" {
+		t.Errorf("NativeAsset.Version = %q, want 3.0.0", m.Engine.NativeAsset.Version)
+	}
+}
+
+func TestAudioCPPManifest_CancelMode(t *testing.T) {
+	m := AudioCPPManifest("cpu", "1.0.0")
+	if m.Engine.Cancel == nil {
+		t.Fatal("Cancel is nil")
+	}
+	if m.Engine.Cancel.Mode != manifest.CancelModeDisconnect {
+		t.Errorf("cancel mode = %q, want %q", m.Engine.Cancel.Mode, manifest.CancelModeDisconnect)
+	}
+}
+
+func TestAudioCPPManifest_KeepAlive(t *testing.T) {
+	m := AudioCPPManifest("cpu", "1.0.0")
+	if m.Engine.KeepAlive != 300 {
+		t.Errorf("KeepAlive = %d, want 300", m.Engine.KeepAlive)
+	}
+}
+
+func TestAudioCPPManifest_HealthPath(t *testing.T) {
+	m := AudioCPPManifest("cpu", "1.0.0")
+	if m.Engine.Health == nil {
+		t.Fatal("Health is nil")
+	}
+	if m.Engine.Health.Path != "/health" {
+		t.Errorf("health path = %q, want /health", m.Engine.Health.Path)
+	}
+}
+
+func TestAudioCPPManifest_PackageName(t *testing.T) {
+	m := AudioCPPManifest("cuda", "1.0.0")
+	if m.PackageName != "audio.cpp" {
+		t.Errorf("PackageName = %q, want audio.cpp", m.PackageName)
+	}
+}

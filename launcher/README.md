@@ -29,7 +29,7 @@ Bark, MusicGen, RVC, Tortoise, MAGNeT, Demucs, Maha TTS, Stable Audio, Vocos, MM
 3. Run `neu update`
 4. `cd vite-src`
 5. Edit `package.json` — set `name`
-6. Create `vite-src/.env.development` with `WEBUI_ROOT=/path/to/tts-webui`
+6. Create `vite-src/.env.development` with `VITE_WEBUI_ROOT=/path/to/tts-webui`
 7. `npm install`
 8. `cd ..` back to root, then `neu run` to develop
 
@@ -50,11 +50,11 @@ neu build
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `WEBUI_ROOT` | Path to your local TTS WebUI installation | `.` |
+| `VITE_WEBUI_ROOT` | Path to your local TTS WebUI installation | `.` |
 
 Example `vite-src/.env.development`:
 ```
-WEBUI_ROOT=C:/Users/rob/Desktop/tts-generation-webui-main/
+VITE_WEBUI_ROOT=C:/Users/rob/Desktop/tts-generation-webui-main/
 ```
 
 ## How It Works

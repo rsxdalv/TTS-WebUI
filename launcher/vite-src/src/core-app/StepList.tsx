@@ -3,6 +3,7 @@ import type { StepStatus } from "./CoreApp";
 import { StepItem } from "./StepItem";
 import { GPUView } from "./GPUView";
 import { LaunchStep } from "./LaunchStep";
+import { PreflightView } from "./PreflightView";
 
 interface StepListProps {
   statuses: StepStatus[];
@@ -64,6 +65,12 @@ export function StepList({ statuses, onRefresh }: StepListProps) {
           );
         }
 
+        if (state === "active" && s.step === "preflight") {
+          return (
+            <PreflightView key={s.step} onComplete={onRefresh} />
+          );
+        }
+
         return (
           <StepItem
             key={s.step}
@@ -72,6 +79,7 @@ export function StepList({ statuses, onRefresh }: StepListProps) {
             description={meta.description}
             state={state}
             hasStream={meta.hasStream}
+            running={s.running}
             onComplete={onRefresh}
           />
         );

@@ -21,3 +21,6 @@ if [ -f "$ASSETS/core.html" ]; then
 fi
 
 echo "Done. Core entry built and copied to core/internal/webui/assets/"
+
+echo "Computing bundle source hash ..."
+bash "$REPO_ROOT/core/scripts/bundle-hash.sh"

@@ -1,4 +1,4 @@
-// StepItem: renders one installation step, calling only /api/steps/*.
+﻿// StepItem: renders one installation step, calling only /api/steps/*.
 import { useState, useEffect, useRef } from "react";
 
 interface StepItemProps {
@@ -7,6 +7,7 @@ interface StepItemProps {
   description: string;
   state: "done" | "active" | "pending";
   hasStream: boolean;
+  running?: boolean; // server reports a proc is already running (reattach on mount)
   onComplete: () => void;
 }
 
@@ -16,9 +17,10 @@ export function StepItem({
   description,
   state,
   hasStream,
+  running,
   onComplete,
 }: StepItemProps) {
-  const [running, setRunning] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const esRef = useRef<EventSource | null>(null);
@@ -37,6 +39,15 @@ export function StepItem({
     }
   }, [state]);
 
+  // Reattach to an in-progress stream on page reload.
+  useEffect(() => {
+    if (state === "active" && running) {
+      setIsRunning(true);
+      openStream();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function openStream() {
     if (esRef.current) return;
     const es = new EventSource(`/api/steps/${step}/stream`);
@@ -52,39 +63,48 @@ export function StepItem({
         onComplete();
       } else {
         setError(`Step exited with code ${payload.exitCode}`);
-        setRunning(false);
+        setIsRunning(false);
       }
     });
     es.onerror = () => {
       if (es.readyState === EventSource.CLOSED) {
-        setRunning(false);
+        setIsRunning(false);
       }
     };
   }
 
   async function runStep() {
-    setRunning(true);
+    setIsRunning(true);
     setError(null);
     setLogs([]);
 
+    let responseBody: { started?: boolean } = {};
     try {
       const r = await fetch(`/api/steps/${step}`, { method: "POST" });
       if (!r.ok) {
         const text = await r.text();
         setError(`POST /api/steps/${step} → ${r.status}: ${text}`);
-        setRunning(false);
+        setIsRunning(false);
         return;
       }
+      responseBody = (await r.json()) as { started?: boolean };
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
-      setRunning(false);
+      setIsRunning(false);
+      return;
+    }
+
+    // If the server says started:false (e.g. update already up-to-date), complete immediately.
+    if (hasStream && responseBody.started === false) {
+      setIsRunning(false);
+      onComplete();
       return;
     }
 
     if (hasStream) {
       openStream();
     } else {
-      setRunning(false);
+      setIsRunning(false);
       onComplete();
     }
   }
@@ -116,14 +136,14 @@ export function StepItem({
         {state === "active" && (
           <button
             onClick={runStep}
-            disabled={running}
+            disabled={isRunning}
             className={`shrink-0 py-1.5 px-3 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-              running
+              isRunning
                 ? "bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-wait"
                 : "bg-blue-600 hover:bg-blue-500 text-white"
             }`}
           >
-            {running ? "Running…" : "Run"}
+            {isRunning ? "Running..." : "Run"}
           </button>
         )}
       </div>

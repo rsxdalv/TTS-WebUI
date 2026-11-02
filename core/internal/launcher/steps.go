@@ -13,7 +13,8 @@ func micromambaPath(root paths.Root) string {
 	if runtime.GOOS == "windows" {
 		return filepath.Join(root.InstallerFiles(), "mamba", "micromamba.exe")
 	}
-	return filepath.Join(root.InstallerFiles(), "mamba", "bin", "micromamba")
+	// init_mamba.sh writes installer_files/mamba/micromamba (no bin/ subdirectory).
+	return filepath.Join(root.InstallerFiles(), "mamba", "micromamba")
 }
 
 // installEnvPath returns the path to the conda env used by micromamba.

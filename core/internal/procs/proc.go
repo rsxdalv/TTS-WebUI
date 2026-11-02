@@ -161,6 +161,22 @@ func (p *Proc) PID() int {
 // Lines returns a snapshot of all buffered output lines.
 func (p *Proc) Lines() []string { return p.ring.lines() }
 
+// Running returns true if the process has been started and has not yet exited.
+func (p *Proc) Running() bool {
+	p.mu.Lock()
+	done := p.done
+	p.mu.Unlock()
+	if done == nil {
+		return false
+	}
+	select {
+	case <-done:
+		return false
+	default:
+		return true
+	}
+}
+
 // Done returns a channel that is closed when the process exits.
 // Returns a channel that never closes if the process has not been started.
 func (p *Proc) Done() <-chan struct{} {

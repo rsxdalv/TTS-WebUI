@@ -36,7 +36,7 @@ needs the package's API to exist.
 | C2.5 | `preflight`: port of ignition preflight checks | G | C2.3 | built |
 | C2.6 | Browser auth for SSE, media and downloads (no custom headers) | G | C2.1 | built |
 | C3.1 | Launcher on Go, legacy-compat mode (same steps, same markers) | J | C2.4, C2.5, C2.6 | built |
-| C3.2 | Running app under the Go supervisor | J | C3.1 | reopened |
+| C3.2 | Running app under the Go supervisor | J | C3.1 | built |
 | C4.1 | `tools`: pinned uv / ffmpeg / MinGit with checksums | G | C2.3 | built |
 | C4.2 | `env`: uv Python + main venv + torch variant | G | C4.1, C2.4 | built |
 | C4.3 | App runs from uv env (`--env=uv` next to `--env=conda`) | G | C4.2, C3.2 | reopened |

@@ -5,15 +5,16 @@
 package audiocpp
 
 import (
+	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/manifest"
 )
 
 // urlTemplate is the GitHub Releases asset URL pattern for audio.cpp v0.9.3.
-// Source: https://api.github.com/repos/0xShug0/audio.cpp/releases/latest
-// {os} is "windows"/"ubuntu"/"macos"; {arch} is "x64"/"arm64"; {gpu} is the backend token.
-// Linux NVIDIA uses "cuda12.8-colab" (NOT "cuda12.8").
+// {os}, {arch}, and {gpu} are pre-substituted by AudioCPPManifest; only
+// {version} and {ext} remain for native.Resolve to fill in.
 const urlTemplate = "https://github.com/0xShug0/audio.cpp/releases/download/v{version}/audio-v{version}-bin-{os}-{arch}-{gpu}.{ext}"
 
 // checksums maps asset filename → SHA256 for v0.9.3.
@@ -54,32 +55,87 @@ func archToken() string {
 	return "x64"
 }
 
+// gpuVariant maps a PyTorchChoice label and OS to the URL-safe backend token
+// used in audio.cpp release asset names.
+// Linux NVIDIA uses "cuda12.8-colab" (not "cuda12.4").
+// Linux Intel/XPU has no dedicated asset; falls back to "cpu".
+func gpuVariant(label, goos string) string {
+	switch label {
+	case "NVIDIA GPU":
+		if goos == "linux" {
+			return "cuda12.8-colab"
+		}
+		return "cuda12.4"
+	case "AMD GPU (ROCM, Linux only)":
+		return "rocm10.0.0-test"
+	case "Apple M Series Chip":
+		return "metal"
+	case "Intel GPU (XPU)":
+		if goos == "windows" {
+			return "vulkan-portable"
+		}
+		return "cpu" // no linux xpu/vulkan asset in v0.9.3
+	case "CPU":
+		return "cpu"
+	default:
+		return "cpu"
+	}
+}
+
+// backendToken maps a PyTorchChoice label to the audiocpp_server backend name.
+func backendToken(label string) string {
+	switch label {
+	case "NVIDIA GPU":
+		return "cuda"
+	case "AMD GPU (ROCM, Linux only)":
+		return "hip"
+	case "Apple M Series Chip":
+		return "metal"
+	case "Intel GPU (XPU)":
+		return "vulkan"
+	default:
+		return "cpu"
+	}
+}
+
 // AudioCPPManifest returns the engine manifest for the audio.cpp native engine.
 //
-// gpuLabel is the PyTorchChoice label (e.g. "NVIDIA GPU"); it is mapped to the
-// URL-safe backend token by native.gpuVariant at resolve time.
-// The Linux NVIDIA asset uses "cuda12.8-colab" — the URL template uses the
-// gpuVariant output, but callers must pass "NVIDIA GPU" for correct resolution.
+// gpuLabel is the PyTorchChoice label (e.g. "NVIDIA GPU"). The URL template has
+// {os}, {arch}, and {gpu} pre-resolved using osToken(), archToken(), and
+// gpuVariant() so that native.Resolve only needs to fill {version} and {ext}.
 //
 // Cancel mode is "disconnect": an SSE client that disconnects stops the run.
 // Source: app/server/api.md — "An SSE client that disconnects stops the run
 // within the next event or two."
+//
+// Launch uses --config <tmpfile> (not --host/--port) because host/port are
+// JSON config fields, not CLI flags.
+// Source: README.md "Server" section; app/server/README.md "Loading and memory".
 func AudioCPPManifest(gpuLabel, version string) manifest.Manifest {
-	_ = gpuLabel // resolved to URL token by native.Resolve via gpuVariant
+	// Pre-resolve OS/arch/GPU tokens so native.Resolve sees only {version}/{ext}.
+	resolvedTemplate := strings.NewReplacer(
+		"{os}", osToken(),
+		"{arch}", archToken(),
+		"{gpu}", gpuVariant(gpuLabel, runtime.GOOS),
+	).Replace(urlTemplate)
+
+	backend := backendToken(gpuLabel)
+	configTmpl := fmt.Sprintf(`{"host":"127.0.0.1","port":{port},"backend":%q,"lazy_load":true}`, backend)
+
 	return manifest.Manifest{
 		PackageName: "audio.cpp",
 		Name:        "audio.cpp",
 		Engine: manifest.Engine{
 			Kind: manifest.KindNative,
 			NativeAsset: &manifest.NativeAsset{
-				URLTemplate: urlTemplate,
+				URLTemplate: resolvedTemplate,
 				Version:     version,
 				BinaryPath:  audioCPPBinaryPath(),
 				Checksums:   checksums,
 			},
 			Launch: &manifest.Launch{
-				Cmd:     []string{"./audiocpp_server", "--host", "127.0.0.1"},
-				PortArg: "--port",
+				Cmd:            []string{audioCPPBinaryPath()},
+				ConfigTemplate: configTmpl,
 			},
 			Health: &manifest.Health{
 				Path:      "/health",

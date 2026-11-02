@@ -29,6 +29,10 @@ type Launch struct {
 	Env     map[string]string `json:"env,omitempty"`
 	Cwd     string            `json:"cwd,omitempty"`
 	PortArg string            `json:"port_arg,omitempty"` // e.g. "--port"
+	// ConfigTemplate is a JSON template written to a scratch dir before launch.
+	// {port} is replaced with the allocated port. If set, "--config <path>" is
+	// appended to Cmd and PortArg is ignored.
+	ConfigTemplate string `json:"config_template,omitempty"`
 }
 
 // Health describes how to probe the engine's readiness.

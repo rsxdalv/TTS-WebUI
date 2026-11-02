@@ -313,23 +313,36 @@ func freePort() (int, error) {
 
 // buildLaunchArgs constructs the command-line args and environment from the
 // manifest, substituting {port} and appending PortArg if configured.
-func buildLaunchArgs(man manifest.Manifest, port int) ([]string, []string) {
+// If ConfigTemplate is set, it writes the config to a tmp file and appends
+// --config <path>; the caller should remove the tmp file after the process exits.
+func buildLaunchArgs(man manifest.Manifest, port int) (args []string, env []string) {
 	if man.Engine.Launch == nil {
 		return nil, nil
 	}
 	portStr := fmt.Sprintf("%d", port)
 
-	args := make([]string, len(man.Engine.Launch.Cmd))
+	args = make([]string, len(man.Engine.Launch.Cmd))
 	for i, a := range man.Engine.Launch.Cmd {
 		args[i] = strings.ReplaceAll(a, "{port}", portStr)
 	}
-	if man.Engine.Launch.PortArg != "" {
+
+	if man.Engine.Launch.ConfigTemplate != "" {
+		content := strings.ReplaceAll(man.Engine.Launch.ConfigTemplate, "{port}", portStr)
+		f, err := os.CreateTemp("", "audiocpp-server-*.json")
+		if err == nil {
+			_, _ = f.WriteString(content)
+			_ = f.Close()
+			args = append(args, "--config", f.Name())
+		} else {
+			slog.Error("lifecycle: failed to write engine config file", "err", err)
+		}
+	} else if man.Engine.Launch.PortArg != "" {
 		args = append(args, man.Engine.Launch.PortArg, portStr)
 	}
 
 	// Merge OS environment with manifest overrides.
 	base := os.Environ()
-	env := make([]string, 0, len(base)+len(man.Engine.Launch.Env))
+	env = make([]string, 0, len(base)+len(man.Engine.Launch.Env))
 	env = append(env, base...)
 	for k, v := range man.Engine.Launch.Env {
 		env = append(env, k+"="+v)

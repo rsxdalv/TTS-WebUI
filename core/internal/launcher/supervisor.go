@@ -40,6 +40,12 @@ type Supervisor struct {
 	mu      sync.Mutex
 	procs   []*appProcess
 
+	// supCtx/supCancel is a supervisor-owned context used for all child
+	// processes. It is never the HTTP request context; that would kill the
+	// app as soon as the handler returned.
+	supCtx    context.Context
+	supCancel context.CancelFunc
+
 	// Status fan-out: Supervisor publishes a JSON ProcessStatus slice whenever
 	// a process starts or stops. Subscribers receive those snapshots.
 	statusSubs []*logSub
@@ -52,30 +58,38 @@ func newSupervisor(root paths.Root, envMode string) *Supervisor {
 
 // Start launches all app processes under supervision.
 // Gradio is started first; React UI and extension manager run in parallel.
-// All processes share a parent context so cancelling ctx stops them all.
+// setupCtx is used only for setup work (tools, venv). Processes run under a
+// supervisor-owned context that is not tied to any HTTP request lifetime.
 // In uv mode (--env=uv) it ensures tools and the main venv are present first.
-func (s *Supervisor) Start(ctx context.Context) error {
+func (s *Supervisor) Start(setupCtx context.Context) error {
 	s.mu.Lock()
 	if len(s.procs) > 0 {
 		s.mu.Unlock()
 		return fmt.Errorf("app already running")
 	}
+	// Replace any previous supervisor context with a fresh one.
+	if s.supCancel != nil {
+		s.supCancel()
+	}
+	supCtx, supCancel := context.WithCancel(context.Background())
+	s.supCtx = supCtx
+	s.supCancel = supCancel
 	s.mu.Unlock()
 
 	// uv mode: ensure pinned tools and main venv, then use uv Python.
 	var python string
 	var baseEnvOverride []string
 	if s.envMode == "uv" {
-		if err := tools.EnsureAll(ctx, s.root); err != nil {
+		if err := tools.EnsureAll(setupCtx, s.root); err != nil {
 			return fmt.Errorf("ensuring tools (uv mode): %w", err)
 		}
-		gpuLabel, err := readGPULabel(ctx, s.root)
+		gpuLabel, err := readGPULabel(setupCtx, s.root)
 		if err != nil {
 			return fmt.Errorf("determining GPU: %w", err)
 		}
 		mainVenv := filepath.Join(s.root.Venvs(), "main")
 		if _, err := os.Stat(mainVenv); err != nil {
-			if err := env.CreateMain(ctx, s.root, gpuLabel); err != nil {
+			if err := env.CreateMain(setupCtx, s.root, gpuLabel); err != nil {
 				return fmt.Errorf("creating main uv venv: %w", err)
 			}
 		}
@@ -128,12 +142,15 @@ func (s *Supervisor) Start(ctx context.Context) error {
 
 	for _, d := range defs {
 		p := &procs.Proc{}
-		if err := p.Start(ctx, d.cmd, d.args, cwd, d.env); err != nil {
+		if err := p.Start(supCtx, d.cmd, d.args, cwd, d.env); err != nil {
 			// Best-effort stop what's already started.
 			for _, running := range s.procs {
 				_ = running.proc.Stop()
 			}
 			s.procs = nil
+			supCancel()
+			s.supCtx = nil
+			s.supCancel = nil
 			return fmt.Errorf("starting %s: %w", d.name, err)
 		}
 		ap := &appProcess{name: d.name, proc: p}
@@ -144,9 +161,12 @@ func (s *Supervisor) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop stops all supervised processes.
+// Stop stops all supervised processes and cancels the supervisor context.
 func (s *Supervisor) Stop() {
 	s.mu.Lock()
+	cancel := s.supCancel
+	s.supCancel = nil
+	s.supCtx = nil
 	ps := make([]*appProcess, len(s.procs))
 	copy(ps, s.procs)
 	s.procs = nil
@@ -155,13 +175,17 @@ func (s *Supervisor) Stop() {
 	for _, ap := range ps {
 		_ = ap.proc.Stop()
 	}
+	if cancel != nil {
+		cancel() // signal any processes that missed graceful stop
+	}
 	s.publishStatus()
 }
 
-// Restart stops then starts all processes.
-func (s *Supervisor) Restart(ctx context.Context) error {
+// Restart stops then starts all processes. setupCtx is used only for setup
+// work; the new processes are bound to a fresh supervisor-owned context.
+func (s *Supervisor) Restart(setupCtx context.Context) error {
 	s.Stop()
-	return s.Start(ctx)
+	return s.Start(setupCtx)
 }
 
 // Statuses returns the current process statuses.

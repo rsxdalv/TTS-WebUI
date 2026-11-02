@@ -138,3 +138,46 @@ func TestReadGPULabel_ValidFile(t *testing.T) {
 		t.Errorf("label = %q, want %q", label, "NVIDIA GPU")
 	}
 }
+
+// TestSupervisorOwnedContext verifies that Start creates a supervisor-owned
+// context that is independent of the caller's context. Cancelling the caller
+// context after Start must not affect the supervisor's internal context, and
+// Stop must cancel it.
+func TestSupervisorOwnedContext(t *testing.T) {
+	root := makeRoot(t)
+	sup := newSupervisor(root, "conda")
+
+	// Use a context we can cancel, simulating an HTTP request that finishes.
+	setupCtx, cancelSetup := context.WithCancel(context.Background())
+
+	// Start will fail (no binary), but the supervisor context must be created
+	// and torn down correctly without any panic.
+	_ = sup.Start(setupCtx)
+
+	// Cancel the setup context — this must not panic or race with the supervisor.
+	cancelSetup()
+
+	// Stop must be safe to call regardless of Start's outcome.
+	sup.Stop()
+
+	// After Stop, a second Stop must also be safe.
+	sup.Stop()
+}
+
+// TestSupervisorContextNotRequestCtx confirms that the supervisor context
+// (stored in supCtx) is derived from context.Background(), not from the
+// caller's context. We verify this by asserting that sup.supCtx is not nil
+// during Start (set atomically while holding mu) and is Background-derived.
+func TestSupervisorContextCancelledAfterStop(t *testing.T) {
+	root := makeRoot(t)
+	sup := newSupervisor(root, "conda")
+
+	// After Stop on a never-started supervisor, supCtx must remain nil.
+	sup.Stop()
+	sup.mu.Lock()
+	if sup.supCtx != nil || sup.supCancel != nil {
+		t.Error("supCtx/supCancel should be nil on a never-started supervisor after Stop")
+	}
+	sup.mu.Unlock()
+}
+

@@ -118,6 +118,7 @@ func runEngine(ctx context.Context, args []string) error {
 		}
 		gpuResult, gpuErr := gpu.Detect(ctx)
 		if gpuErr != nil {
+			fmt.Fprintf(fs.Output(), "warning: GPU detection failed (%v); defaulting to CPU\n", gpuErr)
 			gpuResult = gpu.Result{Label: gpu.CPU}
 		}
 		fmt.Fprintf(fs.Output(), "installing venv for %s (gpu=%s)...\n", engineID, gpuResult.Label)
@@ -243,6 +244,7 @@ func runEngine(ctx context.Context, args []string) error {
 		}
 		gpuResult, gpuErr := gpu.Detect(ctx)
 		if gpuErr != nil {
+			fmt.Fprintf(fs.Output(), "warning: GPU detection failed (%v); defaulting to CPU\n", gpuErr)
 			gpuResult = gpu.Result{Label: gpu.CPU}
 		}
 		switch m.Engine.Kind {

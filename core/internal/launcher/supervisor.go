@@ -80,12 +80,13 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	var python string
 	var baseEnvOverride []string
 	if s.envMode == "uv" {
-		if err := tools.EnsureAll(setupCtx, s.root); err != nil {
-			return fmt.Errorf("ensuring tools (uv mode): %w", err)
-		}
+		// Read GPU label first: no point installing tools without a valid user choice.
 		gpuLabel, err := readGPULabel(setupCtx, s.root)
 		if err != nil {
 			return fmt.Errorf("determining GPU: %w", err)
+		}
+		if err := tools.EnsureAll(setupCtx, s.root); err != nil {
+			return fmt.Errorf("ensuring tools (uv mode): %w", err)
 		}
 		mainVenv := filepath.Join(s.root.Venvs(), "main")
 		if _, err := os.Stat(mainVenv); err != nil {
@@ -320,20 +321,17 @@ func buildUVEnv(root paths.Root) []string {
 }
 
 // readGPULabel reads the GPU label from the installer-written .gpu marker file.
-// If the file doesn't exist, it falls back to gpu.Detect.
-// If the file exists but contains an invalid label, an error is returned (no fallback).
-func readGPULabel(ctx context.Context, root paths.Root) (string, error) {
+// A missing file or any read error is returned as-is: there is no auto-detect
+// fallback. The user's choice (written by the GPU step) is the contract; legacy
+// refuses to auto-install AMD and Intel (initializeApp.js:114).
+func readGPULabel(_ context.Context, root paths.Root) (string, error) {
 	data, err := os.ReadFile(root.MarkerFile(".gpu"))
-	if err == nil {
-		label, parseErr := gpu.Parse(string(data))
-		if parseErr != nil {
-			return "", fmt.Errorf("invalid GPU label in .gpu file: %w", parseErr)
-		}
-		return string(label), nil
+	if err != nil {
+		return "", fmt.Errorf("GPU label not set: complete the GPU step first (%w)", err)
 	}
-	result, detectErr := gpu.Detect(ctx)
-	if detectErr != nil {
-		return "", detectErr
+	label, parseErr := gpu.Parse(string(data))
+	if parseErr != nil {
+		return "", fmt.Errorf("invalid GPU label in .gpu file: %w", parseErr)
 	}
-	return string(result.Label), nil
+	return string(label), nil
 }

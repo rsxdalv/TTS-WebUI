@@ -96,6 +96,20 @@ func TestFreePort(t *testing.T) {
 	}
 }
 
+// TestReadGPULabel_MissingFile checks that readGPULabel errors when .gpu is absent
+// (no auto-detect fallback — the user must complete the GPU step first).
+func TestReadGPULabel_MissingFile(t *testing.T) {
+	root := makeRoot(t)
+	// Do NOT create the .gpu file.
+	_, err := readGPULabel(context.Background(), root)
+	if err == nil {
+		t.Fatal("expected error for missing .gpu file, got nil")
+	}
+	if !strings.Contains(err.Error(), "GPU label not set") {
+		t.Errorf("error should mention 'GPU label not set', got: %v", err)
+	}
+}
+
 // TestReadGPULabel_InvalidFile checks that readGPULabel returns an error when
 // the .gpu file exists but contains an invalid label (no silent fallback).
 func TestReadGPULabel_InvalidFile(t *testing.T) {

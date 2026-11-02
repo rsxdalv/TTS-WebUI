@@ -219,3 +219,25 @@ func TestSupervisorStartPublishStatusNoDeadlock(t *testing.T) {
 		t.Fatal("Stop() timed out — possible deadlock in publishStatus")
 	}
 }
+
+// TestSupervisorCondaProcessCount verifies that conda mode declares the three
+// required process names: gradio, react-ui, extension-manager.
+func TestSupervisorCondaProcessCount(t *testing.T) {
+	root := makeRoot(t)
+	sup := newSupervisor(root, "conda")
+
+	statuses := sup.Statuses()
+	if len(statuses) < 3 {
+		t.Fatalf("conda mode: want ≥3 process statuses, got %d", len(statuses))
+	}
+	want := map[string]bool{"gradio": true, "react-ui": true, "extension-manager": true}
+	got := make(map[string]bool, len(statuses))
+	for _, s := range statuses {
+		got[s.Name] = true
+	}
+	for name := range want {
+		if !got[name] {
+			t.Errorf("missing process %q in conda statuses", name)
+		}
+	}
+}

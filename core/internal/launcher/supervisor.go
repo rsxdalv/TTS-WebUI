@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -77,7 +78,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	s.mu.Unlock()
 
 	// uv mode: ensure pinned tools and main venv, then use uv Python.
-	var python string
+	var uvPython string
 	var baseEnvOverride []string
 	if s.envMode == "uv" {
 		// Read GPU label first: no point installing tools without a valid user choice.
@@ -94,10 +95,8 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 				return fmt.Errorf("creating main uv venv: %w", err)
 			}
 		}
-		python = uvPythonPath(s.root)
+		uvPython = uvPythonPath(s.root)
 		baseEnvOverride = buildUVEnv(s.root)
-	} else {
-		python = appPython(s.root)
 	}
 
 	// Get an OS-assigned port for the extension manager to avoid the legacy
@@ -107,8 +106,8 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		return fmt.Errorf("allocating extension manager port: %w", err)
 	}
 
-	serverPy := filepath.Join(s.root.Dir(), "server.py")
 	cwd := s.root.Dir()
+	extMgrScript := filepath.Join(s.root.InstallerScripts(), "tools", "extension_manager.py")
 
 	// Base env: inherit (+ tool paths if uv mode) + extension manager port.
 	var baseEnv []string
@@ -118,24 +117,30 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		baseEnv = append(os.Environ(), fmt.Sprintf("TTS_EXTENSION_MANAGER_PORT=%d", extPort))
 	}
 
-	defs := []struct {
+	// Build process definitions. Conda-mode processes run via micromamba so
+	// they inherit the activated environment; uv-mode uses the venv Python directly.
+	type procDef struct {
 		name string
 		cmd  string
 		args []string
 		env  []string
-	}{
-		{
-			name: "gradio",
-			cmd:  python,
-			args: []string{serverPy, "--no-react"},
-			env:  baseEnv,
-		},
-		{
-			name: "react-ui",
-			cmd:  npmCmd(),
-			args: npmReactArgs(s.root),
-			env:  baseEnv,
-		},
+	}
+	var defs []procDef
+	if s.envMode == "uv" {
+		serverPy := filepath.Join(s.root.Dir(), "server.py")
+		defs = []procDef{
+			{name: "gradio", cmd: uvPython, args: []string{serverPy, "--no-react"}, env: baseEnv},
+			{name: "react-ui", cmd: npmCmd(), args: npmReactArgs(s.root), env: baseEnv},
+			{name: "extension-manager", cmd: uvPython, args: []string{extMgrScript, "--port", fmt.Sprintf("%d", extPort)}, env: baseEnv},
+		}
+	} else {
+		mamba := micromambaPath(s.root)
+		envPath := installEnvPath(s.root)
+		defs = []procDef{
+			{name: "gradio", cmd: mamba, args: []string{"-p", envPath, "run", "python", "server.py", "--no-react"}, env: baseEnv},
+			{name: "react-ui", cmd: mamba, args: []string{"-p", envPath, "run", "npm", "--prefix", filepath.Join(s.root.Dir(), "react-ui"), "start", "--", "-p", "3000"}, env: baseEnv},
+			{name: "extension-manager", cmd: mamba, args: []string{"-p", envPath, "run", "python", extMgrScript, "--port", fmt.Sprintf("%d", extPort)}, env: baseEnv},
+		}
 	}
 
 	s.mu.Lock()
@@ -202,6 +207,7 @@ func (s *Supervisor) statuses() []ProcessStatus {
 	out := []ProcessStatus{
 		{Name: "gradio", Running: false},
 		{Name: "react-ui", Running: false},
+		{Name: "extension-manager", Running: false},
 	}
 	for _, ap := range s.procs {
 		for i := range out {
@@ -266,6 +272,18 @@ func (s *Supervisor) watchExit(ap *appProcess) {
 	}
 	s.mu.Unlock()
 	s.publishStatus()
+}
+
+// AppLink returns the Gradio URL if the server is reachable, else empty string.
+func (s *Supervisor) AppLink() string {
+	const gradioURL = "http://127.0.0.1:7770"
+	client := &http.Client{Timeout: 500 * time.Millisecond}
+	resp, err := client.Head(gradioURL)
+	if err != nil {
+		return ""
+	}
+	_ = resp.Body.Close()
+	return gradioURL
 }
 
 // freePort asks the OS for a free TCP port.

@@ -20,9 +20,10 @@ Do:
    - For every legacy file the code reads, confirm the tests use its real contents. For example `.gpu` holds
      `NVIDIA GPU`, not `nvidia`.
    - For research, open a sample of the cited sources and confirm they say what the note claims.
-   - For any UI served by the binary, load it in a browser (headless or your browser tool). Check that it leaves its
-     loading state, that the console has no errors, and that it makes the expected `/api` requests. Grep the
-     embedded bundle for the endpoints it should call.
+   - For any UI served by the binary, use it in a browser (headless or your browser tool). Loading the page is not
+     enough: click every control through the user's whole path, then try to break it (failing input, a reload
+     mid-step, clicking twice). Check that the console has no errors and which `/api` requests each click makes.
+     Confirm the smoke script exercises those same requests. Grep the embedded bundle for the endpoints it should call.
    - For smoke scripts, read the script against the milestone's requirements in "Verification rules", line by
      line. A PASS from a script that skips a requirement, or downgrades a failure to INFO, counts as no smoke.
    - For URLs the code builds (downloads, release assets), HEAD a sample of them. Any 404 makes it "not done".

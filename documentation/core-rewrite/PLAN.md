@@ -32,13 +32,13 @@ needs the package's API to exist.
 | C2.1 | `server`: local HTTP server, embedded UI, security, SSE | G | C0 | done |
 | C2.2 | `procs`: spawn, log capture, tree-kill, no orphans | G | C0 | done |
 | C2.3 | `paths` + `state`: install root, marker files, atomic JSON | G | C0 | done |
-| C2.4 | `gpu`: detection mapped to installer GPU labels | G | C0 | built |
+| C2.4 | `gpu`: detection mapped to installer GPU labels | G | C0 | reopened |
 | C2.5 | `preflight`: port of ignition preflight checks | G | C2.3 | built |
 | C2.6 | Browser auth for SSE, media and downloads (no custom headers) | G | C2.1 | built |
-| C3.1 | Launcher on Go, legacy-compat mode (same steps, same markers) | J | C2.4, C2.5, C2.6 | built |
-| C3.2 | Running app under the Go supervisor | J | C3.1 | built |
-| C4.1 | `tools`: pinned uv / ffmpeg / MinGit with checksums | G | C2.3 | built |
-| C4.2 | `env`: uv Python + main venv + torch variant | G | C4.1, C2.4 | built |
+| C3.1 | Launcher on Go, legacy-compat mode (same steps, same markers) | J | C2.4, C2.5, C2.6 | reopened |
+| C3.2 | Running app under the Go supervisor | J | C3.1 | reopened |
+| C4.1 | `tools`: pinned uv / ffmpeg / MinGit with checksums | G | C2.3 | reopened |
+| C4.2 | `env`: uv Python + main venv + torch variant | G | C4.1, C2.4 | reopened |
 | C4.3 | App runs from uv env (`--env=uv` next to `--env=conda`) | G | C4.2, C3.2 | reopened |
 | C5.1 | Engine manifest schema + loader over `extensions.json` | G | C2.3 | done |
 | C5.2 | Python-venv engine install (port of `venv_setup_wrapper`) | G | C5.1, C4.2 | built |
@@ -52,9 +52,9 @@ needs the package's API to exist.
 | C7.2 | Blue/green engine updates | G | C5.2 | built |
 | C7.3 | App (Python host) distribution without git pull | J | C4.3, D-open-3 | built |
 | C7.4 | Catalog fetch, cache, schema versioning | G | C5.1 | done |
-| C8.0 | Research: audio.cpp server lifecycle and cancel | R | none | built |
+| C8.0 | Research: audio.cpp server lifecycle and cancel | R | none | reopened |
 | C8.1 | Native engine kind (asset by OS/arch/GPU, verify, launch) | G | C5.4, C4.1 | built |
-| C8.2 | audio.cpp engine + cancel | G | C8.0, C8.1 | built |
+| C8.2 | audio.cpp engine + cancel | G | C8.0, C8.1 | reopened |
 | C9.1 | Start scripts and release zip launch the Go binary | J | M1–M4 | waiting |
 | C9.2 | Remove micromamba, Node installer, Neutralino build | J | C9.1, human only | waiting |
 | P1 | Drop PostgreSQL from the conda env spec | P | none | done |
@@ -214,6 +214,97 @@ prints PASS, but the M1 path does not work. Each item is what must be true befor
     cancel is unreachable.
   - Add a test that HEADs every generated URL (skipped offline) or compares against a recorded asset list.
 
+## Still open after R2.3b
+
+Found in a review of `core/rewrite` at `a0ed23c` (2026-11-02), by clicking through the launcher in a browser with the
+stub scripts and fake `python`. Everything through the Install step works in the UI. The last step and failure
+handling do not, so **M1 is not ready**. This list replaces "Still open after R2.3" for these checkpoints.
+
+**M1 blockers (R2.3c):**
+
+- **C3.2 — the UI's Launch button bypasses the supervisor.** It calls `POST /api/steps/run` (`handleRun`), which
+  starts a lone `python server.py --no-react` under `context.Background()`. The UI never calls `/api/app/*`, which is
+  the only path the supervisor and the smoke's lifecycle check cover. Observed after clicking Launch:
+  - `GET /api/app/status` reports `gradio` and `react-ui` as not running;
+  - `POST /api/app/stop` returns 200 and the process survives;
+  - a second `POST /api/steps/run` starts a second `python.exe`, with no already-running check;
+  - no React UI is started, so the user gets no port 3000;
+  - the button stays on "Running…" forever, with no link to the app, no status, and no stop or restart.
+
+  Fix: delete `/api/steps/run` and its stream. Launch calls `POST /api/app/start`, which is idempotent. The UI then
+  shows each process from `/api/app/status/stream`, per-process logs, an open-app link once it answers, and stop and
+  restart. "Starting" and "running" are not "done".
+- **C3.2 — process set and environment do not match the legacy launcher.** `ReactUIStep.tsx` offers Gradio
+  (`server.py --no-react`, 7770), React UI (`npm --prefix react-ui start -- -p 3000`), the extension manager
+  (`installer_scripts/tools/extension_manager.py`) and Diagnostic, each through `micromamba -p <env> run`
+  (`CondaSpawner.tsx`). `Supervisor.Start` defines only Gradio and React UI, despite its comment. It runs the env's
+  `python` directly and `npm.cmd` from the system `PATH`, so a machine with no system Node fails, and neither gets the
+  env's activation. Run everything through the env, add the extension manager and Diagnostic, and do not fail the
+  group silently when one exits. Resolve the 7771 collision.
+- **C3.1 — the mamba step cannot finish on Linux or macOS.** `init_mamba.sh` writes
+  `installer_files/mamba/micromamba`, but `micromambaPath` looks for `installer_files/mamba/bin/micromamba`, so
+  `mambaDone` stays false and `install` starts a missing binary. (Windows matches: `mamba/micromamba.exe`.) Fixtures
+  must get paths from what the legacy scripts really do; check `m1.sh` for a matching stub that hides this.
+- **C3.1 — preflight failures are invisible and cannot be fixed.** `StepItem` discards the preflight response. With
+  a root containing a space the API returns `"ok":false` with a clear message, and the UI shows nothing: the button
+  returns to "Run" with no explanation. The fix actions (`FixLongPaths`, `FixMSVC`) have no endpoint and no button.
+  Show every check with status and message, add typed fix endpoints the user must click, and say what blocks
+  progress, matching `PreflightChecksStep.tsx`.
+- **C3.1 — the Update step never runs.** `handleStatus` reports `update` as `installDone`, so it is always marked
+  done without calling `isGitUpdated`. An existing install is never offered an update. `status` must run the
+  check (with a timeout, without blocking the page). Note that the POST can return `started:false`, and then
+  the UI opens a stream that returns 404 and shows nothing; handle that path.
+- **C3.1 — state is lost on refresh.** Reload the page during a step and the UI forgets it. The button offers "Run"
+  again, and `mamba`, `install` and `update` have no already-running check. `status` must report `running`, the UI must
+  reattach to the stream, and POSTing a running step must not start a second one. A step that exits non-zero must be
+  visibly failed after a reload too.
+- **C3.1 — CI does not catch a stale bundle.** Commit `e4d2edb` turned the required failure into a warning because
+  Windows and Linux builds hash differently, and the step's comment says the difference is "expected". Keep it a
+  failure by comparing inputs, not bytes: commit a hash of the core entry's sources and lockfile next to the assets,
+  and fail CI if it does not match. Or fix the cause, if it is line endings.
+- **C3.1 — smaller items.** `core.html` references `/vite.svg`, which is not embedded (404). `build-webui.ps1` must
+  stop on a failed npm build before touching the assets; confirm with a deliberately broken build.
+- **C2.4 — a missing `.gpu` silently auto-detects at start.** `readGPULabel` falls back to `gpu.Detect` when the
+  file is missing, and any other read error falls through the same way. The user's choice is the contract, and
+  legacy refuses to auto-install AMD and Intel (`initializeApp.js:114`). Make it an error that sends the user to
+  the GPU step. Also, `env create main` without `--gpu` fails only after uv has installed Python; check first.
+- **M1 smoke tests a path the UI does not use, and hides what that leaves behind.** See "Verification rules", M1.
+  - It records the run step's `python.exe` in `$before` and excludes it from the alive and orphan checks, which is
+    how the surviving process went unnoticed.
+  - It counts only `python.exe`, so React UI and the rest are unchecked.
+  - The "goldens" are values the stubs write themselves (`smoke-test-version`) and a literal `CPU`, not copies of what
+    the legacy flow writes.
+  - `fakepython` serves no HTTP, though the rule requires it to answer on its port, and descendants are not checked.
+  - The Neutralino check greps `index.html`, not the bundle.
+  - A missing `.preflight_ok` is a NOTE, not a failure.
+
+**Not on the M1 path; fix with R2.4 and R2.5:**
+
+- **C4.2** (R2.4): one table now exists (`gpu/torch.go`), and `env` passes its pins. Still different from
+  `initializeApp.js`: NVIDIA `torchaudio==2.11.0+cu128` (legacy `torchaudio==2.11.0`), and the `torch.go` comment claims an
+  exact match. `venv.go` installs `xformers` with no index URL (AMD should use rocm7.2) and `torchcodec` unpinned
+  (legacy `0.11`, `get_torch_command.py`). On an Intel Mac, detection gives CPU and then a `+cpu` wheel; check it exists.
+- **C4.1** (R2.4): the ffmpeg pin is now a dated tag (`autobuild-2026-10-31-12-59`) with matching digests, and uv arm64
+  entries match. MinGit has only windows/amd64, so `EnsureAll` errors on windows/arm64; upstream has an arm64 zip.
+  ffmpeg has no darwin entries, and the coverage check doesn't catch it because the tool has no entry for that OS at
+  all, so macOS silently has no ffmpeg (legacy installs it through conda).
+- **C8.0** (R2.5): fixed since last review: `/v1/models/load`, `idle_unload_ms`, and the flag list. Still wrong:
+  "no Windows cpu-portable" (`windows-x64-cpu-portable.zip` exists), "no Linux Vulkan" (`ubuntu-x64-vulkan` and
+  `-vulkan-portable` exist), "macOS = metal for any CPU/GPU" (mac CPU is 404). Unsupported: default port 8080, default
+  bind 127.0.0.1, "offline mode cannot be cancelled".
+- **C8.2** (R2.5): URLs for the supported combinations now return 200 with matching checksums, and launch uses
+  `--config`. Still open:
+  - the generated config has no `models` key, so the server starts with nothing registered and `mode: streaming` cannot
+    be reached;
+  - cancel `disconnect` calls `cancelFn`, which reports say ends the whole server rather than one request;
+  - idle stop kills the process instead of using `idle_unload_ms`;
+  - invalid combinations are not rejected (Apple on Windows, NVIDIA on Mac, Mac CPU all 404);
+  - the temp config file is never removed.
+
+**What held up** (do not redo): D12 structure with `platform/core.ts` deleted and the Neutralino entry unchanged; no
+Neutralino in the bundle; cookie-only `/api` calls from a real browser; step streams with replay and `event: done`;
+`app/start` no longer kills its process; a hard kill of the launcher leaves no children.
+
 ## Verification rules
 
 These apply to every checkpoint from run 2 on.
@@ -246,6 +337,12 @@ These apply to every checkpoint from run 2 on.
       port and stays up). Assert it still answers 5 s after `app/start` returned, then `app/stop`, then assert that
       neither its PID nor any descendant is alive;
     - treat every non-2xx response as a failure. There is no INFO or "expected" path.
+    - use the same calls the UI makes. The app is started the way the Launch button starts it, and every process
+      started during the run is tracked: nothing is excluded by a before/after list, and processes are not filtered
+      by name. After `app/stop`, no descendant of the launcher may remain;
+    - add a browser-driven script (`core/scripts/smoke/ui/`, Playwright with its own `package.json`; run in CI) that
+      clicks through the UI on the same fixture: every step to Launch, the app link appears, Stop works, a reload
+      mid-step reattaches, a root with a space shows the failed check, and a stub that exits 1 shows a failure.
 - **UI checkpoints are checked in a real browser.** Load the page served by the real binary in a headless browser
   (or the agent's browser tool). Record in the note that it leaves its loading state, that the console has no
   errors, and which `/api` requests it made. Grepping the HTML is not enough.
@@ -270,7 +367,8 @@ R2.3. C3.1 (join, alone) → C3.2 (join, alone) → M1 smoke → **stop for M1 s
 work, see "Still open after R2.3".
 R2.3b (redo, run 3). Wave: C2.4 finish + C4.2 (one worker) · C4.1 month-end pin + arm64 error · C8.0 fix → C8.2
 URLs/config. Then C3.1 (join, alone) → C3.2 (join, alone) → rewrite the M1 smoke to the rules above → run it →
-browser check → **stop for M1 sign-off**.
+browser check → **stop for M1 sign-off**. Ran 2026-11-02; see "Still open after R2.3b".
+R2.3c (run 4). C2.4 missing-`.gpu` fix (first) → C3.2 → C3.1 → M1 smoke and browser-driven script per the M1 rules → **stop for M1 sign-off**. Only the "M1 blockers" list.
 R2.4. C4.3 → M2 smoke (heavy: `built` unless `HEAVY_CHECKS=yes`) · C6.3a (first page group, sets the pattern)
 R2.5. C6.3b–g in parallel · C5.4/C5.5 smoke towards M3
 

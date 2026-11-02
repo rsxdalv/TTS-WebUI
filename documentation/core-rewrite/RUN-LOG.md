@@ -328,3 +328,18 @@ Browser check: launcher loads at http://127.0.0.1:18789/; page title "TTS WebUI 
 Known issues (not blocking `built`): favicon /vite.svg 404; CI cross-platform asset hash divergence (warn-only).
 Provisional decisions: none new.
 **Awaiting human M1 sign-off.** Next: R2.4 (C4.3 → M2 smoke, HEAVY_CHECKS=yes), R2.5 (C6.3b–g, C5.4/C5.5 smoke).
+
+### Review after R2.3b — 2026-11-02 (outside the director)
+
+- Run 3 stopped for M1 sign-off, and its smoke reproduces as PASS, but M1 is not ready. A click-through found:
+  - Launch uses `/api/steps/run`, outside the supervisor: `app/status` says not running, `app/stop` leaves the process
+    alive, a second POST starts another copy, no React UI starts, and the button stays on "Running…";
+  - preflight failures are invisible;
+  - Update never runs;
+  - a page reload loses step state.
+- The smoke missed the first because it tested `/api/app` and excluded the run step's process from its orphan check.
+  The browser check only loaded the page. CI's stale-bundle check was downgraded to a warning (`e4d2edb`).
+- Real progress, verified: D12 structure, no Neutralino in the bundle, cookie auth and step streams through Install in a
+  real browser, `app/start` context fixed, no children left after hard-killing the launcher.
+- Statuses: C2.4, C3.1, C3.2, C4.1, C4.2, C8.0, C8.2 → `reopened`, with the list in PLAN.md "Still open after R2.3b".
+- Next: R2.3c (run 4), M1 blockers only. Prompt in README.md.

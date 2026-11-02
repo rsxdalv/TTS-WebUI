@@ -98,6 +98,34 @@ every M1 requirement. `done` needs that smoke plus the browser check, recorded i
 is `built` or `reopened`. Downgrading is fine. Do not ask me anything until the final report.
 ```
 
+### Run 4 (R2.3c, M1 blockers only)
+
+```
+Run the core rewrite as director, run 4, unattended.
+
+Settings:
+- HEAVY_CHECKS = no
+- STOP_AFTER = R2.3c
+
+Follow .github/agents/director.agent.md. Work on core/rewrite (draft PR #712); branches core/r4-<name>.
+Read PLAN.md's "Status", "Still open after R2.3b", "Verification rules" and "Parallel work", the last two entries
+of RUN-LOG.md, and DECISIONS.md D12. Run R2.3c: fix every item under "M1 blockers", in the order PLAN.md lists
+for R2.3c, one join worker at a time. Do not work on the "Not on the M1 path" items and do not redo "What held up".
+
+The main fix: the Launch button must go through the supervisor. Delete /api/steps/run and its stream. Launch calls
+POST /api/app/start, and the UI shows process status, logs, an open-app link, stop and restart. Add the missing
+processes and run them in the env.
+
+Run 3 reported M1 ready, but its smoke tested /api/app while the UI used /api/steps/run, and it excluded that
+process from its orphan check. The browser check loaded the page without clicking through it. So: rewrite the
+smoke to the M1 rules, add the browser-driven script, run both, and record their output in the notes. Before
+reporting, a reviewer who did not write the code clicks through the UI from a fresh fixture and tries to break it.
+A warning is not a pass; if a check cannot be met, report that check as failed.
+
+`done` needs all of that. Everything else is `built` or `reopened`. Downgrading is fine. Stop for my M1 sign-off.
+Do not ask me anything until the final report.
+```
+
 To resume after the chat ends or runs out of context: same prompt in a new chat; the director reads `RUN-LOG.md`
 and continues. Afterwards, the draft PR lists the provisional decisions to confirm, the checks that need you,
 and the milestones that are ready to try.

@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - "core/**"
+      - "launcher/vite-src/**"
       - ".github/workflows/core.yaml"
   pull_request:
     paths:
       - "core/**"
+      - "launcher/vite-src/**"
       - ".github/workflows/core.yaml"
   workflow_dispatch:
 
@@ -75,3 +77,24 @@ jobs:
           name: tts-webui-${{ matrix.goos }}-${{ matrix.goarch }}
           path: core/dist/tts-webui-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
           if-no-files-found: error
+
+  build-webui:
+    name: Build core UI and check committed assets
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: launcher/vite-src/package-lock.json
+      - name: Build core entry
+        run: bash core/scripts/build-webui.sh
+      - name: Check committed assets match fresh build
+        run: |
+          if ! git diff --exit-code core/internal/webui/assets/; then
+            echo "ERROR: committed assets are stale. Run core/scripts/build-webui.sh and commit the result."
+            exit 1
+          fi

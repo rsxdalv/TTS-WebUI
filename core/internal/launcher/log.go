@@ -11,11 +11,18 @@ const subBufSize = 256
 // It drives SSE progress streams for steps that are not backed by a subprocess
 // (e.g. the download step).
 type Log struct {
-	mu   sync.Mutex
-	buf  [logCap]string
-	head int
-	n    int
-	subs []*logSub
+	mu        sync.Mutex
+	buf       [logCap]string
+	head      int
+	n         int
+	subs      []*logSub
+	doneCh    chan struct{}
+	closeOnce sync.Once
+}
+
+// newLog returns a Log ready for use.
+func newLog() *Log {
+	return &Log{doneCh: make(chan struct{})}
 }
 
 type logSub struct{ ch chan string }
@@ -38,6 +45,15 @@ func (l *Log) AddLine(line string) {
 		}
 	}
 }
+
+// Close signals that no more lines will be added.
+// Safe to call multiple times; only the first call has effect.
+func (l *Log) Close() {
+	l.closeOnce.Do(func() { close(l.doneCh) })
+}
+
+// Done returns a channel that is closed when Close() is called.
+func (l *Log) Done() <-chan struct{} { return l.doneCh }
 
 // Lines returns all buffered lines in chronological order.
 func (l *Log) Lines() []string {

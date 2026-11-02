@@ -9,6 +9,7 @@ package launcher
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -142,7 +143,9 @@ func (l *Launcher) getLog(step string) *Log {
 // --- stream handlers ---
 
 // handleProcStream is an SSE handler for subprocess-backed steps.
-// It replays buffered history then streams live output.
+// Headers are flushed immediately so EventSource does not hang.
+// Buffered history is replayed for reconnecting clients.
+// Ends with "event: done" carrying the exit code when the process exits.
 func (l *Launcher) handleProcStream(step string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := l.getProc(step)
@@ -150,37 +153,57 @@ func (l *Launcher) handleProcStream(step string) http.Handler {
 			http.Error(w, "no active process for "+step, http.StatusNotFound)
 			return
 		}
-		// Subscribe before reading history to avoid missing lines.
+
+		flusher, ok := server.SSEStart(w)
+		if !ok {
+			return
+		}
+
+		// Subscribe before reading history to avoid a race on new lines.
 		live, unsub := p.Subscribe()
 		defer unsub()
 
-		events := make(chan string, 512)
-		go func() {
-			defer close(events)
-			for _, line := range p.Lines() {
-				select {
-				case events <- line:
-				case <-r.Context().Done():
+		// Replay buffered history.
+		for _, line := range p.Lines() {
+			if r.Context().Err() != nil {
+				return
+			}
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", line)
+		}
+		flusher.Flush()
+
+		// Stream live lines; also watch for process exit.
+		procDone := p.Done()
+		for {
+			select {
+			case <-r.Context().Done():
+				return
+			case line, ok := <-live:
+				if !ok {
+					server.WriteSSEDone(w, flusher, p.ExitCode())
 					return
 				}
-			}
-			for {
-				select {
-				case line, ok := <-live:
-					if !ok {
-						return
-					}
+				_, _ = fmt.Fprintf(w, "data: %s\n\n", line)
+				flusher.Flush()
+			case <-procDone:
+				// Drain any lines that arrived just before the channel closed.
+				for {
 					select {
-					case events <- line:
-					case <-r.Context().Done():
-						return
+					case line, ok := <-live:
+						if !ok {
+							goto sendDone
+						}
+						_, _ = fmt.Fprintf(w, "data: %s\n\n", line)
+					default:
+						goto sendDone
 					}
-				case <-r.Context().Done():
-					return
 				}
+			sendDone:
+				flusher.Flush()
+				server.WriteSSEDone(w, flusher, p.ExitCode())
+				return
 			}
-		}()
-		server.SSE(w, r, events)
+		}
 	})
 }
 
@@ -239,35 +262,54 @@ func (l *Launcher) handleLogStream(step string) http.Handler {
 			http.Error(w, "no active download", http.StatusNotFound)
 			return
 		}
+
+		flusher, ok := server.SSEStart(w)
+		if !ok {
+			return
+		}
+
 		live, unsub := lg.Subscribe()
 		defer unsub()
 
-		events := make(chan string, 512)
-		go func() {
-			defer close(events)
-			for _, line := range lg.Lines() {
-				select {
-				case events <- line:
-				case <-r.Context().Done():
+		// Replay buffered history.
+		for _, line := range lg.Lines() {
+			if r.Context().Err() != nil {
+				return
+			}
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", line)
+		}
+		flusher.Flush()
+
+		logDone := lg.Done()
+		for {
+			select {
+			case <-r.Context().Done():
+				return
+			case line, ok := <-live:
+				if !ok {
+					server.WriteSSEDone(w, flusher, 0)
 					return
 				}
-			}
-			for {
-				select {
-				case line, ok := <-live:
-					if !ok {
-						return
-					}
+				_, _ = fmt.Fprintf(w, "data: %s\n\n", line)
+				flusher.Flush()
+			case <-logDone:
+				// Drain remaining buffered lines.
+				for {
 					select {
-					case events <- line:
-					case <-r.Context().Done():
-						return
+					case line, ok := <-live:
+						if !ok {
+							goto logSendDone
+						}
+						_, _ = fmt.Fprintf(w, "data: %s\n\n", line)
+					default:
+						goto logSendDone
 					}
-				case <-r.Context().Done():
-					return
 				}
+			logSendDone:
+				flusher.Flush()
+				server.WriteSSEDone(w, flusher, 0)
+				return
 			}
-		}()
-		server.SSE(w, r, events)
+		}
 	})
 }

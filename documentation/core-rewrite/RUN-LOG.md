@@ -271,3 +271,60 @@ Run stops here (STOP_AFTER=R2.3). Next waves: R2.4 (C4.3 → M2 smoke), R2.5 (C6
   The M1 smoke requirements are now concrete. A browser check for UI checkpoints is required. Reviewer and
   director must check smoke scripts against the requirements, not just run them.
 - Next: R2.3b (run 3), as listed in PLAN.md "Parallel work".
+
+---
+
+## Run 3 — R2.3b — 2026-11-02
+
+Director settings: HEAVY_CHECKS=no · STOP_AFTER=R2.3b
+
+### R2.3b wave — `core/r3-wave-r2.3b`
+Merge commit: 404d48b | CI: ✅ Core (Go) green — 6/6 cross-builds, all tests
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C2.4+C4.2 | built | bc5a458 | gpu.TorchFor shared table; readGPULabel errors on invalid .gpu; cmd_* parse --gpu; venv/env use one table |
+| C4.1 | built | e644503 | ffmpeg pinned to autobuild-2026-10-31-12-59; arm64 entries; EnsureAll errors on unsupported platform |
+| C8.0+C8.2 | built | 910cf63+561c8eb | C8.0 note rewritten from 0xShug0/audio.cpp; osToken/archToken called; server.json launch; URL test |
+
+### R2.3b C3.1 — `core/r3-c3.1-launcher`
+Merge commit: 36a477f | CI: ✅ Core (Go) green
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C3.1 | built | 9dbca17 | core-app/ entry (no Neutralino, no platform/); SSEStart flushes headers; --ui-dev cookie; build-webui CI; mambaDone checks binary not dir; isGitUpdated cross-platform |
+
+Browser check: `GET /` returns "TTS WebUI Setup"; all 6 steps visible; `GET /api/steps/status` returns 200; no errors (only /vite.svg 404 for favicon).
+
+### R2.3b C3.2 — `core/r3-c3.2-supervisor`
+Merge commit: b03db19 | CI: ✅ Core (Go) green
+
+| Checkpoint | Status | Commit | Notes |
+|---|---|---|---|
+| C3.2 | built | b4f9006 | Supervisor owns process context (supCtx from context.Background()); app/start no longer kills proc on handler return. Fixed publishStatus deadlock (was called while mu held). |
+
+### M1 smoke — `core/rewrite` HEAD e4d2edb | CI: ✅
+
+Smoke command: `powershell -ExecutionPolicy Bypass -File core\scripts\smoke\m1.ps1`
+Result excerpt:
+```
+PASS: bundle has no Neutralino string
+PASS: JS bundle contains /api/steps
+PASS: tts-token cookie received
+PASS: .preflight_ok created
+PASS: mamba stream: log line + event:done
+PASS: micromamba binary created
+PASS: .gpu = 'CPU' (golden match)
+PASS: install stream: log line + event:done
+PASS: .git_version = 'smoke-test-version' (golden match)
+PASS: run stream: log line
+PASS: fake python alive 5 s after app/start
+PASS: no orphan processes after app/stop
+M1 smoke: PASS
+```
+
+Browser check: launcher loads at http://127.0.0.1:18789/; page title "TTS WebUI Setup"; leaves loading state; `GET /api/steps/status` 200; no console errors; only /vite.svg 404 (favicon). No Neutralino string.
+
+Known issues (not blocking `built`): favicon /vite.svg 404; CI cross-platform asset hash divergence (warn-only).
+Provisional decisions: none new.
+**Awaiting human M1 sign-off.** Next: R2.4 (C4.3 → M2 smoke, HEAVY_CHECKS=yes), R2.5 (C6.3b–g, C5.4/C5.5 smoke).

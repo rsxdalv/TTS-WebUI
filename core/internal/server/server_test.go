@@ -305,3 +305,44 @@ func TestIndexSetsCookie(t *testing.T) {
 		t.Error("GET / did not set tts-token cookie")
 	}
 }
+
+func TestUiDevInjectsCookie(t *testing.T) {
+	// Start a fake Vite dev server.
+	fakeDev := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte("<html><body>dev</body></html>"))
+	}))
+	defer fakeDev.Close()
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+
+	srv, err := server.NewWithOptions(port, server.Options{UIDev: fakeDev.URL})
+	if err != nil {
+		l.Close()
+		t.Fatalf("NewWithOptions: %v", err)
+	}
+
+	ts := &httptest.Server{
+		Listener: l,
+		Config:   &http.Server{Handler: srv.Handler()},
+	}
+	ts.Start()
+	defer ts.Close()
+
+	resp := get(t, ts, "/", nil)
+	defer resp.Body.Close()
+	var found bool
+	for _, c := range resp.Cookies() {
+		if c.Name == "tts-token" && c.Value == srv.Token() {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("--ui-dev GET / did not set tts-token cookie")
+	}
+}
+

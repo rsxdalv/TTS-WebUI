@@ -22,6 +22,8 @@ func SSE(w http.ResponseWriter, r *http.Request, events <-chan string) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK) // send headers before any event
+	flusher.Flush()
 
 	for {
 		select {
@@ -35,4 +37,30 @@ func SSE(w http.ResponseWriter, r *http.Request, events <-chan string) {
 			flusher.Flush()
 		}
 	}
+}
+
+// SSEStart writes SSE response headers and flushes them immediately so the
+// browser's EventSource does not hang waiting for the first event.
+// Returns false (and writes a 500) if the ResponseWriter does not support
+// flushing.
+func SSEStart(w http.ResponseWriter) (http.Flusher, bool) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return nil, false
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+	flusher.Flush()
+	return flusher, true
+}
+
+// WriteSSEDone writes a terminal "event: done" SSE event with the process exit
+// code. Call this after all data lines are sent, before returning the handler.
+func WriteSSEDone(w http.ResponseWriter, flusher http.Flusher, exitCode int) {
+	_, _ = fmt.Fprintf(w, "event: done\ndata: {\"exitCode\":%d}\n\n", exitCode)
+	flusher.Flush()
 }

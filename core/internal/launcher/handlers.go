@@ -32,7 +32,7 @@ func (l *Launcher) handleDownload() http.Handler {
 			url = canonicalDownloadURL
 		}
 
-		lg := &Log{}
+		lg := newLog()
 		l.setLog("download", lg)
 
 		// Extract into the parent of the install root.
@@ -44,6 +44,7 @@ func (l *Launcher) handleDownload() http.Handler {
 			} else {
 				lg.AddLine("done")
 			}
+			lg.Close()
 		}()
 
 		w.Header().Set("Content-Type", "application/json")

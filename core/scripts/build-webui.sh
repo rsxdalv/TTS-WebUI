@@ -5,14 +5,19 @@ REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 VITE_SRC="$REPO_ROOT/launcher/vite-src"
 ASSETS="$REPO_ROOT/core/internal/webui/assets"
 
-echo "Building launcher with VITE_PLATFORM=core ..."
+echo "Building core entry ..."
 cd "$VITE_SRC"
 npm ci
-VITE_PLATFORM=core npm run build
+npm run build:core
 
-echo "Copying dist/ to $ASSETS ..."
+echo "Copying dist-core/ to $ASSETS ..."
 rm -rf "$ASSETS"
 mkdir -p "$ASSETS"
-cp -r dist/. "$ASSETS/"
+cp -r dist-core/. "$ASSETS/"
 
-echo "Done. Launcher built and copied to core/internal/webui/assets/"
+# core.html is the entry; rename to index.html for the Go server.
+if [ -f "$ASSETS/core.html" ]; then
+  mv "$ASSETS/core.html" "$ASSETS/index.html"
+fi
+
+echo "Done. Core entry built and copied to core/internal/webui/assets/"

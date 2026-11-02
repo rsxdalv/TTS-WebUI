@@ -161,6 +161,29 @@ func (p *Proc) PID() int {
 // Lines returns a snapshot of all buffered output lines.
 func (p *Proc) Lines() []string { return p.ring.lines() }
 
+// Done returns a channel that is closed when the process exits.
+// Returns a channel that never closes if the process has not been started.
+func (p *Proc) Done() <-chan struct{} {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.done == nil {
+		return make(chan struct{}) // never closes; caller checks after Subscribe
+	}
+	return p.done
+}
+
+// ExitCode returns the process exit code after it has exited, or -1 if the
+// process has not exited or if the state is unavailable.
+func (p *Proc) ExitCode() int {
+	p.mu.Lock()
+	cmd := p.cmd
+	p.mu.Unlock()
+	if cmd == nil || cmd.ProcessState == nil {
+		return -1
+	}
+	return cmd.ProcessState.ExitCode()
+}
+
 // Subscribe returns a channel that receives future output lines and a function
 // to cancel the subscription. The channel is buffered; slow readers drop lines.
 func (p *Proc) Subscribe() (<-chan string, func()) {

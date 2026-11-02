@@ -147,7 +147,19 @@ func (s *Server) routes() {
 		devTarget, err := url.Parse(s.opts.UIDev)
 		if err == nil {
 			rp := httputil.NewSingleHostReverseProxy(devTarget)
-			s.mux.Handle("/", rp)
+			// Inject the tts-token cookie on GET / so the dev app can reach /api/*.
+			s.mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/" && r.Method == http.MethodGet {
+					http.SetCookie(w, &http.Cookie{
+						Name:     "tts-token",
+						Value:    s.token,
+						Path:     "/",
+						SameSite: http.SameSiteStrictMode,
+						HttpOnly: true,
+					})
+				}
+				rp.ServeHTTP(w, r)
+			}))
 			return
 		}
 		slog.Error("invalid --ui-dev URL, falling back to embedded", "url", s.opts.UIDev, "err", err)

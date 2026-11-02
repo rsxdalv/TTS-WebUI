@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/env"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 )
 
 func init() {
@@ -19,7 +20,7 @@ func init() {
 func runEnv(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("env", flag.ContinueOnError)
 	rootDir := fs.String("root", "", "install root (default: binary location)")
-	gpu := fs.String("gpu", "", `GPU label: "NVIDIA GPU", "AMD GPU (ROCM, Linux only)", "Apple M Series Chip", "Intel GPU (XPU)", "CPU", "Custom (Manual torch install)"`)
+	gpuFlag := fs.String("gpu", "", `GPU label: "NVIDIA GPU", "AMD GPU (ROCM, Linux only)", "Apple M Series Chip", "Intel GPU (XPU)", "CPU", "Custom (Manual torch install)"`)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -38,7 +39,15 @@ func runEnv(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		return env.CreateMain(ctx, root, *gpu)
+		gpuLabel := *gpuFlag
+		if gpuLabel != "" {
+			parsed, parseErr := gpu.Parse(gpuLabel)
+			if parseErr != nil {
+				return parseErr
+			}
+			gpuLabel = string(parsed)
+		}
+		return env.CreateMain(ctx, root, gpuLabel)
 	default:
 		return fmt.Errorf("unknown env subcommand %q", fs.Arg(0))
 	}

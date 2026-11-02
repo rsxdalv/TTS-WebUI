@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
@@ -91,5 +92,49 @@ func TestFreePort(t *testing.T) {
 	}
 	if port <= 0 || port > 65535 {
 		t.Fatalf("unexpected port %d", port)
+	}
+}
+
+// TestReadGPULabel_InvalidFile checks that readGPULabel returns an error when
+// the .gpu file exists but contains an invalid label (no silent fallback).
+func TestReadGPULabel_InvalidFile(t *testing.T) {
+	root := makeRoot(t)
+	// Write an invalid label (not a PyTorchChoice string) to the .gpu file.
+	// The file content matches what legacy code writes: "nvidia\n" (invalid).
+	gpuFile := root.MarkerFile(".gpu")
+	if err := os.MkdirAll(filepath.Dir(gpuFile), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(gpuFile, []byte("nvidia\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := readGPULabel(context.Background(), root)
+	if err == nil {
+		t.Fatal("expected error for invalid .gpu label, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid GPU label") {
+		t.Errorf("error should mention 'invalid GPU label', got: %v", err)
+	}
+}
+
+// TestReadGPULabel_ValidFile checks that a real .gpu file with trailing newline parses correctly.
+func TestReadGPULabel_ValidFile(t *testing.T) {
+	root := makeRoot(t)
+	gpuFile := root.MarkerFile(".gpu")
+	if err := os.MkdirAll(filepath.Dir(gpuFile), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Legacy code writes "NVIDIA GPU\n" (with trailing newline).
+	if err := os.WriteFile(gpuFile, []byte("NVIDIA GPU\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	label, err := readGPULabel(context.Background(), root)
+	if err != nil {
+		t.Fatalf("readGPULabel: %v", err)
+	}
+	if label != "NVIDIA GPU" {
+		t.Errorf("label = %q, want %q", label, "NVIDIA GPU")
 	}
 }

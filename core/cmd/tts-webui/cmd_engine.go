@@ -200,6 +200,12 @@ func runEngine(ctx context.Context, args []string) error {
 				gpuResult = gpu.Result{Label: gpu.CPU}
 			}
 			gpuLabel = string(gpuResult.Label)
+		} else {
+			parsed, parseErr := gpu.Parse(gpuLabel)
+			if parseErr != nil {
+				return parseErr
+			}
+			gpuLabel = string(parsed)
 		}
 		cacheDir := root.CoreData() + "/native"
 		fmt.Fprintf(fs.Output(), "resolving native binary for %s (gpu=%s)...\n", engineID, gpuLabel)

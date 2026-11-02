@@ -20,9 +20,9 @@ func TestTorchIndexURL(t *testing.T) {
 		{"NVIDIA GPU", "https://download.pytorch.org/whl/cu128", true},
 		{"AMD GPU (ROCM, Linux only)", "https://download.pytorch.org/whl/rocm7.2", true},
 		{"Apple M Series Chip", "", true},
-		{"Intel GPU (XPU)", "", true},
+		{"Intel GPU (XPU)", "https://download.pytorch.org/whl/test/xpu", true},
 		{"CPU", "https://download.pytorch.org/whl/cpu", true},
-		{"Custom (Manual torch install)", "", true},
+		{"Custom (Manual torch install)", "", false},
 		{"unknown_gpu", "", false},
 		{"", "", false},
 	}
@@ -128,8 +128,11 @@ func TestCreateMain_Intel(t *testing.T) {
 	}
 
 	thirdCall := strings.Join(calls[2], " ")
-	if !strings.Contains(thirdCall, "intel-extension-for-pytorch") {
-		t.Errorf("intel call missing intel-extension-for-pytorch: %v", calls[2])
+	if !strings.Contains(thirdCall, "test/xpu") {
+		t.Errorf("intel call missing xpu index URL: %v", calls[2])
+	}
+	if strings.Contains(thirdCall, "intel-extension-for-pytorch") {
+		t.Errorf("intel call should not contain intel-extension-for-pytorch (legacy PyPI approach): %v", calls[2])
 	}
 }
 

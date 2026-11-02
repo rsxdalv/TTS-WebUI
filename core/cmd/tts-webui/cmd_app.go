@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/app"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 )
 
 func init() {
@@ -46,7 +47,7 @@ func runApp(ctx context.Context, args []string) error {
 func runAppUpdate(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("app update", flag.ContinueOnError)
 	rootDir := fs.String("root", "", "install root (default: binary location)")
-	gpu := fs.String("gpu", "", `GPU label: "NVIDIA GPU", "AMD GPU (ROCM, Linux only)", "Apple M Series Chip", "Intel GPU (XPU)", "CPU", "Custom (Manual torch install)"`)
+	gpuFlag := fs.String("gpu", "", `GPU label: "NVIDIA GPU", "AMD GPU (ROCM, Linux only)", "Apple M Series Chip", "Intel GPU (XPU)", "CPU", "Custom (Manual torch install)"`)
 	checkOnly := fs.Bool("check-only", false, "only check whether an update is available; exit 1 if one is")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -55,6 +56,15 @@ func runAppUpdate(ctx context.Context, args []string) error {
 	root, err := resolveRoot(*rootDir)
 	if err != nil {
 		return err
+	}
+
+	gpuLabel := *gpuFlag
+	if gpuLabel != "" {
+		parsed, parseErr := gpu.Parse(gpuLabel)
+		if parseErr != nil {
+			return parseErr
+		}
+		gpuLabel = string(parsed)
 	}
 
 	current, err := app.CurrentVersion(root)
@@ -89,7 +99,7 @@ func runAppUpdate(ctx context.Context, args []string) error {
 
 	fmt.Fprintln(fs.Output(), "installing…")
 	// Pass the already-fetched version to avoid a second PyPI round-trip.
-	if err := app.UpdateTo(ctx, root, *gpu, latest); err != nil {
+	if err := app.UpdateTo(ctx, root, gpuLabel, latest); err != nil {
 		return err
 	}
 	fmt.Fprintf(fs.Output(), "tts-webui %s installed\n", latest)

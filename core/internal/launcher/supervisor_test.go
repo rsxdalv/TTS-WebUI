@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 )
@@ -179,5 +180,29 @@ func TestSupervisorContextCancelledAfterStop(t *testing.T) {
 		t.Error("supCtx/supCancel should be nil on a never-started supervisor after Stop")
 	}
 	sup.mu.Unlock()
+}
+
+// TestSupervisorStartPublishStatusNoDeadlock verifies that calling Stop()
+// after Start() does not deadlock. The deadlock occurred when publishStatus()
+// was called while s.mu was held (publishStatus itself acquires s.mu).
+func TestSupervisorStartPublishStatusNoDeadlock(t *testing.T) {
+	root := makeRoot(t)
+	sup := newSupervisor(root, "conda")
+
+	// Start will fail (no binary), but publishStatus must not deadlock.
+	_ = sup.Start(context.Background())
+
+	// If Start deadlocked, the goroutine would be stuck and Stop would hang.
+	done := make(chan struct{})
+	go func() {
+		sup.Stop()
+		close(done)
+	}()
+	select {
+	case <-done:
+		// OK
+	case <-time.After(3 * time.Second):
+		t.Fatal("Stop() timed out — possible deadlock in publishStatus")
+	}
 }
 

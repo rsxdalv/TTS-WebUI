@@ -138,7 +138,6 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	}
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	for _, d := range defs {
 		p := &procs.Proc{}
@@ -151,13 +150,15 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 			supCancel()
 			s.supCtx = nil
 			s.supCancel = nil
+			s.mu.Unlock()
 			return fmt.Errorf("starting %s: %w", d.name, err)
 		}
 		ap := &appProcess{name: d.name, proc: p}
 		s.procs = append(s.procs, ap)
 		go s.watchExit(ap)
 	}
-	s.publishStatus()
+	s.mu.Unlock()
+	s.publishStatus() // must be called without mu held (publishStatus acquires mu itself)
 	return nil
 }
 

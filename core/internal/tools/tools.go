@@ -31,9 +31,11 @@ type Tool struct {
 }
 
 // pinned is the tool table embedded at build time.
-// Pinned 2026-10-29. Update SHA256 when bumping a tool version.
+// Pinned 2026-10-29; ffmpeg re-pinned 2026-11-02 to month-end BtbN tag autobuild-2026-10-31-12-59.
+// Update SHA256 when bumping a tool version.
 var pinned = []Tool{
-	// uv — Python package manager (v0.13.6)
+	// uv — Python package manager (v0.13.6, pinned 2026-10-29)
+	// Hashes from https://github.com/astral-sh/uv/releases/download/0.13.6/sha256.sum
 	{
 		Name:        "uv",
 		Version:     "0.13.6",
@@ -45,10 +47,26 @@ var pinned = []Tool{
 	{
 		Name:        "uv",
 		Version:     "0.13.6",
+		OS:          "windows",
+		Arch:        "arm64",
+		URLTemplate: "https://github.com/astral-sh/uv/releases/download/{version}/uv-aarch64-pc-windows-msvc.zip",
+		SHA256:      "c2426c0c8e28b53d8c440e47a18d96ad4db51e159866c0e81435b196d7f0081c",
+	},
+	{
+		Name:        "uv",
+		Version:     "0.13.6",
 		OS:          "linux",
 		Arch:        "amd64",
 		URLTemplate: "https://github.com/astral-sh/uv/releases/download/{version}/uv-x86_64-unknown-linux-gnu.tar.gz",
 		SHA256:      "f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645",
+	},
+	{
+		Name:        "uv",
+		Version:     "0.13.6",
+		OS:          "linux",
+		Arch:        "arm64",
+		URLTemplate: "https://github.com/astral-sh/uv/releases/download/{version}/uv-aarch64-unknown-linux-gnu.tar.gz",
+		SHA256:      "229e194255c7958d86d56e8790d969a6f74736592133f0dfd0076f754c642c1d",
 	},
 	{
 		Name:        "uv",
@@ -66,28 +84,45 @@ var pinned = []Tool{
 		URLTemplate: "https://github.com/astral-sh/uv/releases/download/{version}/uv-aarch64-apple-darwin.tar.gz",
 		SHA256:      "60fbd5c8a1ed681845eea28d9d622fcde03c51e91a43465b64a1e17db1ed3472",
 	},
-	// ffmpeg — BtbN n9.0 build.
-	// BtbN publishes only a single rolling `latest` tag; there are no dated release tags.
-	// SHA256s verified against the 2026-10-28 checksums.sha256 file from that tag.
-	// (source: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/checksums.sha256)
-	// Update these hashes whenever bumping the ffmpeg pin.
+	// ffmpeg — BtbN n9.0.2 build, pinned to month-end tag autobuild-2026-10-31-12-59.
+	// BtbN daily builds are pruned after ~2 weeks; month-end builds are kept permanently.
+	// Hashes from https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/checksums.sha256
+	// (source: https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-10-31-12-59)
+	// No macOS builds: BtbN does not publish macOS FFmpeg binaries.
 	{
 		Name:        "ffmpeg",
 		Version:     "9.0",
 		OS:          "windows",
 		Arch:        "amd64",
-		URLTemplate: "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-win64-gpl-9.0.zip",
-		SHA256:      "601b23208f04a2aaeb37aa6685bf98846b6cb257f6c7563234a81eb928b23b47",
+		URLTemplate: "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n9.0.2-39-g7adfbe40dc-win64-gpl-9.0.zip",
+		SHA256:      "693f3e224bc184b40524a62ca47526cfebaf2504414021b92fe75f677ad868b9",
+	},
+	{
+		Name:        "ffmpeg",
+		Version:     "9.0",
+		OS:          "windows",
+		Arch:        "arm64",
+		URLTemplate: "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n9.0.2-39-g7adfbe40dc-winarm64-gpl-9.0.zip",
+		SHA256:      "8b3c394762f26716ccef03ac1b7ac76430759080e1255aa9bc01d74db590bcb5",
 	},
 	{
 		Name:        "ffmpeg",
 		Version:     "9.0",
 		OS:          "linux",
 		Arch:        "amd64",
-		URLTemplate: "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz",
-		SHA256:      "a53ef3a880a6ecec05265061efe6372153666528115dd4696609c939db8e64eb",
+		URLTemplate: "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n9.0.2-39-g7adfbe40dc-linux64-gpl-9.0.tar.xz",
+		SHA256:      "73e29a56974ae5a651133a04584c7483b21afe941e17dc91d79814a758b608d3",
+	},
+	{
+		Name:        "ffmpeg",
+		Version:     "9.0",
+		OS:          "linux",
+		Arch:        "arm64",
+		URLTemplate: "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n9.0.2-39-g7adfbe40dc-linuxarm64-gpl-9.0.tar.xz",
+		SHA256:      "6cad88ae5bcec356cfc5d7979a036cc4007128201928a0cf243df3db483276cc",
 	},
 	// MinGit — Windows only (v2.49.0; SHA256 computed from the release zip 2026-10-29)
+	// MinGit has no upstream checksum file; hash was computed locally on first download (trust on first use).
 	{
 		Name:        "mingit",
 		Version:     "2.49.0",
@@ -115,8 +150,48 @@ func EnsureAllWithClient(ctx context.Context, root paths.Root, client *http.Clie
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("creating tools dir: %w", err)
 	}
+	return ensureAllForPlatform(ctx, dir, runtime.GOOS, runtime.GOARCH, client)
+}
+
+// ensureAllForPlatform is the testable core of EnsureAllWithClient.
+func ensureAllForPlatform(ctx context.Context, dir, goos, goarch string, client *http.Client) error {
+	if client == nil {
+		client = http.DefaultClient
+	}
+	// For each tool that has OS-specific entries, check that at least one entry
+	// matches goos+goarch. A tool with entries for goos but none for goarch
+	// means the platform is unsupported.
+	type coverage struct {
+		hasForOS   bool
+		hasForPair bool
+	}
+	cov := map[string]*coverage{}
 	for _, t := range pinned {
-		if !t.appliesToCurrent() {
+		c := cov[t.Name]
+		if c == nil {
+			c = &coverage{}
+			cov[t.Name] = c
+		}
+		matchOS := t.OS == "*" || t.OS == goos
+		matchArch := t.Arch == "*" || t.Arch == goarch
+		if matchOS {
+			c.hasForOS = true
+		}
+		if matchOS && matchArch {
+			c.hasForPair = true
+		}
+	}
+	for name, c := range cov {
+		if c.hasForOS && !c.hasForPair {
+			return fmt.Errorf("tool %s: no entry for %s/%s; platform is unsupported", name, goos, goarch)
+		}
+	}
+
+	for _, t := range pinned {
+		if t.OS != "*" && t.OS != goos {
+			continue
+		}
+		if t.Arch != "*" && t.Arch != goarch {
 			continue
 		}
 		if err := ensureTool(ctx, dir, t, client); err != nil {

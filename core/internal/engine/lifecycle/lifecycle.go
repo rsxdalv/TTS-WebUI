@@ -84,7 +84,11 @@ func (m *Manager) Start(ctx context.Context, id string) error {
 	engineCtx, cancel := context.WithCancel(ctx)
 
 	proc := &procs.Proc{}
-	args, env := buildLaunchArgs(man, port)
+	args, env, launchErr := buildLaunchArgs(man, port)
+	if launchErr != nil {
+		cancel()
+		return fmt.Errorf("engine %q: preparing launch args: %w", id, launchErr)
+	}
 	if len(args) == 0 {
 		cancel()
 		return fmt.Errorf("engine %q has no launch command", id)
@@ -313,28 +317,40 @@ func freePort() (int, error) {
 
 // buildLaunchArgs constructs the command-line args and environment from the
 // manifest, substituting {port} and appending PortArg if configured.
-func buildLaunchArgs(man manifest.Manifest, port int) ([]string, []string) {
+// If ConfigTemplate is set, it writes the config to a tmp file and appends
+// --config <path>; returns an error if the file cannot be written.
+func buildLaunchArgs(man manifest.Manifest, port int) (args []string, env []string, err error) {
 	if man.Engine.Launch == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 	portStr := fmt.Sprintf("%d", port)
 
-	args := make([]string, len(man.Engine.Launch.Cmd))
+	args = make([]string, len(man.Engine.Launch.Cmd))
 	for i, a := range man.Engine.Launch.Cmd {
 		args[i] = strings.ReplaceAll(a, "{port}", portStr)
 	}
-	if man.Engine.Launch.PortArg != "" {
+
+	if man.Engine.Launch.ConfigTemplate != "" {
+		content := strings.ReplaceAll(man.Engine.Launch.ConfigTemplate, "{port}", portStr)
+		f, ferr := os.CreateTemp("", "audiocpp-server-*.json")
+		if ferr != nil {
+			return nil, nil, fmt.Errorf("writing engine config file: %w", ferr)
+		}
+		_, _ = f.WriteString(content)
+		_ = f.Close()
+		args = append(args, "--config", f.Name())
+	} else if man.Engine.Launch.PortArg != "" {
 		args = append(args, man.Engine.Launch.PortArg, portStr)
 	}
 
 	// Merge OS environment with manifest overrides.
 	base := os.Environ()
-	env := make([]string, 0, len(base)+len(man.Engine.Launch.Env))
+	env = make([]string, 0, len(base)+len(man.Engine.Launch.Env))
 	env = append(env, base...)
 	for k, v := range man.Engine.Launch.Env {
 		env = append(env, k+"="+v)
 	}
-	return args, env
+	return args, env, nil
 }
 
 // waitForHealth probes the engine's health endpoint until it responds or times out.

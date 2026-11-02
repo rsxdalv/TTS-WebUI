@@ -3,6 +3,7 @@ package env
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -30,25 +31,13 @@ func execRun(ctx context.Context, bin string, args []string, env []string) ([]by
 }
 
 // TorchIndexURL returns the PyTorch wheel index URL for a GPU label.
-// Returns ("", true) for labels that use the default PyPI index.
-// Returns ("", false) for unrecognised labels.
+// Deprecated: use gpu.TorchFor; retained for external callers only.
 func TorchIndexURL(gpuLabel string) (url string, known bool) {
-	switch gpuLabel {
-	case string(gpu.NVIDIA):
-		return "https://download.pytorch.org/whl/cu128", true
-	case string(gpu.AMD):
-		return "https://download.pytorch.org/whl/rocm7.2", true
-	case string(gpu.Apple):
-		return "", true // MPS support in base torch, default PyPI
-	case string(gpu.Intel):
-		return "", true // default PyPI + intel-extension-for-pytorch package
-	case string(gpu.CPU):
-		return "https://download.pytorch.org/whl/cpu", true
-	case string(gpu.Custom):
-		return "", true // user manages torch manually
-	default:
+	spec, err := gpu.TorchFor(gpu.Label(gpuLabel))
+	if err != nil {
 		return "", false
 	}
+	return spec.IndexURL, true
 }
 
 // uvBinary returns the path to the uv executable in the tools directory.
@@ -93,22 +82,24 @@ func createMain(ctx context.Context, root paths.Root, gpuLabel string, run runFn
 	return nil
 }
 
-// installTorch installs torch, torchvision and torchaudio into the venv.
+// installTorch installs torch for the given GPU label using the shared torch
+// table from gpu.TorchFor (versions and index URLs match initializeApp.js).
 func installTorch(ctx context.Context, run runFn, uv string, env []string, venvPath, gpuLabel string) error {
-	indexURL, known := TorchIndexURL(gpuLabel)
-	if !known {
+	spec, err := gpu.TorchFor(gpu.Label(gpuLabel))
+	if err != nil {
+		if errors.Is(err, gpu.ErrCustomManaged) {
+			return nil // user manages torch manually
+		}
 		return fmt.Errorf("unknown GPU label %q: cannot install torch", gpuLabel)
 	}
 
-	pkgs := []string{"torch", "torchvision", "torchaudio"}
-	if gpuLabel == string(gpu.Intel) {
-		pkgs = append(pkgs, "intel-extension-for-pytorch")
-	}
-
 	args := []string{"pip", "install", "--python", venvPath}
-	args = append(args, pkgs...)
-	if indexURL != "" {
-		args = append(args, "--index-url", indexURL)
+	args = append(args, spec.Pkgs...)
+	if spec.XFormers != "" {
+		args = append(args, spec.XFormers)
+	}
+	if spec.IndexURL != "" {
+		args = append(args, "--index-url", spec.IndexURL)
 	}
 
 	return runUV(ctx, run, uv, env, args...)

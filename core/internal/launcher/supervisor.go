@@ -296,13 +296,15 @@ func buildUVEnv(root paths.Root) []string {
 
 // readGPULabel reads the GPU label from the installer-written .gpu marker file.
 // If the file doesn't exist, it falls back to gpu.Detect.
+// If the file exists but contains an invalid label, an error is returned (no fallback).
 func readGPULabel(ctx context.Context, root paths.Root) (string, error) {
 	data, err := os.ReadFile(root.MarkerFile(".gpu"))
 	if err == nil {
 		label, parseErr := gpu.Parse(string(data))
-		if parseErr == nil {
-			return string(label), nil
+		if parseErr != nil {
+			return "", fmt.Errorf("invalid GPU label in .gpu file: %w", parseErr)
 		}
+		return string(label), nil
 	}
 	result, detectErr := gpu.Detect(ctx)
 	if detectErr != nil {

@@ -4,6 +4,7 @@ package venv
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/engine/manifest"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 )
 
@@ -124,11 +126,6 @@ func buildVenv(ctx context.Context, root paths.Root, m manifest.Manifest, gpuLab
 	}, uvEnv); err != nil {
 		return fmt.Errorf("uv pip install torchcodec: %w\n%s", err, out)
 	}
-	if out, err := run(ctx, uv, []string{
-		"pip", "install", "--python", python, "xformers==0.0.35",
-	}, uvEnv); err != nil {
-		return fmt.Errorf("uv pip install xformers: %w\n%s", err, out)
-	}
 	reqs := compatPins()
 	if m.Engine.Install != nil {
 		reqs = append(reqs, m.Engine.Install.Requirements...)
@@ -143,43 +140,30 @@ func buildVenv(ctx context.Context, root paths.Root, m manifest.Manifest, gpuLab
 }
 
 // installTorch installs torch/torchvision/torchaudio for the given GPU label.
-// Versions and index URLs match get_torch_command.py.
+// Versions and index URLs come from gpu.TorchFor (matches initializeApp.js).
+// Custom labels are skipped (user manages torch). Unknown labels return an error.
 func installTorch(ctx context.Context, run runFn, uv string, uvEnv []string, python, gpuLabel string) error {
-	const torchVersion = "2.11.0"
-	var pkgs []string
-	var indexURL string
-
-	switch gpuLabel {
-	case "NVIDIA GPU":
-		pkgs = []string{
-			"torch==" + torchVersion + "+cu128",
-			"torchvision",
-			"torchaudio==" + torchVersion + "+cu128",
+	spec, err := gpu.TorchFor(gpu.Label(gpuLabel))
+	if err != nil {
+		if errors.Is(err, gpu.ErrCustomManaged) {
+			return nil // user manages torch
 		}
-		indexURL = "https://download.pytorch.org/whl/cu128"
-	case "AMD GPU (ROCM, Linux only)":
-		pkgs = []string{"torch==" + torchVersion, "torchvision", "torchaudio==" + torchVersion}
-		indexURL = "https://download.pytorch.org/whl/rocm7.2"
-	case "Apple M Series Chip":
-		pkgs = []string{"torch==" + torchVersion, "torchvision", "torchaudio==" + torchVersion}
-	case "CPU":
-		pkgs = []string{
-			"torch==" + torchVersion + "+cpu",
-			"torchvision",
-			"torchaudio==" + torchVersion,
-		}
-		indexURL = "https://download.pytorch.org/whl/cpu"
-	default:
-		// Intel GPU (XPU), Custom, or unknown: use default PyPI index.
-		pkgs = []string{"torch==" + torchVersion, "torchvision", "torchaudio==" + torchVersion}
+		return fmt.Errorf("unsupported GPU label %q: cannot install torch (not Intel, NVIDIA, AMD, Apple, CPU, or Custom)", gpuLabel)
 	}
 
-	args := append([]string{"pip", "install", "--python", python}, pkgs...)
-	if indexURL != "" {
-		args = append(args, "--index-url", indexURL)
+	args := append([]string{"pip", "install", "--python", python}, spec.Pkgs...)
+	if spec.IndexURL != "" {
+		args = append(args, "--index-url", spec.IndexURL)
 	}
 	if out, err := run(ctx, uv, args, uvEnv); err != nil {
 		return fmt.Errorf("uv pip install torch: %w\n%s", err, out)
+	}
+	if spec.XFormers != "" {
+		if out, err := run(ctx, uv, []string{
+			"pip", "install", "--python", python, spec.XFormers,
+		}, uvEnv); err != nil {
+			return fmt.Errorf("uv pip install xformers: %w\n%s", err, out)
+		}
 	}
 	return nil
 }

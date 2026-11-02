@@ -7,6 +7,7 @@ import { DarkThemeProvider, ThemeToggle } from "../DarkThemeProvider";
 export interface StepStatus {
   step: string;
   done: boolean;
+  running?: boolean;
 }
 
 export function CoreApp() {

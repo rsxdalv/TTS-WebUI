@@ -129,8 +129,9 @@ func TestMicromambaPath(t *testing.T) {
 		if filepath.Base(p) != "micromamba" {
 			t.Errorf("expected 'micromamba' binary on Unix, got %q", p)
 		}
-		if filepath.Base(filepath.Dir(p)) != "bin" {
-			t.Errorf("expected .../bin/micromamba on Unix, got %q", p)
+		// init_mamba.sh writes installer_files/mamba/micromamba (no bin/).
+		if filepath.Base(filepath.Dir(p)) != "mamba" {
+			t.Errorf("expected .../mamba/micromamba on Unix, got %q", p)
 		}
 	}
 }

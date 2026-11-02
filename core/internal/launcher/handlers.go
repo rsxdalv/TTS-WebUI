@@ -79,11 +79,34 @@ func (l *Launcher) handlePreflight() http.Handler {
 	})
 }
 
+// handlePreflightFixLongPaths returns guidance for enabling NTFS long paths.
+// Actual registry elevation requires running as Administrator; we explain rather than attempt.
+func (l *Launcher) handlePreflightFixLongPaths() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":false,"message":"Run as Administrator to enable long paths, or enable it manually via Group Policy (Computer Configuration \u2192 Administrative Templates \u2192 System \u2192 Filesystem \u2192 Enable Win32 long paths)."}`))
+	})
+}
+
+// handlePreflightFixMSVC returns a download link for Visual Studio Build Tools.
+func (l *Launcher) handlePreflightFixMSVC() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":false,"message":"Install Visual Studio Build Tools from https://visualstudio.microsoft.com/visual-cpp-build-tools/ and select the C++ build tools workload."}`))
+	})
+}
+
 // --- mamba ---
 
 // handleMamba spawns the platform mamba init script and returns immediately.
 func (l *Launcher) handleMamba() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if existing := l.getProc("mamba"); existing != nil && existing.Running() {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"started":false,"already_running":true}`))
+			return
+		}
+
 		script := mambaScript(l.root)
 
 		p := &procs.Proc{}
@@ -142,6 +165,12 @@ func (l *Launcher) handleGPU() http.Handler {
 // handleInstall spawns micromamba run node init_app.js --silent.
 func (l *Launcher) handleInstall() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if existing := l.getProc("install"); existing != nil && existing.Running() {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"started":false,"already_running":true}`))
+			return
+		}
+
 		p := &procs.Proc{}
 		l.setProc("install", p)
 
@@ -168,6 +197,12 @@ func (l *Launcher) handleInstall() http.Handler {
 // handleUpdate checks isGitUpdated and re-runs install if needed.
 func (l *Launcher) handleUpdate() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if existing := l.getProc("update"); existing != nil && existing.Running() {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"started":false,"already_running":true}`))
+			return
+		}
+
 		updated, err := isGitUpdated(r.Context(), l.root)
 		if err != nil {
 			// Non-fatal; proceed.

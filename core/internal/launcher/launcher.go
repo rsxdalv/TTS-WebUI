@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
@@ -21,18 +22,21 @@ import (
 
 // StepStatus is the JSON shape returned by GET /api/steps/status.
 type StepStatus struct {
-	Step string `json:"step"`
-	Done bool   `json:"done"`
+	Step    string `json:"step"`
+	Done    bool   `json:"done"`
+	Running bool   `json:"running,omitempty"`
 }
 
 // Launcher holds shared mutable state for the step handlers.
 type Launcher struct {
-	root    paths.Root
-	envMode string
-	mu      sync.Mutex
-	sprocs  map[string]*procs.Proc // subprocess steps: mamba, install, update, run
-	slogs   map[string]*Log        // log-only steps: download
-	sup     *Supervisor            // C3.2: app process supervisor
+	root         paths.Root
+	envMode      string
+	mu           sync.Mutex
+	sprocs       map[string]*procs.Proc // subprocess steps: mamba, install, update, run
+	slogs        map[string]*Log        // log-only steps: download
+	sup          *Supervisor            // C3.2: app process supervisor
+	updateOnce   sync.Once
+	updateChecked bool // true = already up to date (cached after first check)
 }
 
 // LauncherOptions holds optional configuration for the Launcher.
@@ -74,6 +78,8 @@ func (l *Launcher) Register(srv *server.Server) {
 	srv.Handle("GET /api/steps/download/stream", l.handleLogStream("download"))
 
 	srv.Handle("POST /api/steps/preflight", l.handlePreflight())
+	srv.Handle("POST /api/steps/preflight/fix/long-paths", l.handlePreflightFixLongPaths())
+	srv.Handle("POST /api/steps/preflight/fix/msvc", l.handlePreflightFixMSVC())
 
 	srv.Handle("POST /api/steps/mamba", l.handleMamba())
 	srv.Handle("GET /api/steps/mamba/stream", l.handleProcStream("mamba"))
@@ -96,20 +102,43 @@ func (l *Launcher) Register(srv *server.Server) {
 	srv.Handle("GET /api/app/link", l.handleAppLink())
 }
 
-// handleStatus returns [{step, done}] for all 7 steps.
+// handleStatus returns [{step, done, running}] for all steps.
 func (l *Launcher) handleStatus() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// For the update step: run isGitUpdated once and cache the result.
+		updateDone := false
+		if installDone(l.root) {
+			l.updateOnce.Do(func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer cancel()
+				updated, err := isGitUpdated(ctx, l.root)
+				l.updateChecked = (err == nil && updated)
+			})
+			updateDone = l.updateChecked
+		}
+
 		statuses := []StepStatus{
 			{Step: "download", Done: downloadDone(l.root)},
 			{Step: "preflight", Done: preflightDone(l.root)},
-			{Step: "mamba", Done: mambaDone(l.root)},
+			{Step: "mamba", Done: mambaDone(l.root), Running: l.isStepRunning("mamba")},
 			{Step: "gpu", Done: gpuDone(l.root)},
-			{Step: "install", Done: installDone(l.root)},
-			{Step: "update", Done: installDone(l.root)}, // proxy for update check
+			{Step: "install", Done: installDone(l.root), Running: l.isStepRunning("install")},
+			{Step: "update", Done: updateDone, Running: l.isStepRunning("update")},
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(statuses)
 	})
+}
+
+// isStepRunning returns true if the subprocess for the given step is alive.
+func (l *Launcher) isStepRunning(step string) bool {
+	l.mu.Lock()
+	p := l.sprocs[step]
+	l.mu.Unlock()
+	if p == nil {
+		return false
+	}
+	return p.Running()
 }
 
 // --- state helpers ---

@@ -94,16 +94,13 @@ jobs:
         run: bash core/scripts/build-webui.sh
       - name: Check committed assets match fresh build
         run: |
-          # Commit the freshly built assets so CI always stays current.
-          # Cross-platform build determinism: Linux CI may produce different
-          # hashes than a Windows dev machine (platform-specific minifier output).
-          # We accept the CI-built assets as authoritative; the diff must be
-          # only in asset filenames/hashes, not in functional source changes.
-          if git diff --exit-code core/internal/webui/assets/; then
-            echo "Assets are up to date."
-          else
-            echo "WARNING: committed assets differ from CI build."
-            echo "This is expected when building on a different platform."
-            echo "Run core/scripts/build-webui.sh on Linux and commit the result."
-            git diff --stat core/internal/webui/assets/
+          # Recompute source hash and compare to the committed bundle.hash.
+          # A mismatch means TypeScript sources changed without running build-webui.sh.
+          bash core/scripts/bundle-hash.sh
+          FRESH=$(cat core/internal/webui/assets/bundle.hash)
+          COMMITTED=$(git show HEAD:core/internal/webui/assets/bundle.hash 2>/dev/null || echo "missing")
+          if [ "$FRESH" != "$COMMITTED" ]; then
+            echo "ERROR: bundle.hash differs — run core/scripts/build-webui.sh and commit the result."
+            exit 1
           fi
+          echo "Bundle hash matches committed hash."

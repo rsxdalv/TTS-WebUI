@@ -2,6 +2,7 @@
 import type { StepStatus } from "./CoreApp";
 import { StepItem } from "./StepItem";
 import { GPUView } from "./GPUView";
+import { LaunchStep } from "./LaunchStep";
 
 interface StepListProps {
   statuses: StepStatus[];
@@ -39,16 +40,12 @@ const STEP_META: Record<string, { title: string; description: string; hasStream:
     description: "Pull the latest changes and re-install dependencies if needed",
     hasStream: true,
   },
-  run: {
-    title: "Launch WebUI",
-    description: "Start the TTS WebUI server",
-    hasStream: true,
-  },
 };
 
 export function StepList({ statuses, onRefresh }: StepListProps) {
   // The active step is the first one that is not done.
   const activeIdx = statuses.findIndex((s) => !s.done);
+  const allDone = statuses.length > 0 && statuses.every((s) => s.done);
 
   return (
     <div className="flex flex-col gap-4">
@@ -79,6 +76,7 @@ export function StepList({ statuses, onRefresh }: StepListProps) {
           />
         );
       })}
+      {allDone && <LaunchStep />}
     </div>
   );
 }

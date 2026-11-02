@@ -8,6 +8,7 @@
 package launcher
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -85,9 +86,6 @@ func (l *Launcher) Register(srv *server.Server) {
 	srv.Handle("POST /api/steps/update", l.handleUpdate())
 	srv.Handle("GET /api/steps/update/stream", l.handleProcStream("update"))
 
-	srv.Handle("POST /api/steps/run", l.handleRun())
-	srv.Handle("GET /api/steps/run/stream", l.handleProcStream("run"))
-
 	// C3.2: app supervisor endpoints (start/stop/restart/status/stream).
 	// These replace the legacy /poll endpoint with SSE.
 	srv.Handle("POST /api/app/start", l.handleAppStart())
@@ -95,6 +93,7 @@ func (l *Launcher) Register(srv *server.Server) {
 	srv.Handle("POST /api/app/restart", l.handleAppRestart())
 	srv.Handle("GET /api/app/status", l.handleAppStatus())
 	srv.Handle("GET /api/app/status/stream", l.handleAppStatusStream())
+	srv.Handle("GET /api/app/link", l.handleAppLink())
 }
 
 // handleStatus returns [{step, done}] for all 7 steps.
@@ -107,7 +106,6 @@ func (l *Launcher) handleStatus() http.Handler {
 			{Step: "gpu", Done: gpuDone(l.root)},
 			{Step: "install", Done: installDone(l.root)},
 			{Step: "update", Done: installDone(l.root)}, // proxy for update check
-			{Step: "run", Done: false},                  // never persisted
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(statuses)
@@ -211,8 +209,12 @@ func (l *Launcher) handleProcStream(step string) http.Handler {
 
 func (l *Launcher) handleAppStart() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := l.sup.Start(r.Context()); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err := l.sup.Start(context.Background()); err != nil {
+			if err.Error() == "app already running" {
+				http.Error(w, err.Error(), http.StatusConflict)
+			} else {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -230,7 +232,7 @@ func (l *Launcher) handleAppStop() http.Handler {
 
 func (l *Launcher) handleAppRestart() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := l.sup.Restart(r.Context()); err != nil {
+		if err := l.sup.Restart(context.Background()); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -255,6 +257,18 @@ func (l *Launcher) handleAppStatusStream() http.Handler {
 		server.SSE(w, r, ch)
 	})
 }
+
+// handleAppLink returns the Gradio URL when reachable, or an empty url field.
+func (l *Launcher) handleAppLink() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		url := l.sup.AppLink()
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(struct {
+			URL string `json:"url"`
+		}{URL: url})
+	})
+}
+
 func (l *Launcher) handleLogStream(step string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lg := l.getLog(step)

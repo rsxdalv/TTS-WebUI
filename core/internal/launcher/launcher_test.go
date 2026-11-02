@@ -64,15 +64,15 @@ func TestStepsStatus_ValidJSON(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&statuses); err != nil {
 		t.Fatalf("decoding status: %v", err)
 	}
-	if len(statuses) != 7 {
-		t.Fatalf("expected 7 steps, got %d", len(statuses))
+	if len(statuses) != 6 {
+		t.Fatalf("expected 6 steps, got %d", len(statuses))
 	}
 
 	stepNames := make(map[string]bool)
 	for _, s := range statuses {
 		stepNames[s.Step] = true
 	}
-	for _, want := range []string{"download", "preflight", "mamba", "gpu", "install", "update", "run"} {
+	for _, want := range []string{"download", "preflight", "mamba", "gpu", "install", "update"} {
 		if !stepNames[want] {
 			t.Errorf("missing step %q in status response", want)
 		}

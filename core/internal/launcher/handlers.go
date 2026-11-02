@@ -199,24 +199,3 @@ func (l *Launcher) handleUpdate() http.Handler {
 		_, _ = w.Write([]byte(`{"started":true}`))
 	})
 }
-
-// --- run ---
-
-// handleRun starts the Gradio app (python server.py --no-react).
-func (l *Launcher) handleRun() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p := &procs.Proc{}
-		l.setProc("run", p)
-
-		python := appPython(l.root)
-		serverPy := filepath.Join(l.root.Dir(), "server.py")
-
-		if err := p.Start(context.Background(), python, []string{serverPy, "--no-react"}, l.root.Dir(), nil); err != nil {
-			http.Error(w, fmt.Sprintf("starting app: %v", err), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"started":true}`))
-	})
-}

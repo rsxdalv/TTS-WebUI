@@ -345,4 +345,3 @@ func TestUiDevInjectsCookie(t *testing.T) {
 		t.Error("--ui-dev GET / did not set tts-token cookie")
 	}
 }
-

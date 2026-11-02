@@ -205,4 +205,3 @@ func TestSupervisorStartPublishStatusNoDeadlock(t *testing.T) {
 		t.Fatal("Stop() timed out — possible deadlock in publishStatus")
 	}
 }
-

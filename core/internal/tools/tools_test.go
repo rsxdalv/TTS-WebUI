@@ -203,3 +203,24 @@ func TestPinnedSHA256NonEmpty(t *testing.T) {
 		}
 	}
 }
+
+func TestPinnedURLsNoLatest(t *testing.T) {
+	for _, tool := range pinned {
+		if strings.Contains(tool.URLTemplate, "latest") {
+			t.Errorf("tool %s/%s/%s URLTemplate contains 'latest': %s", tool.Name, tool.OS, tool.Arch, tool.URLTemplate)
+		}
+	}
+}
+
+// TestEnsureAllUnsupportedPlatform verifies that ensureAllForPlatform returns
+// an error when the platform has OS-matching entries but no arch-matching entry.
+func TestEnsureAllUnsupportedPlatform(t *testing.T) {
+	// "linux/riscv64" has no tool entries → EnsureAll must error, not silently skip.
+	err := ensureAllForPlatform(context.Background(), t.TempDir(), "linux", "riscv64", nil)
+	if err == nil {
+		t.Fatal("expected error for unsupported platform (linux/riscv64), got nil")
+	}
+	if !strings.Contains(err.Error(), "unsupported") && !strings.Contains(err.Error(), "no entry") {
+		t.Errorf("error should mention unsupported platform, got: %v", err)
+	}
+}

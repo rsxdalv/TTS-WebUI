@@ -32,16 +32,14 @@ Updates (self-update, blue/green, app distribution, `C7.x`) are pulled in when a
 
 ### Where it stands (2026-11-03)
 
-Merged on `core/rewrite` at `41f6ecb`; vet and tests pass, but **no one has reviewed or clicked through it yet**:
-- `.gpu` missing is now an error at start.
-- Launch calls `POST /api/app/start`; `/api/steps/run` is gone. `LaunchStep.tsx` and `/api/app/link` are new.
-- Processes now include the extension manager, and conda mode runs through `micromamba run`.
-- Preflight UI with fix buttons, update check, running state, `bundle.hash` CI check, Linux/macOS mamba path.
+At `4a4a362` on `core/rewrite`. vet, all go tests, m1.ps1 (PASS), and 10 Playwright tests (PASS):
+- Diagnostic button added to LaunchStep; `POST /api/app/diagnostic` + stream.
+- `app/start` now guards GPU label in all modes (conda + uv).
+- `install` step now 400s if mamba or GPU not yet done.
+- m1.ps1 now covers restart (link reappears) and diagnostic stream.
+- All 5 Run-3 review items verified PASS.
 
-**Unfinished and uncommitted** in the main checkout:
-the rewritten `core/scripts/smoke/m1.{ps1,sh}`, new `testdata/fakemamba` and `fakepython`, and the Playwright draft in
-`core/scripts/smoke/ui/`. `m1.ps1` was failing and being debugged when Run 4 hit its rate limit. Use this work; do not
-redo it. The checkout has since been switched to `core/rewrite`, with these files still uncommitted in it.
+**Awaiting demo gate (human run, ~5 min each).** See demo instructions below.
 
 ### What is left
 

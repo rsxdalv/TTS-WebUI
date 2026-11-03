@@ -1,201 +1,185 @@
 /**
- * M1 UI smoke — browser-driven Playwright test.
+ * M1 UI smoke — browser-driven Playwright tests.
  *
- * Requirement (PLAN.md M1):
- *   - clicks through every step to Launch
- *   - the app link appears after Launch
- *   - Stop works
- *   - a reload mid-step reattaches to the stream
- *   - a root with a space shows the failed preflight check
- *   - a stub that exits 1 shows a step failure
+ * Covers (PLAN.md "What is left", item 2):
+ *   1. Every step through Launch works (preflight→mamba→gpu→install→update→launch)
+ *   2. App link appears after Launch
+ *   3. Stop works
+ *   4. Reload mid-step reattaches to the stream
+ *   5. A root with a space shows the failed preflight check
+ *   6. A stub that exits 1 shows a step failure in the UI
+ *   7. Clicking Launch twice does not start a second copy
  *
- * Prerequisite: the tts-webui binary is already running (started by the caller
- * with --no-browser --root <fixture> --port 18789). The fixture must have the
- * fakepython/fakemamba stubs in the right paths, matching m1.ps1 setup.
+ * Prerequisites (run via run-playwright.ps1):
+ *   - Port 18789: normal fixture, init_mamba.bat has ~5 s delay for reload test.
+ *   - Port 18790: fixture root contains a space in its path.
+ *   - Port 18791: fixture with preflight pre-done and init_mamba.bat that exits 1.
  *
- * Run with:
- *   npx playwright test
- * or from the smoke wrapper scripts.
+ * UI component selectors are derived from core-app/ React sources.
+ * No expect(true).toBe(true) placeholders.
  */
 import { test, expect, chromium, type BrowserContext, type Page } from '@playwright/test';
-import * as http from 'http';
-import * as net from 'net';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import * as child_process from 'child_process';
 
-const BASE_URL = 'http://127.0.0.1:18789';
+const BASE      = 'http://127.0.0.1:18789';
+const SPACE_URL = 'http://127.0.0.1:18790';
+const FAIL_URL  = 'http://127.0.0.1:18791';
 
-// --- helpers -----------------------------------------------------------------
-
-async function waitForStep(page: Page, stepTitle: string | RegExp, timeout = 30_000) {
-  // The active step has a blue Run button.
-  await page.getByRole('button', { name: 'Run' }).first().waitFor({ timeout });
-}
-
-async function clickRunAndWaitForDone(page: Page, expectedText: string | RegExp, timeout = 60_000) {
-  await page.getByRole('button', { name: 'Run' }).first().click();
-  // Button changes to "Running…" then the step completes.
-  await page.waitForFunction(
-    () => !document.querySelector('button')?.textContent?.includes('Running'),
-    { timeout }
-  );
-}
-
-// --------------------------------------------------------------------------
-
-test.describe('M1 UI smoke', () => {
-  let context: BrowserContext;
+// ---------------------------------------------------------------------------
+// Main flow (port 18789) — sequential tests sharing one browser context/page.
+// Each test picks up where the previous left off.
+// ---------------------------------------------------------------------------
+test.describe('M1 UI smoke — main flow', () => {
+  let ctx: BrowserContext;
   let page: Page;
 
   test.beforeAll(async () => {
     const browser = await chromium.launch({ headless: true });
-    context = await browser.newContext({ baseURL: BASE_URL });
-    page = await context.newPage();
-
-    // Capture console errors for assertion.
-    page.on('console', msg => {
-      if (msg.type() === 'error') {
-        // Only fail on real errors, not network errors for missing favicon.
-        if (!msg.text().includes('vite.svg') && !msg.text().includes('favicon')) {
-          console.error('[browser error]', msg.text());
-        }
-      }
-    });
+    ctx  = await browser.newContext({ baseURL: BASE });
+    page = await ctx.newPage();
   });
 
   test.afterAll(async () => {
-    await context.browser()?.close();
+    await ctx.browser()?.close();
   });
 
+  // 1. Page loads and leaves the loading skeleton.
   test('loads the launcher and leaves loading state', async () => {
     await page.goto('/');
-    // The page title must be "TTS WebUI Setup".
-    await expect(page).toHaveTitle(/TTS WebUI Setup/);
-    // Must NOT be stuck on "Detecting installation state…".
+    // Title from index.html and CoreApp <h1>.
+    await expect(page).toHaveTitle('TTS WebUI Setup');
+    await expect(page.getByRole('heading', { name: 'TTS WebUI Setup' })).toBeVisible({ timeout: 10_000 });
+    // Loading skeleton disappears once /api/steps/status returns.
     await expect(page.getByText('Detecting installation state')).not.toBeVisible({ timeout: 10_000 });
-    // At least one step must be visible.
-    await expect(page.getByText('System Pre-flight Checks')).toBeVisible({ timeout: 10_000 });
   });
 
-  test('no browser console errors on page load', async () => {
-    // Already loaded above; just assert no log-level errors were seen.
-    // (favicon 404 is excluded in the beforeAll listener)
-    expect(true).toBe(true);
+  // 2. Preflight auto-runs (PreflightView mounts with useEffect) and passes,
+  //    advancing to the mamba step.
+  test('preflight auto-runs and mamba step becomes active', async () => {
+    // PreflightView fires POST /api/steps/preflight on mount; if it passes,
+    // onComplete() → onRefresh() → mamba becomes the active step.
+    // "Init Mamba Environment" is the StepList STEP_META title for mamba.
+    await expect(page.getByText('Init Mamba Environment')).toBeVisible({ timeout: 30_000 });
+    // The StepItem for mamba renders a "Run" button when state="active".
+    await expect(page.getByRole('button', { name: 'Run' })).toBeVisible({ timeout: 10_000 });
   });
 
-  test('preflight step: shows check results', async () => {
-    // The preflight step should be active (first incomplete step after download).
-    const runBtn = page.getByRole('button', { name: 'Run' }).first();
-    await runBtn.waitFor({ timeout: 15_000 });
-    await runBtn.click();
-    // After running, either ✓ checkmark appears or an error message appears.
-    // The step should show check results, not stay blank.
-    await page.waitForTimeout(2000);
-    // The preflight component either passes (checkmark) or shows failed checks.
-    // Either way, the button should not show "Running…" after 5 s.
-    const btnText = await page.getByRole('button').first().textContent();
-    expect(btnText).not.toContain('Running');
-  });
-
-  test('mamba step: runs and stream logs appear', async () => {
-    // Click through to mamba (may need to scroll or wait for active state).
-    // Wait for "Init Mamba Environment" step to become active.
+  // 3. Reload mid-step reattaches to the SSE stream.
+  //    init_mamba.bat has a ~5 s ping delay; we reload within the first second
+  //    so the proc is still running when the fresh page fetches /api/steps/status.
+  //    StepItem picks up running:true and opens the stream (via its mount useEffect).
+  test('reload mid-step reattaches to stream', async () => {
+    await page.getByRole('button', { name: 'Run' }).click();
+    // Let the bat start and be mid-way through the ping loop.
+    await page.waitForTimeout(1_000);
+    // Navigate fresh — forces a new React mount and a new /api/steps/status call.
+    await page.goto('/');
+    await expect(page).toHaveTitle('TTS WebUI Setup');
+    // The mamba step must still be shown (running or just-completed).
     await expect(page.getByText('Init Mamba Environment')).toBeVisible({ timeout: 10_000 });
-    const runBtn = page.getByRole('button', { name: 'Run' }).first();
-    await runBtn.click();
-    // Log lines should appear (fakemamba writes to stdout).
-    await expect(page.getByText(/fakemamba/i)).toBeVisible({ timeout: 30_000 });
+    // Either the stream reattached (Running... button — unique to active StepItem)
+    // or mamba completed and GPU is now active (Continue button — unique to GPUView).
+    // Note: step title text is always rendered for all steps, so we use buttons
+    // to discriminate state. Add .first() to avoid strict-mode if both somehow match.
+    await expect(
+      page.getByRole('button', { name: 'Running...' })
+          .or(page.getByRole('button', { name: 'Continue' }))
+          .first(),
+    ).toBeVisible({ timeout: 15_000 });
+    // Wait for mamba to finish: GPU step becomes active, showing the Continue button.
+    await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible({ timeout: 60_000 });
   });
 
-  test('state reattaches after mid-step reload', async () => {
-    // After mamba starts running, reload and verify the stream reattaches.
-    // Navigate to the page again.
-    await page.goto('/');
-    // The mamba step should show as running or done (not blank).
-    await expect(page.getByText('Init Mamba Environment')).toBeVisible({ timeout: 10_000 });
-    // The step should not show a plain "Run" button if it's in progress.
-    // (It may be done by now, which is also acceptable.)
-    await page.waitForTimeout(3000);
+  // 4. GPU step: radio selector appears; user picks CPU and clicks Continue.
+  //    GPUView POSTs {"label":"CPU"} to /api/steps/gpu and calls onComplete().
+  test('gpu step: select CPU and continue', async () => {
+    // Continue button is unique to GPUView (gpu is the active step).
+    await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible({ timeout: 10_000 });
+    // CPU radio button (GPUView renders one <input type="radio"> per choice).
+    await page.getByRole('radio', { name: 'CPU' }).click();
+    // "Continue" button in GPUView.
+    await page.getByRole('button', { name: 'Continue' }).click();
+    // After /api/steps/gpu succeeds, onComplete → onRefresh → install becomes active.
+    await expect(page.getByText('Install WebUI')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'Run' })).toBeVisible({ timeout: 10_000 });
   });
 
-  test('GPU step: renders GPU selection, not generic Run button', async () => {
-    await page.goto('/');
-    // Wait for the GPU step area.
-    await expect(page.getByText('Select GPU / Accelerator')).toBeVisible({ timeout: 10_000 });
+  // 5. Install step: click Run, fakemamba prints its header, step completes.
+  //    After completion the update step auto-resolves (already_updated:true from
+  //    /api/steps/status) and LaunchStep appears.
+  test('install step: logs appear and step completes', async () => {
+    await page.getByRole('button', { name: 'Run' }).click();
+    // fakemamba prints "fakemamba: …" when invoked as micromamba.
+    // Use .first() because the log box renders one <div> per line.
+    await expect(page.getByText(/fakemamba/i).first()).toBeVisible({ timeout: 30_000 });
+    // When the stream done event fires with exitCode 0, onComplete → refresh.
+    // The status handler marks update.done=true (isGitUpdated returns true when
+    // git fetch fails — no git repo in scratch dir), making allDone=true.
+    // LaunchStep appears once all steps are done.
+    await expect(page.getByRole('heading', { name: 'Launch WebUI' })).toBeVisible({ timeout: 60_000 });
   });
 
-  test('install step: runs, stream logs appear', async () => {
-    // The GPU step uses a selector component. Find the CPU option and click confirm.
-    const cpuOption = page.getByText('CPU');
-    if (await cpuOption.isVisible()) {
-      await cpuOption.click();
-      // Look for a confirm/select button.
-      const confirmBtn = page.getByRole('button', { name: /confirm|select|apply|CPU/i }).first();
-      if (await confirmBtn.isVisible()) {
-        await confirmBtn.click();
-      }
-    }
-    // Wait for install step.
-    await expect(page.getByText('Install WebUI')).toBeVisible({ timeout: 10_000 });
-    const runBtn = page.getByRole('button', { name: 'Run' }).first();
-    if (await runBtn.isVisible()) {
-      await runBtn.click();
-      await expect(page.getByText(/fakemamba|init_app/i)).toBeVisible({ timeout: 30_000 });
-    }
+  // 6. Launch step: click "Launch WebUI", fakepython starts on :7770,
+  //    the UI polls /api/app/link and shows the "Open WebUI →" link.
+  test('launch step: app link appears after clicking Launch WebUI', async () => {
+    await page.getByRole('button', { name: 'Launch WebUI' }).click();
+    // LaunchStep subscribes to /api/app/status/stream and polls /api/app/link.
+    // fakepython serves HTTP on 127.0.0.1:7770; AppLink() returns that URL.
+    await expect(page.getByRole('link', { name: 'Open WebUI →' })).toBeVisible({ timeout: 20_000 });
+    // At least one process shown as running in the process list.
+    await expect(page.getByText('running')).toBeVisible({ timeout: 10_000 });
   });
 
-  test('launch step: app link appears and Stop works', async () => {
-    // After all installation steps, the LaunchStep should be visible.
-    await page.goto('/');
-    // Wait for the Launch button to appear.
-    const launchBtn = page.getByRole('button', { name: /launch/i }).first();
-    const launchVisible = await launchBtn.isVisible().catch(() => false);
-    if (!launchVisible) {
-      // Steps not all done yet — skip this sub-check.
-      test.skip();
-    }
-
-    await launchBtn.click();
-
-    // The app link should appear within 15 s (fakepython serves HTTP on 7770).
-    const appLink = page.getByRole('link', { name: /127\.0\.0\.1:7770|Open WebUI/i });
-    await expect(appLink).toBeVisible({ timeout: 15_000 });
-
-    // Stop button should be visible.
-    const stopBtn = page.getByRole('button', { name: /stop/i }).first();
-    await expect(stopBtn).toBeVisible({ timeout: 5_000 });
-    await stopBtn.click();
-
-    // After stop, link should disappear or status should show stopped.
-    await page.waitForTimeout(3000);
-    const stopped = await page.getByText(/stopped|not running/i).isVisible().catch(() => false);
-    // Accept either: link gone or "stopped" text visible.
-    expect(stopped || !(await appLink.isVisible().catch(() => false))).toBe(true);
-  });
-
-  test('root with a space shows failed preflight check', async () => {
-    // This test validates that a space in the path triggers the preflight failure.
-    // We do this via API (not a full separate binary) since the current binary
-    // is already running with a space-free scratch root. We verify the response
-    // includes a failed check.
-    const resp = await page.evaluate(async () => {
-      const r = await fetch('/api/steps/preflight', { method: 'POST' });
-      return r.json();
+  // 7. Clicking Launch twice does not start a second copy.
+  //    The button is gone after launch (launched=true hides it), so we call the
+  //    API directly from the page context.  The server must return 409.
+  test('clicking Launch twice returns 409 Conflict', async () => {
+    const status = await page.evaluate(async () => {
+      const r = await fetch('/api/app/start', { method: 'POST' });
+      return r.status;
     });
-    // Check 'ok' can be true or false; if the root has a space it will be false.
-    // The response must have a checks array.
-    expect(Array.isArray(resp.checks)).toBe(true);
-    expect(resp.checks.length).toBeGreaterThan(0);
+    expect(status).toBe(409);
   });
 
-  test('stub that exits 1 shows failure in UI', async () => {
-    // We can't easily swap the stub mid-test, so verify via the step API:
-    // POST /api/steps/install with a broken init_app (handled by Go returning error).
-    // The install step would show an error if micromamba exits non-zero.
-    // This is a structural check: the UI's StepItem shows the error text.
-    // Accept this as "verified by design" since the StepItem already renders the error.
-    expect(true).toBe(true);
+  // 8. Stop works: click Stop, processes stop, "App stopped." text appears.
+  test('stop works: stopped state shown', async () => {
+    await page.getByRole('button', { name: 'Stop' }).click();
+    // LaunchStep shows "App stopped." when allStopped is true.
+    await expect(page.getByText('App stopped.')).toBeVisible({ timeout: 15_000 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Root with a space in path (port 18790).
+// ---------------------------------------------------------------------------
+test.describe('M1 UI smoke — space in path', () => {
+  // 5. A root with a space triggers the SpacesInPath preflight check failure.
+  //    PreflightView auto-runs on mount and shows the ✗ icon + error message.
+  test('root with space shows failed preflight check', async ({ page }) => {
+    await page.goto(SPACE_URL);
+    await expect(page).toHaveTitle('TTS WebUI Setup');
+    // PreflightView auto-fires; the SpacesInPath check returns StatusFail.
+    // PreflightView renders "Fix the issues above to continue." when ok=false.
+    await expect(page.getByText(/Fix the issues above to continue/i)).toBeVisible({ timeout: 20_000 });
+    // At least one ✗ icon (fail indicator rendered by statusIcon('fail')).
+    await expect(page.getByText('✗')).toBeVisible({ timeout: 10_000 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Stub exits 1 (port 18791).
+// ---------------------------------------------------------------------------
+test.describe('M1 UI smoke — failing stub', () => {
+  // 6. A stub whose process exits 1 is surfaced in the UI as an error.
+  //    Fixture: preflight pre-completed, init_mamba.bat exits /b 1.
+  //    StepItem receives event:done with exitCode:1 and renders the error div.
+  test('stub that exits 1 shows step failure in UI', async ({ page }) => {
+    await page.goto(FAIL_URL);
+    await expect(page).toHaveTitle('TTS WebUI Setup');
+    // Mamba is the active step (preflight pre-done); "Run" button is visible.
+    await expect(page.getByRole('button', { name: 'Run' })).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: 'Run' }).click();
+    // init_mamba.bat prints one line then exits /b 1.
+    // StepItem: done event exitCode=1 → setError(`Step exited with code 1`).
+    await expect(page.getByText('Step exited with code 1')).toBeVisible({ timeout: 30_000 });
   });
 });

@@ -12,7 +12,10 @@ export function LaunchStep() {
   const [appURL, setAppURL] = useState("");
   const [launched, setLaunched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [diagLines, setDiagLines] = useState<string[]>([]);
+  const [diagRunning, setDiagRunning] = useState(false);
   const esRef = useRef<EventSource | null>(null);
+  const diagEsRef = useRef<EventSource | null>(null);
   const linkTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopLinkPolling = useCallback(() => {
@@ -50,6 +53,7 @@ export function LaunchStep() {
   useEffect(() => {
     return () => {
       esRef.current?.close();
+      diagEsRef.current?.close();
       stopLinkPolling();
     };
   }, [stopLinkPolling]);
@@ -96,6 +100,29 @@ export function LaunchStep() {
   async function restart() {
     setAppURL("");
     await fetch("/api/app/restart", { method: "POST" });
+  }
+
+  async function runDiagnostic() {
+    if (diagRunning) return;
+    setDiagLines([]);
+    setDiagRunning(true);
+    diagEsRef.current?.close();
+    await fetch("/api/app/diagnostic", { method: "POST" });
+    const es = new EventSource("/api/app/diagnostic/stream");
+    diagEsRef.current = es;
+    es.onmessage = (e) => {
+      setDiagLines((prev) => [...prev, e.data]);
+    };
+    es.addEventListener("done", () => {
+      setDiagRunning(false);
+      es.close();
+      diagEsRef.current = null;
+    });
+    es.onerror = () => {
+      setDiagRunning(false);
+      es.close();
+      diagEsRef.current = null;
+    };
   }
 
   const anyRunning = processes.some((p) => p.running);
@@ -167,7 +194,20 @@ export function LaunchStep() {
           >
             Restart
           </button>
+          <button
+            onClick={runDiagnostic}
+            disabled={diagRunning}
+            className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+          >
+            {diagRunning ? "Running Diagnostic…" : "Diagnostic"}
+          </button>
         </div>
+      )}
+
+      {diagLines.length > 0 && (
+        <pre className="mt-3 p-2 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono overflow-auto max-h-48">
+          {diagLines.join("\n")}
+        </pre>
       )}
     </div>
   );

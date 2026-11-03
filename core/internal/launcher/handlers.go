@@ -192,6 +192,47 @@ func (l *Launcher) handleInstall() http.Handler {
 	})
 }
 
+// --- diagnostic ---
+
+// handleAppDiagnostic spawns installer_scripts/tools/diagnostic.{bat,sh} and returns immediately.
+func (l *Launcher) handleAppDiagnostic() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if existing := l.getProc("diagnostic"); existing != nil && existing.Running() {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"started":false,"already_running":true}`))
+			return
+		}
+
+		var script string
+		if runtime.GOOS == "windows" {
+			script = filepath.Join(l.root.InstallerScripts(), "tools", "diagnostic.bat")
+		} else {
+			script = filepath.Join(l.root.InstallerScripts(), "tools", "diagnostic.sh")
+		}
+
+		p := &procs.Proc{}
+		l.setProc("diagnostic", p)
+
+		var name string
+		var args []string
+		if runtime.GOOS == "windows" {
+			name = "cmd"
+			args = []string{"/c", script}
+		} else {
+			name = "bash"
+			args = []string{script}
+		}
+
+		if err := p.Start(context.Background(), name, args, l.root.Dir(), nil); err != nil {
+			http.Error(w, fmt.Sprintf("starting diagnostic: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"started":true}`))
+	})
+}
+
 // --- update ---
 
 // handleUpdate checks isGitUpdated and re-runs install if needed.

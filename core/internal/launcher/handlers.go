@@ -170,6 +170,14 @@ func (l *Launcher) handleInstall() http.Handler {
 			_, _ = w.Write([]byte(`{"started":false,"already_running":true}`))
 			return
 		}
+		if !mambaDone(l.root) {
+			http.Error(w, "mamba step not complete", http.StatusBadRequest)
+			return
+		}
+		if !gpuDone(l.root) {
+			http.Error(w, "GPU step not complete", http.StatusBadRequest)
+			return
+		}
 
 		p := &procs.Proc{}
 		l.setProc("install", p)

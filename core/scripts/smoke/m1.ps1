@@ -66,6 +66,11 @@ $initMambaContent = "@echo off`r`necho mamba: initializing micromamba`r`nmkdir i
 Set-Content (Join-Path $scripts "init_mamba.bat") $initMambaContent
 
 Set-Content (Join-Path $scratch "server.py") "# M1 smoke placeholder"
+
+# diagnostic.bat: a fake diagnostic script that emits one line.
+$toolsDir = Join-Path $scripts "tools"
+New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null
+Set-Content (Join-Path $toolsDir "diagnostic.bat") "@echo off`r`necho diagnostic: smoke test stub"
 Write-Host "Scratch root: $scratch"
 
 # Goldens: values the stubs write.
@@ -291,6 +296,31 @@ Start-Sleep -Seconds 3
 $survivors = @($newPIDs | Where-Object { PID-Alive -procPid $_ })
 if ($survivors.Count -eq 0) { Pass "no orphan processes after app/stop" }
 else                        { Fail "orphan PIDs after app/stop: $($survivors -join ', ')" }
+
+# --- app/restart --------------------------------------------------------------
+Write-Host "`n-- POST /api/app/restart --"
+$null = Invoke-API "POST" "/api/app/restart"; Pass "app/restart returned 2xx"
+# Wait for the app link to reappear (fakepython re-serves 7770).
+$appURL2 = ""
+$dl2 = [DateTime]::UtcNow.AddSeconds(10)
+while ([DateTime]::UtcNow -lt $dl2 -and $appURL2 -eq "") {
+    Start-Sleep -Milliseconds 500
+    try {
+        $lr2 = Invoke-API "GET" "/api/app/link"
+        $lj2 = $lr2.Content | ConvertFrom-Json
+        if ($lj2.url -ne "") { $appURL2 = $lj2.url }
+    } catch {}
+}
+if ($appURL2 -ne "") { Pass "app link reappeared after restart: $appURL2" }
+else                 { Fail "app link did not reappear within 10 s after restart" }
+# Stop again so Cleanup finds no processes.
+$null = Invoke-API "POST" "/api/app/stop"; Start-Sleep -Seconds 2
+
+# --- diagnostic stream --------------------------------------------------------
+Write-Host "`n-- POST /api/app/diagnostic + stream --"
+# Prerequisite: install step is done (marker from earlier in this run).
+$null = Invoke-API "POST" "/api/app/diagnostic"; Pass "diagnostic start returned 2xx"
+Test-SSEStream "/api/app/diagnostic/stream" "diagnostic" 30
 
 Write-Host ""
 if ($script:failed) { Write-Host "M1 smoke: FAIL"; exit 1 }

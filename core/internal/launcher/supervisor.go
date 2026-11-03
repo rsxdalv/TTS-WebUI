@@ -80,12 +80,14 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	// uv mode: ensure pinned tools and main venv, then use uv Python.
 	var uvPython string
 	var baseEnvOverride []string
+
+	// GPU label is required in all modes before any process can start.
+	gpuLabel, err := readGPULabel(setupCtx, s.root)
+	if err != nil {
+		return fmt.Errorf("determining GPU: %w", err)
+	}
+
 	if s.envMode == "uv" {
-		// Read GPU label first: no point installing tools without a valid user choice.
-		gpuLabel, err := readGPULabel(setupCtx, s.root)
-		if err != nil {
-			return fmt.Errorf("determining GPU: %w", err)
-		}
 		if err := tools.EnsureAll(setupCtx, s.root); err != nil {
 			return fmt.Errorf("ensuring tools (uv mode): %w", err)
 		}

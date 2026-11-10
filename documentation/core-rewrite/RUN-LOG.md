@@ -2,7 +2,15 @@
 
 The log for runs 1–3 is in [archive/RUN-LOG-runs-1-4.md](archive/RUN-LOG-runs-1-4.md).
 
-## 2026-11-03 — Run 5 (ring coordinator, rings 1 & 2)
+## 2026-11-10 — Run 5 continued: demo gate fixes (c511f4c)
+
+- Bug 1: `.gpu` written with `\n`; `initializeApp.js` strict-equals failed. Fixed: write without newline.
+- Bug 2: `MAMBA_ROOT_PREFIX` never set; micromamba fell back to `~\micromamba`. Fixed: `mambaEnv()` helper in steps.go used for handleInstall, handleUpdate, supervisor baseEnv.
+- Bug 3: Origin check on all paths; Chrome's `crossorigin` attribute triggered 403 for CSS/JS. Fixed: origin check now only on `/api/*`; also pinned CSS/JS MIME types (Windows registry guard).
+- vet + tests + smoke: all pass. Pushed c511f4c.
+- Next: re-run demo gate (rings 1 and 2) from scratch install.
+
+
 
 - Adopted uncommitted smoke work; m1.ps1 passes (PASS), 10 Playwright tests pass.
 - Added Diagnostic button (POST /api/app/diagnostic + stream; handlers.go + LaunchStep.tsx + rebuilt bundle).

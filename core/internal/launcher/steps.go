@@ -30,6 +30,13 @@ func mambaScript(root paths.Root) string {
 	return filepath.Join(root.InstallerScripts(), "init_mamba.sh")
 }
 
+// mambaEnv returns os.Environ() with MAMBA_ROOT_PREFIX pinned to the install's
+// mamba directory, preventing micromamba from falling back to ~/.micromamba.
+func mambaEnv(root paths.Root) []string {
+	return append(os.Environ(),
+		"MAMBA_ROOT_PREFIX="+filepath.Join(root.InstallerFiles(), "mamba"))
+}
+
 // appPython returns the platform-specific Python binary inside the conda env.
 func appPython(root paths.Root) string {
 	if runtime.GOOS == "windows" {

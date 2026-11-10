@@ -151,7 +151,7 @@ func (l *Launcher) handleGPU() http.Handler {
 			return
 		}
 		marker := l.root.MarkerFile(".gpu")
-		if err := os.WriteFile(marker, []byte(req.Label+"\n"), 0o644); err != nil {
+		if err := os.WriteFile(marker, []byte(req.Label), 0o644); err != nil {
 			http.Error(w, fmt.Sprintf("writing .gpu: %v", err), http.StatusInternalServerError)
 			return
 		}
@@ -190,7 +190,7 @@ func (l *Launcher) handleInstall() http.Handler {
 		name := mamba
 		args := []string{"-p", envPath, "run", "node", filepath.ToSlash(initScript), "--silent"}
 
-		if err := p.Start(context.Background(), name, args, l.root.Dir(), nil); err != nil {
+		if err := p.Start(context.Background(), name, args, l.root.Dir(), mambaEnv(l.root)); err != nil {
 			http.Error(w, fmt.Sprintf("starting install: %v", err), http.StatusInternalServerError)
 			return
 		}
@@ -274,7 +274,7 @@ func (l *Launcher) handleUpdate() http.Handler {
 		name := mamba
 		args := []string{"-p", envPath, "run", "node", filepath.ToSlash(initScript), "--silent"}
 
-		if err := p.Start(context.Background(), name, args, l.root.Dir(), nil); err != nil {
+		if err := p.Start(context.Background(), name, args, l.root.Dir(), mambaEnv(l.root)); err != nil {
 			http.Error(w, fmt.Sprintf("starting update: %v", err), http.StatusInternalServerError)
 			return
 		}

@@ -6,7 +6,7 @@
 //     (except /api/health) require the X-TTS-Token header.
 //   - Rejects requests whose Host header is not 127.0.0.1:<port> or localhost:<port>
 //     (DNS-rebinding guard).
-//   - Rejects cross-origin Origin headers.
+//   - Rejects cross-origin Origin headers on /api/* endpoints.
 package server
 
 import (
@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"mime"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -27,6 +28,13 @@ import (
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/webui"
 )
+
+// init pins common MIME types so Windows registry values cannot override them.
+func init() {
+	mime.AddExtensionType(".css", "text/css; charset=utf-8")
+	mime.AddExtensionType(".js", "text/javascript; charset=utf-8")
+	mime.AddExtensionType(".mjs", "text/javascript; charset=utf-8")
+}
 
 // Options holds optional configuration for the server.
 type Options struct {
@@ -113,7 +121,10 @@ func (s *Server) Handler() http.Handler {
 			http.Error(w, "bad request: invalid Host", http.StatusBadRequest)
 			return
 		}
-		if !s.validOrigin(r) {
+		// Origin guard only for /api/* — static assets carry no CSRF risk and
+		// the crossorigin attribute on script/link tags causes Chrome to send
+		// an Origin header even for same-origin fetches.
+		if strings.HasPrefix(r.URL.Path, "/api/") && !s.validOrigin(r) {
 			http.Error(w, "forbidden: cross-origin request", http.StatusForbidden)
 			return
 		}

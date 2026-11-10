@@ -111,12 +111,13 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	cwd := s.root.Dir()
 	extMgrScript := filepath.Join(s.root.InstallerScripts(), "tools", "extension_manager.py")
 
-	// Base env: inherit (+ tool paths if uv mode) + extension manager port.
+	// Base env: inherit (+ tool paths if uv mode) + extension manager port + mamba root.
+	mambaRoot := "MAMBA_ROOT_PREFIX=" + filepath.Join(s.root.InstallerFiles(), "mamba")
 	var baseEnv []string
 	if len(baseEnvOverride) > 0 {
-		baseEnv = append(baseEnvOverride, fmt.Sprintf("TTS_EXTENSION_MANAGER_PORT=%d", extPort))
+		baseEnv = append(baseEnvOverride, fmt.Sprintf("TTS_EXTENSION_MANAGER_PORT=%d", extPort), mambaRoot)
 	} else {
-		baseEnv = append(os.Environ(), fmt.Sprintf("TTS_EXTENSION_MANAGER_PORT=%d", extPort))
+		baseEnv = append(os.Environ(), fmt.Sprintf("TTS_EXTENSION_MANAGER_PORT=%d", extPort), mambaRoot)
 	}
 
 	// Build process definitions. Conda-mode processes run via micromamba so

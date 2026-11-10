@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,9 +12,10 @@ import (
 
 // fakeGit returns a gitRunner that behaves as configured.
 type fakeGit struct {
-	fetchErr   bool
-	remoteHash string
-	runErr     bool
+	fetchErr    bool
+	upstreamErr bool   // @{upstream} rev-parse fails (no tracking branch)
+	remoteHash  string
+	runErr      bool
 }
 
 func (f *fakeGit) run(ctx context.Context, dir string, args ...string) (string, error) {
@@ -27,7 +29,11 @@ func (f *fakeGit) run(ctx context.Context, dir string, args ...string) (string, 
 		}
 		return "", nil
 	}
-	// rev-parse
+	// rev-parse @{upstream}: honour upstreamErr
+	if f.upstreamErr && len(args) > 1 && args[1] == "@{upstream}" {
+		return "", fmt.Errorf("no upstream tracking branch")
+	}
+	// rev-parse anything else
 	return f.remoteHash, nil
 }
 
@@ -106,5 +112,18 @@ func TestIsGitUpdated_RunError_SafeDefault(t *testing.T) {
 	}
 	if !got {
 		t.Fatal("expected safe default (true) when runner errors")
+	}
+}
+
+func TestIsGitUpdated_NoUpstream_FallsBackToHEAD(t *testing.T) {
+	root := setupGitRoot(t, "abc123")
+	// @{upstream} fails (branch not tracking); HEAD returns the same hash → "updated".
+	fg := &fakeGit{upstreamErr: true, remoteHash: "abc123"}
+	got, err := isGitUpdatedWith(context.Background(), root, fg.run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got {
+		t.Fatal("expected up-to-date when HEAD matches and no upstream is set")
 	}
 }

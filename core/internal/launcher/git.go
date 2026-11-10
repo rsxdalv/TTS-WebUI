@@ -27,7 +27,8 @@ func defaultGitRunner(ctx context.Context, dir string, args ...string) (string, 
 	return strings.TrimSpace(string(out)), nil
 }
 
-// isGitUpdated returns true if the local .git_version matches origin/main.
+// isGitUpdated returns true if the local .git_version matches @{upstream},
+// or HEAD when no upstream tracking branch is configured.
 // On any error it returns (true, nil) — safe default: don't force-update.
 func isGitUpdated(ctx context.Context, root paths.Root) (bool, error) {
 	return isGitUpdatedWith(ctx, root, defaultGitRunner)
@@ -43,16 +44,19 @@ func isGitUpdatedWith(ctx context.Context, root paths.Root, run gitRunner) (bool
 	}
 
 	// Read local hash from marker file.
-	// Bug fix: use filepath.Join via root.MarkerFile(), not "\\" path concatenation.
 	raw, err := os.ReadFile(root.MarkerFile(".git_version"))
 	if err != nil {
 		return true, nil
 	}
 	local := strings.TrimSpace(string(raw))
 
-	remote, err := run(ctx, root.Dir(), "rev-parse", "origin/main")
+	// Use the current branch's remote tracking ref; fall back to HEAD.
+	remote, err := run(ctx, root.Dir(), "rev-parse", "@{upstream}")
 	if err != nil {
-		return true, nil
+		remote, err = run(ctx, root.Dir(), "rev-parse", "HEAD")
+		if err != nil {
+			return true, nil
+		}
 	}
 
 	return local == remote, nil

@@ -1,0 +1,61 @@
+﻿name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get project version
+        run: |
+          VERSION=$(npx neu version | grep "Project version:" | awk '{print $NF}')
+          echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Build frontend
+        run: |
+          cd vite-src
+          npm ci
+          npm run build
+
+      - name: Update Neutralino.js
+        run: npx neu update
+
+      - name: Build neutralino app
+        run: npx neu build --release --embed-resources
+
+      - name: Debug listing
+        run: |
+          echo "=== Listing all files ===" 
+          ls -R dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: release-${{ env.RELEASE_VERSION }}
+          name: Release ${{ env.RELEASE_VERSION }}
+          files: |
+            dist/tts-webui-igniter/tts-webui-igniter-linux_x64
+            dist/tts-webui-igniter/tts-webui-igniter-linux_arm64
+            dist/tts-webui-igniter/tts-webui-igniter-linux_armhf
+            dist/tts-webui-igniter/tts-webui-igniter-mac_x64
+            dist/tts-webui-igniter/tts-webui-igniter-mac_arm64
+            dist/tts-webui-igniter/tts-webui-igniter-mac_universal
+            dist/tts-webui-igniter/tts-webui-igniter-win_x64.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

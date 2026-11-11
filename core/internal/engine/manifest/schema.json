@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rsxdalv/TTS-WebUI/core/internal/engine/manifest/schema.json",
+  "title": "Engine Manifest",
+  "description": "Schema for the 'engine' block within an extensions.json entry (D5).",
+  "type": "object",
+  "required": ["kind"],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": ["python-venv", "native", "remote"],
+      "description": "Runtime kind for this engine."
+    },
+    "install": {
+      "type": "object",
+      "description": "How to install the engine into its own virtual environment.",
+      "properties": {
+        "requirements": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "pip-compatible requirement specifiers, e.g. git+https://... or package==1.2"
+        },
+        "pip_packages": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Additional packages to install with pip after requirements."
+        }
+      }
+    },
+    "launch": {
+      "type": "object",
+      "description": "How to start the engine process.",
+      "properties": {
+        "cmd": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Command and arguments. {port} is substituted at launch time."
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Additional environment variables passed to the engine process."
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Working directory for the engine process."
+        },
+        "port_arg": {
+          "type": "string",
+          "description": "Flag passed to the engine to set its listen port, e.g. '--port'."
+        }
+      }
+    },
+    "health": {
+      "type": "object",
+      "description": "HTTP health probe configuration.",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "HTTP path of the health endpoint, e.g. '/health'."
+        },
+        "interval_s": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Probe interval in seconds."
+        },
+        "timeout_s": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Per-probe timeout in seconds."
+        }
+      }
+    },
+    "api": {
+      "type": "object",
+      "description": "Engine API surface.",
+      "properties": {
+        "openai_speech_path": {
+          "type": "string",
+          "description": "Path that implements the OpenAI /v1/audio/speech interface."
+        },
+        "params_schema": {
+          "type": "object",
+          "description": "JSON Schema for engine-specific generation parameters."
+        }
+      }
+    },
+    "ui": {
+      "type": "object",
+      "description": "Engine UI configuration.",
+      "properties": {
+        "gradio_iframe": {
+          "type": "boolean",
+          "description": "When true, the engine UI is served as a Gradio iframe."
+        }
+      }
+    },
+    "cancel": {
+      "type": "object",
+      "description": "How to cancel a running generation.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["disconnect", "endpoint"],
+          "description": "'disconnect' drops the client connection; 'endpoint' POSTs to a cancel path."
+        },
+        "path": {
+          "type": "string",
+          "description": "Cancel endpoint path (only used when mode is 'endpoint')."
+        }
+      }
+    },
+    "keep_alive": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Idle timeout in seconds after which the engine process is stopped."
+    }
+  }
+}

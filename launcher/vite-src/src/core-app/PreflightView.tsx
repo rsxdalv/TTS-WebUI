@@ -1,5 +1,6 @@
 // PreflightView: runs POST /api/steps/preflight, shows check results and fix buttons.
 import { useState, useEffect } from "react";
+import { client } from "./client";
 
 interface PreflightCheck {
   id: string;
@@ -32,7 +33,7 @@ export function PreflightView({ onComplete }: PreflightViewProps) {
     setLoading(true);
     setFixMessages({});
     try {
-      const r = await fetch("/api/steps/preflight", { method: "POST" });
+      const r = await client("/api/steps/preflight", { method: "POST" });
       if (!r.ok) {
         const text = await r.text();
         setChecks([{ id: "error", status: "fail", message: `Server error ${r.status}: ${text}` }]);
@@ -55,7 +56,7 @@ export function PreflightView({ onComplete }: PreflightViewProps) {
 
   async function runFix(fixAction: string, id: string) {
     try {
-      const r = await fetch(`/api/steps/preflight/fix/${fixAction}`, { method: "POST" });
+      const r = await client(`/api/steps/preflight/fix/${fixAction}`, { method: "POST" });
       const data = (await r.json()) as FixResponse;
       setFixMessages((prev) => ({ ...prev, [id]: data.message ?? (data.ok ? "Fixed!" : "Failed.") }));
     } catch (e: unknown) {

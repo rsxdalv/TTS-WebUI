@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { StepList } from "./StepList";
 import { DarkThemeProvider, ThemeToggle } from "../DarkThemeProvider";
+import { client } from "./client";
 
 export interface StepStatus {
   step: string;
@@ -16,7 +17,7 @@ export function CoreApp() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const r = await fetch("/api/steps/status");
+      const r = await client("/api/steps/status");
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       setStatuses(await r.json());
       setError(null);

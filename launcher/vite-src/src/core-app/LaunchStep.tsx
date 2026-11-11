@@ -1,6 +1,7 @@
 // LaunchStep: after all installation steps are done, drives the app lifecycle
 // via /api/app/* — no /api/steps/run involvement.
 import { useState, useEffect, useRef, useCallback } from "react";
+import { client } from "./client";
 
 interface ProcessStatus {
   name: string;
@@ -29,7 +30,7 @@ export function LaunchStep() {
     if (linkTimerRef.current !== null) return;
     linkTimerRef.current = setInterval(async () => {
       try {
-        const r = await fetch("/api/app/link");
+        const r = await client("/api/app/link");
         if (!r.ok) return;
         const data = (await r.json()) as { url: string };
         if (data.url) setAppURL(data.url);
@@ -79,7 +80,7 @@ export function LaunchStep() {
   async function launch() {
     setError(null);
     try {
-      const r = await fetch("/api/app/start", { method: "POST" });
+      const r = await client("/api/app/start", { method: "POST" });
       // 409 means already running — subscribe to its status stream.
       if (!r.ok && r.status !== 409) {
         setError(`Failed to start: ${r.status}: ${await r.text()}`);
@@ -94,12 +95,12 @@ export function LaunchStep() {
   }
 
   async function stop() {
-    await fetch("/api/app/stop", { method: "POST" });
+    await client("/api/app/stop", { method: "POST" });
   }
 
   async function restart() {
     setAppURL("");
-    await fetch("/api/app/restart", { method: "POST" });
+    await client("/api/app/restart", { method: "POST" });
   }
 
   async function runDiagnostic() {
@@ -107,7 +108,7 @@ export function LaunchStep() {
     setDiagLines([]);
     setDiagRunning(true);
     diagEsRef.current?.close();
-    await fetch("/api/app/diagnostic", { method: "POST" });
+    await client("/api/app/diagnostic", { method: "POST" });
     const es = new EventSource("/api/app/diagnostic/stream");
     diagEsRef.current = es;
     es.onmessage = (e) => {

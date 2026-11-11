@@ -119,6 +119,12 @@ func (l *Launcher) handleStatus() http.Handler {
 				l.updateChecked = (err == nil && updated)
 			})
 			updateDone = l.updateChecked
+			// Also done when the update proc ran and exited cleanly after the once check.
+			if !updateDone {
+				if p := l.getProc("update"); p != nil && !p.Running() && p.ExitCode() == 0 {
+					updateDone = true
+				}
+			}
 		}
 
 		statuses := []StepStatus{

@@ -1,6 +1,7 @@
 // GPUView: GPU selector that POSTs to /api/steps/gpu.
 // No platform imports, no file writes — all state is Go-side.
 import { useState } from "react";
+import { client } from "./client";
 
 const GPU_CHOICES = [
   { value: "NVIDIA GPU", label: "NVIDIA GPU" },
@@ -24,7 +25,7 @@ export function GPUView({ onComplete }: GPUViewProps) {
     setSaving(true);
     setError(null);
     try {
-      const r = await fetch("/api/steps/gpu", {
+      const r = await client("/api/steps/gpu", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ label: choice }),

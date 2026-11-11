@@ -1,5 +1,6 @@
 ﻿// StepItem: renders one installation step, calling only /api/steps/*.
 import { useState, useEffect, useRef } from "react";
+import { client } from "./client";
 
 interface StepItemProps {
   step: string;
@@ -80,7 +81,7 @@ export function StepItem({
 
     let responseBody: { started?: boolean } = {};
     try {
-      const r = await fetch(`/api/steps/${step}`, { method: "POST" });
+      const r = await client(`/api/steps/${step}`, { method: "POST" });
       if (!r.ok) {
         const text = await r.text();
         setError(`POST /api/steps/${step} → ${r.status}: ${text}`);

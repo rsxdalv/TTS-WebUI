@@ -1,0 +1,12 @@
+{
+  "name": "m1-ui-smoke",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "install-browsers": "playwright install chromium"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}

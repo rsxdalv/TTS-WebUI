@@ -1,0 +1,80 @@
+name: Launcher CI
+
+on:
+  push:
+    paths:
+      - "launcher/**"
+      - ".github/workflows/launcher.yaml"
+  pull_request:
+    paths:
+      - "launcher/**"
+      - ".github/workflows/launcher.yaml"
+
+jobs:
+  build-vite:
+    name: Build Vite app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: launcher
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: launcher/package-lock.json
+
+      - name: Install root deps (neu CLI)
+        run: npm ci
+
+      - name: Install vite-src deps
+        working-directory: launcher/vite-src
+        run: npm ci
+
+      - name: Build Vite app
+        working-directory: launcher/vite-src
+        run: npm run build
+
+  build-neutralino-windows:
+    name: Build Neutralino binaries (Windows)
+    runs-on: windows-latest
+    needs: build-vite
+    defaults:
+      run:
+        working-directory: launcher
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: launcher/package-lock.json
+
+      - name: Install root deps (neu CLI)
+        run: npm ci
+
+      - name: Install vite-src deps
+        working-directory: launcher/vite-src
+        run: npm ci
+
+      - name: Build Vite app
+        working-directory: launcher/vite-src
+        run: npm run build
+
+      - name: Update Neutralino.js
+        run: npx neu update
+
+      - name: Build Neutralino app
+        run: npx neu build --release --embed-resources
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: launcher-windows
+          path: launcher/dist/tts-webui-igniter/tts-webui-igniter-win_x64.exe
+          if-no-files-found: warn

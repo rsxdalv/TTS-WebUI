@@ -1,0 +1,48 @@
+{
+  "applicationId": "js.neutralino.vitetsreact",
+  "version": "2.2.0",
+  "defaultMode": "window",
+  "documentRoot": "/vite-src/dist/",
+  "url": "/",
+  "port": 7789,
+  "enableServer": true,
+  "enableNativeAPI": true,
+  "nativeAllowList": [
+    "app.*",
+    "filesystem.createDirectory",
+    "filesystem.readDirectory",
+    "filesystem.getStats",
+    "filesystem.writeFile",
+    "filesystem.readFile",
+    "os.execCommand",
+    "os.spawnProcess",
+    "os.updateSpawnedProcess",
+    "events.*"
+  ],
+  "singlePageServe": true,
+  "modes": {
+    "window": {
+      "title": "TTS WebUI Igniter",
+      "width": 800,
+      "height": 1200,
+      "minWidth": 400,
+      "minHeight": 200,
+      "icon": "/vite-src/public/logo512.png",
+      "enableInspector": false
+    }
+  },
+  "cli": {
+    "binaryName": "tts-webui-igniter",
+    "resourcesPath": "/vite-src/dist/",
+    "extensionsPath": "/extensions/",
+    "frontendLibrary": {
+      "patchFile": "/vite-src/index.html",
+      "devUrl": "http://localhost:5173",
+      "projectPath": "/vite-src/",
+      "initCommand": "npm install",
+      "devCommand": "npm run dev",
+      "buildCommand": "npm run build"
+    },
+    "binaryVersion": "6.7.0"
+  }
+}

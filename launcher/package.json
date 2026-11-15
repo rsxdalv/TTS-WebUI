@@ -1,0 +1,8 @@
+{
+  "name": "tts-webui-ignition",
+  "private": true,
+  "version": "1.0.0",
+  "devDependencies": {
+    "@neutralinojs/neu": "^11.7.1"
+  }
+}

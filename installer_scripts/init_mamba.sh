@@ -158,7 +158,8 @@ umamba_exists="F"
 # figure out whether git and conda needs to be installed
 if [ -e "$INSTALL_ENV_DIR" ]; then export PATH="$INSTALL_ENV_DIR/bin:$PATH"; fi
 
-PACKAGES_TO_INSTALL="python=3.10.11 conda-forge::nodejs=22.9.0 conda ninja conda-forge::postgresql=16.4 conda-forge::ffmpeg=4.4.2[build=lgpl*]"
+# postgresql removed — never used at runtime (core rewrite P1)
+PACKAGES_TO_INSTALL="python=3.10.11 conda-forge::nodejs=22.9.0 conda ninja conda-forge::ffmpeg=4.4.2[build=lgpl*]"
 
 if ! hash "git" &>/dev/null; then PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL git"; fi
 

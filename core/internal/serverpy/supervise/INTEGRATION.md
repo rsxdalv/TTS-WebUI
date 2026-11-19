@@ -1,8 +1,33 @@
 # supervise: wiring into the launcher
 
-New package `core/internal/serverpy/supervise`, a drop-in replacement for
-`launcher.Supervisor`. Nothing existing was modified. The steps below are for
-Rob.
+New package `core/internal/serverpy/supervise`, written as a drop-in replacement
+for `launcher.Supervisor` as it was at the rings commit (52f85f7 = 9b6d3b5).
+Nothing existing was modified. The steps below are for Rob.
+
+## Since PR 741: no longer a drop-in
+
+PR 741 grew `launcher.Supervisor`. These parts have no counterpart here, so
+swapping in `supervise` as described below would drop them:
+
+- the Go React UI front (`react_ui_backend`) on port 3000: static export by
+  default, or Next on a private loopback port behind it (`reactUIArgs ... -H
+  127.0.0.1`); `supervise` still runs `npm start -- -p <ReactPort>` directly;
+- `switches.FromEnv()` with `CheckRoutes`/`CheckSteps` before anything starts;
+- `prepareReactUI` (recover, rebuild the export or the server build);
+- `sweepOrphans` / `recordProcesses` / `clearRecord` (Unix orphan cleanup).
+
+Two ways forward:
+1. **Keep `launcher.Supervisor`** and take the server.py port into it: the
+   gradio def becomes `server_core.py --no-react` with the `TTS_CORE_*`
+   variables on the gradio child only (see "Switching to `server_core.py`"
+   below), and the launcher starts the stage 3 router on 7770 and the stage 4
+   manager. That change is small; `supervise`'s readiness states, browser
+   order and `log_tail` can move over later.
+2. **Port those four parts into `supervise`**, then replace as below. More
+   work, and it touches what the go-port work is still changing.
+
+Already shared: both stop children in parallel, both pass `--port` to the
+extension manager (which now listens on it), and both use `procs.Proc.Pid()`.
 
 ## Changes in existing files
 
@@ -49,12 +74,8 @@ supervise.Config{
 `PublicPort` must be the port the Go router serves, since readiness, AppLink,
 the browser tab and React's `GRADIO_BACKEND_AUTOMATIC` all use it.
 
-### Optional: `core/internal/procs/proc.go`
-`procs.Proc` has no pid accessor, so `pid` is omitted from the status. Add
-```go
-func (p *Proc) Pid() int { p.mu.Lock(); defer p.mu.Unlock(); if p.cmd == nil || p.cmd.Process == nil { return 0 }; return p.cmd.Process.Pid }
-```
-and the supervisor reports it automatically (it type-asserts `Pid() int`).
+### pid
+`procs.Proc.Pid()` exists since PR 741, so the status carries `pid`.
 
 ## Behaviour summary
 

@@ -29,11 +29,6 @@ existing file was edited.
 3. **Entry script**: run `server_core.py` (stage 3) instead of `server.py`; it calls
    `tts_webui.core_ext_bridge.install()` (no-op without `TTS_CORE_URL`).
 
-Optional: add `func (p *Proc) Pid() int` to `core/internal/procs/proc.go`.
-`procs.Proc` exposes no pid, so `pid.go` reads the unexported `cmd` by
-reflection; once `Pid()` exists it is used automatically and `pid.go`'s
-fallback can be deleted.
-
 ## Behaviour notes
 
 - API (loopback + `X-TTS-Core-Token`, POST needs `application/json`; else 403/415):

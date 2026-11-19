@@ -64,7 +64,7 @@ type ProcessStatus struct {
 }
 
 // runner is the part of *procs.Proc the supervisor uses. A runner that also
-// has `Pid() int` gets its pid reported (procs.Proc has no such accessor yet).
+// has `Pid() int` (procs.Proc does) gets its pid reported.
 type runner interface {
 	Start(ctx context.Context, name string, args []string, cwd string, env []string) error
 	Stop() error

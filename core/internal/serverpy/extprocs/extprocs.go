@@ -219,7 +219,7 @@ func (m *Manager) Start(ctx context.Context, pkg string, req StartRequest) (Star
 		m.ents[pkg] = e
 		return StartResult{}, fmt.Errorf("spawning %s: %w", pkg, err)
 	}
-	e.pid = pidOf(e.proc)
+	e.pid = e.proc.Pid()
 	m.ents[pkg] = e
 	m.logf("extprocs: started %s pid=%d port=%d", pkg, e.pid, port)
 	go m.watch(e)

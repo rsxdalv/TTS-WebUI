@@ -1,0 +1,11 @@
+# Compare case files
+
+Each file is a JSON array of `compare.Case`, run with
+`compare -next <Next URL> -go <gosrv URL> <file>` (see CONTRACTS.md section 8).
+
+- `gradio-file-proxy.json`: needs a Gradio stub on the port set in `GRADIO_BACKEND` for both Next and gosrv.
+- `webui-generations.json`: needs these fixtures in the install root next to `react-ui`:
+  `outputs/a.wav` (31 bytes), `outputs/sub/b c.txt`, `outputs/.hidden`, `outputs/.hiddendir/x.txt`,
+  `outputs/emptydir/`, `outputs/ünï.html`, `outputs/UPPER.PNG`, `collections/c.json`, `voices/x.npz` (3,000,000 bytes),
+  `outputs-rvc/s.js`, `voices-tortoise/README`, `favorites/f.ogg`, `config.json`, `secretdir/s.txt`.
+  Conditional-request cases (If-None-Match with the real ETag) were run separately with the validators read from Next.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -108,10 +109,10 @@ func TestInitMambaWindowsFullInstall(t *testing.T) {
 	if d[2] != `sh: call "`+mamba+`" --version` {
 		t.Fatalf("version: %q", d[2])
 	}
-	if d[3] != mamba+" create -y --prefix "+envDir {
+	if d[3] != `sh: call "`+mamba+`" create -y --prefix "`+envDir+`"` {
 		t.Fatalf("create: %q", d[3])
 	}
-	wantInstall := mamba + " install -y --prefix " + envDir + " -c conda-forge git python=3.10.11 conda-forge::nodejs=22.9.0 conda ninja conda-forge::postgresql=16.4 conda-forge::vswhere conda-forge::ffmpeg=4.4.2[build=lgpl*]"
+	wantInstall := `sh: call "` + mamba + `" install -y --prefix "` + envDir + `" -c conda-forge git python=3.10.11 conda-forge::nodejs=22.9.0 conda ninja conda-forge::postgresql=16.4 conda-forge::vswhere conda-forge::ffmpeg=4.4.2[build=lgpl*]`
 	if d[4] != wantInstall {
 		t.Fatalf("install: %q", d[4])
 	}
@@ -152,7 +153,7 @@ func TestInitMambaWindowsDownloadFails(t *testing.T) {
 // last ERRORLEVEL when the env folder is missing afterwards.
 func TestInitMambaWindowsInstallFailsEnvMissing(t *testing.T) {
 	fr := &mambaFakeRunner{code: func(c Command) int {
-		if c.Name != "" && len(c.Args) > 0 && c.Args[0] == "install" {
+		if strings.Contains(c.Shell, " install -y ") {
 			return 3
 		}
 		if strings.Contains(c.Shell, "--version >") {
@@ -263,5 +264,116 @@ func TestInitMambaUnixCreateFails(t *testing.T) {
 	code, _ := initMamba(context.Background(), s, "darwin", "amd64")
 	if code != 1 || !strings.Contains(strings.Join(*lines, "\n"), "ERROR: unable to create the install environment") {
 		t.Fatalf("code=%d log=%q", code, *lines)
+	}
+}
+
+// runsRealFor sends commands for which match is true to a real ExecRunner and
+// answers every other command with exit code 0 (so the version check "works").
+type runsRealFor struct {
+	real  *ExecRunner
+	match func(Command) bool
+	seen  []Command
+}
+
+func (r *runsRealFor) Run(ctx context.Context, c Command) (Result, error) {
+	r.seen = append(r.seen, c)
+	if r.match(c) {
+		return r.real.Run(ctx, c)
+	}
+	return Result{}, nil
+}
+
+// Review F1/F2: when the downloaded file is not a program, the original's "call"
+// only sets ERRORLEVEL, the script goes on to "install", prints the failure, and
+// exits 0.
+func TestInitMambaWindowsInvalidMicromambaFileLikeOriginal(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("runs cmd.exe")
+	}
+	root := t.TempDir()
+	mambaDir := filepath.Join(root, "installer_files", "mamba")
+	os.MkdirAll(mambaDir, 0o777)
+	os.WriteFile(filepath.Join(mambaDir, "micromamba.exe"), []byte("<html>captive portal</html>"), 0o644)
+	var lines []string
+	log := func(l string) { lines = append(lines, l) }
+	r := &runsRealFor{real: &ExecRunner{Root: root, Log: log}, match: func(c Command) bool {
+		return strings.Contains(c.Shell, " create -y ") || strings.Contains(c.Shell, " install -y ")
+	}}
+	s := &Step{Root: root, Run: r, Log: log}
+	code, err := initMambaWindows(context.Background(), s)
+	if code != 0 || err != nil {
+		t.Fatalf("code=%d err=%v log=%q", code, err, lines)
+	}
+	var shells []string
+	for _, c := range r.seen {
+		shells = append(shells, c.Shell)
+	}
+	joined := strings.Join(shells, "\n")
+	if !strings.Contains(joined, " create -y ") || !strings.Contains(joined, " install -y ") {
+		t.Fatalf("must try create and install: %q", shells)
+	}
+	all := strings.Join(lines, "\n")
+	if !strings.Contains(all, "There was a problem while installinggit") || !strings.Contains(all, "Press any key to continue") {
+		t.Fatalf("log: %q", lines)
+	}
+}
+
+// Review F1: ERRORLEVEL is non-zero at the end of the script, but the script exits 0.
+func TestInitMambaWindowsExitsZeroEvenWhenInstallFailed(t *testing.T) {
+	fr := &mambaFakeRunner{code: func(c Command) int {
+		if strings.Contains(c.Shell, " install -y ") {
+			return 5
+		}
+		return 0
+	}}
+	s, _, root := mkMambaStep(t, fr)
+	os.MkdirAll(filepath.Join(root, "installer_files", "mamba"), 0o777)
+	// Env folder appears after "create", so the final check passes.
+	fr.code = func(c Command) int {
+		if strings.Contains(c.Shell, " create -y ") {
+			os.MkdirAll(filepath.Join(root, "installer_files", "env"), 0o777)
+		}
+		if strings.Contains(c.Shell, " install -y ") {
+			return 5
+		}
+		if strings.Contains(c.Shell, "--version >") {
+			return 9009
+		}
+		return 0
+	}
+	if code, err := initMamba(context.Background(), s, "windows", "amd64"); code != 0 || err != nil {
+		t.Fatalf("code=%d err=%v, want 0", code, err)
+	}
+}
+
+// Review F3: a micromamba file that cannot start (failed earlier download, no
+// execute bit) means "download again", not a failure of the port.
+func TestInitMambaUnixUnusableMicromambaDownloadsAgain(t *testing.T) {
+	withMambaTools(t, "curl", "tar", "bzip2")
+	root := t.TempDir()
+	mambaDir := filepath.Join(root, "installer_files", "mamba")
+	os.MkdirAll(mambaDir, 0o777)
+	mamba := filepath.Join(mambaDir, "micromamba")
+	os.WriteFile(mamba, []byte("partial"), 0o644) // no execute bit
+	var lines []string
+	log := func(l string) { lines = append(lines, l) }
+	r := &runsRealFor{real: &ExecRunner{Root: root, Log: log}, match: func(c Command) bool {
+		return c.Name == mamba && len(c.Args) == 1 && c.Args[0] == "--version"
+	}}
+	// After the fake download, "create" must not run for real.
+	s := &Step{Root: root, Run: r, Log: log}
+	code, err := initMambaUnix(context.Background(), s, "linux", "amd64")
+	_ = code
+	if err != nil {
+		t.Fatalf("err=%v", err)
+	}
+	var sawDownload bool
+	for _, c := range r.seen {
+		if c.Name == "bash" && strings.Contains(strings.Join(c.Args, " "), "curl -L") {
+			sawDownload = true
+		}
+	}
+	if !sawDownload {
+		t.Fatalf("expected a new download, got %d commands, log=%q", len(r.seen), lines)
 	}
 }

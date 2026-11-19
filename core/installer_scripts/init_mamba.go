@@ -14,8 +14,12 @@ import (
 // creates installer_files/env with git, python, node, conda, ninja, postgresql
 // and ffmpeg.
 //
-// exitCode is what the script would exit with. On Windows that is the batch
-// file's last ERRORLEVEL, which the port tracks the same way.
+// exitCode is what the script would exit with. On Windows that is 0 whenever the
+// script runs to its end: init_mamba.bat finishes with two "set" lines, and cmd /c
+// reports exit 0 for a batch file that ends that way, even though ERRORLEVEL is
+// still non-zero inside it (found by review, checked against the real script).
+// The port still tracks ERRORLEVEL inside the flow, because the script branches
+// on it.
 //
 // Deliberate differences, both because nobody can answer:
 //   - The scripts wait for a key ("pause", "read -p") before they exit after a
@@ -124,12 +128,12 @@ func initMambaWindows(ctx context.Context, s *Step) (int, error) {
 	s.Log(`"Checking if the Micromamba/Conda environment is already installed."`)
 	if !fileExists(envDir) {
 		s.Log(fmt.Sprintf(`"Creating the Micromamba/Conda environment in %s"`, envDir))
-		if err := runCmd(Command{Name: umamba, Args: []string{"create", "-y", "--prefix", envDir}}); err != nil {
+		if err := runCmd(Command{Shell: fmt.Sprintf(`call "%s" create -y --prefix "%s"`, umamba, envDir)}); err != nil {
 			return 1, err
 		}
 		s.Log(fmt.Sprintf(`"Packages to install:%s"`, packages))
-		args := append([]string{"install", "-y", "--prefix", envDir, "-c", "conda-forge"}, strings.Fields(packages)...)
-		if err := runCmd(Command{Name: umamba, Args: args}); err != nil {
+		// "call" like the original: a file that cannot start only sets ERRORLEVEL.
+		if err := runCmd(Command{Shell: fmt.Sprintf(`call "%s" install -y --prefix "%s" -c conda-forge %s`, umamba, envDir, packages)}); err != nil {
 			return 1, err
 		}
 	} else {
@@ -140,7 +144,7 @@ func initMambaWindows(ctx context.Context, s *Step) (int, error) {
 		s.Log(fmt.Sprintf(`"There was a problem while installing%s using micromamba. Cannot continue."`, packages))
 		return pauseExit(s), nil
 	}
-	return level, nil
+	return 0, nil
 }
 
 // ---- init_mamba.sh ----
@@ -234,11 +238,13 @@ func initMambaUnix(ctx context.Context, s *Step, goos, goarch string) (int, erro
 	// "micromamba --version" fails when the binary is missing; that only means
 	// "not downloaded yet", as in the original.
 	if fileExists(umamba) {
+		// A file that cannot start (a failed earlier download leaves one without
+		// the execute bit) is "not usable, download again", like the script.
 		code, err := run(Command{Name: umamba, Args: []string{"--version"}, Capture: true})
-		if err != nil {
+		if err != nil && ctx.Err() != nil {
 			return 1, err
 		}
-		umambaExists = code == 0
+		umambaExists = err == nil && code == 0
 	}
 
 	if !umambaExists {
@@ -262,7 +268,8 @@ func initMambaUnix(ctx context.Context, s *Step, goos, goarch string) (int, erro
 			return 1, err
 		}
 		s.Log("Micromamba version:")
-		if _, err := run(Command{Name: umamba, Args: []string{"--version"}}); err != nil {
+		// The script does not check this --version.
+		if _, err := run(Command{Name: umamba, Args: []string{"--version"}}); err != nil && ctx.Err() != nil {
 			return 1, err
 		}
 	}
@@ -304,8 +311,9 @@ func mode(p string) os.FileMode {
 }
 
 // pauseExit stands in for the batch file's "pause" followed by "exit /b". The
-// prompt is printed but nobody is waited for. pause leaves ERRORLEVEL at 0, so
-// the script exits 0 even though it failed (checked against the real script).
+// prompt is printed but nobody is waited for. The script then exits 0 (the batch
+// file ends in two "set" lines, so cmd /c reports 0; ERRORLEVEL itself is still
+// non-zero after pause, as the reviewer showed).
 func pauseExit(s *Step) int {
 	s.Log("Press any key to continue . . . ")
 	return 0

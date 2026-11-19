@@ -50,6 +50,13 @@ func (l *Launcher) serveGoStep(w http.ResponseWriter, name string, fn goStepFunc
 	if !use {
 		return false
 	}
+	// The Go install and update steps build the static export, which sets
+	// react-ui/.next aside while it runs (CONTRACTS.md section 10). A running Next
+	// would answer errors meanwhile, so these steps wait for the app to stop.
+	if (name == "install" || name == "update") && l.appRunning() {
+		http.Error(w, "stop the app before running "+name, http.StatusConflict)
+		return true
+	}
 	p := &procs.Proc{}
 	l.setProc(name, p)
 	err = p.StartFunc(context.Background(), func(ctx context.Context, log func(string)) int {
@@ -69,4 +76,14 @@ func (l *Launcher) serveGoStep(w http.ResponseWriter, name string, fn goStepFunc
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write([]byte(`{"started":true}`))
 	return true
+}
+
+// appRunning reports whether any app process is running.
+func (l *Launcher) appRunning() bool {
+	for _, st := range l.sup.Statuses() {
+		if st.Running {
+			return true
+		}
+	}
+	return false
 }

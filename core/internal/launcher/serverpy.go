@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appconfig"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appenv"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extprocs"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/router"
@@ -122,6 +123,11 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/routes", rt.ControlHandler())
+	// Go is the only reader and writer of config.json (see appconfig).
+	mux.Handle(appconfig.Path, appconfig.New(appconfig.Options{
+		Root: root.Dir(), Token: token,
+		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+	}).Handler())
 	mux.Handle("/api/extensions", mgr.Handler())
 	mux.Handle("/api/extensions/", mgr.Handler())
 	ctl := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}

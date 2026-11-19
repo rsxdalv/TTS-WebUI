@@ -78,6 +78,12 @@ func LoadConfig(root string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	return ParseConfig(data)
+}
+
+// ParseConfig applies the LoadConfig rules to the bytes of a config.json.
+func ParseConfig(data []byte) (Config, error) {
+	var err error
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.UseNumber()
 	var doc map[string]any

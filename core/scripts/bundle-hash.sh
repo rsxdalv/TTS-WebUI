@@ -10,5 +10,5 @@ OUT="$REPO_ROOT/core/internal/webui/assets/bundle.hash"
 
 mkdir -p "$(dirname "$OUT")"
 # Hash all source files (sorted for determinism) plus the lockfile.
-find "$SRC_DIR" -type f | sort | xargs sha256sum "$LOCKFILE" | sha256sum | cut -d" " -f1 > "$OUT"
+(cd "$REPO_ROOT" && find launcher/vite-src/src/core-app -type f | LC_ALL=C sort | xargs sha256sum launcher/vite-src/package-lock.json | sed "s/ \*/  /" | sha256sum | cut -d" " -f1) > "$OUT"
 echo "Bundle hash written to $OUT"

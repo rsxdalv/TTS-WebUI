@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -110,13 +111,18 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 			return fmt.Errorf("allocating React UI port: %w", err)
 		}
 		front, err = react_ui_backend.Start(react_ui_backend.Config{
-			Root:     s.root.Dir(),
-			Port:     react_ui_backend.PublicPort,
-			NextAddr: fmt.Sprintf("127.0.0.1:%d", nextPort),
-			Routes:   sw,
+			Root:         s.root.Dir(),
+			Port:         react_ui_backend.PublicPort,
+			NextAddr:     fmt.Sprintf("127.0.0.1:%d", nextPort),
+			Routes:       sw,
+			LAN:          sw.ProxyLAN,
+			AllowedHosts: sw.ProxyAllowedHosts,
 		})
 		if err != nil {
 			return fmt.Errorf("starting the React UI proxy: %w", err)
+		}
+		if sw.ProxyLAN {
+			slog.Warn(react_ui_backend.LANWarning(react_ui_backend.PublicPort))
 		}
 	}
 

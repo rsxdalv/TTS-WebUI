@@ -386,6 +386,12 @@ Port these as they are unless a rule below says otherwise. Record any you meet i
 - Needs `src/extensions/link.ts` like the server build (written by the prebuild step). An extension installed later needs a rebuild to be included, except for its page (see the shell below).
 - The server build is unchanged by this task: HTML and `_next/data` JSON of 16 pages and 9 data URLs are identical to the ones before it (script and chunk names aside), and so are the cache headers.
 
+### Who builds it (C2)
+
+- The Go install and update steps (`TTS_GO_STEPS` install, update) run `cd react-ui && npm run build:static` where the original runs `npm run build`. A tree whose `react-ui/package.json` has no `build:static` script (main, and so every fresh Download, until S1 reaches main) gets `npm run build` instead, after the log line "react-ui has no build:static script (this tree predates the static export), so building the server build". They build only when the original builds: on install, and on update when `git pull` brings a commit that differs from `.git_version`.
+- The legacy JS installer (`init_app.js`) is unchanged and still builds the server build only.
+- Because the export sets `.next` aside, the launcher answers `POST /api/steps/install` and `POST /api/steps/update` with `409` and "stop the app before running <step>" while any app process runs, when that step runs its Go port. The script path has no such check.
+
 ### Where things are
 
 | In `react-ui/out/` | Contents |

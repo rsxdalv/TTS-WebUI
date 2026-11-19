@@ -25,6 +25,11 @@ import (
 //   - js/menu.js: the terminal menu becomes Step.Prompt (menu.go).
 //   - js/shell.js $shSync: init_app.js and js/initializeApp.js never call it.
 //
+// Changed on purpose: the react-ui build runs S1's static export
+// (`npm run build:static`) instead of `npm run build`, by the cutover decision
+// (CUTOVER.md item 4), when react-ui/package.json has that script; an older tree
+// (main) still gets `npm run build`. The legacy JS installer still builds the server build.
+//
 // Log differences that remain: no "Unified server started" or "Silent mode"
 // lines; displayError(error) prints "Error: <message>" without Node's stack;
 // a command that cannot start reports Go's error text instead of Node's

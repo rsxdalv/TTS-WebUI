@@ -117,6 +117,7 @@ func newFlow(t *testing.T) (*Step, *flowRunner, *flowLog) {
 	}
 	writeFile(t, root, "installer_scripts/versions.json", `{"version":"1.0.0","pip_packages":"1.2.0","npm_packages":4,"react_ui":4}`)
 	writeFile(t, root, "installer_scripts/.gpu", "NVIDIA GPU")
+	writeFile(t, root, "react-ui/package.json", `{"scripts":{"build":"next build","build:static":"node build-static.js","start":"next start"}}`)
 	r := &flowRunner{root: root, handlers: map[string]func(context.Context, Command) (Result, error){}}
 	log := &flowLog{}
 	return &Step{Root: root, Run: r, Log: log.add}, r, log
@@ -180,7 +181,7 @@ func TestInitAppJSFreshInstall(t *testing.T) {
 		nvidiaInstall,
 		singleInstall,
 		"cd react-ui && npm install",
-		"cd react-ui && npm run build",
+		reactUIBuild,
 		"git rev-parse HEAD",
 	})
 	for key := range backgroundCmds {
@@ -442,7 +443,7 @@ func TestInitAppJSTorchAlreadyInstalled(t *testing.T) {
 		"python --version > installer_scripts/.python_version",
 		torchFound,
 		"cd react-ui && npm install",
-		"cd react-ui && npm run build",
+		reactUIBuild,
 		"git rev-parse HEAD",
 	})
 	if !log.has("Dependencies are already up to date, skipping pip installs...") {
@@ -481,7 +482,7 @@ func TestInitAppJSWrongPythonIsReinstalled(t *testing.T) {
 
 func TestInitAppJSReactBuildFailure(t *testing.T) {
 	s, r, log := newFlow(t)
-	r.handlers["cd react-ui && npm run build"] = exitWith(2)
+	r.handlers[reactUIBuild] = exitWith(2)
 	if code := run(t, s); code != 1 {
 		t.Fatalf("exit %d", code)
 	}
@@ -604,6 +605,62 @@ func TestJSString(t *testing.T) {
 	} {
 		if got := jsString(c.v, c.present); got != c.want {
 			t.Errorf("jsString(%v) = %q, want %q", c.v, got, c.want)
+		}
+	}
+}
+
+// The Go steps build the static export, never the Next server build, and only
+// when the original would build: on install and on an update with a new commit,
+// not when .git_version already matches.
+func TestInitAppJSBuildsTheStaticExportOnlyWhenTheOriginalBuilds(t *testing.T) {
+	s, r, _ := newFlow(t)
+	writeFile(t, s.Root, "installer_scripts/.git_version", "older")
+	writeFile(t, s.Root, "installer_scripts/.major_version", "1.0.0")
+	writeFile(t, s.Root, "installer_scripts/.pip_packages", "1.2.0")
+	if code := run(t, s); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if !r.ran("cd react-ui && npm run build:static") || r.ran("cd react-ui && npm run build") {
+		t.Fatalf("update with a new commit: commands %q", r.foreground())
+	}
+
+	s, r, _ = newFlow(t)
+	writeFile(t, s.Root, "installer_scripts/.git_version", "abc123")
+	if code := run(t, s); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	for _, c := range r.foreground() {
+		if strings.Contains(c, "npm") {
+			t.Fatalf("no update, but %q ran", c)
+		}
+	}
+}
+
+// A tree from before S1 (main's react-ui/package.json has no build:static, and
+// the launcher's Download installs main) gets the server build, with one line
+// saying why. Without this a fresh Go install failed at the react-ui build.
+func TestInitAppJSTreeWithoutStaticExportBuildsTheServerBuild(t *testing.T) {
+	for name, pkg := range map[string]string{
+		"main package.json": `{"scripts":{"build":"next build","start":"next start"}}`,
+		"no package.json":   "",
+	} {
+		s, r, log := newFlow(t)
+		path := filepath.Join(s.Root, "react-ui", "package.json")
+		if pkg == "" {
+			if err := os.Remove(path); err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			writeFile(t, s.Root, "react-ui/package.json", pkg)
+		}
+		if code := run(t, s); code != 0 {
+			t.Fatalf("%s: exit %d", name, code)
+		}
+		if !r.ran("cd react-ui && npm run build") || r.ran("cd react-ui && npm run build:static") {
+			t.Errorf("%s: commands %q", name, r.foreground())
+		}
+		if !log.has("react-ui has no build:static script (this tree predates the static export), so building the server build") {
+			t.Errorf("%s: log %q", name, log.lines)
 		}
 	}
 }

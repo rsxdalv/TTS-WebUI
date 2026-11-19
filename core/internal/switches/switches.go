@@ -1,7 +1,7 @@
 // Package switches reads the environment variables that turn on the Go ports.
 //
-// Every switch is off by default. With no variable set the app runs the legacy
-// scripts and Next routes exactly as before. See
+// The proxy and route switches are off by default (the app runs Next exactly as
+// before). TTS_GO_STEPS is on by default: TTS_GO_STEPS=none runs the scripts. See
 // documentation/core-rewrite/CONTRACTS.md, section "Switches".
 package switches
 
@@ -57,7 +57,7 @@ func Parse(lookup func(string) (string, bool)) (Set, error) {
 	if s.routes, s.allRoutes, err = parseList(lookup, EnvRoutes); err != nil {
 		return Set{}, err
 	}
-	if s.steps, s.allSteps, err = parseList(lookup, EnvSteps); err != nil {
+	if s.steps, s.allSteps, err = parseSteps(lookup); err != nil {
 		return Set{}, err
 	}
 
@@ -86,6 +86,28 @@ func parseList(lookup func(string) (string, bool), env string) (map[string]bool,
 		names[name] = true
 	}
 	return names, everything, nil
+}
+
+// none is the TTS_GO_STEPS value that runs the original scripts for every step.
+const none = "none"
+
+// parseSteps reads TTS_GO_STEPS. Unlike the other switches the steps are ON by
+// default (decision D19): unset or empty means every Go port runs, "none" runs
+// the original scripts, and a list runs only the named ports.
+func parseSteps(lookup func(string) (string, bool)) (map[string]bool, bool, error) {
+	v, ok := lookup(EnvSteps)
+	if !ok || strings.TrimSpace(v) == "" {
+		return nil, true, nil
+	}
+	if strings.TrimSpace(v) == none {
+		return map[string]bool{}, false, nil
+	}
+	for _, raw := range strings.Split(v, ",") {
+		if strings.TrimSpace(raw) == none {
+			return nil, false, fmt.Errorf("%s: %q cannot be combined with other names", EnvSteps, none)
+		}
+	}
+	return parseList(lookup, EnvSteps)
 }
 
 // Route reports whether the route claim called name is on.

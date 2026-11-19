@@ -9,13 +9,14 @@ func env(m map[string]string) func(string) (string, bool) {
 	return func(k string) (string, bool) { v, ok := m[k]; return v, ok }
 }
 
+// Steps are on by default (D19); see TestStepsDefaultOn.
 func TestDefaultsAreOff(t *testing.T) {
 	s, err := Parse(env(nil))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.Proxy || s.Route("upload") || s.Step("mamba") {
-		t.Fatalf("expected everything off, got %+v", s)
+	if s.Proxy || s.Route("upload") {
+		t.Fatalf("expected proxy and routes off, got %+v", s)
 	}
 }
 
@@ -81,5 +82,52 @@ func TestCheckKnownNames(t *testing.T) {
 	}
 	if err := s.CheckSteps([]string{"install"}); err == nil {
 		t.Fatal("unknown step accepted")
+	}
+}
+
+// Steps are on by default (D19); the proxy and routes stay off.
+func TestStepsDefaultOn(t *testing.T) {
+	for _, e := range []map[string]string{{}, {EnvSteps: ""}, {EnvSteps: "  "}} {
+		s, err := Parse(env(e))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !s.Step("mamba") || !s.Step("install") || !s.Step("update") || !s.Step("diagnostic") {
+			t.Fatalf("%v: steps must be on by default: %+v", e, s)
+		}
+		if s.Proxy || s.Route("upload") {
+			t.Fatalf("%v: proxy and routes must stay off", e)
+		}
+		if err := s.CheckSteps([]string{"mamba"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestStepsNone(t *testing.T) {
+	s, err := Parse(env(map[string]string{EnvSteps: "none"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Step("mamba") || s.Step("install") || s.Step("update") || s.Step("diagnostic") {
+		t.Fatalf("none must turn every step off: %+v", s)
+	}
+	if err := s.CheckSteps([]string{"mamba"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range []string{"none,mamba", "mamba, none"} {
+		if _, err := Parse(env(map[string]string{EnvSteps: v})); err == nil || !strings.Contains(err.Error(), "cannot be combined") {
+			t.Fatalf("%q: err = %v", v, err)
+		}
+	}
+}
+
+func TestStepsListLeavesOthersOff(t *testing.T) {
+	s, err := Parse(env(map[string]string{EnvSteps: "diagnostic"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.Step("diagnostic") || s.Step("mamba") {
+		t.Fatalf("%+v", s)
 	}
 }

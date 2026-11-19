@@ -57,3 +57,7 @@ func (p *Proc) StartFunc(ctx context.Context, fn func(ctx context.Context, log f
 	}()
 	return nil
 }
+
+// Note adds a line to the log without running anything. The launcher uses it to
+// say which implementation a step ran.
+func (p *Proc) Note(line string) { p.addLine(line) }

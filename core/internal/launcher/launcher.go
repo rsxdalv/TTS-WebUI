@@ -81,6 +81,7 @@ func (l *Launcher) Register(srv *server.Server) {
 	srv.Handle("GET /api/app/status", l.handleAppStatus())
 	srv.Handle("GET /api/app/status/stream", l.handleAppStatusStream())
 	srv.Handle("GET /api/app/link", l.handleAppLink())
+	srv.Handle("GET /api/app/lan", l.handleAppLAN())
 
 	// Diagnostic: runs installer_scripts/tools/diagnostic.{bat,sh}.
 	srv.Handle("POST /api/app/diagnostic", l.handleAppDiagnostic())

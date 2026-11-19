@@ -7,12 +7,14 @@ package launcher
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
@@ -39,6 +41,9 @@ type reactUIPlan struct {
 	// missing names the export's claims that TTS_GO_ROUTES turns off, when
 	// they are why Next serves the UI instead of the export.
 	missing string
+	// rebuildExport runs `npm run build:static` first: the export comes from
+	// another commit than the install (R2-6).
+	rebuildExport bool
 }
 
 // buildReason says why the server build must be built before Next starts.
@@ -56,7 +61,15 @@ const (
 // build writes it anew, and build:static's rename and restore keep its time)
 // and of out/_tts-export.json (written last in a complete export).
 func serverBuildStale(root paths.Root) bool {
-	if !usableServerBuild(root) || !react_ui_backend.HasExport(root.Dir()) {
+	if !usableServerBuild(root) {
+		return false
+	}
+	if commit, ok := buildCommit(filepath.Join(root.Dir(), "react-ui", ".next", "tts-build.json")); ok {
+		if head := gitHead(root); head != "" {
+			return commit != head
+		}
+	}
+	if !react_ui_backend.HasExport(root.Dir()) {
 		return false
 	}
 	server, err := os.Stat(filepath.Join(root.Dir(), "react-ui", ".next", "BUILD_ID"))
@@ -68,6 +81,57 @@ func serverBuildStale(root paths.Root) bool {
 		return false
 	}
 	return server.ModTime().Before(export.ModTime())
+}
+
+// exportStale reports whether the static export comes from another commit than
+// the install's HEAD, for example after an Update that ran the original
+// scripts and rebuilt only the server build (R2-6). An export without a
+// recorded commit is stale when it is older than a usable server build.
+func exportStale(root paths.Root) bool {
+	if !react_ui_backend.HasExport(root.Dir()) {
+		return false
+	}
+	marker := filepath.Join(react_ui_backend.ExportDir(root.Dir()), react_ui_backend.ExportMarker)
+	if commit, ok := buildCommit(marker); ok {
+		if head := gitHead(root); head != "" {
+			return commit != head
+		}
+		return false
+	}
+	if !usableServerBuild(root) {
+		return false
+	}
+	server, err1 := os.Stat(filepath.Join(root.Dir(), "react-ui", ".next", "BUILD_ID"))
+	export, err2 := os.Stat(marker)
+	return err1 == nil && err2 == nil && export.ModTime().Before(server.ModTime())
+}
+
+// buildCommit reads the "commit" a build recorded (out/_tts-export.json or
+// .next/tts-build.json). ok is false when there is none.
+func buildCommit(file string) (string, bool) {
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return "", false
+	}
+	var rec struct {
+		Commit string `json:"commit"`
+	}
+	if json.Unmarshal(data, &rec) != nil || rec.Commit == "" {
+		return "", false
+	}
+	return rec.Commit, true
+}
+
+// gitHead returns the install's HEAD commit, or "" when it cannot tell.
+// Tests replace it.
+var gitHead = func(root paths.Root) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, err := defaultGitRunner(ctx, root.Dir(), "rev-parse", "HEAD")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out)
 }
 
 // staleBuild returns buildStale when the server build that Next would serve
@@ -124,7 +188,7 @@ func planReactUI(root paths.Root, sw switches.Set) (reactUIPlan, error) {
 	if sw.Proxy && react_ui_backend.HasExport(root.Dir()) {
 		missing := missingExportClaims(sw)
 		if missing == "" {
-			return reactUIPlan{mode: modeStatic}, nil
+			return reactUIPlan{mode: modeStatic, rebuildExport: !recover && exportStale(root)}, nil
 		}
 		// Without these claims the export's generation and upload cannot
 		// work, so Next serves the UI when it can, and otherwise nothing starts.
@@ -187,17 +251,47 @@ func (s *Supervisor) prepareReactUI(ctx context.Context, sw switches.Set) (react
 		}
 		slog.Info("react-ui: server build finished")
 	}
+	if plan.rebuildExport {
+		slog.Warn("react-ui: the static export was built from another commit than this install (an Update rebuilt only the Next server build), so it would serve an old UI; rebuilding it once with npm run build:static (this takes a few minutes)")
+		// A failed export build never falls back to the old export.
+		if err := s.tool()(ctx, "npm", "run", "build:static"); err != nil {
+			return plan, fmt.Errorf("building the static React UI (npm run build:static) failed, so the app was not started: %w", err)
+		}
+		if !react_ui_backend.HasExport(s.root.Dir()) || exportStale(s.root) {
+			return plan, errors.New("npm run build:static finished but react-ui/out is still missing or stale, so the app was not started")
+		}
+		slog.Info("react-ui: static export rebuilt")
+	}
 	switch plan.mode {
 	case modeStatic:
 		slog.Info("react-ui: serving the static export from react-ui/out; no Next process")
 	case modeNextProxied:
 		if plan.missing != "" {
 			slog.Warn("react-ui: the static export needs the route claims " + plan.missing + ", which TTS_GO_ROUTES turns off, so the Next server build is proxied through next start instead")
+		} else if hasBuildStaticScript(s.root) {
+			slog.Warn("react-ui: no static export in react-ui/out, so the Next server build is proxied through next start; run Update to build the static export")
 		} else {
-			slog.Warn("react-ui: no static export in react-ui/out, so the Next server build is proxied through next start; run Update to switch to the static export")
+			slog.Warn("react-ui: this UI version has no static export (react-ui has no build:static script), so it is served through next start")
 		}
 	}
 	return plan, nil
+}
+
+// hasBuildStaticScript reports whether react-ui/package.json defines the
+// build:static script that builds the static export (R2-4).
+func hasBuildStaticScript(root paths.Root) bool {
+	data, err := os.ReadFile(filepath.Join(root.Dir(), "react-ui", "package.json"))
+	if err != nil {
+		return false
+	}
+	var pkg struct {
+		Scripts map[string]string `json:"scripts"`
+	}
+	if json.Unmarshal(data, &pkg) != nil {
+		return false
+	}
+	_, ok := pkg.Scripts["build:static"]
+	return ok
 }
 
 // tool returns the function that runs react-ui tools; tests replace it.

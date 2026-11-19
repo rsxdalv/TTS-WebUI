@@ -15,6 +15,7 @@ type platformState struct {
 
 func newPlatformState(cmd *exec.Cmd) (*platformState, error) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	setParentDeathSignal(cmd.SysProcAttr)
 	return &platformState{}, nil
 }
 

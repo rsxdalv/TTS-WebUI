@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/version"
 )
@@ -24,7 +25,9 @@ func main() {
 		args = args[1:]
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	// Ctrl+C, a closed terminal (SIGHUP) and SIGTERM all stop the app before
+	// the launcher exits. SIGKILL cannot be caught; the next launcher sweeps.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	defer stop()
 	if err := runLaunch(ctx, args); err != nil {
 		fmt.Fprintf(os.Stderr, "tts-webui: %v\n", err)

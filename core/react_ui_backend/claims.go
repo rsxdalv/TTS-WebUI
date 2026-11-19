@@ -65,6 +65,10 @@ func registeredClaims() []Claim {
 	return out
 }
 
+// ClaimNames returns the switch names of all registered claims, for checking
+// TTS_GO_ROUTES before anything starts.
+func ClaimNames() []string { return claimNames() }
+
 // claimNames returns the switch names of all registered claims.
 func claimNames() []string {
 	var names []string

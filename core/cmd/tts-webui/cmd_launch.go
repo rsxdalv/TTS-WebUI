@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/launcher"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
@@ -40,6 +41,7 @@ func runLaunch(ctx context.Context, args []string) error {
 	}
 
 	l := launcher.New(root)
+	l.CleanupOrphans()
 	l.Register(srv)
 
 	ln, err := srv.Listen()
@@ -63,8 +65,20 @@ func runLaunch(ctx context.Context, args []string) error {
 
 	select {
 	case <-ctx.Done():
+		slog.Info("launcher exiting: stopping the app")
+		done := make(chan struct{})
+		go func() {
+			l.Shutdown()
+			close(done)
+		}()
+		select {
+		case <-done:
+		case <-time.After(20 * time.Second):
+			slog.Warn("the app did not stop within 20 s; exiting anyway")
+		}
 		return nil
 	case err := <-errCh:
+		l.Shutdown()
 		return err
 	}
 }

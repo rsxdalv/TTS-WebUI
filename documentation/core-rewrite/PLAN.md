@@ -35,6 +35,7 @@ Branch `core/rings-1-2` (rings 1-2 only, not for merge yet). Fixed: launcher sta
 Verified by hand with the built exe in an empty folder, no `--root`: Download of the real release zip, Pre-flight, Mamba (git, Python, Node installed into the env), GPU=CPU; `.git` is a real repo, `.preflight_ok` and `.gpu` exist. A path with a space fails Pre-flight with a clear message.
 **Not run:** Install, Launch, Diagnostic, Stop, Restart on the fresh exe, and `m1.ps1` (the real install test was stopped on request). `.git_version` was not checked. The exe is unsigned (SmartScreen will warn).
 Manual workflow `build-launcher-exe.yaml` builds the windows/amd64 exe as an artifact.
+Trimmed (PR #715): no CLI subcommands (the exe only launches), no `state` package, no GPU auto-detection or torch table, no `--ui-dev` proxy, no later-ring path helpers. Those return with the ring that needs them.
 
 **Awaiting demo gate (human run, ~5 min each).** See demo instructions below.
 

@@ -1,61 +1,41 @@
 # TTS WebUI core (Go)
 
-Side-by-side rewrite of the app's core: installer/bootstrap, process
-supervisor, reverse proxy and static UI host. Engines (Python venvs managed by
-uv, native binaries such as audio.cpp) stay out-of-process.
+A single exe that sets up and runs TTS WebUI: it serves a local setup page,
+runs the install steps (download, pre-flight, micromamba, GPU choice, install),
+then starts and stops the app.
 
-**Rule: pure Go, `CGO_ENABLED=0`, no third-party dependencies unless agreed.**
+**Rule: pure Go, `CGO_ENABLED=0`, no third-party dependencies.**
 
-## Commands (run from `core/`)
+## Run
+
+```sh
+tts-webui launch            # serves http://127.0.0.1:7700, uses the exe's folder as the install root
+tts-webui launch --root D:\tts --port 7700 --no-browser
+tts-webui --version
+```
+
+## Build and test (from `core/`)
 
 ```sh
 go vet ./...
 go test ./...
-test -z "$(gofmt -l .)"          # formatting check
-
-go build -o bin/tts-webui ./cmd/tts-webui
-./bin/tts-webui --version
+test -z "$(gofmt -l .)"
+CGO_ENABLED=0 go build -trimpath -o bin/tts-webui ./cmd/tts-webui
 ```
-
-Release-style build with version info:
-
-```sh
-CGO_ENABLED=0 go build -trimpath \
-  -ldflags "-s -w \
-    -X github.com/rsxdalv/TTS-WebUI/core/internal/version.Version=1.0.0 \
-    -X github.com/rsxdalv/TTS-WebUI/core/internal/version.Commit=$(git rev-parse --short HEAD) \
-    -X github.com/rsxdalv/TTS-WebUI/core/internal/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  -o bin/tts-webui ./cmd/tts-webui
-```
-
-Cross-compile (bash):
-
-```sh
-CGO_ENABLED=0 GOOS=linux  GOARCH=amd64 go build -o dist/tts-webui-linux-amd64 ./cmd/tts-webui
-CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o dist/tts-webui-darwin-arm64 ./cmd/tts-webui
-```
-
-In PowerShell set `$env:CGO_ENABLED=0; $env:GOOS="linux"; $env:GOARCH="amd64"` first.
 
 ## Layout
 
-- `cmd/tts-webui/` - entry point
-- `internal/version/` - build metadata set via `-ldflags -X`
-- `internal/webui/` - `go:embed` of the static UI (`assets/`)
-- `ui/` - the setup page (React/Vite), built by `scripts/build-webui.sh`
+- `cmd/tts-webui/` - entry point (the exe only launches; no other commands)
+- `internal/launcher/` - the setup steps and the app supervisor
+- `internal/server/` - local HTTP server (token, host/origin checks, SSE)
+- `internal/procs/` - start, stop and kill a process tree
+- `internal/preflight/` - system checks (path with spaces, exFAT, long paths, conda, MSVC)
+- `internal/gpu/` - the GPU labels the installer accepts
+- `internal/paths/`, `internal/version/` - install-root paths, build info
+- `internal/webui/` - `go:embed` of the built setup page
+- `ui/` - the setup page source (React/Vite)
+- `scripts/` - `build-webui.sh|ps1` build `ui/` into `internal/webui/assets/`; `smoke/m1.ps1` is a Windows smoke test
 
-Embedding: `go:embed` cannot reach outside its package, so `scripts/build-webui.sh`
-builds `ui/` and copies the result over `internal/webui/assets/`. The built assets
-are committed, and CI fails if `bundle.hash` no longer matches the UI sources.
-
-Planned `internal/` packages (not created yet):
-
-- bootstrap
-- gpu
-- env
-- engine
-- supervisor
-- router
-- catalog
-- outputs
-- update
+`go:embed` cannot reach outside its package, so `scripts/build-webui.sh` builds
+`ui/` and copies the result over `internal/webui/assets/`. The built assets are
+committed, and CI fails if `bundle.hash` no longer matches the UI sources.

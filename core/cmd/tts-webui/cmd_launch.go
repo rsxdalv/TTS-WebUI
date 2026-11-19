@@ -11,20 +11,11 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/server"
 )
 
-func init() {
-	register(command{
-		name:    "launch",
-		summary: "start the Go launcher server and open the browser",
-		run:     runLaunch,
-	})
-}
-
 func runLaunch(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("launch", flag.ContinueOnError)
+	fs := flag.NewFlagSet("tts-webui", flag.ContinueOnError)
 	rootDir := fs.String("root", "", "install root directory (default: parent of binary)")
 	port := fs.Int("port", 7700, "port to listen on")
 	noBrowser := fs.Bool("no-browser", false, "do not open the browser automatically")
-	uiDev := fs.String("ui-dev", "", "proxy non-/api requests to this Vite dev server URL")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -32,18 +23,18 @@ func runLaunch(ctx context.Context, args []string) error {
 	var root paths.Root
 	var err error
 	if *rootDir != "" {
-		root, err = paths.NewUninitialized(*rootDir)
+		root, err = paths.New(*rootDir)
 		if err != nil {
 			return fmt.Errorf("invalid root %q: %w", *rootDir, err)
 		}
 	} else {
-		root, err = paths.FromBinaryUninitialized()
+		root, err = paths.FromBinary()
 		if err != nil {
 			return fmt.Errorf("detecting install root: %w", err)
 		}
 	}
 
-	srv, err := server.NewWithOptions(*port, server.Options{UIDev: *uiDev})
+	srv, err := server.New(*port)
 	if err != nil {
 		return fmt.Errorf("creating server: %w", err)
 	}

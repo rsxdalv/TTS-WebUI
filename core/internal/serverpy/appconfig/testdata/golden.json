@@ -1,0 +1,42 @@
+[
+  {
+    "name": "empty_object",
+    "input": "{}",
+    "output": "{}"
+  },
+  {
+    "name": "nested_empty",
+    "input": "{\"a\": [], \"b\": {}, \"c\": [[], {}]}",
+    "output": "{\n  \"a\": [],\n  \"b\": {},\n  \"c\": [\n    [],\n    {}\n  ]\n}"
+  },
+  {
+    "name": "key_order",
+    "input": "{\"z\": 1, \"a\": 2, \"m\": {\"y\": true, \"b\": null}}",
+    "output": "{\n  \"z\": 1,\n  \"a\": 2,\n  \"m\": {\n    \"y\": true,\n    \"b\": null\n  }\n}"
+  },
+  {
+    "name": "unicode",
+    "input": "{\"name\": \"caf\\u00e9 \u65e5\u672c \ud83d\ude00\", \"ctl\": \"a\\u0001b\\u007f\\n\\t\\r\\b\\f\", \"q\": \"\\\"\\\\/\"}",
+    "output": "{\n  \"name\": \"caf\\u00e9 \\u65e5\\u672c \\ud83d\\ude00\",\n  \"ctl\": \"a\\u0001b\\u007f\\n\\t\\r\\b\\f\",\n  \"q\": \"\\\"\\\\/\"\n}"
+  },
+  {
+    "name": "html",
+    "input": "{\"s\": \"<script>&amp;</script>\"}",
+    "output": "{\n  \"s\": \"<script>&amp;</script>\"\n}"
+  },
+  {
+    "name": "numbers",
+    "input": "{\"i\": 7770, \"neg\": -3, \"f\": 1.5, \"e\": 1e-07, \"big\": 12345678901234567890}",
+    "output": "{\n  \"i\": 7770,\n  \"neg\": -3,\n  \"f\": 1.5,\n  \"e\": 1e-07,\n  \"big\": 12345678901234567890\n}"
+  },
+  {
+    "name": "auth",
+    "input": "{\"gradio_interface_options\": {\"auth\": \"user:p\\u00e4ss\", \"server_port\": 7771, \"server_name\": \"0.0.0.0\"}}",
+    "output": "{\n  \"gradio_interface_options\": {\n    \"auth\": \"user:p\\u00e4ss\",\n    \"server_port\": 7771,\n    \"server_name\": \"0.0.0.0\"\n  }\n}"
+  },
+  {
+    "name": "default",
+    "input": "{\"gradio_interface_options\": {\"inline\": false, \"inbrowser\": true, \"share\": false, \"debug\": false, \"max_threads\": 40, \"auth\": null, \"auth_message\": null, \"prevent_thread_lock\": false, \"show_error\": false, \"server_name\": \"127.0.0.1\", \"server_port\": 7770, \"height\": 500, \"width\": \"100%\", \"favicon_path\": null, \"ssl_keyfile\": null, \"ssl_certfile\": null, \"ssl_keyfile_password\": null, \"ssl_verify\": true, \"quiet\": true, \"show_api\": true, \"_frontend\": true}, \"extensions\": {\"disabled\": [], \"disabled_decorators\": []}}",
+    "output": "{\n  \"gradio_interface_options\": {\n    \"inline\": false,\n    \"inbrowser\": true,\n    \"share\": false,\n    \"debug\": false,\n    \"max_threads\": 40,\n    \"auth\": null,\n    \"auth_message\": null,\n    \"prevent_thread_lock\": false,\n    \"show_error\": false,\n    \"server_name\": \"127.0.0.1\",\n    \"server_port\": 7770,\n    \"height\": 500,\n    \"width\": \"100%\",\n    \"favicon_path\": null,\n    \"ssl_keyfile\": null,\n    \"ssl_certfile\": null,\n    \"ssl_keyfile_password\": null,\n    \"ssl_verify\": true,\n    \"quiet\": true,\n    \"show_api\": true,\n    \"_frontend\": true\n  },\n  \"extensions\": {\n    \"disabled\": [],\n    \"disabled_decorators\": []\n  }\n}"
+  }
+]

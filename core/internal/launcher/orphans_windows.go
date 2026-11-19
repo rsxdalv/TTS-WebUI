@@ -11,4 +11,8 @@ func (s *Supervisor) recordProcesses() {}
 
 func (s *Supervisor) clearRecord() {}
 
+func recordGroups(paths.Root, []appProc) {}
+
+func clearRecordFor(paths.Root) {}
+
 func sweepOrphans(paths.Root) int { return 0 }

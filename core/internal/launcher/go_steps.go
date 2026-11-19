@@ -92,12 +92,7 @@ func (l *Launcher) serveGoStep(w http.ResponseWriter, name string, fn goStepFunc
 
 // appRunning reports whether any app process is running.
 func (l *Launcher) appRunning() bool {
-	for _, st := range l.sup.Statuses() {
-		if st.Running {
-			return true
-		}
-	}
-	return false
+	return l.sup.Running()
 }
 
 // scriptNote is the log line of a step that runs its original script.

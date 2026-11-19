@@ -38,7 +38,8 @@ func TestGoInstallAndUpdateRefuseWhileTheAppRuns(t *testing.T) {
 	}
 	writeEnvHistory(t, root)
 	l := New(root)
-	l.sup.procs = append(l.sup.procs, &appProcess{name: "react-ui"})
+	fake := &runningSup{appSupervisor: l.sup, running: true}
+	l.sup = fake
 
 	rec := httptest.NewRecorder()
 	l.handleInstall().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/steps/install", nil))
@@ -51,8 +52,16 @@ func TestGoInstallAndUpdateRefuseWhileTheAppRuns(t *testing.T) {
 	if !l.appRunning() {
 		t.Fatal("appRunning")
 	}
-	l.sup.procs = nil
+	fake.running = false
 	if l.appRunning() {
 		t.Fatal("appRunning with no process")
 	}
 }
+
+// runningSup is a supervisor whose Running answer the test controls.
+type runningSup struct {
+	appSupervisor
+	running bool
+}
+
+func (r *runningSup) Running() bool { return r.running }

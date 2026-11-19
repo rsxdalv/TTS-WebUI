@@ -23,6 +23,7 @@ import (
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
+	"github.com/rsxdalv/TTS-WebUI/core/react_ui_backend"
 )
 
 // Process names, as they appear in the status.
@@ -76,9 +77,12 @@ type runner interface {
 // managed is one child. Mutable fields are guarded by Supervisor.mu.
 type managed struct {
 	name  string
-	port  int
+	port  int // the port reported in the status
 	probe probeFunc
 	r     runner
+	// probePort is the port readiness checks; 0 = port. It differs when Go
+	// serves the React port in front of Next on a private one.
+	probePort int
 
 	state    State
 	errMsg   string
@@ -97,6 +101,13 @@ func newManaged(name string, port int, probe probeFunc) *managed {
 		name: name, port: port, probe: probe, state: StateStarting,
 		ready: make(chan struct{}), gone: make(chan struct{}), finished: make(chan struct{}),
 	}
+}
+
+func (m *managed) probeAt() int {
+	if m.probePort != 0 {
+		return m.probePort
+	}
+	return m.port
 }
 
 func (m *managed) markReady() { // mu held
@@ -124,6 +135,7 @@ type Supervisor struct {
 
 	mu  sync.Mutex
 	cur []*managed // current generation, in start order; nil before first Start
+	pub int        // public port of the current run; 0 = cfg.PublicPort
 
 	// supCtx/supCancel is supervisor-owned; it is never an HTTP request
 	// context, which would kill the app when the handler returned.
@@ -150,16 +162,20 @@ func New(cfg Config) (*Supervisor, error) {
 func (s *Supervisor) Config() Config { return s.cfg }
 
 type procDef struct {
-	name  string
-	port  int
-	probe probeFunc
-	args  []string
-	env   []string
+	name      string
+	port      int
+	probePort int
+	probe     probeFunc
+	args      []string
+	env       []string
+	// static: no process, the Go front is the child (ReactStatic).
+	static bool
 }
 
-// defs builds the child command lines. extPort is the extension manager port.
-func (s *Supervisor) defs(extPort int) []procDef {
-	c := s.cfg
+// defs builds the child command lines for one run. c is the Config with the
+// Plan applied, extPort the extension manager port, nextPort the private port
+// Next listens on behind the Go front (ReactNextProxied only).
+func (s *Supervisor) defs(c Config, extPort, nextPort int, react ReactMode) []procDef {
 	base := c.baseEnv(extPort)
 	reactEnv := []string{
 		"REACT_UI_PORT=" + strconv.Itoa(c.ReactPort),
@@ -178,12 +194,20 @@ func (s *Supervisor) defs(extPort int) []procDef {
 		env:  gEnv,
 	}}
 	if !c.NoReact {
-		defs = append(defs, procDef{
+		d := procDef{
 			name: NameReact, port: c.ReactPort, probe: tcpProbe,
 			args: []string{"npm", "--prefix", filepath.Join(c.Root.Dir(), "react-ui"),
 				"start", "--", "-p", strconv.Itoa(c.ReactPort)},
 			env: append(append([]string(nil), base...), reactEnv...),
-		})
+		}
+		switch react {
+		case ReactNextProxied:
+			d.probePort = nextPort
+			d.args = append(d.args[:len(d.args)-1], strconv.Itoa(nextPort), "-H", "127.0.0.1")
+		case ReactStatic:
+			d.static = true
+		}
+		defs = append(defs, d)
 	}
 	defs = append(defs, procDef{
 		name: NameExtMgr, port: extPort, probe: tcpProbe,
@@ -225,7 +249,30 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		}
 	}
 
-	extPort := s.cfg.ExtensionManagerPort
+	var plan Plan
+	if s.cfg.Prepare != nil {
+		var err error
+		if plan, err = s.cfg.Prepare(setupCtx); err != nil {
+			return err
+		}
+	}
+	// c is the Config of this run: the plan's overrides applied.
+	c := s.cfg
+	if plan.PublicPort != 0 {
+		c.PublicPort = plan.PublicPort
+	}
+	if plan.GradioEntry != "" {
+		c.GradioEntry = plan.GradioEntry
+	}
+	if plan.OpenBrowser != nil {
+		c.OpenBrowser = *plan.OpenBrowser
+	}
+	c.GradioEnv = append(append([]string(nil), c.GradioEnv...), plan.GradioEnv...)
+	if !c.NoReact && c.ReactPort == c.PublicPort {
+		return fmt.Errorf("ReactPort and PublicPort are both %d", c.PublicPort)
+	}
+
+	extPort := c.ExtensionManagerPort
 	if extPort == 0 {
 		p, err := freePort()
 		if err != nil {
@@ -233,10 +280,66 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		}
 		extPort = p
 	}
+	react := ReactNextDirect
+	nextPort := 0
+	if !c.NoReact {
+		react = plan.React
+	}
+	var front *react_ui_backend.Server
+	if react != ReactNextDirect {
+		if react == ReactNextProxied {
+			p, err := freePort()
+			if err != nil {
+				return fmt.Errorf("allocating React UI port: %w", err)
+			}
+			nextPort = p
+		}
+		var err error
+		front, err = react_ui_backend.Start(react_ui_backend.Config{
+			Root:         c.Root.Dir(),
+			Port:         c.ReactPort,
+			NextAddr:     fmt.Sprintf("127.0.0.1:%d", nextPort),
+			Static:       react == ReactStatic,
+			Routes:       plan.Switches,
+			LAN:          plan.Switches.ProxyLAN,
+			AllowedHosts: plan.Switches.ProxyAllowedHosts,
+		})
+		if err != nil {
+			return fmt.Errorf("starting the React UI proxy: %w", err)
+		}
+		if plan.Switches.ProxyLAN {
+			slog.Warn(react_ui_backend.LANWarning(c.ReactPort))
+		}
+	}
+	closeFront := func() {
+		if front != nil {
+			front.Close()
+		}
+	}
+
+	var side *GradioSide
+	if s.cfg.StartGradioSide != nil {
+		var err error
+		side, err = s.cfg.StartGradioSide(c.CommandPrefix[:len(c.CommandPrefix):len(c.CommandPrefix)], c.baseEnv(extPort))
+		if err != nil {
+			closeFront()
+			return fmt.Errorf("starting the Go side of gradio: %w", err)
+		}
+	}
+	closeSide := func() {
+		if side != nil && side.Close != nil {
+			side.Close()
+		}
+	}
+	if side != nil {
+		c.GradioEnv = append(c.GradioEnv, side.Env...)
+	}
 
 	s.mu.Lock()
 	if s.aliveLocked() {
 		s.mu.Unlock()
+		closeFront()
+		closeSide()
 		return ErrAlreadyRunning
 	}
 	if s.supCancel != nil {
@@ -244,17 +347,29 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	s.supCtx, s.supCancel = ctx, cancel
+	s.pub = c.PublicPort
 
-	cwd := s.cfg.Root.Dir()
-	prefix := s.cfg.CommandPrefix
+	cwd := c.Root.Dir()
+	prefix := c.CommandPrefix
 	gen := make([]*managed, 0, 3)
 	s.cur = gen
 	var startErr error
-	for _, d := range s.defs(extPort) {
+	for _, d := range s.defs(c, extPort, nextPort, react) {
 		m := newManaged(d.name, d.port, d.probe)
+		m.probePort = d.probePort
 		gen = append(gen, m)
 		s.cur = gen
-		r := s.newRunner()
+		var r runner
+		switch {
+		case d.static:
+			r = newFrontRunner(closeFront)
+		case d.name == NameGradio:
+			r = &closingRunner{runner: s.newRunner(), closers: []func(){closeSide}}
+		case d.name == NameReact && front != nil:
+			r = &closingRunner{runner: s.newRunner(), closers: []func(){closeFront}}
+		default:
+			r = s.newRunner()
+		}
 		args := append(append([]string(nil), prefix[1:]...), d.args...)
 		if err := r.Start(ctx, prefix[0], args, cwd, d.env); err != nil {
 			m.state, m.errMsg = StateFailed, err.Error()
@@ -268,13 +383,25 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	}
 	if startErr != nil {
 		s.mu.Unlock()
+		// Whatever belongs to a child that never started is closed here.
+		closeFront()
+		closeSide()
 		s.stopGeneration(gen, cancel)
 		return startErr
 	}
-	if s.cfg.OpenBrowser {
-		go s.openBrowsers(ctx, gen)
+	if c.OpenBrowser {
+		go s.openBrowsers(ctx, gen, publicURL(c.PublicPort), !c.SkipReactTab, c.ReactPort)
+	}
+	var refs []ProcRef
+	for _, m := range gen {
+		if p, ok := m.r.(pidder); ok {
+			refs = append(refs, ProcRef{Name: m.name, PID: p.Pid()})
+		}
 	}
 	s.mu.Unlock()
+	if s.cfg.OnStarted != nil {
+		s.cfg.OnStarted(refs)
+	}
 	s.publish()
 	return nil
 }
@@ -321,6 +448,9 @@ func (s *Supervisor) stopGeneration(gen []*managed, cancel context.CancelFunc) {
 			s.mu.Unlock()
 		}
 	}
+	if s.cfg.OnStopped != nil {
+		s.cfg.OnStopped()
+	}
 	s.publish()
 }
 
@@ -355,7 +485,7 @@ func (s *Supervisor) probeLoop(ctx context.Context, m *managed) {
 	tick := time.NewTicker(s.cfg.ProbeInterval)
 	defer tick.Stop()
 	for {
-		if m.probe(ctx, m.port) {
+		if m.probe(ctx, m.probeAt()) {
 			s.mu.Lock()
 			changed := m.state == StateStarting
 			if changed {
@@ -378,7 +508,7 @@ func (s *Supervisor) probeLoop(ctx context.Context, m *managed) {
 			changed := m.state == StateStarting
 			if changed {
 				m.state = StateFailed
-				m.errMsg = fmt.Sprintf("not ready on 127.0.0.1:%d after %s", m.port, s.cfg.ReadyTimeout)
+				m.errMsg = fmt.Sprintf("not ready on 127.0.0.1:%d after %s", m.probeAt(), s.cfg.ReadyTimeout)
 				m.markGone()
 			}
 			s.mu.Unlock()
@@ -393,7 +523,7 @@ func (s *Supervisor) probeLoop(ctx context.Context, m *managed) {
 
 // openBrowsers opens the public URL when Gradio is ready, then the React URL
 // when React is ready. React's tab is skipped if Gradio never became ready.
-func (s *Supervisor) openBrowsers(ctx context.Context, gen []*managed) {
+func (s *Supervisor) openBrowsers(ctx context.Context, gen []*managed, pubURL string, reactTab bool, reactPort int) {
 	wait := func(m *managed) bool {
 		select {
 		case <-m.ready:
@@ -425,12 +555,12 @@ func (s *Supervisor) openBrowsers(ctx context.Context, gen []*managed) {
 			if !wait(m) {
 				return
 			}
-			open(publicURL(s.cfg.PublicPort))
+			open(pubURL)
 		case NameReact:
-			if !wait(m) {
+			if !reactTab || !wait(m) {
 				return
 			}
-			open(fmt.Sprintf("http://127.0.0.1:%d", s.cfg.ReactPort))
+			open(fmt.Sprintf("http://127.0.0.1:%d", reactPort))
 		}
 	}
 }
@@ -454,7 +584,7 @@ func (s *Supervisor) statusesLocked() []ProcessStatus {
 			st := ProcessStatus{Name: name, State: StateStopped}
 			switch name {
 			case NameGradio:
-				st.Port = s.cfg.PublicPort
+				st.Port = s.publicPortLocked()
 			case NameReact:
 				st.Port = s.cfg.ReactPort
 				if s.cfg.NoReact {
@@ -527,9 +657,19 @@ func (s *Supervisor) publish() {
 	}
 }
 
+func (s *Supervisor) publicPortLocked() int {
+	if s.pub != 0 {
+		return s.pub
+	}
+	return s.cfg.PublicPort
+}
+
 // AppLink returns the public URL when it answers, else "".
 func (s *Supervisor) AppLink() string {
-	url := publicURL(s.cfg.PublicPort)
+	s.mu.Lock()
+	port := s.publicPortLocked()
+	s.mu.Unlock()
+	url := publicURL(port)
 	client := &http.Client{Timeout: 500 * time.Millisecond}
 	resp, err := client.Head(url)
 	if err != nil {

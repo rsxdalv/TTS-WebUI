@@ -34,18 +34,18 @@ type Launcher struct {
 	sprocs        map[string]*procs.Proc // subprocess steps: mamba, install, update, run
 	slogs         map[string]*Log        // log-only steps: download
 	stepMu        sync.Mutex             // held while a step request checks and starts (R2-3)
-	sup           *Supervisor            // C3.2: app process supervisor
+	sup           appSupervisor          // C3.2: app process supervisor
 	updateOnce    sync.Once
 	updateChecked bool // true = already up to date (cached after first check)
 }
 
 // New creates a Launcher for the given install root.
-func New(root paths.Root) *Launcher {
+func New(root paths.Root, opts ...Option) *Launcher {
 	return &Launcher{
 		root:   root,
 		sprocs: make(map[string]*procs.Proc),
 		slogs:  make(map[string]*Log),
-		sup:    newSupervisor(root),
+		sup:    newAppSupervisor(root, opts...),
 	}
 }
 

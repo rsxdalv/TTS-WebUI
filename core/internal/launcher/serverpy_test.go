@@ -172,3 +172,39 @@ func TestSupervisorRejectsBadServerPySwitch(t *testing.T) {
 		t.Fatalf("got %v, want an error naming %s", err, EnvServerPy)
 	}
 }
+
+func TestServerPyPrepsFoldersEnvAndPassesItToChildren(t *testing.T) {
+	root := makeRoot(t)
+	port, err := freePort()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := `{"gradio_interface_options": {"auth": null, "server_name": "127.0.0.1", "server_port": ` + strconv.Itoa(port) + `}}`
+	if err := os.WriteFile(filepath.Join(root.Dir(), "config.json"), []byte(cfg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root.Dir(), ".env.user"), []byte("TTS_PREP_USER=user\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sp, err := startServerPy(root, nil, []string{"TTS_PREP_BASE=base"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sp.Close()
+
+	for _, d := range []string{"outputs", "favorites"} {
+		if st, err := os.Stat(filepath.Join(root.Dir(), d)); err != nil || !st.IsDir() {
+			t.Errorf("%s was not created: %v", d, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(root.Dir(), ".env")); err != nil {
+		t.Errorf(".env was not generated: %v", err)
+	}
+	env := envMap(sp.gradioEnv)
+	if env["TTS_PREP_BASE"] != "base" || env["TTS_PREP_USER"] != "user" {
+		t.Errorf("gradio env lacks base or .env.user values: base=%q user=%q", env["TTS_PREP_BASE"], env["TTS_PREP_USER"])
+	}
+	if env["TTS_CORE_URL"] == "" {
+		t.Error("gradio env lacks TTS_CORE_URL")
+	}
+}

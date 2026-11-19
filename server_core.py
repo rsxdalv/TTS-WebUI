@@ -1,11 +1,11 @@
 """Entry point used by the Go core instead of server.py.
 
 Installs the Go bridges (each is a no-op unless TTS_CORE_URL is set) and then
-runs server.py unchanged.
+runs the thin Gradio entry
+(tts_webui.core_server); server.py stays as the legacy path.
 """
 
 import os
-import runpy
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -33,7 +33,9 @@ def main():
     else:
         install_ext()
 
-    runpy.run_path(os.path.join(HERE, "server.py"), run_name="__main__")
+    from tts_webui.core_server import main as run_server
+
+    run_server()
 
 
 if __name__ == "__main__":

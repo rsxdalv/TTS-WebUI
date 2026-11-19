@@ -166,8 +166,9 @@ func rootWindows(ctx context.Context, s *Step) (int, error) {
 		return 1, nil
 	}
 
+	// The list separator is ";" on Windows, where this runs; it follows the platform so the flow can be tested elsewhere.
 	// $env:Path += ";$PSScriptRoot\..\installer_files\env\Library\bin\" stays in effect for the rest.
-	pathEnv := "PATH=" + os.Getenv("PATH") + ";" + scripts + `\..\installer_files\env\Library\bin\`
+	pathEnv := "PATH=" + os.Getenv("PATH") + string(os.PathListSeparator) + scripts + `\..\installer_files\env\Library\bin\`
 	env := []string{pathEnv}
 	lookEnv := mergeEnv(os.Environ(), env)
 

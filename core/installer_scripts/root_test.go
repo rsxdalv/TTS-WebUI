@@ -78,7 +78,7 @@ func TestRootWindowsHappyPath(t *testing.T) {
 	if last2[0] != `sh: "`+filepath.Join(scripts, "init_app.bat")+`"` || last2[1] != `sh: "`+filepath.Join(scripts, "start_app.bat")+`"` {
 		t.Fatalf("last commands: %q", last2)
 	}
-	wantPath := ";" + scripts + `\..\installer_files\env\Library\bin\`
+	wantPath := string(os.PathListSeparator) + scripts + `\..\installer_files\env\Library\bin\`
 	p, _ := mambaEnvOf(fr.cmds[len(fr.cmds)-1], "PATH")
 	if !strings.HasSuffix(p, wantPath) {
 		t.Fatalf("PATH = %q, want suffix %q", p, wantPath)

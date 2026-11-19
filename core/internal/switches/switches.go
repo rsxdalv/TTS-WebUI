@@ -1,7 +1,8 @@
 // Package switches reads the environment variables that turn on the Go ports.
 //
-// After the cutover (D18) the proxy and every route claim are on by default;
-// TTS_GO_PROXY=0 and TTS_GO_ROUTES=none turn them off. See
+// After the cutover the proxy and every route claim (D18) and the Go installer
+// steps (D19) are on by default. TTS_GO_PROXY=0, TTS_GO_ROUTES=none and
+// TTS_GO_STEPS=none turn them off. See
 // documentation/core-rewrite/CONTRACTS.md, section "Switches".
 package switches
 
@@ -27,9 +28,6 @@ const (
 
 // all is the list value that enables every known name.
 const all = "all"
-
-// none is the TTS_GO_ROUTES value that turns every claim off.
-const none = "none"
 
 var nameRE = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
@@ -84,7 +82,7 @@ func Parse(lookup func(string) (string, bool)) (Set, error) {
 	} else if !routesGiven && s.Proxy {
 		s.allRoutes = true // D18: every claim is on unless TTS_GO_ROUTES says otherwise
 	}
-	if s.steps, s.allSteps, err = parseList(lookup, EnvSteps); err != nil {
+	if s.steps, s.allSteps, err = parseSteps(lookup); err != nil {
 		return Set{}, err
 	}
 
@@ -138,6 +136,29 @@ func parseList(lookup func(string) (string, bool), env string) (map[string]bool,
 		names[name] = true
 	}
 	return names, everything, nil
+}
+
+// none turns a list switch off: TTS_GO_ROUTES=none turns every claim off, and
+// TTS_GO_STEPS=none runs the original scripts for every step.
+const none = "none"
+
+// parseSteps reads TTS_GO_STEPS. Unlike the other switches the steps are ON by
+// default (decision D19): unset or empty means every Go port runs, "none" runs
+// the original scripts, and a list runs only the named ports.
+func parseSteps(lookup func(string) (string, bool)) (map[string]bool, bool, error) {
+	v, ok := lookup(EnvSteps)
+	if !ok || strings.TrimSpace(v) == "" {
+		return nil, true, nil
+	}
+	if strings.TrimSpace(v) == none {
+		return map[string]bool{}, false, nil
+	}
+	for _, raw := range strings.Split(v, ",") {
+		if strings.TrimSpace(raw) == none {
+			return nil, false, fmt.Errorf("%s: %q cannot be combined with other names", EnvSteps, none)
+		}
+	}
+	return parseList(lookup, EnvSteps)
 }
 
 var hostNameRE = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$`)

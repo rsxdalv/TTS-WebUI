@@ -3,7 +3,9 @@ package preflight
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -257,6 +259,11 @@ func checkMSVC(ctx context.Context, runner Runner) (Check, error) {
 
 func checkGCC(ctx context.Context, runner Runner) (Check, error) {
 	stdout, _, exitCode, err := runner(ctx, "gcc", "--version")
+	if errors.Is(err, exec.ErrNotFound) || errors.Is(err, fs.ErrNotExist) {
+		// No gcc on PATH is exactly what this check warns about, not a failure to run it.
+		// (Found on a fresh Ubuntu in WSL: the step answered 500 instead of the warning.)
+		stdout, exitCode, err = "", 127, nil
+	}
 	if err != nil {
 		return Check{}, err
 	}

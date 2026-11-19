@@ -180,7 +180,7 @@ func TestInitAppJSFreshInstall(t *testing.T) {
 		nvidiaInstall,
 		singleInstall,
 		"cd react-ui && npm install",
-		"cd react-ui && npm run build",
+		reactUIBuild,
 		"git rev-parse HEAD",
 	})
 	for key := range backgroundCmds {
@@ -442,7 +442,7 @@ func TestInitAppJSTorchAlreadyInstalled(t *testing.T) {
 		"python --version > installer_scripts/.python_version",
 		torchFound,
 		"cd react-ui && npm install",
-		"cd react-ui && npm run build",
+		reactUIBuild,
 		"git rev-parse HEAD",
 	})
 	if !log.has("Dependencies are already up to date, skipping pip installs...") {
@@ -481,7 +481,7 @@ func TestInitAppJSWrongPythonIsReinstalled(t *testing.T) {
 
 func TestInitAppJSReactBuildFailure(t *testing.T) {
 	s, r, log := newFlow(t)
-	r.handlers["cd react-ui && npm run build"] = exitWith(2)
+	r.handlers[reactUIBuild] = exitWith(2)
 	if code := run(t, s); code != 1 {
 		t.Fatalf("exit %d", code)
 	}
@@ -604,6 +604,33 @@ func TestJSString(t *testing.T) {
 	} {
 		if got := jsString(c.v, c.present); got != c.want {
 			t.Errorf("jsString(%v) = %q, want %q", c.v, got, c.want)
+		}
+	}
+}
+
+// The Go steps build the static export, never the Next server build, and only
+// when the original would build: on install and on an update with a new commit,
+// not when .git_version already matches.
+func TestInitAppJSBuildsTheStaticExportOnlyWhenTheOriginalBuilds(t *testing.T) {
+	s, r, _ := newFlow(t)
+	writeFile(t, s.Root, "installer_scripts/.git_version", "older")
+	writeFile(t, s.Root, "installer_scripts/.major_version", "1.0.0")
+	writeFile(t, s.Root, "installer_scripts/.pip_packages", "1.2.0")
+	if code := run(t, s); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if !r.ran("cd react-ui && npm run build:static") || r.ran("cd react-ui && npm run build") {
+		t.Fatalf("update with a new commit: commands %q", r.foreground())
+	}
+
+	s, r, _ = newFlow(t)
+	writeFile(t, s.Root, "installer_scripts/.git_version", "abc123")
+	if code := run(t, s); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	for _, c := range r.foreground() {
+		if strings.Contains(c, "npm") {
+			t.Fatalf("no update, but %q ran", c)
 		}
 	}
 }

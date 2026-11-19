@@ -29,6 +29,13 @@ const (
 	majorVersion = "1.0.0"
 
 	extensionsIndex = "https://tts-webui.github.io/extensions-index/"
+
+	// reactUIBuild builds the UI. The original runs "npm run build", the Next
+	// server build. The Go install and update steps build the static export
+	// instead, which Go serves (CUTOVER.md item 4, CONTRACTS.md section 10). The
+	// export sets react-ui/.next aside while it runs, so Next must not be running;
+	// the launcher refuses these steps while the app runs.
+	reactUIBuild = "cd react-ui && npm run build:static"
 )
 
 var rocmVersionTag = map[string]string{
@@ -441,7 +448,7 @@ func (p *jsProcess) setupReactUI(ctx context.Context) error {
 		}
 		p.displayMessage("Successfully installed node_modules")
 		p.displayMessage("Building react-ui...")
-		if err := p.sh(ctx, "cd react-ui && npm run build"); err != nil {
+		if err := p.sh(ctx, reactUIBuild); err != nil {
 			return err
 		}
 		p.displayMessage("Successfully built react-ui")

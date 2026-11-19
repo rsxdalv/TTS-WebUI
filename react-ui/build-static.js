@@ -5,8 +5,8 @@
 // would be overwritten. This script therefore sets .next aside as
 // .next-server-saved for the length of the export and puts it back at the end
 // (also when the build fails). If a run is killed in between, the next run
-// (or `node build-static.js --recover`) puts it back first, unless a newer
-// server build exists in .next by then (see recover). Nothing here detects a
+// (or `node build-static.js --recover`, or `npm run build`) puts it back
+// first (see recover). Nothing here detects a
 // running `next start`: stop it first, or it serves errors while .next is
 // away.
 //
@@ -22,27 +22,30 @@ const root = __dirname;
 const p = (...a) => path.join(root, ...a);
 const NEXT = p(".next");
 const SAVED = p(".next-server-saved");
+const MARKER = p(".next-export-scratch");
 const BUILDING = p(".out-building");
 const OUT = p("out");
 
 const rm = (d) => fs.rmSync(d, { recursive: true, force: true, maxRetries: 5 });
 
-// A leftover .next-server-saved is the server build set aside by a run that
-// was killed. .next is then either the export's scratch directory (it has no
-// BUILD_ID: put the saved build back) or a newer server build made in the
-// meantime (it has a BUILD_ID: keep it and drop the older saved one).
+// A run that was killed (the `finally` below did not run) leaves the marker
+// .next-export-scratch next to .next-server-saved. Then .next is the export's
+// scratch directory, whatever it contains (Next writes BUILD_ID early), and
+// the saved server build is put back. `npm run build` calls this first (the
+// prebuild script), so a later server build starts from a restored tree and
+// simply overwrites it. Without the marker nothing is restored: a saved copy
+// left without one is an orphan and is deleted.
 function recover(dir = root) {
   const next = path.join(dir, ".next");
   const saved = path.join(dir, ".next-server-saved");
-  if (!fs.existsSync(saved)) return;
-  if (fs.existsSync(path.join(next, "BUILD_ID"))) {
-    console.log("build:static: a newer server build exists, dropping the one saved by an interrupted run");
-    rm(saved);
-    return;
+  const marker = path.join(dir, ".next-export-scratch");
+  if (fs.existsSync(marker) && fs.existsSync(saved)) {
+    console.log("build:static: restoring the server build saved by an interrupted run");
+    rm(next);
+    fs.renameSync(saved, next);
   }
-  console.log("build:static: restoring the server build saved by an interrupted run");
-  rm(next);
-  fs.renameSync(saved, next);
+  rm(marker);
+  rm(saved);
 }
 
 function run(cmd, args, env) {
@@ -65,7 +68,10 @@ function main() {
   rm(BUILDING);
   const hadServerBuild = fs.existsSync(NEXT);
   try {
-    if (hadServerBuild) fs.renameSync(NEXT, SAVED);
+    if (hadServerBuild) {
+      fs.writeFileSync(MARKER, "the server build is in .next-server-saved\n");
+      fs.renameSync(NEXT, SAVED);
+    }
   } catch (e) {
     console.error(
       `build:static: cannot move .next aside (${e.code}). Stop \`next start\` and retry.`
@@ -80,7 +86,10 @@ function main() {
     if (ok) buildId = fs.readFileSync(path.join(NEXT, "BUILD_ID"), "utf8").trim();
   } finally {
     rm(NEXT); // the export's scratch directory
-    if (hadServerBuild) fs.renameSync(SAVED, NEXT);
+    if (hadServerBuild) {
+      fs.renameSync(SAVED, NEXT);
+      rm(MARKER);
+    }
   }
   if (!ok) {
     rm(BUILDING);

@@ -23,7 +23,9 @@ class Stub:
 
         class H(BaseHTTPRequestHandler):
             def _auth(self):
-                stub.requests.append((self.command, self.path, self.headers.get("X-TTS-Core-Token")))
+                stub.requests.append(
+                    (self.command, self.path, self.headers.get("X-TTS-Core-Token"))
+                )
                 if self.headers.get("X-TTS-Core-Token") != "tok":
                     self.send_response(403)
                     self.end_headers()
@@ -65,14 +67,19 @@ class BridgeTest(unittest.TestCase):
         )
         self.env.start()
         # Fresh copies of the patched modules, restored afterwards.
-        from tts_webui.config import _save_config as save_mod, load_config as load_mod
+        from tts_webui.config import _save_config as save_mod
+        from tts_webui.config import load_config as load_mod
 
         self.save_mod, self.load_mod = save_mod, load_mod
         self.orig = (load_mod.load_config, save_mod._save_config, save_mod._save_json)
         bridge._installed = False
 
     def tearDown(self):
-        self.load_mod.load_config, self.save_mod._save_config, self.save_mod._save_json = self.orig
+        (
+            self.load_mod.load_config,
+            self.save_mod._save_config,
+            self.save_mod._save_json,
+        ) = self.orig
         bridge._installed = False
         self.env.stop()
         self.stub.close()

@@ -16,15 +16,21 @@ swapping in `supervise` as described below would drop them:
 - `prepareReactUI` (recover, rebuild the export or the server build);
 - `sweepOrphans` / `recordProcesses` / `clearRecord` (Unix orphan cleanup).
 
-Two ways forward:
-1. **Keep `launcher.Supervisor`** and take the server.py port into it: the
-   gradio def becomes `server_core.py --no-react` with the `TTS_CORE_*`
-   variables on the gradio child only (see "Switching to `server_core.py`"
-   below), and the launcher starts the stage 3 router on 7770 and the stage 4
-   manager. That change is small; `supervise`'s readiness states, browser
-   order and `log_tail` can move over later.
-2. **Port those four parts into `supervise`**, then replace as below. More
-   work, and it touches what the go-port work is still changing.
+Chosen order (Rob): **keep `launcher.Supervisor` first**, then port into
+`supervise` once that path has connected for real.
+
+Step 1 is done on serverpy/integration: `core/internal/launcher/serverpy.go`,
+behind `TTS_GO_SERVERPY=1` (unset or `0` runs `server.py` as before). With it
+on, `Start` reads the public host and port like server.py (config.json,
+`.env`, `.env.user` via `appenv`), binds the stage 3 router there (an error if
+the port is taken), routes `/` to Gradio on a free loopback port, starts the
+stage 4 manager, serves both control APIs on a random loopback port, and runs
+`server_core.py --no-react` with the `TTS_CORE_*` variables on the gradio child
+only. `Stop`, and gradio exiting, stop the Go-run extensions and close the
+router and control API, as the proxy tree used to die with server.py.
+
+Step 2, later: port the four parts above into `supervise`, then replace as
+below; `supervise`'s readiness states, browser order and `log_tail` come with it.
 
 Already shared: both stop children in parallel, both pass `--port` to the
 extension manager (which now listens on it), and both use `procs.Proc.Pid()`.

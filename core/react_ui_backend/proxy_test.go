@@ -41,7 +41,10 @@ func routes(t *testing.T, names string) switches.Set {
 		case switches.EnvProxy:
 			return "1", true
 		case switches.EnvRoutes:
-			return names, names != ""
+			if names == "" {
+				return "none", true // no claim; unset now means every claim
+			}
+			return names, true
 		}
 		return "", false
 	})

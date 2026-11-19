@@ -125,25 +125,36 @@ Code: `core/internal/switches`. All switches are environment variables read by t
 
 | Variable | Values | Effect |
 |---|---|---|
-| `TTS_GO_PROXY` | unset, empty or `0` = off, `1` = on | Go listens on port 3000 in front of Next |
-| `TTS_GO_ROUTES` | comma list of claim names from section 5, or `all` | Those routes are answered by Go. Needs `TTS_GO_PROXY=1` |
+| `TTS_GO_PROXY` | unset, empty or `1` = on (the default since D18), `0` = off | Go owns port 3000 and serves the UI (section 10) |
+| `TTS_GO_ROUTES` | unset or empty = every claim (with the proxy on), `none`, `all`, or a comma list of claim names from section 5 | Those routes are answered by Go. A list or `all` with `TTS_GO_PROXY=0` is an error; `none` is allowed. `none` cannot be combined with names |
 | `TTS_GO_STEPS` | unset or empty = every step runs its Go port; `none` = every step runs the original script; or a comma list of `mamba`, `install`, `update`, `diagnostic`, or `all` | Which launcher steps run the Go port instead of the script. **On by default since D19 (task C1).** `none` cannot be combined with names |
-| `TTS_GO_PROXY_LISTEN` | unset, empty or `loopback` = loopback only, `lan` = every interface | Where the proxy listens (section 6, D20). `lan` needs `TTS_GO_PROXY=1` |
+| `TTS_GO_PROXY_LISTEN` | unset, empty or `loopback` = loopback only, `lan` = every interface | Where the proxy listens (section 6, D20). `lan` with `TTS_GO_PROXY=0` is an error |
 | `TTS_GO_PROXY_ALLOWED_HOSTS` | comma list of host names or IP addresses, without ports | Extra hosts the Host and Origin guards accept in LAN mode, such as a machine name. Needs `TTS_GO_PROXY_LISTEN=lan` |
 
 For `TTS_GO_STEPS`, the launcher logs one line at the start of each of those steps saying whether the Go port or the original script ran.
 
 An invalid value stops the app from starting with a clear error, so a typo can never silently run the other code path.
 
-**Proxy off** means the launcher starts Next with the same arguments as today:
-`npm --prefix react-ui start -- -p 3000`. No Go listener exists on port 3000. A unit test must assert these arguments.
+**Proxy off** (`TTS_GO_PROXY=0`, the escape hatch) means the launcher starts Next with the same arguments as before:
+`npm --prefix react-ui start -- -p 3000`. No Go listener exists on port 3000. A unit test asserts these arguments. If
+`react-ui/.next` is not a usable server build (section 10), the supervisor first runs `npm run build` once in
+`react-ui`, logs that it does, and only then starts Next. Start waits for that build.
 
-**Proxy on** means:
+**Proxy on** (the default) means the supervisor picks one of three modes when the app starts (D18):
 
-1. The supervisor picks a free loopback port and starts Next with `-- -p <port> -H 127.0.0.1`.
-2. Go listens on port 3000 and forwards to that port.
-3. If Next exits, Go stops listening on 3000 too, so the status shown to the user stays true.
-4. Stop shuts down Go's listener and Next. Nothing is left running.
+1. **Static:** `react-ui/out/_tts-export.json` exists and every claim the export needs is on (`gradio`,
+   `gradio-file-proxy`, `upload`, `webui-generations`, `data-outputs`, `data-bark-voices`). Go serves the export on
+   port 3000 (section 10) and no Next process runs. The launcher status shows `react-ui` as running while Go serves
+   it. If `TTS_GO_ROUTES` turns any of those claims off, generation and upload could not work, so the supervisor uses
+   mode 2 when a usable server build exists, with a log line naming the missing claims. Otherwise Start fails with an
+   error naming them.
+2. **Next behind the proxy:** no export, but `react-ui/.next` is a usable server build (an install made by the old
+   scripts). The supervisor logs one line saying so, picks a free loopback port, starts Next with
+   `-- -p <port> -H 127.0.0.1`, and Go forwards to it as B1 did. If Next exits, Go stops listening on 3000 too.
+3. **Neither:** Start fails with `the React UI is not built: run Install or Update in the launcher`, and nothing starts.
+
+If `react-ui/.next-server-saved` exists (an interrupted export build), the supervisor first runs
+`node build-static.js --recover` and decides again. In every mode Stop shuts down Go's listener and any Next process.
 
 ## 5. Route claims
 
@@ -420,6 +431,24 @@ Only the extension shell needs a fallback. The other dynamic page, `/outputs/[na
 | Other files of `out/` (`favicon.ico`) and `public/` | `public, max-age=0` | Weak `ETag`, `Last-Modified`, `Accept-Ranges` as for `public/` today |
 
 `s-maxage` is honoured only by shared caches, so a browser revalidates the HTML each load; keeping that header is optional but harmless.
+
+### How Go serves it (S2)
+
+`core/react_ui_backend/static_export.go` implements the rules above, behind the Host and Origin guards and the route
+claims (section 5), in this order:
+- An `/api/...` path no claim answered gets a plain `404` for any method, never a page.
+- Other paths: only `GET` and `HEAD` get files; other methods get `405`.
+- Rule 1 also refuses empty segments and the encoded separators `%2f`, `%5c` and `%00`. On Windows it also refuses a
+  segment containing `:` or ending in a space or dot (the same hardening as B2).
+- On Windows a file that was found is refused when its real (long) name has a part starting with `.`, because NTFS
+  8.3 aliases such as `HIDDEN~1` for `.hidden` pass the URL check. B2's webui-generations claim applies the same check.
+- A trailing slash gets a `308` to the path without it. Because empty segments are refused, the target is always a
+  local path.
+- `/file-input-cache/*` comes from `react-ui/public` live. Then come export files, `P.html` and `P/index.html`, then any
+  other file in `react-ui/public`, then the extension shells, then `404.html`.
+- Pages and data JSON get Next's strong `ETag`, a `304` for a matching `If-None-Match`, and gzip or deflate from 1 KB
+  up. Other files are sent by B2's `send` port: weak `ETag`, `Last-Modified`, ranges. `/_next/static` files are marked
+  immutable.
 
 ### Checked
 

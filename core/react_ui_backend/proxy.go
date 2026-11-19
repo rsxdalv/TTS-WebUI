@@ -34,6 +34,11 @@ type Config struct {
 	NextAddr string
 	// Routes says which claims are on.
 	Routes switches.Set
+	// LAN listens on every interface instead of loopback only, and accepts
+	// this machine's addresses and AllowedHosts in the Host and Origin guards.
+	LAN bool
+	// AllowedHosts are extra host names accepted in LAN mode.
+	AllowedHosts []string
 }
 
 // handler is the front door for every request on the public port.
@@ -44,6 +49,7 @@ type handler struct {
 	mux      *http.ServeMux
 	prefixes map[string]bool
 	cookie   string
+	lan      *lanHosts // nil unless LAN mode is on
 }
 
 // NewHandler returns the proxy's HTTP handler.
@@ -67,6 +73,9 @@ func NewHandler(cfg Config) (http.Handler, error) {
 		next:     next,
 		mux:      http.NewServeMux(),
 		prefixes: map[string]bool{},
+	}
+	if cfg.LAN {
+		h.lan = newLANHosts(cfg.AllowedHosts)
 	}
 
 	deps := newDeps(cfg.Root, next)
@@ -121,7 +130,10 @@ func (h *handler) validHost(host string) bool {
 	if err != nil || port != h.port {
 		return false
 	}
-	return name == "127.0.0.1" || name == "::1" || strings.EqualFold(name, "localhost")
+	if name == "127.0.0.1" || name == "::1" || strings.EqualFold(name, "localhost") {
+		return true
+	}
+	return h.lan != nil && h.lan.accepts(name)
 }
 
 // originChecked reports whether a request must pass the Origin check.
@@ -139,7 +151,10 @@ func (h *handler) validOrigin(origin string, r *http.Request) bool {
 	if _, present := r.Header["Origin"]; !present {
 		return true
 	}
-	return h.origins[origin]
+	if h.origins[origin] {
+		return true
+	}
+	return h.lan != nil && h.lanOriginOK(origin)
 }
 
 // goAnswers reports whether a claim may answer this path. Anything else goes to
@@ -239,7 +254,11 @@ func Start(cfg Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	listeners, err := listenLoopback(cfg.Port)
+	listen := listenLoopback
+	if cfg.LAN {
+		listen = listenAll
+	}
+	listeners, err := listen(cfg.Port)
 	if err != nil {
 		return nil, err
 	}

@@ -33,7 +33,9 @@ export default function Voices({ outputs: staticOutputs }: Props) {
 }
 
 export const getStaticProps = async ({}): Promise<{ props: Props }> => {
-  const outputs: NPZ[] = await getNpzDataSimpleVoices();
+  // The static export gets its data from the Go endpoint (see useGoData).
+  const outputs: NPZ[] =
+    process.env.TTS_STATIC_EXPORT === "1" ? [] : await getNpzDataSimpleVoices();
   return {
     props: {
       outputs,

@@ -40,8 +40,14 @@ export default function Home({
   );
 }
 
+// The static export (npm run build:static) must not bake the machine's
+// generations into the page: the data comes from the Go endpoint instead.
+const isStaticExport = process.env.TTS_STATIC_EXPORT === "1";
+
 export const getStaticProps = async ({ params: { name } }) => {
-  const outputs: GenerationRaw[] = await getDataFromJSON(name);
+  const outputs: GenerationRaw[] = isStaticExport
+    ? []
+    : await getDataFromJSON(name);
   return {
     props: {
       outputs,
@@ -57,6 +63,7 @@ export const getStaticPaths = async () => {
       "/outputs/favorites",
       // "/history/collections",
     ],
-    fallback: "blocking",
+    // An export has no server to render other names on demand.
+    fallback: isStaticExport ? false : "blocking",
   };
 };

@@ -42,3 +42,6 @@ next-env.d.ts
 
 
 *storybook.log
+/.out-building/
+/.next-server-saved/
+/.next-export-scratch

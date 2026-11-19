@@ -2,8 +2,11 @@ package preflight
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -289,6 +292,25 @@ func TestGCC(t *testing.T) {
 			t.Errorf("got %q", c.Status)
 		}
 	})
+}
+
+// A machine without gcc must give the warning, not an error: the real runner
+// returns exec.ErrNotFound when the command is not on PATH.
+func TestGCC_CommandNotOnPath(t *testing.T) {
+	for _, e := range []error{exec.ErrNotFound, &exec.Error{Name: "gcc", Err: exec.ErrNotFound}, fs.ErrNotExist} {
+		c, err := checkGCC(context.Background(), func(context.Context, string, ...string) (string, string, int, error) {
+			return "", "", 0, e
+		})
+		if err != nil || c.Status != StatusWarn {
+			t.Fatalf("%v: got %+v err=%v", e, c, err)
+		}
+	}
+	// A real failure to run it is still an error.
+	if _, err := checkGCC(context.Background(), func(context.Context, string, ...string) (string, string, int, error) {
+		return "", "", 0, errors.New("boom")
+	}); err == nil {
+		t.Fatal("other errors must not be swallowed")
+	}
 }
 
 func TestAllPassed(t *testing.T) {

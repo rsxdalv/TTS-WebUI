@@ -27,6 +27,9 @@ CGO_ENABLED=0 go build -trimpath -o bin/tts-webui ./cmd/tts-webui
 
 - `cmd/tts-webui/` - entry point (the exe only launches; no other commands)
 - `internal/launcher/` - the setup steps and the app supervisor
+- `react_ui_backend/` - the optional Go proxy in front of Next.js on port 3000 (off unless `TTS_GO_PROXY=1`)
+- `installer_scripts/` - Go ports of `installer_scripts/*`
+- `internal/switches/` - the switches that turn the Go ports on
 - `internal/server/` - local HTTP server (token, host/origin checks, SSE)
 - `internal/procs/` - start, stop and kill a process tree
 - `internal/preflight/` - system checks (path with spaces, exFAT, long paths, conda, MSVC)

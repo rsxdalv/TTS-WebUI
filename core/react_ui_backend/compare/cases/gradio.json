@@ -1,0 +1,14 @@
+[
+ {"name":"unknown name","method":"POST","path":"/api/gradio/nope"},
+ {"name":"bad JSON with json type","method":"POST","path":"/api/gradio/mms","header":{"Content-Type":["application/json"]},"body":"ew=="},
+ {"name":"bad JSON as text","method":"POST","path":"/api/gradio/mms","header":{"Content-Type":["text/plain;charset=UTF-8"]},"body":"ew=="},
+ {"name":"null body destructured","method":"POST","path":"/api/gradio/musicgen","header":{"Content-Type":["application/json"]},"body":"bnVsbA=="},
+ {"name":"openai presets","method":"POST","path":"/api/gradio/open_ai_api_load_presets"},
+ {"name":"rvc models","method":"POST","path":"/api/gradio/rvc_model_reload"},
+ {"name":"rvc index reload","method":"POST","path":"/api/gradio/rvc_index_reload"},
+ {"name":"chatterbox voices","method":"POST","path":"/api/gradio/get_chatterbox_voices"},
+ {"name":"vall-e-x tokenize","method":"POST","path":"/api/gradio/vall_e_x_tokenize","header":{"Content-Type":["text/plain;charset=UTF-8"]},"body":"eyJ0ZXh0IjoiaGVsbG8ifQ=="},
+ {"name":"ffmpeg metadata, file missing","method":"POST","path":"/api/gradio/load_ffmpeg_metadata","header":{"Content-Type":["text/plain;charset=UTF-8"]},"body":"eyJmaWxlbmFtZSI6eyJfX3R5cGUiOiJsb2NhbF9jYWNoZV9maWxlIiwicGF0aCI6ImZpbGUtaW5wdXQtY2FjaGUvbm9uZS53YXYifX0="},
+ {"name":"trailing slash goes to Next","method":"POST","path":"/api/gradio/mms/"},
+ {"name":"GET with no body","path":"/api/gradio/rvc_model_reload"}
+]

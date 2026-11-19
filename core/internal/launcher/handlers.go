@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/rsxdalv/TTS-WebUI/core/installer_scripts"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/preflight"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
@@ -23,6 +24,11 @@ type downloadRequest struct {
 // handleDownload starts an async download+extract and returns immediately.
 func (l *Launcher) handleDownload() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		l.stepMu.Lock()
+		defer l.stepMu.Unlock()
+		if l.refuseWhileBusy(w, "download") {
+			return
+		}
 		var req downloadRequest
 		if r.Body != nil {
 			_ = json.NewDecoder(r.Body).Decode(&req)
@@ -62,6 +68,11 @@ type preflightResponse struct {
 // handlePreflight runs all preflight checks synchronously and writes the marker.
 func (l *Launcher) handlePreflight() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		l.stepMu.Lock()
+		defer l.stepMu.Unlock()
+		if l.refuseWhileBusy(w, "preflight") {
+			return
+		}
 		checks, err := preflight.Run(r.Context(), l.root, nil)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("preflight error: %v", err), http.StatusInternalServerError)
@@ -101,9 +112,13 @@ func (l *Launcher) handlePreflightFixMSVC() http.Handler {
 // handleMamba spawns the platform mamba init script and returns immediately.
 func (l *Launcher) handleMamba() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if existing := l.getProc("mamba"); existing != nil && existing.Running() {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"started":false,"already_running":true}`))
+		l.stepMu.Lock()
+		defer l.stepMu.Unlock()
+		if l.refuseWhileBusy(w, "mamba") {
+			return
+		}
+
+		if l.serveGoStep(w, "mamba", installer_scripts.InitMamba) {
 			return
 		}
 
@@ -111,6 +126,7 @@ func (l *Launcher) handleMamba() http.Handler {
 
 		p := &procs.Proc{}
 		l.setProc("mamba", p)
+		p.Note(scriptNote("mamba"))
 
 		var name string
 		var args []string
@@ -141,6 +157,11 @@ type gpuRequest struct {
 // handleGPU writes a validated PyTorchChoice GPU label to installer_scripts/.gpu.
 func (l *Launcher) handleGPU() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		l.stepMu.Lock()
+		defer l.stepMu.Unlock()
+		if l.refuseWhileBusy(w, "gpu") {
+			return
+		}
 		var req gpuRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Label == "" {
 			http.Error(w, "body must be {\"label\": \"<gpu-label>\"}", http.StatusBadRequest)
@@ -165,9 +186,9 @@ func (l *Launcher) handleGPU() http.Handler {
 // handleInstall spawns micromamba run node init_app.js --silent.
 func (l *Launcher) handleInstall() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if existing := l.getProc("install"); existing != nil && existing.Running() {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"started":false,"already_running":true}`))
+		l.stepMu.Lock()
+		defer l.stepMu.Unlock()
+		if l.refuseWhileBusy(w, "install") {
 			return
 		}
 		if !mambaDone(l.root) {
@@ -179,8 +200,13 @@ func (l *Launcher) handleInstall() http.Handler {
 			return
 		}
 
+		if l.serveGoStep(w, "install", installer_scripts.InitAppJS) {
+			return
+		}
+
 		p := &procs.Proc{}
 		l.setProc("install", p)
+		p.Note(scriptNote("install"))
 
 		mamba := micromambaPath(l.root)
 		envPath := installEnvPath(l.root)
@@ -211,6 +237,10 @@ func (l *Launcher) handleAppDiagnostic() http.Handler {
 			return
 		}
 
+		if l.serveGoStep(w, "diagnostic", installer_scripts.Diagnostic) {
+			return
+		}
+
 		var script string
 		if runtime.GOOS == "windows" {
 			script = filepath.Join(l.root.InstallerScripts(), "tools", "diagnostic.bat")
@@ -220,6 +250,7 @@ func (l *Launcher) handleAppDiagnostic() http.Handler {
 
 		p := &procs.Proc{}
 		l.setProc("diagnostic", p)
+		p.Note(scriptNote("diagnostic"))
 
 		var name string
 		var args []string
@@ -246,9 +277,9 @@ func (l *Launcher) handleAppDiagnostic() http.Handler {
 // handleUpdate checks isGitUpdated and re-runs install if needed.
 func (l *Launcher) handleUpdate() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if existing := l.getProc("update"); existing != nil && existing.Running() {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"started":false,"already_running":true}`))
+		l.stepMu.Lock()
+		defer l.stepMu.Unlock()
+		if l.refuseWhileBusy(w, "update") {
 			return
 		}
 
@@ -263,9 +294,14 @@ func (l *Launcher) handleUpdate() http.Handler {
 			return
 		}
 
+		if l.serveGoStep(w, "update", installer_scripts.InitAppJS) {
+			return
+		}
+
 		// Run the same install command to update.
 		p := &procs.Proc{}
 		l.setProc("update", p)
+		p.Note(scriptNote("update"))
 
 		mamba := micromambaPath(l.root)
 		envPath := installEnvPath(l.root)

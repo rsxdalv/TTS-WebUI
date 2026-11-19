@@ -3,6 +3,10 @@
 Start state: branch `core/go-port` (cut from `core/rings-1-2`, which holds the launcher, supervisor and setup page).
 Read `PLAN.md`, `DECISIONS.md` and `core/README.md` first.
 
+> **Corrected on 2026-11-19 (D16).** The shared brief in `tts-comms/BRIEF.md` is binding and wins wherever this file
+> disagrees with it. `CONTRACTS.md` holds the technical contracts. Tasks run as detached sessions that sequence
+> themselves through the comms files, not as waves started by an orchestrator.
+
 ## Division of work
 
 Models: Haiku = exact spec, little judgement. Sonnet = a port with a clear original to match. Opus = a mistake here is costly (contracts, streaming/auth, install logic) and the reviews.
@@ -16,9 +20,9 @@ Models: Haiku = exact spec, little judgement. Sonnet = a port with a clear origi
 | I3 | `diagnostic` (bat, inner sh, wrapper) | `diagnostic.go` | 100 + 96 + 13 | Sonnet | C0 |
 | I4 | `start_app`, `activate`, `open_terminal`, `run_extension_manager`, `init_app.bat/.sh` | one `.go` per script | 4 to 19 each | Haiku | C0 |
 | I5 | `applyDatabaseConfig.js` | `apply_database_config.go` | 80 | Sonnet | C0 |
-| I6 | `initializeApp.js` + `init_app.js` flow (torch/xformers pins, pip, extensions, DB config call, react-ui build) | `initialize_app.go`, `init_app_js.go` | 360 + 127 | Opus | C0, I5 |
-| I7 | Per-step switch in the launcher (script by default, or Go), marker-file compatibility tests | `core/internal/launcher/*` | small | Sonnet | C0 |
-| B1 | Go front proxy on port 3000, Next on an internal port, nothing claimed yet | `core/react_ui_backend/proxy.go` | medium | Opus | C0 |
+| I6 | `initializeApp.js` + `init_app.js` flow (torch/xformers pins, pip, extensions, DB config call, react-ui build) | `initialize_app.go`, `init_app_nodejs.go` | 360 + 127 | Opus | C0, I5, B1 |
+| I7 | Per-step switch in the launcher (script by default, or Go), marker-file compatibility tests | `core/internal/launcher/*` | small | Sonnet | I1-I6, B1 |
+| B1 | Go front proxy on port 3000, Next on an internal port, nothing claimed yet | `core/react_ui_backend/proxy.go`, the supervisor change, the proxy switch | medium | Opus | C0, BL |
 | T1 | Side-by-side harness: replay a request against Next and Go, compare status, key headers, body | `core/react_ui_backend/compare/` | small | Sonnet | B1 |
 | B2 | Route `webui-generations` | `react_ui_backend/webui_generations.go` | 53 | Sonnet | B1, T1 |
 | B3 | Route `upload` | `upload.go` | 62 | Sonnet | B1, T1 |
@@ -46,8 +50,8 @@ routes remain the default; Go paths sit behind switches the user flips later.
 
 BRANCHES
 Integration branch: core/go-port (already cut from core/rings-1-2; push it if missing).
-Each task works on core/go-port/<task-id> from the current core/go-port tip, and opens a
-PR into core/go-port. After its review passes and CI is green you may squash-merge that
+Each task works on go-port-work/<task-id> from the current core/go-port tip (Git refuses
+core/go-port/<task-id> because core/go-port is itself a branch), and opens a PR into core/go-port. After its review passes and CI is green you may squash-merge that
 PR into core/go-port (the repo allows squash only) so dependent tasks can build on it.
 NEVER touch main, never merge into main, never tag, release, force-push, or delete branches.
 Do not modify any user install folder. Leave no process running.
@@ -84,9 +88,13 @@ AUTONOMY AND GATES (internal; do not wait for the user)
   tts-comms/FINAL.md and stop. The user reviews once, at the end.
 
 RULES FOR EVERY TASK
-1. Disjoint files. Each task edits only its own output path. Shared launcher code
-   (core/internal/launcher/*, supervisor) is edited ONLY by I7; others report needs in their
-   comms file instead of editing it.
+1. Disjoint files. Each task edits only its own output path. B1 owns the Next port change in
+   core/internal/launcher/supervisor.go and the proxy switch. After B1 merges, shared launcher
+   code (core/internal/launcher/*) is edited ONLY by I7. BL may land a minimal launcher bug fix
+   if a real install cannot proceed without it, and must log it. Others report needs in their
+   comms file instead of editing it. Route claims register from each route's own file.
+   Go file names never end in a GOOS or GOARCH word such as _js or _windows unless a build
+   constraint is intended.
 2. The original is the spec. Port faithfully, keep names close to the original, no new
    features, no refactors.
 3. Real-run verification is mandatory:
@@ -100,8 +108,7 @@ RULES FOR EVERY TASK
 4. Before every PR: gofmt -l is empty; go vet, go test and CI's committed-asset check pass.
    Stop only processes you started, by PID.
 5. Commit each logical change separately; messages say what the diff does.
-6. Board: follow CLAUDE.md (one card per task, Review with a final summary that states what
-   was and was not verified).
+6. No board. Each task's file in the comms directory states what was and was not verified.
 
 MODELS
 Use the model in the table. Reviews: Haiku work by Sonnet; Opus work by a fresh Opus that did
@@ -117,12 +124,14 @@ H0  Inventory (see table).
 I1  init_mamba.go   I2  root.go   I3  diagnostic.go
 I4  start_app.go activate.go open_terminal.go run_extension_manager.go init_app.go
 I5  apply_database_config.go
-I6  initialize_app.go and the init_app.js flow. Keep pins in one place. Port, do not redesign.
+I6  initialize_app.go and init_app_nodejs.go (the init_app.js flow). Keep pins in one place. Port,
+    do not redesign. Record which helper modules are deliberately left out.
 I7  Per-step switch (script default / Go), marker-file compatibility tests, no default change.
 B1  core/react_ui_backend/proxy.go: Go listens on 3000, reverse-proxies everything to Next on
     an internal free port. FlushInterval -1 for SSE/streaming, no short timeouts, large
     uploads OK, /_next/* and /_next/data/* passed through, Host/Origin preserved per
-    CONTRACTS.md. The supervisor starts Next on the internal port. Claims nothing yet.
+    CONTRACTS.md. The supervisor starts Next on the internal port only when the proxy switch is
+    on; with it off, Next listens on 3000 as today. Claims nothing yet.
 T1  Compare harness (see table).
 B2  webui-generations: keep the allow-listed directories and dotfile denial; add traversal tests.
 B3  upload.   B4  gradio-file-proxy.

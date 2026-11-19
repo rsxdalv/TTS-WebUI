@@ -15,6 +15,7 @@ type platformState struct {
 
 func newPlatformState(cmd *exec.Cmd) (*platformState, error) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	setParentDeathSignal(cmd.SysProcAttr)
 	return &platformState{}, nil
 }
 
@@ -44,3 +45,6 @@ func (ps *platformState) force() error {
 	}
 	return syscall.Kill(-ps.pgid, syscall.SIGKILL)
 }
+
+// release has nothing to free: a process group needs no handle.
+func (ps *platformState) release() {}

@@ -1,9 +1,10 @@
 // fakemamba is a stub micromamba binary used in the M1 smoke test.
 //
 // Handled invocations (matching what the Supervisor sends in conda mode):
-//   -p <envPath> run node <script> --silent   → write .git_version and exit
-//   -p <envPath> run python <args…>           → exec python from the env
-//   -p <envPath> run npm <args…>              → exit 0 (no npm in test)
+//
+//	-p <envPath> run node <script> --silent   → write .git_version and exit
+//	-p <envPath> run python <args…>           → exec python from the env
+//	-p <envPath> run npm <args…>              → exit 0 (no npm in test)
 package main
 
 import (

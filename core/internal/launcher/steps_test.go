@@ -86,8 +86,25 @@ func TestMambaDone_BinaryCheck(t *testing.T) {
 	if err := os.WriteFile(binaryPath, []byte("fake"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// The binary alone is not done: env creation runs for minutes after it
+	// lands (R2-3).
+	if mambaDone(root) {
+		t.Fatal("expected mambaDone=false with the binary but no finished env")
+	}
+	// An env whose history has only the create entry is not done either.
+	envMeta := filepath.Join(root.InstallerFiles(), "env", "conda-meta")
+	if err := os.MkdirAll(envMeta, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(envMeta, "history"), []byte("==> 2026-11-19 12:26:00 <==\n# cmd: micromamba create -y --prefix env\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if mambaDone(root) {
+		t.Fatal("expected mambaDone=false while the env has no packages")
+	}
+	writeEnvHistory(t, root)
 	if !mambaDone(root) {
-		t.Fatal("expected mambaDone=true after creating binary")
+		t.Fatal("expected mambaDone=true once the env records python and nodejs")
 	}
 }
 

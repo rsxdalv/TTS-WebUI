@@ -15,6 +15,7 @@ export function LaunchStep() {
   const [error, setError] = useState<string | null>(null);
   const [diagLines, setDiagLines] = useState<string[]>([]);
   const [diagRunning, setDiagRunning] = useState(false);
+  const [lan, setLan] = useState<{ lan: boolean; warning?: string; urls?: string[] }>({ lan: false });
   const esRef = useRef<EventSource | null>(null);
   const diagEsRef = useRef<EventSource | null>(null);
   const linkTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -49,6 +50,14 @@ export function LaunchStep() {
       stopLinkPolling();
     }
   }, [processes, startLinkPolling, stopLinkPolling]);
+
+  // LAN mode (TTS_GO_PROXY_LISTEN=lan): show the same warning the launcher logs (R2-8).
+  useEffect(() => {
+    client("/api/app/lan")
+      .then((r) => (r.ok ? r.json() : { lan: false }))
+      .then((d) => setLan(d as { lan: boolean; warning?: string; urls?: string[] }))
+      .catch(() => {});
+  }, []);
 
   // Cleanup on unmount.
   useEffect(() => {
@@ -132,6 +141,23 @@ export function LaunchStep() {
   return (
     <div className="rounded-xl border border-blue-400 dark:border-blue-600 bg-white dark:bg-gray-900 p-4">
       <h2 className="text-base font-semibold mb-2">Launch WebUI</h2>
+
+      {lan.lan && (
+        <div
+          role="alert"
+          className="mb-3 p-3 rounded-lg border border-amber-400 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700 text-sm text-amber-900 dark:text-amber-200"
+        >
+          <p className="font-medium">Reachable from your network, with no password</p>
+          <p className="mt-1">{lan.warning}</p>
+          {lan.urls && lan.urls.length > 0 && (
+            <ul className="mt-1 font-mono text-xs">
+              {lan.urls.map((u) => (
+                <li key={u}>{u}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>

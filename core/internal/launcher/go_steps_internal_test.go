@@ -36,6 +36,7 @@ func TestGoInstallAndUpdateRefuseWhileTheAppRuns(t *testing.T) {
 	if err := os.WriteFile(root.MarkerFile(".gpu"), []byte("CPU"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	writeEnvHistory(t, root)
 	l := New(root)
 	l.sup.procs = append(l.sup.procs, &appProcess{name: "react-ui"})
 

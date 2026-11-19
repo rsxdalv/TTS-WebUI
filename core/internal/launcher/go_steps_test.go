@@ -45,6 +45,7 @@ func stepInstall(t *testing.T) (paths.Root, *server.Server, string) {
 	if err := os.MkdirAll(filepath.Join(root.InstallerFiles(), "env"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	writeEnvHistory(t, root)
 	self, err := os.Open(os.Args[0])
 	if err != nil {
 		t.Fatal(err)

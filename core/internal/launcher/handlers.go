@@ -24,6 +24,11 @@ type downloadRequest struct {
 // handleDownload starts an async download+extract and returns immediately.
 func (l *Launcher) handleDownload() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		l.stepMu.Lock()
+		defer l.stepMu.Unlock()
+		if l.refuseWhileBusy(w, "download") {
+			return
+		}
 		var req downloadRequest
 		if r.Body != nil {
 			_ = json.NewDecoder(r.Body).Decode(&req)
@@ -63,6 +68,11 @@ type preflightResponse struct {
 // handlePreflight runs all preflight checks synchronously and writes the marker.
 func (l *Launcher) handlePreflight() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		l.stepMu.Lock()
+		defer l.stepMu.Unlock()
+		if l.refuseWhileBusy(w, "preflight") {
+			return
+		}
 		checks, err := preflight.Run(r.Context(), l.root, nil)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("preflight error: %v", err), http.StatusInternalServerError)
@@ -102,9 +112,9 @@ func (l *Launcher) handlePreflightFixMSVC() http.Handler {
 // handleMamba spawns the platform mamba init script and returns immediately.
 func (l *Launcher) handleMamba() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if existing := l.getProc("mamba"); existing != nil && existing.Running() {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"started":false,"already_running":true}`))
+		l.stepMu.Lock()
+		defer l.stepMu.Unlock()
+		if l.refuseWhileBusy(w, "mamba") {
 			return
 		}
 
@@ -147,6 +157,11 @@ type gpuRequest struct {
 // handleGPU writes a validated PyTorchChoice GPU label to installer_scripts/.gpu.
 func (l *Launcher) handleGPU() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		l.stepMu.Lock()
+		defer l.stepMu.Unlock()
+		if l.refuseWhileBusy(w, "gpu") {
+			return
+		}
 		var req gpuRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Label == "" {
 			http.Error(w, "body must be {\"label\": \"<gpu-label>\"}", http.StatusBadRequest)
@@ -171,9 +186,9 @@ func (l *Launcher) handleGPU() http.Handler {
 // handleInstall spawns micromamba run node init_app.js --silent.
 func (l *Launcher) handleInstall() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if existing := l.getProc("install"); existing != nil && existing.Running() {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"started":false,"already_running":true}`))
+		l.stepMu.Lock()
+		defer l.stepMu.Unlock()
+		if l.refuseWhileBusy(w, "install") {
 			return
 		}
 		if !mambaDone(l.root) {
@@ -262,9 +277,9 @@ func (l *Launcher) handleAppDiagnostic() http.Handler {
 // handleUpdate checks isGitUpdated and re-runs install if needed.
 func (l *Launcher) handleUpdate() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if existing := l.getProc("update"); existing != nil && existing.Running() {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"started":false,"already_running":true}`))
+		l.stepMu.Lock()
+		defer l.stepMu.Unlock()
+		if l.refuseWhileBusy(w, "update") {
 			return
 		}
 

@@ -356,7 +356,9 @@ Port these as they are unless a rule below says otherwise. Record any you meet i
 
 - `npm run build` and `npm start` are unchanged and still produce and run the server build in `react-ui/.next`.
 - `build-static.js` runs `generate-plugin-imports.js` (the `prebuild` step), then `next build` with `TTS_STATIC_EXPORT=1`, which makes `next.config.js` set `output: "export"`. The API routes (`pages/api/*`, `app/api/upload`) are left out by Next itself in export mode (it prints a warning); Go serves them.
-- Next 16 always compiles an export in `.next`, so the script sets the server build aside as `.next-server-saved` for the duration and puts it back at the end, also when the build fails. If a run is killed, the next `npm run build:static` (or `node build-static.js --recover`) restores it first. `next start` must not be running during the build (Windows refuses to rename a directory in use; the script then stops without changing anything).
+- Next 16 always compiles an export in `.next`, so the script sets the server build aside as `.next-server-saved` for the duration and puts it back at the end, also when the build fails.
+- **Nothing detects a running `next start`.** Renaming `.next` works while Next serves from it, and the running server then answers 500/400 until the build is back. The caller (C2's update step, S2's migration mode) must stop Next first.
+- **A killed export** (power loss, job-object kill; the `finally` does not run) leaves `.next-server-saved` holding the server build and `.next` holding the export's scratch (no `BUILD_ID`): `next start` then fails with "Could not find a production build". `node build-static.js --recover` repairs it, and so does the next `npm run build:static`. Rule for anyone deciding whether a usable server build exists (S2): if `.next-server-saved` exists, run `node build-static.js --recover` first. Recovery puts the saved build back only when `.next` has no `BUILD_ID`; if `.next` has one (a newer `npm run build` ran meanwhile), it keeps it and deletes the older saved copy.
 - The export is built in `react-ui/.out-building` and renamed to `react-ui/out` only when it is complete, so a failed build leaves the previous `out/` untouched. `out/_tts-export.json` (`{"buildId": ..., "builtAt": ...}`) exists only in a complete export: its absence means there is no usable export. Both `.out-building` and `.next-server-saved` are git-ignored.
 - Needs `src/extensions/link.ts` like the server build (written by the prebuild step). An extension installed later needs a rebuild to be included, except for its page (see the shell below).
 - The server build is unchanged by this task: HTML and `_next/data` JSON of 16 pages and 9 data URLs are identical to the ones before it (script and chunk names aside), and so are the cache headers.
@@ -369,7 +371,8 @@ Port these as they are unless a rule below says otherwise. Record any you meet i
 | `404.html` | The page for an unknown URL |
 | `_next/static/**` | Hashed JS, CSS and fonts |
 | `_next/data/<BUILD_ID>/<page>.json` | `getStaticProps` data of the 9 SSG pages, `{"pageProps":...,"__N_SSG":true}` |
-| `_next/<BUILD_ID>/` | `_ssgManifest.js` and `_buildManifest.js` |
+| `_next/static/<BUILD_ID>/` | `_ssgManifest.js` and `_buildManifest.js` |
+| `_not-found.html`, `_not-found/*.txt`, `tools/_api_config.html` | App-router and extra pages; served by rule 4, nothing depends on them |
 | `favicon.ico` | From `public/` |
 | `extensions/_shell.html`, `_next/data/<BUILD_ID>/extensions/_shell.json` | The extension shell |
 

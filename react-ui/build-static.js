@@ -5,8 +5,10 @@
 // would be overwritten. This script therefore sets .next aside as
 // .next-server-saved for the length of the export and puts it back at the end
 // (also when the build fails). If a run is killed in between, the next run
-// (or `node build-static.js --recover`) puts it back first. Stop `next start`
-// before running this: Windows will not rename a directory that is in use.
+// (or `node build-static.js --recover`) puts it back first, unless a newer
+// server build exists in .next by then (see recover). Nothing here detects a
+// running `next start`: stop it first, or it serves errors while .next is
+// away.
 //
 // The export is built in .out-building and renamed to out/ only when it is
 // complete, so a failed or interrupted build leaves the previous out/ as it
@@ -25,13 +27,22 @@ const OUT = p("out");
 
 const rm = (d) => fs.rmSync(d, { recursive: true, force: true, maxRetries: 5 });
 
-// A leftover .next-server-saved is the real server build; whatever is in
-// .next then is the export's scratch directory.
-function recover() {
-  if (!fs.existsSync(SAVED)) return;
+// A leftover .next-server-saved is the server build set aside by a run that
+// was killed. .next is then either the export's scratch directory (it has no
+// BUILD_ID: put the saved build back) or a newer server build made in the
+// meantime (it has a BUILD_ID: keep it and drop the older saved one).
+function recover(dir = root) {
+  const next = path.join(dir, ".next");
+  const saved = path.join(dir, ".next-server-saved");
+  if (!fs.existsSync(saved)) return;
+  if (fs.existsSync(path.join(next, "BUILD_ID"))) {
+    console.log("build:static: a newer server build exists, dropping the one saved by an interrupted run");
+    rm(saved);
+    return;
+  }
   console.log("build:static: restoring the server build saved by an interrupted run");
-  rm(NEXT);
-  fs.renameSync(SAVED, NEXT);
+  rm(next);
+  fs.renameSync(saved, next);
 }
 
 function run(cmd, args, env) {
@@ -89,4 +100,5 @@ function main() {
   return 0;
 }
 
-process.exit(main());
+if (require.main === module) process.exit(main());
+module.exports = { recover };

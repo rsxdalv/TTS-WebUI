@@ -142,13 +142,26 @@ runs `npm run build` once in `react-ui`, logs which of the two it is, and only t
 build. If the build fails, or leaves a build that is still missing or older than the export, Start fails and nothing
 starts: the old server build is never served instead.
 
-**Stale server build (S2F).** The Go install and update steps rebuild only the export, so an older `.next` can stay
-behind. The server build counts as stale when a complete export exists and the modification time of
-`.next/BUILD_ID` is earlier than that of `out/_tts-export.json`. Modification times are used for both, rather than
-`builtAt` inside the export marker, because `BUILD_ID` holds no time, and comparing two file times keeps one clock and
-one source. `next build` writes `BUILD_ID` anew. `build:static` only renames `.next` aside and back, which keeps the
-file's time, so a restored old build still counts as old (a unit test checks the rename). The same rule applies to
-mode 2 below when the export exists but its claims are off.
+**Freshness of the two builds (S2F, R2-6).** Each build records the git commit it was built from:
+`out/_tts-export.json` has `"commit"` (written by `build:static`), and `.next/tts-build.json` has `"commit"` (written by
+the `postbuild` script of `npm run build`, so the legacy installer's build records it too). A build whose commit differs
+from the install's `git rev-parse HEAD` is stale. Rebuilding one build therefore never makes the other look stale.
+Commits are used instead of file times because two builds of the same commit are equally fresh whichever was built
+last, and an Update changes HEAD whichever installer ran.
+
+A build without a recorded commit (made before this rule), or an install where HEAD cannot be read, falls back to file
+times. The server build is stale when `.next/BUILD_ID` is older than `out/_tts-export.json`. The export is stale when
+`out/_tts-export.json` is older than `.next/BUILD_ID`. `next build` writes `BUILD_ID` anew. `build:static` only renames
+`.next` aside and back, which keeps the file's time, so a restored old build still counts as old (a unit test checks
+the rename).
+
+- **A stale server build** is rebuilt once with `npm run build` before Next starts, in the escape hatch and in mode 2
+  below when the export exists but its claims are off.
+- **A stale export** is rebuilt once with `npm run build:static` before static mode serves it, with a log line saying it
+  comes from another commit (for example after an Update with `TTS_GO_STEPS=none`, which rebuilds only the server
+  build).
+- Either rebuild that fails, or leaves its build missing or still stale, fails Start and starts nothing. The old build
+  is never served instead.
 
 **Proxy on** (the default) means the supervisor picks one of three modes when the app starts (D18):
 
@@ -165,6 +178,26 @@ mode 2 below when the export exists but its claims are off.
 
 If `react-ui/.next-server-saved` exists (an interrupted export build), the supervisor first runs
 `node build-static.js --recover` and decides again. In every mode Stop shuts down Go's listener and any Next process.
+
+Every switch (`TTS_GO_ROUTES` names, `TTS_GO_STEPS` names and the rest) is checked before the mode choice, so a typo
+fails Start before any build runs (R2-5).
+
+When there is no export, the mode 2 log line suggests Update only when `react-ui/package.json` has `build:static`.
+Otherwise it says that this UI version has no static export and is served through `next start` (R2-4).
+
+**Process lifetime (R2-1).** On SIGINT (Ctrl+C), SIGTERM and SIGHUP (closed terminal), the launcher stops the app (all
+processes in parallel: graceful signal to each process group, kill after 5 s) and any running install step, then
+exits. It waits at most 20 s.
+- SIGKILL cannot be caught. On Linux and macOS, Start records each app process group in
+  `installer_files/app-processes.json` (pgid and, on Linux, the leader's start time from `/proc/<pid>/stat`), and a
+  clean Stop deletes it.
+- When a launcher starts, and when the app starts, it reads a leftover record and stops what is left of those groups,
+  logging one line. On Linux it signals only processes that are in a recorded group, started no earlier than the
+  recorded leader, and have the install root as working directory, so a reused PID is never killed. On macOS (not run
+  by the port's tests) it uses the group and the command line.
+- On Linux each child also gets `Pdeathsig` SIGTERM, which `micromamba run` passes on, so a killed launcher usually
+  takes the app with it before any sweep is needed.
+- On Windows job objects already end everything with the launcher, and nothing is recorded.
 
 ## 5. Route claims
 

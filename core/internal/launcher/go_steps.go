@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 
 	"github.com/rsxdalv/TTS-WebUI/core/installer_scripts"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
@@ -61,6 +62,16 @@ func (l *Launcher) serveGoStep(w http.ResponseWriter, name string, fn goStepFunc
 	l.setProc(name, p)
 	p.Note(fmt.Sprintf("[launcher] %s: running the Go port (TTS_GO_STEPS=none runs the script instead)", name))
 	err = p.StartFunc(context.Background(), func(ctx context.Context, log func(string)) int {
+		if name == "update" && runtime.GOOS != "windows" {
+			// Repair exec bits a pre-R2-2 Go Download dropped, before git pull.
+			fixed, err := restoreExecBits(ctx, l.root.Dir(), defaultGitRunner)
+			for _, path := range fixed {
+				log("[launcher] update: restored the exec bit on " + path + " (git tracks it as 100755)")
+			}
+			if err != nil {
+				log("[launcher] update: could not check exec bits: " + err.Error())
+			}
+		}
 		code, err := fn(ctx, installer_scripts.NewStep(l.root.Dir(), log))
 		if err != nil {
 			log("ERROR: " + err.Error())

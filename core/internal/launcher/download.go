@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -171,11 +172,31 @@ func extractFile(f *zip.File, target string) error {
 		return err
 	}
 	defer rc.Close()
-	out, err := os.Create(target)
+	out, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
-	_, err = io.Copy(out, rc)
-	return err
+	if _, err := io.Copy(out, rc); err != nil {
+		out.Close()
+		return err
+	}
+	if err := out.Close(); err != nil {
+		return err
+	}
+	return applyZipMode(f, target)
+}
+
+// applyZipMode gives target the permission bits the zip entry stores, so
+// start_tts_webui.sh and installer_scripts/*.sh keep 0755 on Linux and macOS
+// (R2-2). Only the 0777 bits are used: never setuid, setgid or sticky. Only an
+// entry made on Unix carries such bits; any other (a zip made on Windows, which
+// Go reports as 0666) keeps the default 0644. On Windows, chmod only toggles
+// read-only, so nothing is done there.
+func applyZipMode(f *zip.File, target string) error {
+	const creatorUnix = 3
+	perm := f.Mode().Perm()
+	if runtime.GOOS == "windows" || f.CreatorVersion>>8 != creatorUnix || perm == 0 {
+		return nil
+	}
+	return os.Chmod(target, perm)
 }

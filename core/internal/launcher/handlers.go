@@ -35,8 +35,8 @@ func (l *Launcher) handleDownload() http.Handler {
 		lg := newLog()
 		l.setLog("download", lg)
 
-		// Extract into the parent of the install root.
-		destDir := filepath.Dir(l.root.Dir())
+		// Extract into the install root itself (downloadDone checks it).
+		destDir := l.root.Dir()
 
 		go func() {
 			if err := downloadAndExtract(context.Background(), url, destDir, lg); err != nil {

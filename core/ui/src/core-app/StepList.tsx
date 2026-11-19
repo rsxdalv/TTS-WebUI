@@ -44,9 +44,13 @@ const STEP_META: Record<string, { title: string; description: string; hasStream:
 };
 
 export function StepList({ statuses, onRefresh }: StepListProps) {
+  // A running step is never shown done, and while any step runs no other step
+  // can be started: the server answers 409 anyway (R2-3).
+  const isDone = (s: StepStatus) => s.done && !s.running;
+  const anyRunning = statuses.some((s) => s.running);
   // The active step is the first one that is not done.
-  const activeIdx = statuses.findIndex((s) => !s.done);
-  const allDone = statuses.length > 0 && statuses.every((s) => s.done);
+  const activeIdx = statuses.findIndex((s) => !isDone(s));
+  const allDone = statuses.length > 0 && statuses.every(isDone);
 
   return (
     <div className="flex flex-col gap-4">
@@ -56,8 +60,11 @@ export function StepList({ statuses, onRefresh }: StepListProps) {
           description: "",
           hasStream: false,
         };
-        const state: "done" | "active" | "pending" =
-          s.done ? "done" : idx === activeIdx ? "active" : "pending";
+        const state: "done" | "active" | "pending" = isDone(s)
+          ? "done"
+          : idx === activeIdx && (!anyRunning || s.running)
+            ? "active"
+            : "pending";
 
         if (state === "active" && s.step === "gpu") {
           return (

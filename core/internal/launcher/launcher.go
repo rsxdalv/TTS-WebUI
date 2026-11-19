@@ -33,6 +33,7 @@ type Launcher struct {
 	mu            sync.Mutex
 	sprocs        map[string]*procs.Proc // subprocess steps: mamba, install, update, run
 	slogs         map[string]*Log        // log-only steps: download
+	stepMu        sync.Mutex             // held while a step request checks and starts (R2-3)
 	sup           *Supervisor            // C3.2: app process supervisor
 	updateOnce    sync.Once
 	updateChecked bool // true = already up to date (cached after first check)
@@ -47,6 +48,38 @@ func New(root paths.Root) *Launcher {
 		sup:    newSupervisor(root),
 	}
 }
+
+// Shutdown stops the app and any running install step, for a launcher that
+// is exiting (Ctrl+C, SIGTERM, SIGHUP). It returns when they are gone.
+func (l *Launcher) Shutdown() {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		l.sup.Stop()
+	}()
+	l.mu.Lock()
+	var steps []*procs.Proc
+	for _, p := range l.sprocs {
+		if p != nil && p.Running() {
+			steps = append(steps, p)
+		}
+	}
+	l.mu.Unlock()
+	for _, p := range steps {
+		wg.Add(1)
+		go func(p *procs.Proc) {
+			defer wg.Done()
+			_ = p.Stop()
+		}(p)
+	}
+	wg.Wait()
+}
+
+// CleanupOrphans stops what a killed launcher left running for this install
+// (Linux and macOS; Windows job objects leave nothing). It returns how many
+// processes it stopped.
+func (l *Launcher) CleanupOrphans() int { return sweepOrphans(l.root) }
 
 // Register adds all /api/steps/* and /api/app/* endpoints to srv.
 // The server's existing token guard covers these because they are registered
@@ -80,6 +113,7 @@ func (l *Launcher) Register(srv *server.Server) {
 	srv.Handle("GET /api/app/status", l.handleAppStatus())
 	srv.Handle("GET /api/app/status/stream", l.handleAppStatusStream())
 	srv.Handle("GET /api/app/link", l.handleAppLink())
+	srv.Handle("GET /api/app/lan", l.handleAppLAN())
 
 	// Diagnostic: runs installer_scripts/tools/diagnostic.{bat,sh}.
 	srv.Handle("POST /api/app/diagnostic", l.handleAppDiagnostic())
@@ -107,12 +141,17 @@ func (l *Launcher) handleStatus() http.Handler {
 			}
 		}
 
+		// A running step is never reported done, so a reload during it shows it
+		// running and keeps the later steps unavailable (R2-3).
+		dlRunning := l.downloadRunning()
+		mambaRunning := l.isStepRunning("mamba")
+		installRunning := l.isStepRunning("install")
 		statuses := []StepStatus{
-			{Step: "download", Done: downloadDone(l.root)},
+			{Step: "download", Done: downloadDone(l.root) && !dlRunning, Running: dlRunning},
 			{Step: "preflight", Done: preflightDone(l.root)},
-			{Step: "mamba", Done: mambaDone(l.root), Running: l.isStepRunning("mamba")},
+			{Step: "mamba", Done: mambaDone(l.root) && !mambaRunning, Running: mambaRunning},
 			{Step: "gpu", Done: gpuDone(l.root)},
-			{Step: "install", Done: installDone(l.root), Running: l.isStepRunning("install")},
+			{Step: "install", Done: installDone(l.root) && !installRunning, Running: installRunning},
 			{Step: "update", Done: updateDone, Running: l.isStepRunning("update")},
 		}
 		w.Header().Set("Content-Type", "application/json")

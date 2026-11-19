@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 )
@@ -49,11 +50,35 @@ func preflightDone(root paths.Root) bool {
 	return err == nil
 }
 
-// mambaDone returns true when the micromamba binary is present.
-// Bug fix: legacy code only checked the directory; we check the binary.
+// mambaDone returns true when the install environment is complete: the
+// micromamba binary exists and installer_files/env/conda-meta/history records
+// python and nodejs as installed. micromamba writes those "+" lines only when
+// the install transaction has finished, minutes after the binary appears. The
+// binary alone made the step look done while env creation still ran, so Install
+// could start and fail (R2-3).
 func mambaDone(root paths.Root) bool {
-	_, err := os.Stat(micromambaPath(root))
-	return err == nil
+	if _, err := os.Stat(micromambaPath(root)); err != nil {
+		return false
+	}
+	return envComplete(root)
+}
+
+// envComplete reports whether the env history records python and nodejs as
+// installed, which init_mamba's single install transaction does at its end.
+func envComplete(root paths.Root) bool {
+	raw, err := os.ReadFile(filepath.Join(root.InstallerFiles(), "env", "conda-meta", "history"))
+	if err != nil {
+		return false
+	}
+	var python, node bool
+	for _, line := range strings.Split(string(raw), "\n") {
+		if !strings.HasPrefix(line, "+") {
+			continue
+		}
+		python = python || strings.Contains(line, "::python-3")
+		node = node || strings.Contains(line, "::nodejs-")
+	}
+	return python && node
 }
 
 // gpuDone returns true when installer_scripts/.gpu exists.

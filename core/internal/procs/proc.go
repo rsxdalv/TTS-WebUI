@@ -5,6 +5,7 @@ package procs
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -27,6 +28,9 @@ type Proc struct {
 	ring ring
 	subs []*subscriber
 	done chan struct{}
+
+	// fn is set when the job runs in this process (StartFunc) instead of as a child process.
+	fn *funcJob
 }
 
 // Start spawns name with args, working directory cwd (empty = inherit), and
@@ -65,7 +69,7 @@ func (p *Proc) Start(ctx context.Context, name string, args []string, cwd string
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("starting process: %w", err)
 	}
-	if err := ps.assign(cmd); err != nil {
+	if err := ps.assign(cmd); err != nil && !errors.Is(err, ErrProcessExited) {
 		// Non-fatal: log and continue (process is running; kill falls back to cmd.Process.Kill).
 		_ = cmd.Process.Kill()
 		return fmt.Errorf("assigning to job/process-group: %w", err)
@@ -119,6 +123,13 @@ func (p *Proc) addLine(line string) {
 // Stop sends a graceful signal, waits up to 5 seconds, then force-kills.
 func (p *Proc) Stop() error {
 	p.mu.Lock()
+	if p.fn != nil {
+		cancel, done := p.fn.cancel, p.done
+		p.mu.Unlock()
+		cancel()
+		<-done
+		return nil
+	}
 	cmd := p.cmd
 	ps := p.ps
 	done := p.done
@@ -136,6 +147,17 @@ func (p *Proc) Stop() error {
 	case <-time.After(5 * time.Second):
 		return ps.force()
 	}
+}
+
+// Pid returns the process ID, or 0 before Start or for a StartFunc job. On
+// Unix it is also the process group ID, because each child gets its own group.
+func (p *Proc) Pid() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.cmd == nil || p.cmd.Process == nil {
+		return 0
+	}
+	return p.cmd.Process.Pid
 }
 
 // Wait blocks until the process exits.
@@ -182,6 +204,10 @@ func (p *Proc) Done() <-chan struct{} {
 // process has not exited or if the state is unavailable.
 func (p *Proc) ExitCode() int {
 	p.mu.Lock()
+	if p.fn != nil {
+		defer p.mu.Unlock()
+		return p.fn.exitCode()
+	}
 	cmd := p.cmd
 	p.mu.Unlock()
 	if cmd == nil || cmd.ProcessState == nil {

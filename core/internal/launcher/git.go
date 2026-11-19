@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -60,4 +61,33 @@ func isGitUpdatedWith(ctx context.Context, root paths.Root, run gitRunner) (bool
 	}
 
 	return local == remote, nil
+}
+
+// restoreExecBits gives back the exec bit to files that git tracks as 100755
+// but whose working copy lacks it, as `chmod +x` would. An install extracted by
+// a Go Download before R2-2 was fixed has such files, and with core.filemode
+// they count as local changes that make `git pull` abort once a commit touches
+// them. Nothing else in the tree is changed. It returns the paths it changed.
+func restoreExecBits(ctx context.Context, dir string, run gitRunner) ([]string, error) {
+	out, err := run(ctx, dir, "ls-files", "-s", "-z")
+	if err != nil {
+		return nil, err
+	}
+	var changed []string
+	for _, entry := range strings.Split(out, "\x00") {
+		meta, path, ok := strings.Cut(entry, "\t")
+		if !ok || !strings.HasPrefix(meta, "100755 ") {
+			continue
+		}
+		full := filepath.Join(dir, filepath.FromSlash(path))
+		info, err := os.Lstat(full)
+		if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0o111 != 0 {
+			continue
+		}
+		if err := os.Chmod(full, info.Mode().Perm()|0o111); err != nil {
+			return changed, err
+		}
+		changed = append(changed, path)
+	}
+	return changed, nil
 }

@@ -4,16 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/switches"
+	"github.com/rsxdalv/TTS-WebUI/core/react_ui_backend"
 )
 
 // ProcessStatus describes one supervised process.
@@ -26,6 +30,18 @@ type ProcessStatus struct {
 type appProcess struct {
 	name string
 	proc *procs.Proc
+	// front is the Go proxy in front of this process, if any.
+	front *react_ui_backend.Server
+}
+
+// reactUIArgs returns the micromamba arguments that start Next. With the proxy
+// off they are the arguments the app has always used, so Next owns port 3000.
+func reactUIArgs(envPath, rootDir string, port int, proxied bool) []string {
+	args := []string{"-p", envPath, "run", "npm", "--prefix", filepath.Join(rootDir, "react-ui"), "start", "--", "-p", strconv.Itoa(port)}
+	if proxied {
+		args = append(args, "-H", "127.0.0.1")
+	}
+	return args
 }
 
 // Supervisor manages the full app process group (Gradio, React UI, extension manager).
@@ -45,6 +61,10 @@ type Supervisor struct {
 	// Status fan-out: Supervisor publishes a JSON ProcessStatus slice whenever
 	// a process starts or stops. Subscribers receive those snapshots.
 	statusSubs []*logSub
+
+	// runTool runs a node tool in react-ui; nil means runReactUITool. Tests
+	// replace it.
+	runTool func(ctx context.Context, name string, args ...string) error
 }
 
 // newSupervisor creates a Supervisor for root.
@@ -71,6 +91,23 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	s.supCancel = supCancel
 	s.mu.Unlock()
 
+	// Every switch is checked before anything runs, so a typo never starts a
+	// build or a process first (R2-5).
+	sw, err := switches.FromEnv()
+	if err != nil {
+		return err
+	}
+	if err := sw.CheckRoutes(react_ui_backend.ClaimNames()); err != nil {
+		return err
+	}
+	if err := sw.CheckSteps(knownGoSteps); err != nil {
+		return err
+	}
+
+	// A launcher that was killed (SIGKILL, power loss) may have left the app
+	// running on Linux and macOS; stop it before ports collide.
+	sweepOrphans(s.root)
+
 	// GPU label is required before any process can start.
 	if _, err := readGPULabel(setupCtx, s.root); err != nil {
 		return fmt.Errorf("determining GPU: %w", err)
@@ -81,6 +118,37 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	extPort, err := freePort()
 	if err != nil {
 		return fmt.Errorf("allocating extension manager port: %w", err)
+	}
+
+	// With the proxy on (the default, D18), Go takes port 3000 and either
+	// serves the static export or proxies Next on a private port.
+	plan, err := s.prepareReactUI(setupCtx, sw)
+	if err != nil {
+		return err
+	}
+	var front *react_ui_backend.Server
+	nextPort := react_ui_backend.PublicPort
+	if sw.Proxy {
+		if plan.mode == modeNextProxied {
+			if nextPort, err = freePort(); err != nil {
+				return fmt.Errorf("allocating React UI port: %w", err)
+			}
+		}
+		front, err = react_ui_backend.Start(react_ui_backend.Config{
+			Root:         s.root.Dir(),
+			Port:         react_ui_backend.PublicPort,
+			NextAddr:     fmt.Sprintf("127.0.0.1:%d", nextPort),
+			Static:       plan.mode == modeStatic,
+			Routes:       sw,
+			LAN:          sw.ProxyLAN,
+			AllowedHosts: sw.ProxyAllowedHosts,
+		})
+		if err != nil {
+			return fmt.Errorf("starting the React UI proxy: %w", err)
+		}
+		if sw.ProxyLAN {
+			slog.Warn(react_ui_backend.LANWarning(react_ui_backend.PublicPort))
+		}
 	}
 
 	cwd := s.root.Dir()
@@ -101,8 +169,11 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	envPath := installEnvPath(s.root)
 	defs := []procDef{
 		{name: "gradio", cmd: mamba, args: []string{"-p", envPath, "run", "python", "server.py", "--no-react"}, env: baseEnv},
-		{name: "react-ui", cmd: mamba, args: []string{"-p", envPath, "run", "npm", "--prefix", filepath.Join(s.root.Dir(), "react-ui"), "start", "--", "-p", "3000"}, env: baseEnv},
+		{name: "react-ui", cmd: mamba, args: reactUIArgs(envPath, s.root.Dir(), nextPort, sw.Proxy), env: baseEnv},
 		{name: "extension-manager", cmd: mamba, args: []string{"-p", envPath, "run", "python", extMgrScript, "--port", fmt.Sprintf("%d", extPort)}, env: baseEnv},
+	}
+	if plan.mode == modeStatic {
+		defs = append(defs[:1], defs[2:]...) // no Next process: Go serves the UI
 	}
 
 	s.mu.Lock()
@@ -112,7 +183,12 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		if err := p.Start(supCtx, d.cmd, d.args, cwd, d.env); err != nil {
 			// Best-effort stop what's already started.
 			for _, running := range s.procs {
-				_ = running.proc.Stop()
+				if running.proc != nil {
+					_ = running.proc.Stop()
+				}
+			}
+			if front != nil {
+				front.Close()
 			}
 			s.procs = nil
 			supCancel()
@@ -122,10 +198,18 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 			return fmt.Errorf("starting %s: %w", d.name, err)
 		}
 		ap := &appProcess{name: d.name, proc: p}
+		if d.name == "react-ui" {
+			ap.front = front
+		}
 		s.procs = append(s.procs, ap)
 		go s.watchExit(ap)
 	}
+	if plan.mode == modeStatic {
+		// The UI is the Go server itself; it shows as react-ui until Stop.
+		s.procs = append(s.procs, &appProcess{name: "react-ui", front: front})
+	}
 	s.mu.Unlock()
+	s.recordProcesses()
 	s.publishStatus() // must be called without mu held (publishStatus acquires mu itself)
 	return nil
 }
@@ -141,12 +225,26 @@ func (s *Supervisor) Stop() {
 	s.procs = nil
 	s.mu.Unlock()
 
+	// Stop the processes in parallel, so the whole app is gone within one
+	// graceful period (5 s) plus the kill, not one period per process.
+	var wg sync.WaitGroup
 	for _, ap := range ps {
-		_ = ap.proc.Stop()
+		if ap.front != nil {
+			ap.front.Close()
+		}
+		if ap.proc != nil {
+			wg.Add(1)
+			go func(p *procs.Proc) {
+				defer wg.Done()
+				_ = p.Stop()
+			}(ap.proc)
+		}
 	}
+	wg.Wait()
 	if cancel != nil {
 		cancel() // signal any processes that missed graceful stop
 	}
+	s.clearRecord()
 	s.publishStatus()
 }
 
@@ -225,6 +323,10 @@ func (s *Supervisor) publishStatus() {
 // watchExit removes a process from the tracked list and publishes status when it exits.
 func (s *Supervisor) watchExit(ap *appProcess) {
 	ap.proc.Wait()
+	// Without Next there is nothing to proxy, so port 3000 closes with it.
+	if ap.front != nil {
+		ap.front.Close()
+	}
 	s.mu.Lock()
 	for i, p := range s.procs {
 		if p == ap {

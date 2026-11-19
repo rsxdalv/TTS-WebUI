@@ -1,0 +1,473 @@
+[
+ {
+  "name": "normal wav",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LW5vcm1hbC53YXYiDQpDb250ZW50LVR5cGU6IGFwcGxpY2F0aW9uL29jdGV0LXN0cmVhbQ0KDQpEQVRBLXQtbm9ybWFsLndhdg0KLS0tLS0tY21wQm91bmRhcnkxMjMtLQ0K"
+ },
+ {
+  "name": "upper ext",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LXVwcGVyLldBViINCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtDQoNCkRBVEEtdC11cHBlci5XQVYNCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "mp3",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LWEubXAzIg0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0NCg0KREFUQS10LWEubXAzDQotLS0tLS1jbXBCb3VuZGFyeTEyMy0tDQo="
+ },
+ {
+  "name": "npz",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LWEubnB6Ig0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0NCg0KREFUQS10LWEubnB6DQotLS0tLS1jbXBCb3VuZGFyeTEyMy0tDQo="
+ },
+ {
+  "name": "jpeg",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LWEuanBlZyINCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtDQoNCkRBVEEtdC1hLmpwZWcNCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "traversal",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSIuLi8uLi90LWV2aWwud2F2Ig0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0NCg0KREFUQS0uLi8uLi90LWV2aWwud2F2DQotLS0tLS1jbXBCb3VuZGFyeTEyMy0tDQo="
+ },
+ {
+  "name": "traversal backslash",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSIuLlwuLlx0LWV2aWwyLndhdiINCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtDQoNCkRBVEEtLi5cLi5cdC1ldmlsMi53YXYNCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "abs unix",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSIvZXRjL3QtYWJzLndhdiINCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtDQoNCkRBVEEtL2V0Yy90LWFicy53YXYNCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "abs windows",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJDOlx4XHQtYWJzMi53YXYiDQpDb250ZW50LVR5cGU6IGFwcGxpY2F0aW9uL29jdGV0LXN0cmVhbQ0KDQpEQVRBLUM6XHhcdC1hYnMyLndhdg0KLS0tLS0tY21wQm91bmRhcnkxMjMtLQ0K"
+ },
+ {
+  "name": "drive no slash",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJDOnQtZHJpdmUud2F2Ig0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0NCg0KREFUQS1DOnQtZHJpdmUud2F2DQotLS0tLS1jbXBCb3VuZGFyeTEyMy0tDQo="
+ },
+ {
+  "name": "leading dots",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSIuLi50LWRvdHMud2F2Ig0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0NCg0KREFUQS0uLi50LWRvdHMud2F2DQotLS0tLS1jbXBCb3VuZGFyeTEyMy0tDQo="
+ },
+ {
+  "name": "only dots ext",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSIuLi4ud2F2Ig0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0NCg0KREFUQS0uLi4ud2F2DQotLS0tLS1jbXBCb3VuZGFyeTEyMy0tDQo="
+ },
+ {
+  "name": "hidden",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSIuaGlkZGVuLndhdiINCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtDQoNCkRBVEEtLmhpZGRlbi53YXYNCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "exe",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LWJhZC5leGUiDQpDb250ZW50LVR5cGU6IGFwcGxpY2F0aW9uL29jdGV0LXN0cmVhbQ0KDQpEQVRBLXQtYmFkLmV4ZQ0KLS0tLS0tY21wQm91bmRhcnkxMjMtLQ0K"
+ },
+ {
+  "name": "no ext",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LW5vZXh0Ig0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0NCg0KREFUQS10LW5vZXh0DQotLS0tLS1jbXBCb3VuZGFyeTEyMy0tDQo="
+ },
+ {
+  "name": "double ext",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LWEud2F2LmV4ZSINCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtDQoNCkRBVEEtdC1hLndhdi5leGUNCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "trailing dot",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LWEud2F2LiINCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtDQoNCkRBVEEtdC1hLndhdi4NCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "trailing space",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LWEud2F2ICINCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtDQoNCkRBVEEtdC1hLndhdiANCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "empty filename",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSIiDQpDb250ZW50LVR5cGU6IGFwcGxpY2F0aW9uL29jdGV0LXN0cmVhbQ0KDQpEQVRBLQ0KLS0tLS0tY21wQm91bmRhcnkxMjMtLQ0K"
+ },
+ {
+  "name": "trailing slash",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LWRpci53YXYvIg0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0NCg0KREFUQS10LWRpci53YXYvDQotLS0tLS1jbXBCb3VuZGFyeTEyMy0tDQo="
+ },
+ {
+  "name": "unicode",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LcO8bsOv4oCT5ZCNLndhdiINCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtDQoNCkRBVEEtdC3DvG7Dr+KAk+WQjS53YXYNCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "space",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LWEgYi53YXYiDQpDb250ZW50LVR5cGU6IGFwcGxpY2F0aW9uL29jdGV0LXN0cmVhbQ0KDQpEQVRBLXQtYSBiLndhdg0KLS0tLS0tY21wQm91bmRhcnkxMjMtLQ0K"
+ },
+ {
+  "name": "quote",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LXElMjJ4LndhdiINCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtDQoNCkRBVEEtdC1xJTIyeC53YXYNCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "zero byte",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LXplcm8ud2F2Ig0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0NCg0KDQotLS0tLS1jbXBCb3VuZGFyeTEyMy0tDQo="
+ },
+ {
+  "name": "no file field",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0ib3RoZXIiDQoNCngNCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "file as string",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSINCg0KYWJjDQotLS0tLS1jbXBCb3VuZGFyeTEyMy0tDQo="
+ },
+ {
+  "name": "file empty string",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSINCg0KDQotLS0tLS1jbXBCb3VuZGFyeTEyMy0tDQo="
+ },
+ {
+  "name": "two files first wins",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LWZpcnN0LndhdiINCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtDQoNCkRBVEEtdC1maXJzdC53YXYNCi0tLS0tLWNtcEJvdW5kYXJ5MTIzDQpDb250ZW50LURpc3Bvc2l0aW9uOiBmb3JtLWRhdGE7IG5hbWU9ImZpbGUiOyBmaWxlbmFtZT0idC1zZWNvbmQud2F2Ig0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0NCg0KREFUQS10LXNlY29uZC53YXYNCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "file after other",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iYSINCg0KYg0KLS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LWxhdGUud2F2Ig0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0NCg0KREFUQS10LWxhdGUud2F2DQotLS0tLS1jbXBCb3VuZGFyeTEyMy0tDQo="
+ },
+ {
+  "name": "string then file",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSINCg0KYWJjDQotLS0tLS1jbXBCb3VuZGFyeTEyMw0KQ29udGVudC1EaXNwb3NpdGlvbjogZm9ybS1kYXRhOyBuYW1lPSJmaWxlIjsgZmlsZW5hbWU9InQteC53YXYiDQpDb250ZW50LVR5cGU6IGFwcGxpY2F0aW9uL29jdGV0LXN0cmVhbQ0KDQpEQVRBLXQteC53YXYNCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "file then string file",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LXkud2F2Ig0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0NCg0KREFUQS10LXkud2F2DQotLS0tLS1jbXBCb3VuZGFyeTEyMw0KQ29udGVudC1EaXNwb3NpdGlvbjogZm9ybS1kYXRhOyBuYW1lPSJmaWxlIg0KDQphYmMNCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "other field name file",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0idXBsb2FkIjsgZmlsZW5hbWU9InQtb3RoZXIud2F2Ig0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0NCg0KREFUQS10LW90aGVyLndhdg0KLS0tLS0tY21wQm91bmRhcnkxMjMtLQ0K"
+ },
+ {
+  "name": "empty multipart",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMtLQ0K"
+ },
+ {
+  "name": "zero body multipart",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": ""
+ },
+ {
+  "name": "truncated",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data; boundary=----cmpBoundary123"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LXRydW5jLndhdiINCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtDQoNCkRBVEEtdC10cnVuYy53YXYNCg=="
+ },
+ {
+  "name": "no boundary",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "multipart/form-data"
+   ]
+  },
+  "body": "LS0tLS0tY21wQm91bmRhcnkxMjMNCkNvbnRlbnQtRGlzcG9zaXRpb246IGZvcm0tZGF0YTsgbmFtZT0iZmlsZSI7IGZpbGVuYW1lPSJ0LW5iLndhdiINCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtDQoNCkRBVEEtdC1uYi53YXYNCi0tLS0tLWNtcEJvdW5kYXJ5MTIzLS0NCg=="
+ },
+ {
+  "name": "json body",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "application/json"
+   ]
+  },
+  "body": "eyJmaWxlIjoieCJ9"
+ },
+ {
+  "name": "no content type",
+  "method": "POST",
+  "path": "/api/upload",
+  "body": "YWJj"
+ },
+ {
+  "name": "urlencoded string file",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "application/x-www-form-urlencoded"
+   ]
+  },
+  "body": "ZmlsZT1hYmM="
+ },
+ {
+  "name": "urlencoded empty file",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "application/x-www-form-urlencoded"
+   ]
+  },
+  "body": "ZmlsZT0="
+ },
+ {
+  "name": "urlencoded no file",
+  "method": "POST",
+  "path": "/api/upload",
+  "header": {
+   "Content-Type": [
+    "application/x-www-form-urlencoded"
+   ]
+  },
+  "body": "YT1i"
+ },
+ {
+  "name": "method GET",
+  "method": "GET",
+  "path": "/api/upload"
+ },
+ {
+  "name": "method PUT",
+  "method": "PUT",
+  "path": "/api/upload"
+ },
+ {
+  "name": "method DELETE",
+  "method": "DELETE",
+  "path": "/api/upload"
+ },
+ {
+  "name": "method HEAD",
+  "method": "HEAD",
+  "path": "/api/upload"
+ },
+ {
+  "name": "trailing slash",
+  "method": "POST",
+  "path": "/api/upload/"
+ }
+]

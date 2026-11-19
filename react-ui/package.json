@@ -6,6 +6,7 @@
     "dev": "next dev -p 3001",
     "prebuild": "node generate-plugin-imports.js",
     "build": "next build",
+    "build:static": "node build-static.js",
     "start": "next start",
     "lint": "next lint",
     "dev-error": "tsc --noEmit --pretty --watch",

@@ -50,8 +50,12 @@ func init() {
 	})
 }
 
+// uploadTempPrefix names the temporary files of uploads in progress.
+const uploadTempPrefix = ".upload-"
+
 func newUpload(deps Deps) http.Handler {
 	cacheDir := filepath.Join(deps.Root, "react-ui", "public", "file-input-cache")
+	removeStaleUploads(cacheDir)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		up, err := readUpload(r, cacheDir)
 		if err != nil {
@@ -88,6 +92,28 @@ func newUpload(deps Deps) http.Handler {
 		}
 		uploadJSON(w, http.StatusOK, map[string]any{"success": true, "name": safeName})
 	})
+}
+
+// removeStaleUploads deletes temporary files an earlier run left behind, for
+// instance when the launcher was killed during an upload. It runs when the
+// claim starts, before any upload of this run exists.
+func removeStaleUploads(cacheDir string) {
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if e.Type().IsRegular() && strings.HasPrefix(e.Name(), uploadTempPrefix) {
+			_ = os.Remove(filepath.Join(cacheDir, e.Name()))
+		}
+	}
+}
+
+// uploadNameKept reports whether a file with this name gets past the type
+// check, so its content is worth keeping while the body is read.
+func uploadNameKept(filename string) bool {
+	safe := safeUploadName(filename)
+	return safe != "" && uploadExtensions[strings.ToLower(filepath.Ext(safe))] && !badWindowsName(safe)
 }
 
 // upload is what the body held for the first "file" entry.
@@ -171,21 +197,42 @@ func readUpload(r *http.Request, cacheDir string) (*upload, error) {
 			up.present = len(b) > 0
 			continue
 		}
-		f, err := os.CreateTemp(cacheDir, ".upload-*")
+		filename = undiciFilename(filename)
+		if !uploadNameKept(filename) {
+			// Rejected as "Unsupported file type" whatever the size: read it,
+			// write nothing.
+			n, err := io.Copy(io.Discard, part)
+			if err != nil {
+				return up, err
+			}
+			up.present, up.isFile, up.filename, up.size = true, true, filename, n
+			continue
+		}
+		f, err := os.CreateTemp(cacheDir, uploadTempPrefix+"*")
 		if err != nil {
 			_, _ = io.Copy(io.Discard, part)
 			return up, err
 		}
-		n, err := io.Copy(f, part)
-		cerr := f.Close()
 		up.tmp = f.Name()
+		// Write at most the limit. Past it the answer is 413, so the temporary
+		// file is removed and the rest is only counted, never stored.
+		n, err := io.Copy(f, io.LimitReader(part, uploadMaxBytes+1))
+		cerr := f.Close()
 		if err == nil {
 			err = cerr
 		}
 		if err != nil {
 			return up, err
 		}
-		up.present, up.isFile, up.filename, up.size = true, true, undiciFilename(filename), n
+		if n > uploadMaxBytes {
+			up.discard()
+			rest, err := io.Copy(io.Discard, part)
+			if err != nil {
+				return up, err
+			}
+			n += rest
+		}
+		up.present, up.isFile, up.filename, up.size = true, true, filename, n
 	}
 }
 

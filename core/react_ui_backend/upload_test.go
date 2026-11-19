@@ -159,3 +159,136 @@ func TestSafeUploadName(t *testing.T) {
 		}
 	}
 }
+
+// F3: temporary files left by a killed run are removed when the claim starts;
+// other files stay.
+func TestUploadRemovesStaleTempFilesAtStart(t *testing.T) {
+	root := t.TempDir()
+	cache := filepath.Join(root, "react-ui", "public", "file-input-cache")
+	if err := os.MkdirAll(cache, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{".upload-123", ".upload-456", ".gitkeep", "a.wav", ".uploadx-1"} {
+		if err := os.WriteFile(filepath.Join(cache, name), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Mkdir(filepath.Join(cache, ".upload-dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	newUpload(Deps{Root: root})
+	for name, want := range map[string]bool{".upload-123": false, ".upload-456": false, ".gitkeep": true, "a.wav": true, ".uploadx-1": true, ".upload-dir": true} {
+		_, err := os.Stat(filepath.Join(cache, name))
+		if (err == nil) != want {
+			t.Errorf("%s: exists=%v, want %v", name, err == nil, want)
+		}
+	}
+	// A missing cache directory is not an error here (the upload itself is a 500).
+	newUpload(Deps{Root: t.TempDir()})
+}
+
+// dirSize is the bytes in a directory.
+func dirSize(dir string) int64 {
+	var n int64
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		// os.Stat opens the file; the size in a directory listing can lag on Windows.
+		if info, err := os.Stat(filepath.Join(dir, e.Name())); err == nil {
+			n += info.Size()
+		}
+	}
+	return n
+}
+
+// F4: an upload over the limit never puts more than the limit on disk, is
+// answered 413 as before, and leaves nothing.
+func TestUploadOverLimitStopsWritingAtTheLimit(t *testing.T) {
+	if testing.Short() {
+		t.Skip("streams 300 MiB")
+	}
+	cache, srv := uploadFixture(t)
+	var maxOnDisk int64
+	pr, pw := io.Pipe()
+	mw := multipart.NewWriter(pw)
+	go func() {
+		w, _ := mw.CreateFormFile("file", "big.wav")
+		chunk := make([]byte, 1<<20)
+		for i := 0; i < 300; i++ { // 300 MiB, sent chunked: no Content-Length
+			if _, err := w.Write(chunk); err != nil {
+				return
+			}
+			if n := dirSize(cache); n > maxOnDisk {
+				maxOnDisk = n
+			}
+		}
+		_ = mw.Close()
+		_ = pw.Close()
+	}()
+	resp, err := http.Post(srv.URL+"/api/upload", mw.FormDataContentType(), pr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 413 || string(b) != `{"success":false,"error":"File too large"}` {
+		t.Fatalf("%d %s", resp.StatusCode, b)
+	}
+	if maxOnDisk > uploadMaxBytes+(1<<20) {
+		t.Fatalf("%d bytes were on disk, the limit is %d", maxOnDisk, int64(uploadMaxBytes))
+	}
+	if entries, _ := os.ReadDir(cache); len(entries) != 0 {
+		t.Fatalf("left files: %v", entries)
+	}
+}
+
+// A declared Content-Length over the limit is not rejected before the body is
+// read: a browser that is still sending would see the connection drop and never
+// get the 413. The body is read and discarded, nothing is stored, and the client
+// that sends everything and then reads gets the usual 413.
+func TestUploadOversizedContentLengthIsReadThenAnswered(t *testing.T) {
+	if testing.Short() {
+		t.Skip("sends 300 MiB")
+	}
+	cache, srv := uploadFixture(t)
+	crlf := string(rune(13)) + string(rune(10))
+	head := "--b" + crlf + `Content-Disposition: form-data; name="file"; filename="big.wav"` + crlf + crlf
+	foot := crlf + "--b--" + crlf
+	const size = 300 << 20
+	body := io.MultiReader(strings.NewReader(head), io.LimitReader(zeroReader{}, size), strings.NewReader(foot))
+	req, _ := http.NewRequest("POST", srv.URL+"/api/upload", body)
+	req.ContentLength = int64(len(head)) + size + int64(len(foot))
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=b")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 413 || string(b) != `{"success":false,"error":"File too large"}` || resp.Header.Get("Content-Type") != "application/json" {
+		t.Fatalf("%d %q %v", resp.StatusCode, b, resp.Header)
+	}
+	if resp.Header.Get("Connection") == "close" {
+		t.Fatal("the connection must not be closed by the early answer")
+	}
+	if entries, _ := os.ReadDir(cache); len(entries) != 0 {
+		t.Fatalf("left files: %v", entries)
+	}
+}
+
+type zeroReader struct{}
+
+func (zeroReader) Read(p []byte) (int, error) {
+	clear(p)
+	return len(p), nil
+}
+
+// A file that is rejected for its type is read but never written.
+func TestUploadRejectedTypeIsNotWritten(t *testing.T) {
+	cache, srv := uploadFixture(t)
+	if status, _ := postFile(t, srv, "file", "bad.exe", make([]byte, 5<<20)); status != 400 {
+		t.Fatalf("status %d", status)
+	}
+	if entries, _ := os.ReadDir(cache); len(entries) != 0 {
+		t.Fatalf("left files: %v", entries)
+	}
+}

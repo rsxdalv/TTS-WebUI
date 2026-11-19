@@ -343,3 +343,18 @@ func TestRunReturnsPlatformChecks(t *testing.T) {
 	}
 	_ = fmt.Sprintf("%v", checks) // compile smoke
 }
+
+// On a fresh Ubuntu there is no gcc at all, so starting it fails with
+// exec.ErrNotFound. That must be the warning, not a preflight error (HTTP 500).
+func TestGCCMissingExecutableWarns(t *testing.T) {
+	missing := func(ctx context.Context, _ string, args ...string) (string, string, int, error) {
+		return DefaultRunner(ctx, "tts-webui-no-such-gcc", args...)
+	}
+	c, err := checkGCC(context.Background(), missing)
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if c.Status != StatusWarn || !strings.Contains(c.Message, "gcc not found") {
+		t.Errorf("got %q %q", c.Status, c.Message)
+	}
+}

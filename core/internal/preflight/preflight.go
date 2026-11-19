@@ -3,6 +3,7 @@ package preflight
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -257,10 +258,13 @@ func checkMSVC(ctx context.Context, runner Runner) (Check, error) {
 
 func checkGCC(ctx context.Context, runner Runner) (Check, error) {
 	stdout, _, exitCode, err := runner(ctx, "gcc", "--version")
-	if err != nil {
+	// A missing gcc is the case this check warns about, as root.sh does; only
+	// other failures to start it are errors.
+	missing := errors.Is(err, exec.ErrNotFound)
+	if err != nil && !missing {
 		return Check{}, err
 	}
-	if exitCode != 0 || strings.TrimSpace(stdout) == "" {
+	if missing || exitCode != 0 || strings.TrimSpace(stdout) == "" {
 		hint := "sudo apt update && sudo apt install build-essential"
 		if runtime.GOOS == "darwin" {
 			hint = "xcode-select --install"

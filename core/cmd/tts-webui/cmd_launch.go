@@ -40,7 +40,11 @@ func runLaunch(ctx context.Context, args []string) error {
 		return fmt.Errorf("creating server: %w", err)
 	}
 
-	l := launcher.New(root)
+	var opts []launcher.Option
+	if *noBrowser {
+		opts = append(opts, launcher.WithNoBrowser())
+	}
+	l := launcher.New(root, opts...)
 	l.CleanupOrphans()
 	l.Register(srv)
 

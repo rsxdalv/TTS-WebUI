@@ -1,6 +1,7 @@
 package supervise
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -73,6 +74,26 @@ type Config struct {
 	// SkipGPUCheck disables the "installer_scripts/.gpu must exist and parse"
 	// gate that the legacy supervisor enforced before any start.
 	SkipGPUCheck bool
+
+	// SkipReactTab opens only the public URL, not the React one, when
+	// OpenBrowser is on. The launcher sets it: the React UI is not a separate
+	// page for the user.
+	SkipReactTab bool
+
+	// Prepare runs at the start of every Start, after the GPU check and before
+	// anything is started (switch checks, orphan sweep, React recover and
+	// build). Its error aborts the Start. nil = the zero Plan.
+	Prepare func(ctx context.Context) (Plan, error)
+	// StartGradioSide starts the Go side of the gradio child. prefix is the
+	// command prefix (`micromamba -p <env> run`), baseEnv the environment of
+	// every child. nil = none.
+	StartGradioSide func(prefix, baseEnv []string) (*GradioSide, error)
+	// OnStarted is called with the child processes after a successful Start
+	// (the launcher records them for the orphan sweep).
+	OnStarted func([]ProcRef)
+	// OnStopped is called after every Stop, even when nothing ran, and after
+	// a failed Start has stopped what it started.
+	OnStopped func()
 
 	// CommandPrefix replaces `micromamba -p installer_files/env run`. The first
 	// element is the executable; the rest precede `python server.py ...`,

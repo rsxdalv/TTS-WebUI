@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/rsxdalv/TTS-WebUI/core/installer_scripts"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/preflight"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
@@ -104,6 +105,10 @@ func (l *Launcher) handleMamba() http.Handler {
 		if existing := l.getProc("mamba"); existing != nil && existing.Running() {
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"started":false,"already_running":true}`))
+			return
+		}
+
+		if l.serveGoStep(w, "mamba", installer_scripts.InitMamba) {
 			return
 		}
 
@@ -208,6 +213,10 @@ func (l *Launcher) handleAppDiagnostic() http.Handler {
 		if existing := l.getProc("diagnostic"); existing != nil && existing.Running() {
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"started":false,"already_running":true}`))
+			return
+		}
+
+		if l.serveGoStep(w, "diagnostic", installer_scripts.Diagnostic) {
 			return
 		}
 

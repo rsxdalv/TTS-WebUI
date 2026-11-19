@@ -127,9 +127,11 @@ Code: `core/internal/switches`. All switches are environment variables read by t
 |---|---|---|
 | `TTS_GO_PROXY` | unset, empty or `0` = off, `1` = on | Go listens on port 3000 in front of Next |
 | `TTS_GO_ROUTES` | comma list of claim names from section 5, or `all` | Those routes are answered by Go. Needs `TTS_GO_PROXY=1` |
-| `TTS_GO_STEPS` | comma list of `mamba`, `install`, `update`, `diagnostic`, or `all` | Those launcher steps run the Go port instead of the script (task I7) |
+| `TTS_GO_STEPS` | unset or empty = every step runs its Go port; `none` = every step runs the original script; or a comma list of `mamba`, `install`, `update`, `diagnostic`, or `all` | Which launcher steps run the Go port instead of the script. **On by default since D19 (task C1).** `none` cannot be combined with names |
 | `TTS_GO_PROXY_LISTEN` | unset, empty or `loopback` = loopback only, `lan` = every interface | Where the proxy listens (section 6, D20). `lan` needs `TTS_GO_PROXY=1` |
 | `TTS_GO_PROXY_ALLOWED_HOSTS` | comma list of host names or IP addresses, without ports | Extra hosts the Host and Origin guards accept in LAN mode, such as a machine name. Needs `TTS_GO_PROXY_LISTEN=lan` |
+
+For `TTS_GO_STEPS`, the launcher logs one line at the start of each of those steps saying whether the Go port or the original script ran.
 
 An invalid value stops the app from starting with a clear error, so a typo can never silently run the other code path.
 

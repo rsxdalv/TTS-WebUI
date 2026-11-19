@@ -86,8 +86,46 @@ func runStep(t *testing.T, srv *server.Server, token, post, stream string) (stat
 	return resp.StatusCode, string(b), string(b2)
 }
 
-func TestGoSteps_OffByDefaultRunsTheScript(t *testing.T) {
+func unsetSteps(t *testing.T) {
+	t.Helper()
 	t.Setenv("TTS_GO_STEPS", "")
+	os.Unsetenv("TTS_GO_STEPS")
+}
+
+// With TTS_GO_STEPS unset every step runs its Go port (decision D19).
+func TestGoSteps_OnByDefault(t *testing.T) {
+	unsetSteps(t)
+	root, srv, token := stepInstall(t)
+	_, _, out := runStep(t, srv, token, "/api/steps/mamba", "/api/steps/mamba/stream")
+	if strings.Contains(out, "LEGACY-MAMBA") || !strings.Contains(out, "running the Go port") ||
+		!strings.Contains(out, "already installed in "+filepath.Join(root.InstallerFiles(), "env")+", skipping installation") {
+		t.Fatalf("default must run the Go port:\n%s", out)
+	}
+	_, _, out = runStep(t, srv, token, "/api/app/diagnostic", "/api/app/diagnostic/stream")
+	if strings.Contains(out, "LEGACY-DIAGNOSTIC") || !strings.Contains(out, "running the Go port") {
+		t.Fatalf("diagnostic default must run the Go port:\n%s", out)
+	}
+}
+
+// TTS_GO_STEPS=none runs the original scripts for every step.
+func TestGoSteps_NoneRunsTheScript(t *testing.T) {
+	t.Setenv("TTS_GO_STEPS", "none")
+	_, srv, token := stepInstall(t)
+	status, started, out := runStep(t, srv, token, "/api/steps/mamba", "/api/steps/mamba/stream")
+	if status != 200 || !strings.Contains(started, `"started":true`) {
+		t.Fatalf("status=%d started=%s", status, started)
+	}
+	if !strings.Contains(out, "LEGACY-MAMBA") || strings.Contains(out, "skipping installation") || !strings.Contains(out, "running the original script") {
+		t.Fatalf("expected the legacy script, got:\n%s", out)
+	}
+	_, _, out = runStep(t, srv, token, "/api/app/diagnostic", "/api/app/diagnostic/stream")
+	if !strings.Contains(out, "LEGACY-DIAGNOSTIC") {
+		t.Fatalf("diagnostic none path:\n%s", out)
+	}
+}
+
+func TestGoSteps_OffByDefaultRunsTheScript(t *testing.T) {
+	t.Setenv("TTS_GO_STEPS", "none")
 	_, srv, token := stepInstall(t)
 	status, started, out := runStep(t, srv, token, "/api/steps/mamba", "/api/steps/mamba/stream")
 	if status != 200 || !strings.Contains(started, `"started":true`) {
@@ -162,8 +200,12 @@ func TestGoSteps_InstallRunsInitAppPortOnlyWhenOn(t *testing.T) {
 		env     string
 		goPort  bool
 		comment string
-	}{{"", false, "off: micromamba run node init_app.js"}, {"install", true, "on: the Go port of init_app.js"}} {
-		t.Setenv("TTS_GO_STEPS", tc.env)
+	}{{"none", false, "none: micromamba run node init_app.js"}, {"install", true, "install: the Go port of init_app.js"}, {"unset", true, "unset: the Go port is the default"}} {
+		if tc.env == "unset" {
+			unsetSteps(t)
+		} else {
+			t.Setenv("TTS_GO_STEPS", tc.env)
+		}
 		root, srv, token := stepInstall(t)
 		os.WriteFile(filepath.Join(root.InstallerScripts(), ".gpu"), []byte("NVIDIA GPU"), 0o666)
 		status, started, out := runStep(t, srv, token, "/api/steps/install", "/api/steps/install/stream")

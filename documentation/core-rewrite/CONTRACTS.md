@@ -367,7 +367,7 @@ Port these as they are unless a rule below says otherwise. Record any you meet i
 
 ### Who builds it (C2)
 
-- The Go install and update steps (`TTS_GO_STEPS` install, update) run `cd react-ui && npm run build:static` where the original runs `npm run build`. They build only when the original builds: on install, and on update when `git pull` brings a commit that differs from `.git_version`.
+- The Go install and update steps (`TTS_GO_STEPS` install, update) run `cd react-ui && npm run build:static` where the original runs `npm run build`. A tree whose `react-ui/package.json` has no `build:static` script (main, and so every fresh Download, until S1 reaches main) gets `npm run build` instead, after the log line "react-ui has no build:static script (this tree predates the static export), so building the server build". They build only when the original builds: on install, and on update when `git pull` brings a commit that differs from `.git_version`.
 - The legacy JS installer (`init_app.js`) is unchanged and still builds the server build only.
 - Because the export sets `.next` aside, the launcher answers `POST /api/steps/install` and `POST /api/steps/update` with `409` and "stop the app before running <step>" while any app process runs, when that step runs its Go port. The script path has no such check.
 

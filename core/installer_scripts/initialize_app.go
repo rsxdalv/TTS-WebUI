@@ -30,12 +30,14 @@ const (
 
 	extensionsIndex = "https://tts-webui.github.io/extensions-index/"
 
-	// reactUIBuild builds the UI. The original runs "npm run build", the Next
+	// reactUIBuild builds the UI. The original runs reactUIServerBuild, the Next
 	// server build. The Go install and update steps build the static export
-	// instead, which Go serves (CUTOVER.md item 4, CONTRACTS.md section 10). The
-	// export sets react-ui/.next aside while it runs, so Next must not be running;
-	// the launcher refuses these steps while the app runs.
-	reactUIBuild = "cd react-ui && npm run build:static"
+	// instead, which Go serves (CUTOVER.md item 4, CONTRACTS.md section 10), when
+	// the tree has the script; a tree from before S1 (main today) gets the server
+	// build as before. The export sets react-ui/.next aside while it runs, so Next
+	// must not be running; the launcher refuses these steps while the app runs.
+	reactUIBuild       = "cd react-ui && npm run build:static"
+	reactUIServerBuild = "cd react-ui && npm run build"
 )
 
 var rocmVersionTag = map[string]string{
@@ -448,7 +450,12 @@ func (p *jsProcess) setupReactUI(ctx context.Context) error {
 		}
 		p.displayMessage("Successfully installed node_modules")
 		p.displayMessage("Building react-ui...")
-		if err := p.sh(ctx, reactUIBuild); err != nil {
+		build := reactUIBuild
+		if !p.hasStaticExportScript() {
+			p.displayMessage("react-ui has no build:static script (this tree predates the static export), so building the server build")
+			build = reactUIServerBuild
+		}
+		if err := p.sh(ctx, build); err != nil {
 			return err
 		}
 		p.displayMessage("Successfully built react-ui")
@@ -502,4 +509,24 @@ func jsString(v any, present bool) string {
 	default:
 		return "[object Object]"
 	}
+}
+
+// hasStaticExportScript reports whether react-ui/package.json defines the
+// build:static script that S1 added. A tree without it (any main checkout
+// before S1 lands there) can only build the server build. An unreadable
+// package.json counts as no script: npm run build then fails as the original
+// would.
+func (p *jsProcess) hasStaticExportScript() bool {
+	raw, err := os.ReadFile(filepath.Join(p.s.Root, "react-ui", "package.json"))
+	if err != nil {
+		return false
+	}
+	var pkg struct {
+		Scripts map[string]any `json:"scripts"`
+	}
+	if json.Unmarshal(raw, &pkg) != nil {
+		return false
+	}
+	_, ok := pkg.Scripts["build:static"]
+	return ok
 }

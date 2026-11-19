@@ -1,6 +1,6 @@
 package react_ui_backend
 
-// LAN mode (TTS_GO_PROXY_LISTEN=lan, D18): the proxy listens on every
+// LAN mode (TTS_GO_PROXY_LISTEN=lan, D20): the proxy listens on every
 // interface so other devices can open the UI. The Host and Origin guards then
 // also accept this machine's own interface addresses and the allowlisted host
 // names; every other host is still refused, which keeps DNS rebinding out.

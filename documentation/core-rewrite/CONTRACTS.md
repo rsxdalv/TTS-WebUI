@@ -128,7 +128,7 @@ Code: `core/internal/switches`. All switches are environment variables read by t
 | `TTS_GO_PROXY` | unset, empty or `0` = off, `1` = on | Go listens on port 3000 in front of Next |
 | `TTS_GO_ROUTES` | comma list of claim names from section 5, or `all` | Those routes are answered by Go. Needs `TTS_GO_PROXY=1` |
 | `TTS_GO_STEPS` | comma list of `mamba`, `install`, `update`, `diagnostic`, or `all` | Those launcher steps run the Go port instead of the script (task I7) |
-| `TTS_GO_PROXY_LISTEN` | unset, empty or `loopback` = loopback only, `lan` = every interface | Where the proxy listens (section 6, D18). `lan` needs `TTS_GO_PROXY=1` |
+| `TTS_GO_PROXY_LISTEN` | unset, empty or `loopback` = loopback only, `lan` = every interface | Where the proxy listens (section 6, D20). `lan` needs `TTS_GO_PROXY=1` |
 | `TTS_GO_PROXY_ALLOWED_HOSTS` | comma list of host names or IP addresses, without ports | Extra hosts the Host and Origin guards accept in LAN mode, such as a machine name. Needs `TTS_GO_PROXY_LISTEN=lan` |
 
 An invalid value stops the app from starting with a clear error, so a typo can never silently run the other code path.
@@ -204,7 +204,7 @@ that leaves its allowed directory, and must have a test for it.
 **Today**, `next start -p 3000` has no `-H`, so Next binds all interfaces (`next` 16.2.1 CLI help: "default: 0.0.0.0").
 It has no token, Host check or Origin check. This stays true whenever the proxy is off.
 
-**With the proxy on**, port 3000 follows D9 except for the token, as recorded in D17 and made final in D18:
+**With the proxy on**, port 3000 follows D9 except for the token, as recorded in D17 and made final in D20:
 
 | Rule | Policy |
 |---|---|
@@ -215,7 +215,7 @@ It has no token, Host check or Origin check. This stays true whenever the proxy 
 | Token | None. Pages are served by Next and have no way to receive the launcher's token |
 | Launcher API | Never exposed on port 3000. Port 7700 keeps its token. A claim must not start processes or change the install |
 
-**LAN mode** (`TTS_GO_PROXY_LISTEN=lan`, opt-in, D18) changes only these rules:
+**LAN mode** (`TTS_GO_PROXY_LISTEN=lan`, opt-in, D20) changes only these rules:
 
 | Rule | Policy in LAN mode |
 |---|---|

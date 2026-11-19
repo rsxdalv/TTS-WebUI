@@ -17,12 +17,17 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
 )
 
 // maxLine caps one log line. Longer output is split, never dropped or blocked on.
 const maxLine = 1 << 20
+
+// drainTimeout bounds how long a finished Name command waits for output that is
+// still in its pipes.
+const drainTimeout = 2 * time.Second
 
 // StderrPrefix marks stderr lines in the log, matching procs.Proc.
 const StderrPrefix = "[stderr] "
@@ -34,8 +39,11 @@ type LogSink func(line string)
 //
 // Set exactly one of Name or Shell:
 //   - Name and Args run the program directly, like spawn in js/shell.js ($, $$).
+//     The command is finished when the process exits, even if a background
+//     process it left behind still holds its output open.
 //   - Shell runs a command line through the platform shell, like exec in
-//     js/shell.js ($sh, execCapture): cmd.exe /d /s /c on Windows, /bin/sh -c elsewhere.
+//     js/shell.js ($sh, execCapture): cmd.exe /d /s /c on Windows, /bin/sh -c
+//     elsewhere. The command is finished when its output closes.
 type Command struct {
 	Name  string
 	Args  []string
@@ -92,6 +100,15 @@ type Step struct {
 	// nil when nobody can answer; a port that needs an answer then logs why and
 	// exits 1.
 	Prompt func(ctx context.Context, label string, choices []string) (int, error)
+}
+
+// ResetActivated forgets the captured conda environment. Call it after a command
+// that changes the packages installed in installer_files/env. It does nothing
+// for a Runner that keeps no such environment.
+func (s *Step) ResetActivated() {
+	if r, ok := s.Run.(interface{ ResetActivated() }); ok {
+		r.ResetActivated()
+	}
 }
 
 // NewStep returns a Step that runs real processes for the install at root.
@@ -154,20 +171,54 @@ func (r *ExecRunner) Run(ctx context.Context, c Command) (Result, error) {
 	if c.Shell != "" {
 		setShellLine(cmd, c.Shell)
 	}
-	stdout, err := cmd.StdoutPipe()
+	stdoutR, stdoutW, err := os.Pipe()
 	if err != nil {
 		return Result{ExitCode: -1}, err
 	}
-	stderr, err := cmd.StderrPipe()
+	stderrR, stderrW, err := os.Pipe()
 	if err != nil {
+		_ = stdoutR.Close()
+		_ = stdoutW.Close()
 		return Result{ExitCode: -1}, err
 	}
-	if err := cmd.Start(); err != nil {
+	cmd.Stdout = stdoutW
+	cmd.Stderr = stderrW
+	err = cmd.Start()
+	_ = stdoutW.Close()
+	_ = stderrW.Close()
+	if err != nil {
+		_ = stdoutR.Close()
+		_ = stderrR.Close()
 		return Result{ExitCode: -1}, fmt.Errorf("starting %s: %w", cmd.Path, err)
 	}
+
+	out := &output{log: r.Log}
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		defer stdoutR.Close()
+		if c.Capture {
+			_, _ = io.Copy(out, stdoutR)
+			return
+		}
+		readLines(stdoutR, "", out.line)
+	}()
+	go func() {
+		defer wg.Done()
+		defer stderrR.Close()
+		readLines(stderrR, StderrPrefix, out.line)
+	}()
+	readersDone := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(readersDone)
+	}()
+
 	if err := tree.Assign(cmd); err != nil {
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
+		out.finish()
 		return Result{ExitCode: -1}, fmt.Errorf("assigning process tree: %w", err)
 	}
 
@@ -182,28 +233,26 @@ func (r *ExecRunner) Run(ctx context.Context, c Command) (Result, error) {
 		}
 	}()
 
-	var captured bytes.Buffer
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		if c.Capture {
-			_, _ = io.Copy(&captured, stdout)
-			return
+	var waitErr error
+	if c.Shell != "" {
+		// Like exec's close event: wait for the output to end.
+		select {
+		case <-readersDone:
+		case <-ctx.Done():
+			drain(readersDone)
 		}
-		readLines(stdout, "", r.Log)
-	}()
-	go func() {
-		defer wg.Done()
-		readLines(stderr, StderrPrefix, r.Log)
-	}()
-	wg.Wait()
-	waitErr := cmd.Wait()
+		waitErr = cmd.Wait()
+	} else {
+		// Like spawn's exit event: the process ending is what counts.
+		waitErr = cmd.Wait()
+		drain(readersDone)
+	}
 	close(finished)
 	<-watcherDone
+	stdout := out.finish()
 	tree.Release()
 
-	res := Result{ExitCode: cmd.ProcessState.ExitCode(), Stdout: captured.String()}
+	res := Result{ExitCode: cmd.ProcessState.ExitCode(), Stdout: stdout}
 	if ctx.Err() != nil {
 		return res, ctx.Err()
 	}
@@ -212,6 +261,50 @@ func (r *ExecRunner) Run(ctx context.Context, c Command) (Result, error) {
 		return res, waitErr
 	}
 	return res, nil
+}
+
+// drain waits a bounded time for the output readers to finish.
+func drain(readersDone <-chan struct{}) {
+	select {
+	case <-readersDone:
+	case <-time.After(drainTimeout):
+	}
+}
+
+// output receives a command's output until the command counts as finished. A
+// background process may keep writing after that. Its output is still read, so
+// it never blocks on a full pipe, but it is dropped.
+type output struct {
+	mu       sync.Mutex
+	closed   bool
+	log      LogSink
+	captured bytes.Buffer
+}
+
+func (o *output) line(s string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if !o.closed {
+		o.log(s)
+	}
+}
+
+// Write collects captured stdout.
+func (o *output) Write(p []byte) (int, error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if !o.closed {
+		o.captured.Write(p)
+	}
+	return len(p), nil
+}
+
+// finish stops collecting and returns the captured stdout.
+func (o *output) finish() string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.closed = true
+	return o.captured.String()
 }
 
 // buildCmd resolves the program against env's PATH, not the launcher's.
@@ -347,6 +440,8 @@ func isExecutable(path string) bool {
 func readLines(r io.Reader, prefix string, log LogSink) {
 	br := bufio.NewReaderSize(r, 64*1024)
 	var line []byte
+	afterCR := false
+	atCap := false
 	flush := func() {
 		log(prefix + string(line))
 		line = line[:0]
@@ -359,19 +454,27 @@ func readLines(r io.Reader, prefix string, log LogSink) {
 			}
 			return
 		}
+		// The \r of a \r\n already ended this line.
+		if afterCR && b == '\n' {
+			afterCR = false
+			continue
+		}
+		afterCR = false
 		switch b {
-		case '\n':
-			flush()
-		case '\r':
-			// \r\n is one line end; a lone \r ends a progress update.
-			if next, err := br.Peek(1); err == nil && next[0] == '\n' {
-				_, _ = br.ReadByte()
+		case '\n', '\r':
+			// A line split at the cap has already been delivered in full.
+			if !atCap {
+				// Flush now: a progress bar may print nothing more for a long time.
+				flush()
 			}
-			flush()
+			atCap = false
+			afterCR = b == '\r'
 		default:
+			atCap = false
 			line = append(line, b)
 			if len(line) >= maxLine {
 				flush()
+				atCap = true
 			}
 		}
 	}

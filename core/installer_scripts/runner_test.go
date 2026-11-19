@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -28,6 +30,30 @@ func TestMain(m *testing.M) {
 		// One line far larger than a pipe buffer and bufio.Scanner's limit.
 		fmt.Println(strings.Repeat("x", 3*maxLine))
 		fmt.Print("10%\r50%\r100%\r\ndone\n")
+		os.Exit(0)
+	case "cr":
+		fmt.Print("50%\r")
+		time.Sleep(3 * time.Second)
+		fmt.Print("done\n")
+		os.Exit(0)
+	case "spawn":
+		// Leaves a background process holding stdout and stderr, then exits.
+		exe, err := os.Executable()
+		if err != nil {
+			os.Exit(98)
+		}
+		child := exec.Command(exe)
+		child.Env = append(os.Environ(), "RUNNER_TEST_CHILD=hold")
+		child.Stdout = os.Stdout
+		child.Stderr = os.Stderr
+		if err := child.Start(); err != nil {
+			os.Exit(98)
+		}
+		fmt.Println("parent done")
+		os.Exit(0)
+	case "hold":
+		ms, _ := strconv.Atoi(os.Getenv("RUNNER_TEST_HOLD_MS"))
+		time.Sleep(time.Duration(ms) * time.Millisecond)
 		os.Exit(0)
 	case "sleep":
 		fmt.Println("started")
@@ -146,6 +172,9 @@ func TestLongLinesAndProgressDoNotBlock(t *testing.T) {
 	}
 	total := 0
 	for _, l := range lines {
+		if l == "" {
+			t.Fatal("a line end produced an extra empty line")
+		}
 		if strings.HasPrefix(l, "x") {
 			if len(l) > maxLine {
 				t.Fatalf("line of %d bytes exceeds the cap", len(l))
@@ -157,6 +186,79 @@ func TestLongLinesAndProgressDoNotBlock(t *testing.T) {
 		t.Fatalf("got %d bytes of the long line, want %d", total, 3*maxLine)
 	}
 }
+
+func TestLoneCarriageReturnFlushesAtOnce(t *testing.T) {
+	var mu sync.Mutex
+	seen := map[string]time.Time{}
+	r := &ExecRunner{Root: t.TempDir(), Log: func(line string) {
+		mu.Lock()
+		defer mu.Unlock()
+		seen[line] = time.Now()
+	}}
+	if _, err := r.Run(context.Background(), Command{Name: self(t), Env: []string{"RUNNER_TEST_CHILD=cr"}}); err != nil {
+		t.Fatal(err)
+	}
+	progress, ok1 := seen["50%"]
+	done, ok2 := seen["done"]
+	if !ok1 || !ok2 {
+		t.Fatalf("missing lines: %v", seen)
+	}
+	if gap := done.Sub(progress); gap < 2*time.Second {
+		t.Fatalf("50%% arrived only %v before done; it was held back", gap)
+	}
+}
+
+func TestNameFinishesWhenTheProcessExits(t *testing.T) {
+	var log collector
+	r := &ExecRunner{Root: t.TempDir(), Log: log.add}
+	begin := time.Now()
+	res, err := r.Run(context.Background(), Command{
+		Name: self(t),
+		Env:  []string{"RUNNER_TEST_CHILD=spawn", "RUNNER_TEST_HOLD_MS=12000"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if elapsed := time.Since(begin); elapsed > 8*time.Second {
+		t.Fatalf("Run took %v: it waited for the background process", elapsed)
+	}
+	if res.ExitCode != 0 || !contains(log.all(), "parent done") {
+		t.Fatalf("exit %d, log %q", res.ExitCode, log.all())
+	}
+}
+
+func TestShellWaitsForOutputToClose(t *testing.T) {
+	var log collector
+	r := &ExecRunner{Root: t.TempDir(), Log: log.add}
+	begin := time.Now()
+	res, err := r.Run(context.Background(), Command{
+		Shell: `"` + self(t) + `"`,
+		Env:   []string{"RUNNER_TEST_CHILD=spawn", "RUNNER_TEST_HOLD_MS=3000"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if elapsed := time.Since(begin); elapsed < 2500*time.Millisecond {
+		t.Fatalf("Run took %v: it did not wait for the output to close", elapsed)
+	}
+	if res.ExitCode != 0 || !contains(log.all(), "parent done") {
+		t.Fatalf("exit %d, log %q", res.ExitCode, log.all())
+	}
+}
+
+func TestStepResetActivatedAcceptsAnyRunner(t *testing.T) {
+	(&Step{Run: fakeRunner{}}).ResetActivated()
+
+	r := &ExecRunner{activated: []string{"A=1"}}
+	(&Step{Run: r}).ResetActivated()
+	if r.activated != nil {
+		t.Fatal("the environment was kept")
+	}
+}
+
+type fakeRunner struct{}
+
+func (fakeRunner) Run(context.Context, Command) (Result, error) { return Result{}, nil }
 
 func TestShellKeepsInnerQuotes(t *testing.T) {
 	var log collector

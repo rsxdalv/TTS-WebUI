@@ -30,6 +30,8 @@ type Case struct {
 	Path   string      `json:"path"`   // raw, sent as written (keeps "..", "%2e%2e", "%2f")
 	Header http.Header `json:"header,omitempty"`
 	Body   []byte      `json:"body,omitempty"`
+	// Compare names more response headers to compare, such as ETag.
+	Compare []string `json:"compare,omitempty"`
 	// Ignore allows single headers to differ. Each rule needs a reason, so a
 	// loose test case is visible in review.
 	Ignore []IgnoreRule `json:"ignore,omitempty"`
@@ -181,7 +183,7 @@ func Diff(c Case, n, g Response) []string {
 		}
 		ignored[http.CanonicalHeaderKey(r.Header)] = true
 	}
-	for _, name := range KeyHeaders {
+	for _, name := range append(append([]string{}, KeyHeaders...), canonical(c.Compare)...) {
 		if ignored[name] {
 			continue
 		}
@@ -230,4 +232,12 @@ func Report(w io.Writer, results []Result) int {
 	}
 	fmt.Fprintf(w, "%d cases, %d failed\n", len(results), failed)
 	return failed
+}
+
+func canonical(names []string) []string {
+	out := make([]string, len(names))
+	for i, n := range names {
+		out[i] = http.CanonicalHeaderKey(n)
+	}
+	return out
 }

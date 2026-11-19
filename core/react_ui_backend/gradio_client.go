@@ -63,8 +63,8 @@ type gradioClient struct {
 	root        string // config.root, such as http://127.0.0.1:7770
 	apiPrefix   string
 	cookies     string
-	config      *jsObject
-	apiInfo     *jsObject
+	config      *gradioObject
+	apiInfo     *gradioObject
 	apiMap      map[string]float64
 	sessionHash string
 	stopBeat    context.CancelFunc
@@ -103,7 +103,7 @@ func connectGradio(ctx context.Context, backend string, auth []string) (*gradioC
 	}
 	deps, _ := c.config.get("dependencies").([]any)
 	for _, d := range deps {
-		dep, _ := d.(*jsObject)
+		dep, _ := d.(*gradioObject)
 		if name, ok := dep.get("api_name").(string); ok && name != "" {
 			if id, ok := dep.get("id").(float64); ok {
 				c.apiMap[name] = id
@@ -233,14 +233,14 @@ func (c *gradioClient) resolveConfig(ctx context.Context, base string) error {
 	if err != nil {
 		return err
 	}
-	config, ok := v.(*jsObject)
+	config, ok := v.(*gradioObject)
 	if !ok {
 		return errors.New(configErrorMsg)
 	}
 	config.set("root", base)
 	if deps, ok := config.get("dependencies").([]any); ok {
 		for i, d := range deps {
-			if dep, ok := d.(*jsObject); ok && dep.get("id") == undefined {
+			if dep, ok := d.(*gradioObject); ok && dep.get("id") == undefined {
 				dep.set("id", float64(i))
 			}
 		}
@@ -281,7 +281,7 @@ func (c *gradioClient) resolveHeartbeat(ctx context.Context) {
 }
 
 // viewAPI fetches /info and applies transform_api_info.
-func (c *gradioClient) viewAPI(ctx context.Context) (*jsObject, error) {
+func (c *gradioClient) viewAPI(ctx context.Context) (*gradioObject, error) {
 	fail := func(msg string) error { return errors.New("Could not get API info. " + msg) }
 	target, err := joinURLs(c.root, c.apiPrefix, "info")
 	if err != nil {
@@ -308,15 +308,15 @@ func (c *gradioClient) viewAPI(ctx context.Context) (*jsObject, error) {
 	if err != nil {
 		return nil, fail(err.Error())
 	}
-	info, ok := v.(*jsObject)
+	info, ok := v.(*gradioObject)
 	if !ok {
 		return nil, fail("bad response")
 	}
-	if api, ok := info.get("api").(*jsObject); ok && info.has("api") {
+	if api, ok := info.get("api").(*gradioObject); ok && info.has("api") {
 		info = api
 	}
-	named, _ := info.get("named_endpoints").(*jsObject)
-	unnamed, _ := info.get("unnamed_endpoints").(*jsObject)
+	named, _ := info.get("named_endpoints").(*gradioObject)
+	unnamed, _ := info.get("unnamed_endpoints").(*gradioObject)
 	if named == nil || unnamed == nil {
 		return nil, fail("Cannot read properties of undefined")
 	}
@@ -328,27 +328,27 @@ func (c *gradioClient) viewAPI(ctx context.Context) (*jsObject, error) {
 
 // transformAPIInfo inserts hidden state parameters where the endpoint's
 // dependency has more inputs than the API lists, like transform_api_info.
-func (c *gradioClient) transformAPIInfo(info *jsObject) *jsObject {
+func (c *gradioClient) transformAPIInfo(info *gradioObject) *gradioObject {
 	out := obj("named_endpoints", newObject(), "unnamed_endpoints", newObject())
 	deps, _ := c.config.get("dependencies").([]any)
 	for _, category := range info.ownKeys() {
 		if category != "named_endpoints" && category != "unnamed_endpoints" {
 			continue
 		}
-		src, _ := info.get(category).(*jsObject)
+		src, _ := info.get(category).(*gradioObject)
 		dst := newObject()
 		out.set(category, dst)
 		if src == nil {
 			continue
 		}
 		for _, endpoint := range src.ownKeys() {
-			entry, _ := src.get(endpoint).(*jsObject)
+			entry, _ := src.get(endpoint).(*gradioObject)
 			params, _ := entry.get("parameters").([]any)
 			params = append([]any(nil), params...)
 			stripped := strings.Replace(endpoint, "/", "", 1)
 
 			index := -1.0
-			if dep := findDep(deps, func(d *jsObject) bool {
+			if dep := findDep(deps, func(d *gradioObject) bool {
 				return d.get("api_name") == endpoint || d.get("api_name") == stripped
 			}); dep != nil && isTruthy(dep.get("id")) {
 				index, _ = dep.get("id").(float64)
@@ -356,7 +356,7 @@ func (c *gradioClient) transformAPIInfo(info *jsObject) *jsObject {
 				index = id
 			}
 			if index != -1 {
-				dep := findDep(deps, func(d *jsObject) bool { return d.get("id") == index })
+				dep := findDep(deps, func(d *gradioObject) bool { return d.get("id") == index })
 				inputs, _ := dep.get("inputs").([]any)
 				if dep != nil && len(inputs) != len(params) {
 					for i, input := range inputs {
@@ -377,9 +377,9 @@ func (c *gradioClient) transformAPIInfo(info *jsObject) *jsObject {
 	return out
 }
 
-func findDep(deps []any, match func(*jsObject) bool) *jsObject {
+func findDep(deps []any, match func(*gradioObject) bool) *gradioObject {
 	for _, d := range deps {
-		if dep, ok := d.(*jsObject); ok && match(dep) {
+		if dep, ok := d.(*gradioObject); ok && match(dep) {
 			return dep
 		}
 	}
@@ -389,7 +389,7 @@ func findDep(deps []any, match func(*jsObject) bool) *jsObject {
 func (c *gradioClient) componentType(id any) string {
 	comps, _ := c.config.get("components").([]any)
 	for _, comp := range comps {
-		if o, ok := comp.(*jsObject); ok && o.get("id") == id {
+		if o, ok := comp.(*gradioObject); ok && o.get("id") == id {
 			t, _ := o.get("type").(string)
 			return t
 		}
@@ -403,7 +403,7 @@ func (c *gradioClient) componentType(id any) string {
 type gradioEvent struct {
 	kind  string // "data" or "status"
 	stage string // for status events
-	msg   *jsObject
+	msg   *gradioObject
 }
 
 // submit runs one call. publish receives each event and returns true to stop
@@ -416,10 +416,10 @@ func (c *gradioClient) submit(ctx context.Context, endpoint string, data any, pu
 	if !ok {
 		return false, errSubmitThrow{errors.New("There is no endpoint matching that name of fn_index matching that number.")}
 	}
-	named, _ := c.apiInfo.get("named_endpoints").(*jsObject)
-	endpointInfo, _ := named.get(strings.TrimSpace(endpoint)).(*jsObject)
+	named, _ := c.apiInfo.get("named_endpoints").(*gradioObject)
+	endpointInfo, _ := named.get(strings.TrimSpace(endpoint)).(*gradioObject)
 	deps, _ := c.config.get("dependencies").([]any)
-	dependency := findDep(deps, func(d *jsObject) bool { return d.get("id") == fnIndex })
+	dependency := findDep(deps, func(d *gradioObject) bool { return d.get("id") == fnIndex })
 
 	resolved, err := mapDataToParams(data, endpointInfo)
 	if err != nil {
@@ -490,12 +490,12 @@ func (c *gradioClient) submit(ctx context.Context, endpoint string, data any, pu
 	}
 	eventID := optProp(response, "event_id")
 
-	var complete *jsObject
+	var complete *gradioObject
 	var pendingDiff []any
 	connection, _ := dependency.get("connection").(string)
 
 	// handle is the per-event callback. It returns true when close() runs.
-	handle := func(raw *jsObject) (closedNow bool) {
+	handle := func(raw *gradioObject) (closedNow bool) {
 		defer func() {
 			if r := recover(); r != nil {
 				fire(statusEvent("type", "status", "stage", "error", "message", "An Unexpected Error Occurred!", "queue", true, "endpoint", endpoint, "fn_index", fnIndex, "time", jsNow()))
@@ -557,7 +557,7 @@ func (c *gradioClient) submit(ctx context.Context, endpoint string, data any, pu
 		return false
 	}
 
-	streamErr := c.openStream(ctx, func(raw *jsObject) bool {
+	streamErr := c.openStream(ctx, func(raw *gradioObject) bool {
 		if raw.get("msg") == "close_stream" {
 			return true
 		}
@@ -578,13 +578,13 @@ func (c *gradioClient) submit(ctx context.Context, endpoint string, data any, pu
 	return closed, nil
 }
 
-func statusEventFrom(m *jsObject) gradioEvent {
+func statusEventFrom(m *gradioObject) gradioEvent {
 	stage, _ := m.get("stage").(string)
 	return gradioEvent{kind: "status", stage: stage, msg: m}
 }
 
 // spread copies src's keys into dst, like {...dst, ...src}.
-func spread(dst, src *jsObject) {
+func spread(dst, src *gradioObject) {
 	if src == nil {
 		return
 	}
@@ -603,7 +603,7 @@ func ensureSlash(endpoint string) string {
 // jsNow is new Date() as JSON.stringify prints it.
 func jsNow() string { return time.Now().UTC().Format("2006-01-02T15:04:05.000Z") }
 
-func (c *gradioClient) skipQueue(fnIndex float64, dependency *jsObject) bool {
+func (c *gradioClient) skipQueue(fnIndex float64, dependency *gradioObject) bool {
 	if q := dependency.get("queue"); q != nil && q != undefined {
 		return !isTruthy(q)
 	}
@@ -612,7 +612,7 @@ func (c *gradioClient) skipQueue(fnIndex float64, dependency *jsObject) bool {
 
 // postData is post_data: it returns the parsed body and the status, or a
 // broken-connection error with status 500.
-func (c *gradioClient) postData(ctx context.Context, target string, body *jsObject) (any, int) {
+func (c *gradioClient) postData(ctx context.Context, target string, body *gradioObject) (any, int) {
 	text, _ := stringifyJSON(body)
 	req, err := c.newRequest(ctx, http.MethodPost, target, strings.NewReader(text))
 	if err != nil {
@@ -637,7 +637,7 @@ func (c *gradioClient) postData(ctx context.Context, target string, body *jsObje
 
 // openStream reads the queue's server-sent events until onMessage returns true,
 // the server ends the stream, or ctx ends.
-func (c *gradioClient) openStream(ctx context.Context, onMessage func(*jsObject) bool) error {
+func (c *gradioClient) openStream(ctx context.Context, onMessage func(*gradioObject) bool) error {
 	target := c.root + c.apiPrefix + "/queue/data?" + url.Values{"session_hash": {c.sessionHash}}.Encode()
 	streamCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -670,7 +670,7 @@ func (c *gradioClient) openStream(ctx context.Context, onMessage func(*jsObject)
 			if data != nil {
 				v, perr := parseJSON([]byte(*data))
 				data = nil
-				if m, ok := v.(*jsObject); perr == nil && ok && onMessage(m) {
+				if m, ok := v.(*gradioObject); perr == nil && ok && onMessage(m) {
 					return nil
 				}
 			}
@@ -725,8 +725,8 @@ func splitSSEField(line string) (string, string, bool) {
 
 // handleMessage is handle_message. It returns the type, status, data and
 // original_msg.
-func handleMessage(d *jsObject) (string, *jsObject, *jsObject, any) {
-	output, _ := d.get("output").(*jsObject)
+func handleMessage(d *gradioObject) (string, *gradioObject, *gradioObject, any) {
+	output, _ := d.get("output").(*gradioObject)
 	success := isTruthy(d.get("success"))
 	switch d.get("msg") {
 	case "send_data":
@@ -751,7 +751,7 @@ func handleMessage(d *jsObject) (string, *jsObject, *jsObject, any) {
 	case "process_generating":
 		var message, changed any = nil, undefined
 		stage := "error"
-		var data *jsObject
+		var data *gradioObject
 		if success {
 			stage = "generating"
 			changed = output.get("changed_state_ids")
@@ -774,7 +774,7 @@ func handleMessage(d *jsObject) (string, *jsObject, *jsObject, any) {
 		}
 		var message, changed any = undefined, undefined
 		stage := "error"
-		var data *jsObject
+		var data *gradioObject
 		if success {
 			stage = "complete"
 			changed = output.get("changed_state_ids")
@@ -791,7 +791,7 @@ func handleMessage(d *jsObject) (string, *jsObject, *jsObject, any) {
 	return "none", obj("stage", "error", "queue", true), nil, undefined
 }
 
-func mustProp(o *jsObject, key string) any {
+func mustProp(o *gradioObject, key string) any {
 	if o == nil {
 		panic(typeError("Cannot read properties of undefined (reading '%s')", key))
 	}
@@ -799,7 +799,7 @@ func mustProp(o *jsObject, key string) any {
 }
 
 // mapDataToParams is map_data_to_params.
-func mapDataToParams(data any, endpointInfo *jsObject) ([]any, error) {
+func mapDataToParams(data any, endpointInfo *gradioObject) ([]any, error) {
 	var params []any
 	if endpointInfo != nil {
 		params, _ = endpointInfo.get("parameters").([]any)
@@ -816,7 +816,7 @@ func mapDataToParams(data any, endpointInfo *jsObject) ([]any, error) {
 	}
 	resolved := make([]any, len(params))
 	for i, p := range params {
-		param, _ := p.(*jsObject)
+		param, _ := p.(*gradioObject)
 		name, _ := param.get("parameter_name").(string)
 		switch {
 		case param.get("parameter_name") != nil && view.has(name):
@@ -830,7 +830,7 @@ func mapDataToParams(data any, endpointInfo *jsObject) ([]any, error) {
 	for _, key := range view.ownKeys() {
 		found := false
 		for _, p := range params {
-			if param, _ := p.(*jsObject); param.get("parameter_name") == key {
+			if param, _ := p.(*gradioObject); param.get("parameter_name") == key {
 				found = true
 				break
 			}
@@ -840,7 +840,7 @@ func mapDataToParams(data any, endpointInfo *jsObject) ([]any, error) {
 		}
 	}
 	for i, v := range resolved {
-		param, _ := params[i].(*jsObject)
+		param, _ := params[i].(*gradioObject)
 		if v == undefined && !isTruthy(param.get("parameter_has_default")) {
 			return nil, fmt.Errorf("No value provided for required parameter: %v", param.get("parameter_name"))
 		}
@@ -857,7 +857,7 @@ type blobRef struct {
 
 // handleBlob uploads every Blob and Buffer in data and replaces it, like
 // handle_blob. data is changed in place and returned.
-func (c *gradioClient) handleBlob(ctx context.Context, data []any, endpointInfo *jsObject) ([]any, error) {
+func (c *gradioClient) handleBlob(ctx context.Context, data []any, endpointInfo *gradioObject) ([]any, error) {
 	var refs []blobRef
 	var params []any
 	if endpointInfo != nil {
@@ -866,7 +866,7 @@ func (c *gradioClient) handleBlob(ctx context.Context, data []any, endpointInfo 
 	for i, v := range data {
 		kind := ""
 		if i < len(params) {
-			if p, ok := params[i].(*jsObject); ok {
+			if p, ok := params[i].(*gradioObject); ok {
 				kind, _ = p.get("component").(string)
 			}
 		}
@@ -908,7 +908,7 @@ func walkBlobs(v any, kind string, path []any) []blobRef {
 		return []blobRef{{path: path, data: t.data, kind: kind}}
 	case jsBuffer:
 		return []blobRef{{path: path, data: t.data, kind: kind}}
-	case *jsObject:
+	case *gradioObject:
 		var refs []blobRef
 		for _, k := range t.ownKeys() {
 			refs = append(refs, walkBlobs(t.vals[k], "", appendPath(path, k))...)
@@ -932,7 +932,7 @@ func updateObject(root any, path []any, value any) any {
 		i := path[0].(int)
 		t[i] = updateObject(t[i], path[1:], value)
 		return t
-	case *jsObject:
+	case *gradioObject:
 		k := path[0].(string)
 		t.set(k, updateObject(t.get(k), path[1:], value))
 		return t
@@ -978,7 +978,7 @@ func (c *gradioClient) uploadFiles(ctx context.Context, data []byte) (any, error
 
 // handlePayload is handle_payload. For outputs without null state, state
 // components are dropped.
-func (c *gradioClient) handlePayload(payload []any, dependency *jsObject, kind string, withNullState bool) []any {
+func (c *gradioClient) handlePayload(payload []any, dependency *gradioObject, kind string, withNullState bool) []any {
 	key := "outputs"
 	if kind == "input" {
 		key = "inputs"
@@ -1014,8 +1014,8 @@ func (c *gradioClient) handlePayload(payload []any, dependency *jsObject, kind s
 
 // handlePayloadChecked converts output data for an event. Data that is not an
 // array fails like resolved_payload[i] would.
-func (c *gradioClient) handlePayloadChecked(v any, err error) func(*jsObject) ([]any, error) {
-	return func(dependency *jsObject) ([]any, error) {
+func (c *gradioClient) handlePayloadChecked(v any, err error) func(*gradioObject) ([]any, error) {
+	return func(dependency *gradioObject) ([]any, error) {
 		if err != nil {
 			return nil, err
 		}
@@ -1028,7 +1028,7 @@ func (c *gradioClient) handlePayloadChecked(v any, err error) func(*jsObject) ([
 				return []any{}, nil
 			}
 			return nil, typeError("Cannot read properties of %s (reading '0')", jsTypeName(v))
-		case *jsObject:
+		case *gradioObject:
 			var arr []any
 			outputs, _ := dependency.get("outputs").([]any)
 			for i := range outputs {
@@ -1041,7 +1041,7 @@ func (c *gradioClient) handlePayloadChecked(v any, err error) func(*jsObject) ([
 }
 
 // applyDiffStream is apply_diff_stream for one event.
-func applyDiffStream(pending []any, data *jsObject) []any {
+func applyDiffStream(pending []any, data *gradioObject) []any {
 	values, _ := data.get("data").([]any)
 	if pending == nil {
 		return append([]any{}, values...)
@@ -1095,7 +1095,7 @@ func applyEdit(target any, path []any, action string, value any) any {
 	}
 	last := jsKey(path[len(path)-1])
 	switch t := current.(type) {
-	case *jsObject:
+	case *gradioObject:
 		switch action {
 		case "replace", "add":
 			t.set(last, value)

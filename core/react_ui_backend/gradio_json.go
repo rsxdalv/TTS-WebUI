@@ -20,7 +20,7 @@ import (
 )
 
 // A jsValue is one of: nil (null), undefined, bool, float64, string, []any,
-// *jsObject, jsBlob or jsBuffer.
+// *gradioObject, jsBlob or jsBuffer.
 type undefinedType struct{}
 
 // undefined is JavaScript's undefined: dropped from objects, null in arrays.
@@ -32,16 +32,16 @@ type jsBlob struct{ data []byte }
 // jsBuffer is a Node Buffer from fs.readFile.
 type jsBuffer struct{ data []byte }
 
-// jsObject is a plain object with insertion-ordered keys.
-type jsObject struct {
+// gradioObject is a plain object with insertion-ordered keys.
+type gradioObject struct {
 	keys []string
 	vals map[string]any
 }
 
-func newObject() *jsObject { return &jsObject{vals: map[string]any{}} }
+func newObject() *gradioObject { return &gradioObject{vals: map[string]any{}} }
 
 // get returns the value for key, or undefined.
-func (o *jsObject) get(key string) any {
+func (o *gradioObject) get(key string) any {
 	if o == nil {
 		return undefined
 	}
@@ -51,20 +51,20 @@ func (o *jsObject) get(key string) any {
 	return undefined
 }
 
-func (o *jsObject) has(key string) bool {
+func (o *gradioObject) has(key string) bool {
 	_, ok := o.vals[key]
 	return ok
 }
 
 // set assigns key, keeping the position of an existing key.
-func (o *jsObject) set(key string, v any) {
+func (o *gradioObject) set(key string, v any) {
 	if _, ok := o.vals[key]; !ok {
 		o.keys = append(o.keys, key)
 	}
 	o.vals[key] = v
 }
 
-func (o *jsObject) delete(key string) {
+func (o *gradioObject) delete(key string) {
 	if _, ok := o.vals[key]; !ok {
 		return
 	}
@@ -79,10 +79,10 @@ func (o *jsObject) delete(key string) {
 
 // ownKeys returns keys in JavaScript's order: array indexes ascending, then the
 // rest in insertion order.
-func (o *jsObject) ownKeys() []string {
+func (o *gradioObject) ownKeys() []string {
 	var indexes, rest []string
 	for _, k := range o.keys {
-		if isArrayIndex(k) {
+		if isGradioArrayIndex(k) {
 			indexes = append(indexes, k)
 		} else {
 			rest = append(rest, k)
@@ -97,7 +97,7 @@ func (o *jsObject) ownKeys() []string {
 }
 
 // clone copies the top level of o, like {...o}.
-func (o *jsObject) clone() *jsObject {
+func (o *gradioObject) clone() *gradioObject {
 	c := newObject()
 	for _, k := range o.ownKeys() {
 		c.set(k, o.vals[k])
@@ -105,7 +105,7 @@ func (o *jsObject) clone() *jsObject {
 	return c
 }
 
-func isArrayIndex(k string) bool {
+func isGradioArrayIndex(k string) bool {
 	if k == "" || (len(k) > 1 && k[0] == '0') {
 		return false
 	}
@@ -114,7 +114,7 @@ func isArrayIndex(k string) bool {
 }
 
 // obj builds an object from alternating keys and values.
-func obj(kv ...any) *jsObject {
+func obj(kv ...any) *gradioObject {
 	o := newObject()
 	for i := 0; i+1 < len(kv); i += 2 {
 		o.set(kv[i].(string), kv[i+1])
@@ -233,7 +233,7 @@ func writeJSON(b *strings.Builder, v any) bool {
 			}
 		}
 		b.WriteByte(']')
-	case *jsObject:
+	case *gradioObject:
 		b.WriteByte('{')
 		first := true
 		for _, k := range t.ownKeys() {
@@ -349,13 +349,13 @@ func prop(v any, key string) (any, error) {
 	switch t := v.(type) {
 	case nil, undefinedType:
 		return nil, typeError("Cannot read properties of %s (reading '%s')", jsTypeName(v), key)
-	case *jsObject:
+	case *gradioObject:
 		return t.get(key), nil
 	case []any:
 		if key == "length" {
 			return float64(len(t)), nil
 		}
-		if isArrayIndex(key) {
+		if isGradioArrayIndex(key) {
 			i, _ := strconv.Atoi(key)
 			if i < len(t) {
 				return t[i], nil
@@ -366,7 +366,7 @@ func prop(v any, key string) (any, error) {
 		if key == "length" {
 			return float64(len([]rune(t))), nil
 		}
-		if isArrayIndex(key) {
+		if isGradioArrayIndex(key) {
 			units := utf16Units(t)
 			i, _ := strconv.Atoi(key)
 			if i < len(units) {
@@ -414,11 +414,11 @@ func utf16Units(s string) []string {
 
 // objectView returns what Object.entries / {...v} / destructuring see for v.
 // Null and undefined throw.
-func objectView(v any) (*jsObject, error) {
+func objectView(v any) (*gradioObject, error) {
 	switch t := v.(type) {
 	case nil, undefinedType:
 		return nil, typeError("Cannot convert undefined or null to object")
-	case *jsObject:
+	case *gradioObject:
 		return t, nil
 	case []any:
 		o := newObject()

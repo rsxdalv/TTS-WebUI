@@ -146,7 +146,7 @@ func parseNextBody(r *http.Request) (any, *nextAPIError) {
 }
 
 // decodeQueryString is Node's querystring.decode.
-func decodeQueryString(s string) *jsObject {
+func decodeQueryString(s string) *gradioObject {
 	out := newObject()
 	if s == "" {
 		return out
@@ -324,7 +324,7 @@ func (c *gradioCall) gradioPredict(endpoint string, data any) (any, error) {
 	}
 	defer client.close()
 
-	var result *jsObject
+	var result *gradioObject
 	dataReturned, statusComplete := false, false
 	var outcome error = errHang
 	_, err = client.submit(c.ctx, endpoint, data, func(e gradioEvent) bool {
@@ -419,7 +419,7 @@ func proxyGradioFile(d any, backend string) (any, error) {
 	switch d.(type) {
 	case nil:
 		return nil, typeError("Cannot read properties of null (reading 'url')")
-	case *jsObject, []any:
+	case *gradioObject, []any:
 	default:
 		return d, nil
 	}
@@ -545,7 +545,7 @@ func field(params any, name string) (any, error) {
 }
 
 // rest is the ...params of a destructuring pattern.
-func rest(params any, exclude ...string) (*jsObject, error) {
+func rest(params any, exclude ...string) (*gradioObject, error) {
 	view, err := objectView(params)
 	if err != nil {
 		return nil, err
@@ -596,7 +596,7 @@ func first(result any) (any, error) { return index(resultData(result), 0) }
 // optFirst is result?.data?.[0].
 func optFirst(result any) any { return optProp(resultData(result), "0") }
 
-func (c *gradioCall) resolveFileParams(params any) (*jsObject, error) {
+func (c *gradioCall) resolveFileParams(params any) (*gradioObject, error) {
 	view, err := objectView(params)
 	if err != nil {
 		return nil, err
@@ -604,7 +604,7 @@ func (c *gradioCall) resolveFileParams(params any) (*jsObject, error) {
 	out := newObject()
 	for _, k := range view.ownKeys() {
 		v := view.get(k)
-		if _, isObject := v.(*jsObject); isObject || v == nil {
+		if _, isObject := v.(*gradioObject); isObject || v == nil {
 			typ, err := prop(v, "__type")
 			if err != nil {
 				return nil, err

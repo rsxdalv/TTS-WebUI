@@ -20,8 +20,6 @@ import (
 	"mime"
 	"net"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
 	"runtime"
 	"strings"
@@ -36,30 +34,16 @@ func init() {
 	mime.AddExtensionType(".mjs", "text/javascript; charset=utf-8")
 }
 
-// Options holds optional configuration for the server.
-type Options struct {
-	// UIDev, when non-empty, is a URL (e.g. "http://localhost:5173") to which
-	// all non-/api requests are reverse-proxied instead of serving the embedded
-	// UI. Pass this with the --ui-dev flag during development.
-	UIDev string
-}
-
 // Server is the local HTTP server.
 type Server struct {
 	port  int
 	token string
-	opts  Options
 	mux   *http.ServeMux
 }
 
 // New creates a Server that will listen on port (0 = OS-assigned).
 // A fresh 32-byte random token is generated for every call.
 func New(port int) (*Server, error) {
-	return NewWithOptions(port, Options{})
-}
-
-// NewWithOptions creates a Server with the given options.
-func NewWithOptions(port int, opts Options) (*Server, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		return nil, fmt.Errorf("generating token: %w", err)
@@ -67,7 +51,6 @@ func NewWithOptions(port int, opts Options) (*Server, error) {
 	s := &Server{
 		port:  port,
 		token: hex.EncodeToString(raw),
-		opts:  opts,
 		mux:   http.NewServeMux(),
 	}
 	s.routes()
@@ -153,28 +136,7 @@ func (s *Server) routes() {
 	// All other /api/* require the token.
 	s.mux.HandleFunc("/api/", s.tokenGuard(http.NotFoundHandler()))
 
-	// UI: in dev mode proxy to the Vite dev server; otherwise serve embedded.
-	if s.opts.UIDev != "" {
-		devTarget, err := url.Parse(s.opts.UIDev)
-		if err == nil {
-			rp := httputil.NewSingleHostReverseProxy(devTarget)
-			// Inject the tts-token cookie on GET / so the dev app can reach /api/*.
-			s.mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == "/" && r.Method == http.MethodGet {
-					http.SetCookie(w, &http.Cookie{
-						Name:     "tts-token",
-						Value:    s.token,
-						Path:     "/",
-						SameSite: http.SameSiteStrictMode,
-						HttpOnly: true,
-					})
-				}
-				rp.ServeHTTP(w, r)
-			}))
-			return
-		}
-		slog.Error("invalid --ui-dev URL, falling back to embedded", "url", s.opts.UIDev, "err", err)
-	}
+	// UI: the embedded bundle.
 	s.mux.HandleFunc("/", s.uiHandler(uiFS))
 }
 

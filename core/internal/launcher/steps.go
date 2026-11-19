@@ -37,14 +37,6 @@ func mambaEnv(root paths.Root) []string {
 		"MAMBA_ROOT_PREFIX="+filepath.Join(root.InstallerFiles(), "mamba"))
 }
 
-// appPython returns the platform-specific Python binary inside the conda env.
-func appPython(root paths.Root) string {
-	if runtime.GOOS == "windows" {
-		return filepath.Join(root.InstallerFiles(), "env", "python.exe")
-	}
-	return filepath.Join(root.InstallerFiles(), "env", "bin", "python")
-}
-
 // downloadDone returns true when installer_scripts/ directory exists.
 func downloadDone(root paths.Root) bool {
 	info, err := os.Stat(root.InstallerScripts())

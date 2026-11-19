@@ -28,6 +28,9 @@ type Proc struct {
 	ring ring
 	subs []*subscriber
 	done chan struct{}
+
+	// fn is set when the job runs in this process (StartFunc) instead of as a child process.
+	fn *funcJob
 }
 
 // Start spawns name with args, working directory cwd (empty = inherit), and
@@ -120,6 +123,13 @@ func (p *Proc) addLine(line string) {
 // Stop sends a graceful signal, waits up to 5 seconds, then force-kills.
 func (p *Proc) Stop() error {
 	p.mu.Lock()
+	if p.fn != nil {
+		cancel, done := p.fn.cancel, p.done
+		p.mu.Unlock()
+		cancel()
+		<-done
+		return nil
+	}
 	cmd := p.cmd
 	ps := p.ps
 	done := p.done
@@ -183,6 +193,10 @@ func (p *Proc) Done() <-chan struct{} {
 // process has not exited or if the state is unavailable.
 func (p *Proc) ExitCode() int {
 	p.mu.Lock()
+	if p.fn != nil {
+		defer p.mu.Unlock()
+		return p.fn.exitCode()
+	}
 	cmd := p.cmd
 	p.mu.Unlock()
 	if cmd == nil || cmd.ProcessState == nil {

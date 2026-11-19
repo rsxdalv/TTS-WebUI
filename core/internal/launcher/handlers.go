@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/rsxdalv/TTS-WebUI/core/installer_scripts"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/preflight"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
@@ -107,6 +108,10 @@ func (l *Launcher) handleMamba() http.Handler {
 			return
 		}
 
+		if l.serveGoStep(w, "mamba", installer_scripts.InitMamba) {
+			return
+		}
+
 		script := mambaScript(l.root)
 
 		p := &procs.Proc{}
@@ -179,6 +184,10 @@ func (l *Launcher) handleInstall() http.Handler {
 			return
 		}
 
+		if l.serveGoStep(w, "install", installer_scripts.InitAppJS) {
+			return
+		}
+
 		p := &procs.Proc{}
 		l.setProc("install", p)
 
@@ -208,6 +217,10 @@ func (l *Launcher) handleAppDiagnostic() http.Handler {
 		if existing := l.getProc("diagnostic"); existing != nil && existing.Running() {
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"started":false,"already_running":true}`))
+			return
+		}
+
+		if l.serveGoStep(w, "diagnostic", installer_scripts.Diagnostic) {
 			return
 		}
 
@@ -260,6 +273,10 @@ func (l *Launcher) handleUpdate() http.Handler {
 		if updated {
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"started":false,"already_updated":true}`))
+			return
+		}
+
+		if l.serveGoStep(w, "update", installer_scripts.InitAppJS) {
 			return
 		}
 

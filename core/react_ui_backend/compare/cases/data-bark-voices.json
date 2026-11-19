@@ -1,0 +1,2 @@
+[{"name":"bark voices","path":"/api/go-data/bark-voices","nextPath":"/_next/data/6a8KBSvPHGFWICYvgfN4j/text-to-speech/bark/voices.json","nextExtract":"pageProps.outputs","ignore":[{"header":"Content-Type","reason":"different routes set their own"},{"header":"Cache-Control","reason":"Next data route sets its own"},{"header":"Content-Length","reason":"only the outputs value is compared"}]},
+ {"name":"method POST is Next's","method":"POST","path":"/api/go-data/bark-voices"}]

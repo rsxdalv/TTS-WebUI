@@ -17,8 +17,8 @@ shows one.
 | File | Written by | Exact content | Read by |
 |---|---|---|---|
 | `.gpu` | `initializeApp.js:146,253`; Go `handleGPU` (`handlers.go:154`) | The label, no newline. One of `NVIDIA GPU`, `AMD GPU (ROCM, Linux only)`, `Apple M Series Chip`, `Intel GPU (XPU)`, `CPU`, `Custom (Manual torch install)` | `initializeApp.js:145,247`, `diagnostic.bat`, `diagnostic_inner.sh`, `readGPULabel` (`supervisor.go:268`, trims) |
-| `.preflight_ok` | Go only, `preflight.WriteMarker` (`preflight.go:115`) | `ok\n`. The legacy flow never writes it | Existence only (`steps.go:47`) |
-| `.git_version` | `init_app.js:52,114`, last step of a successful install | `git rev-parse HEAD`, trimmed, no newline | `init_app.js:68` (raw compare); existence means install done (`steps.go:66`) |
+| `.preflight_ok` | Go only, `preflight.WriteMarker` (`preflight.go:115`) | `ok\n`. The legacy flow never writes it | Existence only (`steps.go:48`) |
+| `.git_version` | `init_app.js:52,114`, last step of a successful install | `git rev-parse HEAD`, trimmed, no newline | `init_app.js:68` (raw compare); existence means install done (`steps.go:67`) |
 | `.major_version` | `initializeApp.js:91,142`, after torch installs | `1.0.0`, no newline | `initializeApp.js:141,261` (raw compare), diagnostics |
 | `.pip_packages` | `initializeApp.js:144,198,228` | `String(versions.json .pip_packages)`, currently `1.2.0`, no newline | `initializeApp.js:143,185` (raw compare) |
 | `.python_version` | `initializeApp.js:33`, shell redirect of `python --version` | Raw shell output, so it ends in `\r\n` on Windows | `initializeApp.js:34` (trimmed), diagnostics |
@@ -105,12 +105,16 @@ Behaviour:
   treats it as exit 1.
 - A non-zero exit from a command is a `Result`, not an `err`. `Result.Check()` gives the error the JS promises reject
   with. `err` is for a command that could not start or was cancelled.
-- Output is streamed line by line to `Log`. `\n`, `\r\n` and a lone `\r` each end a line, so progress bars show up.
-  Stderr lines get the prefix `[stderr] `, as `procs.Proc` does today. Output is always drained, so a child never
-  blocks on a full pipe.
+- Output is streamed line by line to `Log`. `\n`, `\r\n` and a lone `\r` each end a line, and a line is delivered as
+  soon as it ends, so progress bars show up. Stderr lines get the prefix `[stderr] `, as `procs.Proc` does today.
+  Output is always drained, so a child never blocks on a full pipe.
+- A `Name` command is finished when its process exits, like the `exit` event `$` and `$$` wait for. Output still in the
+  pipes gets up to 2 seconds to arrive, and later output from a background process is dropped.
+- A `Shell` command is finished when its output closes, like the `close` event `$sh` and `exec` wait for.
+- When a command finishes on Windows, any process it left behind is killed with its job object.
 - `Shell` uses `cmd.exe /d /s /c "<line>"` on Windows and `/bin/sh -c` elsewhere, the same as Node's `exec`.
-- `Activated` captures the environment of `micromamba -p installer_files/env run` once. Call
-  `ExecRunner.ResetActivated` after anything that changes that environment's packages.
+- `Activated` captures the environment of `micromamba -p installer_files/env run` once. Call `Step.ResetActivated`
+  after anything that changes that environment's packages.
 - Cancelling `ctx` kills the whole process tree.
 - If the original asks the user something and `Step.Prompt` is nil, the port logs the reason and exits 1. It never
   guesses an answer. The launcher's GPU step writes `.gpu` first, so the install flow does not need to ask.
@@ -177,9 +181,18 @@ Everything else passes to Next, including `/`, every page, `/_next/*`, `/_next/d
 Dispatch order for each request on port 3000:
 
 1. Host and Origin checks (section 6).
-2. If the path is not in clean form (`//`, `.`, `..`), forward to Next. Go's mux must never answer with its own redirect.
-3. If an enabled claim matches the method and path, its handler runs.
-4. Otherwise forward to Next. This includes other methods on a claimed path, and paths with a trailing slash.
+2. Forward to Next, before any claim matching, if the path is one Go does not answer:
+   - The raw path (`URL.EscapedPath()`) or the decoded path (`URL.Path`) has an empty, `.` or `..` segment. Both are
+     tested, so `%2e%2e` counts as `..`.
+   - The raw path contains an encoded separator (`%2f` or `%5c`, in either case), or the decoded path contains `\` or a
+     NUL byte.
+   - The path ends in `/`.
+   - The path equals the prefix of a `{path...}` claim without its slash, such as `/api/webui-generations`.
+3. If an enabled claim matches the method and path, its handler runs. Go's mux must never answer with its own redirect
+   or `405`, so match with `mux.Handler` and serve only a real claim.
+4. Otherwise forward to Next. This includes other methods on a claimed path.
+
+So the expected result for every traversal case in section 8 is Next's own response, on both sides of the comparison.
 
 `GET` patterns also match `HEAD`. Path values are untrusted input. A handler that touches the disk must reject anything
 that leaves its allowed directory, and must have a test for it.
@@ -266,6 +279,10 @@ export function useGoData<T>(claim: string, url: string, initial: T): T {
 
 With the cookie absent, the page makes no extra request and renders the static props. If a fetch fails, the static
 props stay on screen.
+
+One case differs from a browser that never saw the proxy. If the proxy is turned off while a browser stays open, that
+browser keeps the session cookie until it closes. Each load of these two pages then makes one extra request, which Next
+answers with `404`, and the static props stay on screen.
 
 `name` in `/api/go-data/outputs/{name}` must be one path segment that does not start with `.`. Anything else is `404`.
 

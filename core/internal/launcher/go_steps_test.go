@@ -156,3 +156,25 @@ func TestGoSteps_BadSwitchValueIsAnError(t *testing.T) {
 }
 
 var _ = launcher.New
+
+func TestGoSteps_InstallRunsInitAppPortOnlyWhenOn(t *testing.T) {
+	for _, tc := range []struct {
+		env     string
+		goPort  bool
+		comment string
+	}{{"", false, "off: micromamba run node init_app.js"}, {"install", true, "on: the Go port of init_app.js"}} {
+		t.Setenv("TTS_GO_STEPS", tc.env)
+		root, srv, token := stepInstall(t)
+		os.WriteFile(filepath.Join(root.InstallerScripts(), ".gpu"), []byte("NVIDIA GPU"), 0o666)
+		status, started, out := runStep(t, srv, token, "/api/steps/install", "/api/steps/install/stream")
+		if status != 200 || !strings.Contains(started, `"started":true`) {
+			t.Fatalf("%s: status=%d started=%s", tc.comment, status, started)
+		}
+		if got := strings.Contains(out, "Starting init app (version: 0.2.0)"); got != tc.goPort {
+			t.Fatalf("%s: Go port banner present=%v\n%s", tc.comment, got, out)
+		}
+		if !strings.Contains(out, "event: done") {
+			t.Fatalf("%s: no done event\n%s", tc.comment, out)
+		}
+	}
+}

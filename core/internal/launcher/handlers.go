@@ -184,6 +184,10 @@ func (l *Launcher) handleInstall() http.Handler {
 			return
 		}
 
+		if l.serveGoStep(w, "install", installer_scripts.InitAppJS) {
+			return
+		}
+
 		p := &procs.Proc{}
 		l.setProc("install", p)
 
@@ -269,6 +273,10 @@ func (l *Launcher) handleUpdate() http.Handler {
 		if updated {
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"started":false,"already_updated":true}`))
+			return
+		}
+
+		if l.serveGoStep(w, "update", installer_scripts.InitAppJS) {
 			return
 		}
 

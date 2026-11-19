@@ -159,3 +159,127 @@ func TestSafeUploadName(t *testing.T) {
 		}
 	}
 }
+
+// F3: temporary files left by a killed run are removed when the claim starts;
+// other files stay.
+func TestUploadRemovesStaleTempFilesAtStart(t *testing.T) {
+	root := t.TempDir()
+	cache := filepath.Join(root, "react-ui", "public", "file-input-cache")
+	if err := os.MkdirAll(cache, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{".upload-123", ".upload-456", ".gitkeep", "a.wav", ".uploadx-1"} {
+		if err := os.WriteFile(filepath.Join(cache, name), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Mkdir(filepath.Join(cache, ".upload-dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	newUpload(Deps{Root: root})
+	for name, want := range map[string]bool{".upload-123": false, ".upload-456": false, ".gitkeep": true, "a.wav": true, ".uploadx-1": true, ".upload-dir": true} {
+		_, err := os.Stat(filepath.Join(cache, name))
+		if (err == nil) != want {
+			t.Errorf("%s: exists=%v, want %v", name, err == nil, want)
+		}
+	}
+	// A missing cache directory is not an error here (the upload itself is a 500).
+	newUpload(Deps{Root: t.TempDir()})
+}
+
+// dirSize is the bytes in a directory.
+func dirSize(dir string) int64 {
+	var n int64
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		// os.Stat opens the file; the size in a directory listing can lag on Windows.
+		if info, err := os.Stat(filepath.Join(dir, e.Name())); err == nil {
+			n += info.Size()
+		}
+	}
+	return n
+}
+
+// F4: an upload over the limit never puts more than the limit on disk, is
+// answered 413 as before, and leaves nothing.
+func TestUploadOverLimitStopsWritingAtTheLimit(t *testing.T) {
+	if testing.Short() {
+		t.Skip("streams 300 MiB")
+	}
+	cache, srv := uploadFixture(t)
+	var maxOnDisk int64
+	pr, pw := io.Pipe()
+	mw := multipart.NewWriter(pw)
+	go func() {
+		w, _ := mw.CreateFormFile("file", "big.wav")
+		chunk := make([]byte, 1<<20)
+		for i := 0; i < 300; i++ { // 300 MiB, sent chunked: no Content-Length
+			if _, err := w.Write(chunk); err != nil {
+				return
+			}
+			if n := dirSize(cache); n > maxOnDisk {
+				maxOnDisk = n
+			}
+		}
+		_ = mw.Close()
+		_ = pw.Close()
+	}()
+	resp, err := http.Post(srv.URL+"/api/upload", mw.FormDataContentType(), pr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 413 || string(b) != `{"success":false,"error":"File too large"}` {
+		t.Fatalf("%d %s", resp.StatusCode, b)
+	}
+	if maxOnDisk > uploadMaxBytes+(1<<20) {
+		t.Fatalf("%d bytes were on disk, the limit is %d", maxOnDisk, int64(uploadMaxBytes))
+	}
+	if entries, _ := os.ReadDir(cache); len(entries) != 0 {
+		t.Fatalf("left files: %v", entries)
+	}
+}
+
+type failingBody struct{ t *testing.T }
+
+func (f failingBody) Read([]byte) (int, error) {
+	f.t.Error("the body was read although Content-Length is over the limit")
+	return 0, io.EOF
+}
+
+// F4: a Content-Length over the limit is answered 413 without reading the body.
+func TestUploadRejectsOversizedContentLengthEarly(t *testing.T) {
+	root := t.TempDir()
+	cache := filepath.Join(root, "react-ui", "public", "file-input-cache")
+	_ = os.MkdirAll(cache, 0o755)
+	h := newUpload(Deps{Root: root})
+	req := httptest.NewRequest("POST", "/api/upload", failingBody{t})
+	req.ContentLength = uploadMaxBytes + 10<<20
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=b")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != 413 || rec.Body.String() != `{"success":false,"error":"File too large"}` || rec.Header().Get("Content-Type") != "application/json" {
+		t.Fatalf("%d %q %v", rec.Code, rec.Body.String(), rec.Header())
+	}
+	// Just under the framing slack is still read and parsed.
+	req = httptest.NewRequest("POST", "/api/upload", strings.NewReader(""))
+	req.ContentLength = uploadMaxBytes + 1<<19
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=b")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code == 413 {
+		t.Fatal("a Content-Length within the framing slack must not be rejected early")
+	}
+}
+
+// A file that is rejected for its type is read but never written.
+func TestUploadRejectedTypeIsNotWritten(t *testing.T) {
+	cache, srv := uploadFixture(t)
+	if status, _ := postFile(t, srv, "file", "bad.exe", make([]byte, 5<<20)); status != 400 {
+		t.Fatalf("status %d", status)
+	}
+	if entries, _ := os.ReadDir(cache); len(entries) != 0 {
+		t.Fatalf("left files: %v", entries)
+	}
+}

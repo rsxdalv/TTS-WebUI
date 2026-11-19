@@ -40,9 +40,9 @@ then the supervised children (job-object tree kill), then the router.
 
 ## Known limits seen in a real run
 
-- The extension manager (`installer_scripts/tools/extension_manager.py`) hard-codes port 7771 and ignores both
-  `--port` and `TTS_EXTENSION_MANAGER_PORT`. It exits with code 1 when 7771 is busy, for example while the normal
-  app runs. The old launcher supervisor has the same problem. Fixing it means editing that script.
+- The extension manager still opens its own browser tab (`inbrowser=True` in `extension_manager.py`). Set
+  `BROWSER` to a command that does not exist (for example `BROWSER=none`) to suppress it during smoke runs.
+  On this branch it uses the port the supervisor gives it (`--port`, then `TTS_EXTENSION_MANAGER_PORT`, then 7771).
 - The supervisor's readiness probe goes through the router, so the router logs "upstream unavailable" until Gradio is
   up. The demo shows that message once per 15 s.
 - Proxy extensions (`"proxy": "native"` in `extensions.json`) run from `.venvs/<pkg>`. If none is installed, the

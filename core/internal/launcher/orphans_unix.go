@@ -41,30 +41,39 @@ func recordPath(root paths.Root) string {
 // recordProcesses writes the process groups of the running app.
 func (s *Supervisor) recordProcesses() {
 	s.mu.Lock()
-	rec := appRecord{Root: s.root.Dir()}
+	var refs []appProc
 	for _, ap := range s.procs {
-		if ap.proc == nil {
-			continue
+		if ap.proc != nil {
+			refs = append(refs, appProc{Name: ap.name, PID: ap.proc.Pid()})
 		}
-		pid := ap.proc.Pid()
-		if pid <= 0 {
-			continue
-		}
-		start, _ := processStart(pid)
-		rec.Groups = append(rec.Groups, groupRecord{Name: ap.name, Pgid: pid, Start: start})
 	}
 	s.mu.Unlock()
+	recordGroups(s.root, refs)
+}
+
+// recordGroups writes the record for the given app processes.
+func recordGroups(root paths.Root, procs []appProc) {
+	rec := appRecord{Root: root.Dir()}
+	for _, p := range procs {
+		if p.PID <= 0 {
+			continue
+		}
+		start, _ := processStart(p.PID)
+		rec.Groups = append(rec.Groups, groupRecord{Name: p.Name, Pgid: p.PID, Start: start})
+	}
 	data, err := json.MarshalIndent(rec, "", "  ")
 	if err != nil {
 		return
 	}
-	if err := os.WriteFile(recordPath(s.root), data, 0o644); err != nil {
+	if err := os.WriteFile(recordPath(root), data, 0o644); err != nil {
 		slog.Warn("could not record the app processes", "err", err)
 	}
 }
 
 // clearRecord removes the record after a clean Stop.
-func (s *Supervisor) clearRecord() { _ = os.Remove(recordPath(s.root)) }
+func (s *Supervisor) clearRecord() { clearRecordFor(s.root) }
+
+func clearRecordFor(root paths.Root) { _ = os.Remove(recordPath(root)) }
 
 // sweepOrphans stops processes a killed launcher left running for this
 // install, logs one line when it finds any, and removes the record.

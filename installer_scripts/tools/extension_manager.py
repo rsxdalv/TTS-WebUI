@@ -140,11 +140,29 @@ def main():
 
     gradio_interface_options = {
         "server_name": "127.0.0.1",
-        "server_port": 7771,  # User preferred port
+        "server_port": server_port(sys.argv, os.environ),
         "inbrowser": True,
         "share": share,
     }
     blocks.queue().launch(**gradio_interface_options, allowed_paths=["."])
+
+
+DEFAULT_PORT = 7771
+
+
+def server_port(argv, env):
+    """Port from `--port N` or `--port=N`, then TTS_EXTENSION_MANAGER_PORT, else 7771.
+
+    The Go launcher passes both, so the manager no longer collides with a
+    running app's 7771; the run_extension_manager scripts pass neither.
+    """
+    for i, arg in enumerate(argv):
+        if arg == "--port" and i + 1 < len(argv):
+            return int(argv[i + 1])
+        if arg.startswith("--port="):
+            return int(arg.split("=", 1)[1])
+    value = env.get("TTS_EXTENSION_MANAGER_PORT", "").strip()
+    return int(value) if value else DEFAULT_PORT
 
 
 def quick_actions_tab():

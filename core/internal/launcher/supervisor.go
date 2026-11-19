@@ -32,6 +32,8 @@ type appProcess struct {
 	proc *procs.Proc
 	// front is the Go proxy in front of this process, if any.
 	front *react_ui_backend.Server
+	// py is the Go side of the server.py port (TTS_GO_SERVERPY=1), on gradio.
+	py *serverPy
 }
 
 // reactUIArgs returns the micromamba arguments that start Next. With the proxy
@@ -103,6 +105,10 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	if err := sw.CheckSteps(knownGoSteps); err != nil {
 		return err
 	}
+	pyOn, err := serverPyEnabled(os.LookupEnv)
+	if err != nil {
+		return err
+	}
 
 	// A launcher that was killed (SIGKILL, power loss) may have left the app
 	// running on Linux and macOS; stop it before ports collide.
@@ -167,8 +173,24 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	}
 	mamba := micromambaPath(s.root)
 	envPath := installEnvPath(s.root)
+
+	// With TTS_GO_SERVERPY=1, Go serves the public port and runs the proxy
+	// extensions; server_core.py hands both jobs over before server.py runs.
+	gradioScript, gradioEnv := "server.py", baseEnv
+	var py *serverPy
+	if pyOn {
+		if py, err = startServerPy(s.root, []string{mamba, "-p", envPath, "run"}, baseEnv); err != nil {
+			if front != nil {
+				front.Close()
+			}
+			return fmt.Errorf("starting the server.py port (%s=1): %w", EnvServerPy, err)
+		}
+		gradioScript = serverPyEntry
+		gradioEnv = append(append([]string(nil), baseEnv...), py.gradioEnv...)
+	}
+
 	defs := []procDef{
-		{name: "gradio", cmd: mamba, args: []string{"-p", envPath, "run", "python", "server.py", "--no-react"}, env: baseEnv},
+		{name: "gradio", cmd: mamba, args: []string{"-p", envPath, "run", "python", gradioScript, "--no-react"}, env: gradioEnv},
 		{name: "react-ui", cmd: mamba, args: reactUIArgs(envPath, s.root.Dir(), nextPort, sw.Proxy), env: baseEnv},
 		{name: "extension-manager", cmd: mamba, args: []string{"-p", envPath, "run", "python", extMgrScript, "--port", fmt.Sprintf("%d", extPort)}, env: baseEnv},
 	}
@@ -190,6 +212,9 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 			if front != nil {
 				front.Close()
 			}
+			if py != nil {
+				py.Close()
+			}
 			s.procs = nil
 			supCancel()
 			s.supCtx = nil
@@ -200,6 +225,9 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		ap := &appProcess{name: d.name, proc: p}
 		if d.name == "react-ui" {
 			ap.front = front
+		}
+		if d.name == "gradio" {
+			ap.py = py
 		}
 		s.procs = append(s.procs, ap)
 		go s.watchExit(ap)
@@ -231,6 +259,13 @@ func (s *Supervisor) Stop() {
 	for _, ap := range ps {
 		if ap.front != nil {
 			ap.front.Close()
+		}
+		if ap.py != nil {
+			wg.Add(1)
+			go func(py *serverPy) {
+				defer wg.Done()
+				py.Close() // extensions Go started are not in gradio's tree
+			}(ap.py)
 		}
 		if ap.proc != nil {
 			wg.Add(1)
@@ -326,6 +361,11 @@ func (s *Supervisor) watchExit(ap *appProcess) {
 	// Without Next there is nothing to proxy, so port 3000 closes with it.
 	if ap.front != nil {
 		ap.front.Close()
+	}
+	// The proxy tree used to die with server.py; the router and the extensions
+	// Go started go with gradio the same way.
+	if ap.py != nil {
+		ap.py.Close()
 	}
 	s.mu.Lock()
 	for i, p := range s.procs {

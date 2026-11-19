@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -128,7 +129,10 @@ func originChecked(r *http.Request) bool {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		return true
 	}
-	return r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/")
+	// Next resolves dot segments and repeated slashes before routing, so check
+	// the path it will route, not the one sent.
+	p := path.Clean("/" + r.URL.Path)
+	return p == "/api" || strings.HasPrefix(p, "/api/")
 }
 
 func (h *handler) validOrigin(origin string, r *http.Request) bool {

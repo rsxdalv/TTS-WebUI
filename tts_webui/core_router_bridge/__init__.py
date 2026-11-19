@@ -11,8 +11,8 @@ Environment (set by the Go launcher):
     TTS_GRADIO_PORT  port Gradio itself binds
     TTS_GRADIO_HOST  Gradio's server_name
 
-Nothing is edited on disk: module attributes, the config dict and sys.argv are
-patched in place, so this must run before server.py is executed and before
+Nothing is edited on disk: module attributes, the sys.argv is
+patched in place; the config dict is never touched (see gradio_overrides), so this must run before server.py is executed and before
 anything does ``from tts_webui.gradio_proxy_tree.main import add_extension_route``.
 """
 
@@ -24,7 +24,7 @@ import time
 import urllib.error
 import urllib.request
 
-__all__ = ["install", "register_route"]
+__all__ = ["install", "register_route", "gradio_overrides"]
 
 TOKEN_HEADER = "X-TTS-Core-Token"
 _ATTEMPTS = 3
@@ -89,9 +89,6 @@ def install():
     # 1. Iframes use relative URLs; must be set before main.py is imported.
     os.environ["GRADIO_TREE_URL"] = ""
 
-    from tts_webui.config.config import config
-
-    _apply_gradio_options(config["gradio_interface_options"], os.environ)
     _apply_argv(sys.argv)
 
     main = importlib.import_module("tts_webui.gradio_proxy_tree.main")
@@ -102,14 +99,22 @@ def install():
     return True
 
 
-def _apply_gradio_options(options, environ):
+def gradio_overrides(environ=None):
+    """Private host/port for Gradio's ``launch()``, from the Go core's environment.
+
+    These are deliberately not written into ``config["gradio_interface_options"]``:
+    the Settings tab saves that dict to config.json, and the private port must
+    never become the public one. Callers pass them to launch() on a copy.
+    """
+    environ = os.environ if environ is None else environ
+    overrides = {"inbrowser": False}  # the Go launcher opens the browser
     port = environ.get("TTS_GRADIO_PORT")
     if port:
-        options["server_port"] = int(port)
+        overrides["server_port"] = int(port)
     host = environ.get("TTS_GRADIO_HOST")
     if host:
-        options["server_name"] = host
-    options["inbrowser"] = False  # the Go launcher opens the browser
+        overrides["server_name"] = host
+    return overrides
 
 
 def _apply_argv(argv):

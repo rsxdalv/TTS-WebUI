@@ -38,9 +38,15 @@ def upgrade_gradio_options(options):
     return options
 
 
-def launch_options(gr_options):
-    """The keyword arguments for ``demo.queue().launch``."""
-    options = upgrade_gradio_options(gr_options)
+def launch_options(gr_options, overrides=None):
+    """The keyword arguments for ``demo.queue().launch``.
+
+    Works on a copy: ``gr_options`` is the shared config dict that the Settings
+    tab saves, so the private Gradio host/port in ``overrides`` must never land
+    in it.
+    """
+    options = upgrade_gradio_options(dict(gr_options))
+    options.update(overrides or {})
     options["inbrowser"] = False  # the Go launcher opens the browser
     return {
         **options,
@@ -64,7 +70,10 @@ def main():
     from tts_webui.config.config import config
     from tts_webui.gradio.print_gradio_options import print_gradio_options
 
-    kwargs = launch_options(config["gradio_interface_options"])
+    from tts_webui.core_router_bridge import gradio_overrides
+
+    overrides = gradio_overrides() if os.environ.get("TTS_CORE_URL") else {}
+    kwargs = launch_options(config["gradio_interface_options"], overrides)
     print_gradio_options(kwargs)
 
     from tts_webui.gradio.blocks import main_block

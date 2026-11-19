@@ -129,9 +129,12 @@ class InstallTest(unittest.TestCase):
         with mock.patch.dict(os.environ, env, clear=True), mock.patch("builtins.print"):
             self.assertTrue(bridge.install())
             self.assertEqual(os.environ["GRADIO_TREE_URL"], "")
-        self.assertEqual(self.opts["server_port"], 27700)
-        self.assertEqual(self.opts["server_name"], "0.0.0.0")
-        self.assertIs(self.opts["inbrowser"], False)
+        # The shared config must keep the public values.
+        self.assertEqual(self.opts, {"server_port": 7770, "server_name": "127.0.0.1", "inbrowser": True})
+        self.assertEqual(
+            bridge.gradio_overrides(env),
+            {"server_port": 27700, "server_name": "0.0.0.0", "inbrowser": False},
+        )
         self.assertEqual(sys.argv, ["server_core.py", "--no-react", "--no-tree-proxy"])
         self.assertIsNone(self.main.setup_gradio_proxy_tree({"server_port": 1}))
         self.assertIsNot(self.main.add_extension_route, bridge.register_route)
@@ -139,8 +142,8 @@ class InstallTest(unittest.TestCase):
     def test_keeps_existing_host_and_port_when_unset(self):
         with mock.patch.dict(os.environ, {"TTS_CORE_URL": "http://x"}, clear=True), mock.patch("builtins.print"):
             bridge.install()
-        self.assertEqual((self.opts["server_port"], self.opts["server_name"]), (7770, "127.0.0.1"))
-        self.assertIs(self.opts["inbrowser"], False)
+        self.assertEqual(self.opts["server_port"], 7770)
+        self.assertEqual(bridge.gradio_overrides({}), {"inbrowser": False})
 
     def test_install_is_idempotent_and_no_tree_flag_not_duplicated(self):
         sys.argv[:] = ["x", "--no-tree-proxy"]

@@ -43,6 +43,18 @@ class LaunchOptionsTest(unittest.TestCase):
         self.assertIs(kw["prevent_thread_lock"], True)
 
 
+    def test_overrides_apply_to_a_copy_and_config_keeps_public_port(self):
+        config_opts = {"server_port": 7770, "server_name": "0.0.0.0", "inbrowser": True, "auth": "u:p"}
+        kw = core_server.launch_options(
+            config_opts, {"server_port": 27700, "server_name": "127.0.0.1"}
+        )
+        self.assertEqual((kw["server_port"], kw["server_name"]), (27700, "127.0.0.1"))
+        self.assertEqual(
+            config_opts,
+            {"server_port": 7770, "server_name": "0.0.0.0", "inbrowser": True, "auth": "u:p"},
+        )
+
+
 class ServerCoreTest(unittest.TestCase):
     def test_server_core_runs_thin_entry_not_server_py(self):
         import server_core

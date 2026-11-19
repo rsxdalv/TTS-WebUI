@@ -55,7 +55,8 @@ type serverPy struct {
 
 	// publicAddr is where the router listens (the address users open).
 	publicAddr string
-	// gradioEnv goes to the gradio child only: it carries the token.
+	// gradioEnv goes to the gradio child only: it carries the token. It is
+	// the loaded .env environment followed by the Go-core variables.
 	gradioEnv []string
 
 	stopRouter context.CancelFunc
@@ -66,8 +67,19 @@ type serverPy struct {
 // startServerPy reads the public host and port the way server.py does
 // (config.json, .env, .env.user) and starts the Go side on them. prefix is the
 // `micromamba -p <env> run` command that runs the main env's python; baseEnv is
-// the environment the launcher gives every child.
+// the environment the launcher gives every child. The environment the children
+// get is baseEnv plus .env and .env.user.
 func startServerPy(root paths.Root, prefix, baseEnv []string) (*serverPy, error) {
+	// Startup prep that server.py does in-process: output folders, a default
+	// .env when missing, then .env and .env.user on top of the launcher env.
+	if err := appenv.EnsureFolders(root.Dir()); err != nil {
+		return nil, fmt.Errorf("creating outputs/favorites: %w", err)
+	}
+	if created, err := appenv.EnsureEnv(root.Dir(), baseEnv); err != nil {
+		return nil, fmt.Errorf("writing .env: %w", err)
+	} else if created {
+		slog.Info("serverpy: .env not found, created the default")
+	}
 	rep, err := appenv.LoadEnvReport(root.Dir(), baseEnv)
 	if err != nil {
 		return nil, fmt.Errorf("reading .env: %w", err)
@@ -80,7 +92,8 @@ func startServerPy(root paths.Root, prefix, baseEnv []string) (*serverPy, error)
 	if err != nil {
 		return nil, err
 	}
-	return startServerPyOn(root, plan.Host, plan.PublicPort, prefix, baseEnv)
+	// rep.Env (launcher env + .env + .env.user) is what the children run with.
+	return startServerPyOn(root, plan.Host, plan.PublicPort, prefix, rep.Env)
 }
 
 // startServerPyOn starts the router on host:publicPort, routing / to Gradio on
@@ -132,13 +145,13 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 		mgr:        mgr,
 		ctl:        ctl,
 		publicAddr: pub.Addr().String(),
-		gradioEnv: []string{
-			"TTS_CORE_URL=http://" + ctlLn.Addr().String(),
-			"TTS_CORE_TOKEN=" + token,
-			"TTS_GRADIO_PORT=" + strconv.Itoa(gradioPort),
+		gradioEnv: append(append([]string(nil), baseEnv...),
+			"TTS_CORE_URL=http://"+ctlLn.Addr().String(),
+			"TTS_CORE_TOKEN="+token,
+			"TTS_GRADIO_PORT="+strconv.Itoa(gradioPort),
 			// Gradio stays on loopback; the router is the front door.
 			"TTS_GRADIO_HOST=127.0.0.1",
-		},
+		),
 		stopRouter: cancel,
 		routerDone: make(chan struct{}),
 	}

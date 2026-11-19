@@ -1,0 +1,23 @@
+[
+ {"name":"normal wav","path":"/api/gradio-file-proxy/gradio_api/file=C:/Temp/gradio/a.wav"},
+ {"name":"plain path","path":"/api/gradio-file-proxy/a.wav"},
+ {"name":"encoded space","path":"/api/gradio-file-proxy/a%20b.wav"},
+ {"name":"encoded query char","path":"/api/gradio-file-proxy/a.wav%3Fx=1"},
+ {"name":"real query","path":"/api/gradio-file-proxy/a.wav?x=1"},
+ {"name":"upstream 404","path":"/api/gradio-file-proxy/missing.bin"},
+ {"name":"upstream 500","path":"/api/gradio-file-proxy/boom"},
+ {"name":"upstream 418","path":"/api/gradio-file-proxy/teapot"},
+ {"name":"chunked no length","path":"/api/gradio-file-proxy/nolen"},
+ {"name":"no content type","path":"/api/gradio-file-proxy/notype"},
+ {"name":"redirect followed","path":"/api/gradio-file-proxy/redir"},
+ {"name":"POST","method":"POST","path":"/api/gradio-file-proxy/a.wav","body":"eA=="},
+ {"name":"PUT","method":"PUT","path":"/api/gradio-file-proxy/a.wav"},
+ {"name":"HEAD","method":"HEAD","path":"/api/gradio-file-proxy/a.wav"},
+ {"name":"bare prefix","path":"/api/gradio-file-proxy"},
+ {"name":"trailing slash","path":"/api/gradio-file-proxy/"},
+ {"name":"dotdot","path":"/api/gradio-file-proxy/../x.wav"},
+ {"name":"encoded dotdot","path":"/api/gradio-file-proxy/%2e%2e/x.wav"},
+ {"name":"encoded slash","path":"/api/gradio-file-proxy/a%2fb.wav"},
+ {"name":"encoded backslash","path":"/api/gradio-file-proxy/a%5cb.wav"},
+ {"name":"empty segment","path":"/api/gradio-file-proxy/a//b.wav"}
+]

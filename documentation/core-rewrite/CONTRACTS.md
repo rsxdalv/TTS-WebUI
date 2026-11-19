@@ -142,8 +142,12 @@ An invalid value stops the app from starting with a clear error, so a typo can n
 
 **Proxy on** (the default) means the supervisor picks one of three modes when the app starts (D18):
 
-1. **Static:** `react-ui/out/_tts-export.json` exists. Go serves the export on port 3000 (section 10) and no Next
-   process runs. The launcher status shows `react-ui` as running while Go serves it.
+1. **Static:** `react-ui/out/_tts-export.json` exists and every claim the export needs is on (`gradio`,
+   `gradio-file-proxy`, `upload`, `webui-generations`, `data-outputs`, `data-bark-voices`). Go serves the export on
+   port 3000 (section 10) and no Next process runs. The launcher status shows `react-ui` as running while Go serves
+   it. If `TTS_GO_ROUTES` turns any of those claims off, generation and upload could not work, so the supervisor uses
+   mode 2 when a usable server build exists, with a log line naming the missing claims. Otherwise Start fails with an
+   error naming them.
 2. **Next behind the proxy:** no export, but `react-ui/.next` is a usable server build (an install made by the old
    scripts). The supervisor logs one line saying so, picks a free loopback port, starts Next with
    `-- -p <port> -H 127.0.0.1`, and Go forwards to it as B1 did. If Next exits, Go stops listening on 3000 too.
@@ -426,10 +430,12 @@ Only the extension shell needs a fallback. The other dynamic page, `/outputs/[na
 
 `core/react_ui_backend/static_export.go` implements the rules above, behind the Host and Origin guards and the route
 claims (section 5), in this order:
-- Only `GET` and `HEAD` get files; other methods get `405`.
-- An `/api/...` path no claim answered gets a plain `404`, never a page.
+- An `/api/...` path no claim answered gets a plain `404` for any method, never a page.
+- Other paths: only `GET` and `HEAD` get files; other methods get `405`.
 - Rule 1 also refuses empty segments and the encoded separators `%2f`, `%5c` and `%00`. On Windows it also refuses a
   segment containing `:` or ending in a space or dot (the same hardening as B2).
+- On Windows a file that was found is refused when its real (long) name has a part starting with `.`, because NTFS
+  8.3 aliases such as `HIDDEN~1` for `.hidden` pass the URL check. B2's webui-generations claim applies the same check.
 - A trailing slash gets a `308` to the path without it. Because empty segments are refused, the target is always a
   local path.
 - `/file-input-cache/*` comes from `react-ui/public` live. Then come export files, `P.html` and `P/index.html`, then any

@@ -42,11 +42,11 @@ In PowerShell set `$env:CGO_ENABLED=0; $env:GOOS="linux"; $env:GOARCH="amd64"` f
 - `cmd/tts-webui/` - entry point
 - `internal/version/` - build metadata set via `-ldflags -X`
 - `internal/webui/` - `go:embed` of the static UI (`assets/`)
-- `ui/dist/` - Vite build output (git-ignored except `.gitkeep`)
+- `ui/` - the setup page (React/Vite), built by `scripts/build-webui.sh`
 
-Embedding: `go:embed` cannot reach outside its package, so the release build
-copies `ui/dist/*` over `internal/webui/assets/` before `go build`. The
-committed `assets/index.html` is only a placeholder.
+Embedding: `go:embed` cannot reach outside its package, so `scripts/build-webui.sh`
+builds `ui/` and copies the result over `internal/webui/assets/`. The built assets
+are committed, and CI fails if `bundle.hash` no longer matches the UI sources.
 
 Planned `internal/` packages (not created yet):
 

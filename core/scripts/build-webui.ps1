@@ -2,7 +2,7 @@
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path "$PSScriptRoot\..\..")
-$viteSrc  = Join-Path $repoRoot "launcher\vite-src"
+$viteSrc  = Join-Path $repoRoot "core\ui"
 $assets   = Join-Path $repoRoot "core\internal\webui\assets"
 
 Write-Host "Building core entry ..."
@@ -10,8 +10,8 @@ Set-Location $viteSrc
 npm ci
 if ($LASTEXITCODE -ne 0) { throw "npm ci failed (exit $LASTEXITCODE)" }
 
-npm run build:core
-if ($LASTEXITCODE -ne 0) { throw "npm run build:core failed (exit $LASTEXITCODE)" }
+npm run build
+if ($LASTEXITCODE -ne 0) { throw "npm run build failed (exit $LASTEXITCODE)" }
 
 $distCore = Join-Path $viteSrc "dist-core"
 

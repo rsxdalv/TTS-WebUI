@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: launcher/vite-src/package-lock.json
+          cache-dependency-path: core/ui/package-lock.json
 
       - name: Build embedded launcher UI
         run: bash core/scripts/build-webui.sh

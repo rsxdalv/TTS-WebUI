@@ -2,13 +2,13 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-VITE_SRC="$REPO_ROOT/launcher/vite-src"
+VITE_SRC="$REPO_ROOT/core/ui"
 ASSETS="$REPO_ROOT/core/internal/webui/assets"
 
 echo "Building core entry ..."
 cd "$VITE_SRC"
 npm ci
-npm run build:core
+npm run build
 
 echo "Copying dist-core/ to $ASSETS ..."
 rm -rf "$ASSETS"

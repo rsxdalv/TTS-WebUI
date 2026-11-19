@@ -1,0 +1,1 @@
+{"root":["./src/darkthemeprovider.tsx","./src/core-app/coreapp.tsx","./src/core-app/gpuview.tsx","./src/core-app/launchstep.tsx","./src/core-app/preflightview.tsx","./src/core-app/stepitem.tsx","./src/core-app/steplist.tsx","./src/core-app/client.ts","./src/core-app/core-main.tsx"],"version":"5.9.3"}

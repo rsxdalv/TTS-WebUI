@@ -4,12 +4,12 @@ on:
   push:
     paths:
       - "core/**"
-      - "launcher/vite-src/**"
+      - "core/ui/**"
       - ".github/workflows/core.yaml"
   pull_request:
     paths:
       - "core/**"
-      - "launcher/vite-src/**"
+      - "core/ui/**"
       - ".github/workflows/core.yaml"
   workflow_dispatch:
 
@@ -89,7 +89,7 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: launcher/vite-src/package-lock.json
+          cache-dependency-path: core/ui/package-lock.json
       - name: Build core entry
         run: bash core/scripts/build-webui.sh
       - name: Check committed assets match fresh build

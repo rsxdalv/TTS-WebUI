@@ -53,22 +53,10 @@ func init() {
 // uploadTempPrefix names the temporary files of uploads in progress.
 const uploadTempPrefix = ".upload-"
 
-// uploadFramingSlack is how much a multipart body may exceed the file it
-// carries (boundaries, headers, small fields) before Content-Length alone says
-// the file is over the limit.
-const uploadFramingSlack = 1 << 20
-
 func newUpload(deps Deps) http.Handler {
 	cacheDir := filepath.Join(deps.Root, "react-ui", "public", "file-input-cache")
 	removeStaleUploads(cacheDir)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.ContentLength > uploadMaxBytes+uploadFramingSlack {
-			// Rejected before reading the body. The connection is closed
-			// afterwards, so the unread body is not drained.
-			w.Header().Set("Connection", "close")
-			uploadJSON(w, http.StatusRequestEntityTooLarge, map[string]any{"success": false, "error": "File too large"})
-			return
-		}
 		up, err := readUpload(r, cacheDir)
 		if err != nil {
 			up.discard()

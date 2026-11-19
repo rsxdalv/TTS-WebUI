@@ -241,36 +241,45 @@ func TestUploadOverLimitStopsWritingAtTheLimit(t *testing.T) {
 	}
 }
 
-type failingBody struct{ t *testing.T }
-
-func (f failingBody) Read([]byte) (int, error) {
-	f.t.Error("the body was read although Content-Length is over the limit")
-	return 0, io.EOF
+// A declared Content-Length over the limit is not rejected before the body is
+// read: a browser that is still sending would see the connection drop and never
+// get the 413. The body is read and discarded, nothing is stored, and the client
+// that sends everything and then reads gets the usual 413.
+func TestUploadOversizedContentLengthIsReadThenAnswered(t *testing.T) {
+	if testing.Short() {
+		t.Skip("sends 300 MiB")
+	}
+	cache, srv := uploadFixture(t)
+	crlf := string(rune(13)) + string(rune(10))
+	head := "--b" + crlf + `Content-Disposition: form-data; name="file"; filename="big.wav"` + crlf + crlf
+	foot := crlf + "--b--" + crlf
+	const size = 300 << 20
+	body := io.MultiReader(strings.NewReader(head), io.LimitReader(zeroReader{}, size), strings.NewReader(foot))
+	req, _ := http.NewRequest("POST", srv.URL+"/api/upload", body)
+	req.ContentLength = int64(len(head)) + size + int64(len(foot))
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=b")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 413 || string(b) != `{"success":false,"error":"File too large"}` || resp.Header.Get("Content-Type") != "application/json" {
+		t.Fatalf("%d %q %v", resp.StatusCode, b, resp.Header)
+	}
+	if resp.Header.Get("Connection") == "close" {
+		t.Fatal("the connection must not be closed by the early answer")
+	}
+	if entries, _ := os.ReadDir(cache); len(entries) != 0 {
+		t.Fatalf("left files: %v", entries)
+	}
 }
 
-// F4: a Content-Length over the limit is answered 413 without reading the body.
-func TestUploadRejectsOversizedContentLengthEarly(t *testing.T) {
-	root := t.TempDir()
-	cache := filepath.Join(root, "react-ui", "public", "file-input-cache")
-	_ = os.MkdirAll(cache, 0o755)
-	h := newUpload(Deps{Root: root})
-	req := httptest.NewRequest("POST", "/api/upload", failingBody{t})
-	req.ContentLength = uploadMaxBytes + 10<<20
-	req.Header.Set("Content-Type", "multipart/form-data; boundary=b")
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	if rec.Code != 413 || rec.Body.String() != `{"success":false,"error":"File too large"}` || rec.Header().Get("Content-Type") != "application/json" {
-		t.Fatalf("%d %q %v", rec.Code, rec.Body.String(), rec.Header())
-	}
-	// Just under the framing slack is still read and parsed.
-	req = httptest.NewRequest("POST", "/api/upload", strings.NewReader(""))
-	req.ContentLength = uploadMaxBytes + 1<<19
-	req.Header.Set("Content-Type", "multipart/form-data; boundary=b")
-	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	if rec.Code == 413 {
-		t.Fatal("a Content-Length within the framing slack must not be rejected early")
-	}
+type zeroReader struct{}
+
+func (zeroReader) Read(p []byte) (int, error) {
+	clear(p)
+	return len(p), nil
 }
 
 // A file that is rejected for its type is read but never written.

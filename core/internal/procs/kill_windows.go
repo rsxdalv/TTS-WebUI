@@ -80,3 +80,7 @@ func (ps *platformState) force() error {
 	ps.job = 0
 	return err
 }
+
+// release closes the Job Object handle after the process has exited. Any
+// descendant still in the job is killed, so nothing outlives its step.
+func (ps *platformState) release() { _ = ps.force() }

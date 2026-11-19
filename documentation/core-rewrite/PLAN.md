@@ -30,14 +30,12 @@ Updates (self-update, blue/green, app distribution, `C7.x`) are pulled in when a
 
 ## Current: rings 1 and 2
 
-### Where it stands (2026-11-03)
+### Where it stands (2026-11-19)
 
-At `4a4a362` on `core/rewrite`. vet, all go tests, m1.ps1 (PASS), and 10 Playwright tests (PASS):
-- Diagnostic button added to LaunchStep; `POST /api/app/diagnostic` + stream.
-- `app/start` now guards GPU label in all modes (conda + uv).
-- `install` step now 400s if mamba or GPU not yet done.
-- m1.ps1 now covers restart (link reappears) and diagnostic stream.
-- All 5 Run-3 review items verified PASS.
+Branch `core/rings-1-2` (rings 1-2 only, not for merge yet). Fixed: launcher starts in an empty folder; Download extracts into the install root; zip prefix stripping only when all entries share one folder (real asset has `.git/` first); gofmt clean; postgres change reverted.
+Verified by hand with the built exe in an empty folder, no `--root`: Download of the real release zip, Pre-flight, Mamba (git, Python, Node installed into the env), GPU=CPU; `.git` is a real repo, `.preflight_ok` and `.gpu` exist. A path with a space fails Pre-flight with a clear message.
+**Not run:** Install, Launch, Diagnostic, Stop, Restart on the fresh exe, and `m1.ps1` (the real install test was stopped on request). `.git_version` was not checked. The exe is unsigned (SmartScreen will warn).
+Manual workflow `build-launcher-exe.yaml` builds the windows/amd64 exe as an artifact.
 
 **Awaiting demo gate (human run, ~5 min each).** See demo instructions below.
 

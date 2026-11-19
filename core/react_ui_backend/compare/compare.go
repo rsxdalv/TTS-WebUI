@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"hash"
 	"io"
@@ -32,6 +33,12 @@ type Case struct {
 	Body   []byte      `json:"body,omitempty"`
 	// Compare names more response headers to compare, such as ETag.
 	Compare []string `json:"compare,omitempty"`
+	// NextPath, when set, is the path sent to Next instead of Path, for a Go
+	// data endpoint whose answer is part of a Next response.
+	NextPath string `json:"nextPath,omitempty"`
+	// NextExtract, when set, is a dotted key path (for example
+	// "pageProps.outputs") whose raw JSON bytes replace Next's body.
+	NextExtract string `json:"nextExtract,omitempty"`
 	// Ignore allows single headers to differ. Each rule needs a reason, so a
 	// loose test case is visible in review.
 	Ignore []IgnoreRule `json:"ignore,omitempty"`
@@ -155,7 +162,14 @@ func Run(ctx context.Context, nextBase, goBase string, cases []Case) []Result {
 	out := make([]Result, 0, len(cases))
 	for _, c := range cases {
 		r := Result{Case: c}
-		r.Next = Do(ctx, client, nextBase, c)
+		nc := c
+		if c.NextPath != "" {
+			nc.Path = c.NextPath
+		}
+		r.Next = Do(ctx, client, nextBase, nc)
+		if c.NextExtract != "" {
+			extractBody(&r.Next, c.NextExtract)
+		}
 		r.Go = Do(ctx, client, goBase, c)
 		r.Diffs = Diff(c, r.Next, r.Go)
 		out = append(out, r)
@@ -240,4 +254,20 @@ func canonical(names []string) []string {
 		out[i] = http.CanonicalHeaderKey(n)
 	}
 	return out
+}
+
+// extractBody replaces the body with the raw JSON of the value at a dotted key
+// path. If the path is missing the body becomes empty, so a comparison fails.
+func extractBody(r *Response, path string) {
+	raw := json.RawMessage(r.Body)
+	for _, key := range strings.Split(path, ".") {
+		var obj map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &obj); err != nil {
+			raw = nil
+			break
+		}
+		raw = obj[key]
+	}
+	sum := sha256.Sum256(raw)
+	r.Body, r.BodyLen, r.BodySum = raw, int64(len(raw)), hex.EncodeToString(sum[:])
 }

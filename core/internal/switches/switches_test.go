@@ -131,3 +131,48 @@ func TestStepsListLeavesOthersOff(t *testing.T) {
 		t.Fatalf("%+v", s)
 	}
 }
+
+func TestProxyListen(t *testing.T) {
+	s, err := Parse(env(nil))
+	if err != nil || s.ProxyLAN || s.ProxyAllowedHosts != nil {
+		t.Fatalf("default: %+v %v", s, err)
+	}
+	for _, v := range []string{"", "loopback", "LOOPBACK"} {
+		s, err := Parse(env(map[string]string{EnvProxy: "1", EnvProxyListen: v}))
+		if err != nil || s.ProxyLAN {
+			t.Fatalf("%q: %+v %v", v, s, err)
+		}
+	}
+	s, err = Parse(env(map[string]string{EnvProxy: "1", EnvProxyListen: "lan", EnvProxyAllowedHosts: " MyPC.local, 192.168.1.20 ,::1,[fe80::1]"}))
+	if err != nil || !s.ProxyLAN {
+		t.Fatalf("lan: %+v %v", s, err)
+	}
+	if got := strings.Join(s.ProxyAllowedHosts, " "); got != "mypc.local 192.168.1.20 ::1 fe80::1" {
+		t.Fatalf("hosts: %q", got)
+	}
+}
+
+func TestProxyListenRejected(t *testing.T) {
+	cases := []struct {
+		name string
+		env  map[string]string
+		want string
+	}{
+		{"unknown listen value", map[string]string{EnvProxy: "1", EnvProxyListen: "all"}, "loopback or lan"},
+		{"lan without proxy", map[string]string{EnvProxyListen: "lan"}, "needs TTS_GO_PROXY=1"},
+		{"hosts without lan", map[string]string{EnvProxy: "1", EnvProxyAllowedHosts: "mypc"}, "needs TTS_GO_PROXY_LISTEN=lan"},
+		{"host with port", map[string]string{EnvProxy: "1", EnvProxyListen: "lan", EnvProxyAllowedHosts: "mypc:3000"}, "invalid host"},
+		{"wildcard", map[string]string{EnvProxy: "1", EnvProxyListen: "lan", EnvProxyAllowedHosts: "*"}, "invalid host"},
+		{"empty item", map[string]string{EnvProxy: "1", EnvProxyListen: "lan", EnvProxyAllowedHosts: "a,,b"}, "invalid host"},
+		{"url", map[string]string{EnvProxy: "1", EnvProxyListen: "lan", EnvProxyAllowedHosts: "http://mypc"}, "invalid host"},
+		{"ipv6 zone", map[string]string{EnvProxy: "1", EnvProxyListen: "lan", EnvProxyAllowedHosts: "fe80::1%eth0"}, "invalid host"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := Parse(env(c.env))
+			if err == nil || !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, c.want)
+			}
+		})
+	}
+}

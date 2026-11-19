@@ -1,7 +1,23 @@
 const { PHASE_EXPORT } = require("next/constants");
 
 // /** @type {import('next').NextConfig} */
+//
+// TTS_STATIC_EXPORT=1 (set by `npm run build:static`, see build-static.js)
+// makes this a static export: output "export" writes the site to
+// .out-building, which build-static.js renames to out/. Next then leaves the
+// API routes (pages/api/*, app/api/upload) out by itself; Go serves them.
+// Without the variable the config is the server build, as before.
+const isStaticExport = process.env.TTS_STATIC_EXPORT === "1";
+
 const nextConfig = (phase, { defaultConfig }) => ({
+  ...(isStaticExport
+    ? {
+        output: "export",
+        distDir: ".out-building",
+        // The client reads this (src/data/useGoData.ts, extensions/[name].tsx).
+        env: { TTS_STATIC_EXPORT: "1" },
+      }
+    : {}),
   // webpack(config) {
   //   // Grab the existing rule that handles SVG imports
   //   const fileLoaderRule = config.module.rules.find((rule) =>

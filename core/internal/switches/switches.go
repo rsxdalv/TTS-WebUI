@@ -7,6 +7,7 @@ package switches
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"regexp"
 	"strings"
@@ -17,6 +18,11 @@ const (
 	EnvProxy  = "TTS_GO_PROXY"
 	EnvRoutes = "TTS_GO_ROUTES"
 	EnvSteps  = "TTS_GO_STEPS"
+
+	// EnvProxyListen is "loopback" (the default) or "lan".
+	EnvProxyListen = "TTS_GO_PROXY_LISTEN"
+	// EnvProxyAllowedHosts lists extra host names the proxy accepts in LAN mode.
+	EnvProxyAllowedHosts = "TTS_GO_PROXY_ALLOWED_HOSTS"
 )
 
 // all is the list value that enables every known name.
@@ -28,6 +34,12 @@ var nameRE = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 type Set struct {
 	// Proxy is true when Go listens on port 3000 in front of Next.
 	Proxy bool
+	// ProxyLAN is true when the proxy listens on every interface, not only
+	// loopback. Next and Gradio stay on loopback either way.
+	ProxyLAN bool
+	// ProxyAllowedHosts are extra host names (lower case, no port) the proxy
+	// accepts in LAN mode, such as a machine name or a DNS name.
+	ProxyAllowedHosts []string
 
 	routes    map[string]bool
 	allRoutes bool
@@ -59,6 +71,34 @@ func Parse(lookup func(string) (string, bool)) (Set, error) {
 	}
 	if s.steps, s.allSteps, err = parseSteps(lookup); err != nil {
 		return Set{}, err
+	}
+
+	if v, ok := lookup(EnvProxyListen); ok {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "", "loopback":
+		case "lan":
+			s.ProxyLAN = true
+		default:
+			return Set{}, fmt.Errorf("%s must be loopback or lan, got %q", EnvProxyListen, v)
+		}
+	}
+	if v, ok := lookup(EnvProxyAllowedHosts); ok && strings.TrimSpace(v) != "" {
+		for _, raw := range strings.Split(v, ",") {
+			host := strings.ToLower(strings.TrimSpace(raw))
+			if ip := net.ParseIP(strings.Trim(host, "[]")); ip != nil && !strings.Contains(host, "%") {
+				host = ip.String() // [fe80::1] and fe80:0::1 both become fe80::1
+			}
+			if !validHostName(host) {
+				return Set{}, fmt.Errorf("%s: invalid host %q (a host name or IP address, without a port)", EnvProxyAllowedHosts, raw)
+			}
+			s.ProxyAllowedHosts = append(s.ProxyAllowedHosts, host)
+		}
+		if !s.ProxyLAN {
+			return Set{}, fmt.Errorf("%s needs %s=lan", EnvProxyAllowedHosts, EnvProxyListen)
+		}
+	}
+	if s.ProxyLAN && !s.Proxy {
+		return Set{}, fmt.Errorf("%s=lan needs %s=1: only the proxy can listen on the network", EnvProxyListen, EnvProxy)
 	}
 
 	if !s.Proxy && (s.allRoutes || len(s.routes) > 0) {
@@ -108,6 +148,19 @@ func parseSteps(lookup func(string) (string, bool)) (map[string]bool, bool, erro
 		}
 	}
 	return parseList(lookup, EnvSteps)
+}
+
+var hostNameRE = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$`)
+
+// validHostName accepts a DNS name or an IP address literal, with no port.
+func validHostName(h string) bool {
+	if h == "" || len(h) > 253 {
+		return false
+	}
+	if ip := net.ParseIP(strings.Trim(h, "[]")); ip != nil {
+		return !strings.Contains(h, "%")
+	}
+	return hostNameRE.MatchString(h)
 }
 
 // Route reports whether the route claim called name is on.

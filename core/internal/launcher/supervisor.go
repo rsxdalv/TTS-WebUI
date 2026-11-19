@@ -61,6 +61,10 @@ type Supervisor struct {
 	// Status fan-out: Supervisor publishes a JSON ProcessStatus slice whenever
 	// a process starts or stops. Subscribers receive those snapshots.
 	statusSubs []*logSub
+
+	// runTool runs a node tool in react-ui; nil means runReactUITool. Tests
+	// replace it.
+	runTool func(ctx context.Context, name string, args ...string) error
 }
 
 // newSupervisor creates a Supervisor for root.

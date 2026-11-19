@@ -34,11 +34,50 @@ const (
 // reactUIPlan is what Start must do before starting the processes.
 type reactUIPlan struct {
 	mode    reactUIMode
-	recover bool // run `node build-static.js --recover` first (CONTRACTS.md section 10)
-	build   bool // run `npm run build` first (escape hatch without a server build)
+	recover bool        // run `node build-static.js --recover` first (CONTRACTS.md section 10)
+	build   buildReason // run `npm run build` first, and why
 	// missing names the export's claims that TTS_GO_ROUTES turns off, when
 	// they are why Next serves the UI instead of the export.
 	missing string
+}
+
+// buildReason says why the server build must be built before Next starts.
+type buildReason string
+
+const (
+	buildNone    buildReason = ""
+	buildMissing buildReason = "missing" // TTS_GO_PROXY=0 and no usable server build
+	buildStale   buildReason = "stale"   // the server build is older than the export (S2F)
+)
+
+// serverBuildStale reports whether a usable server build is older than the
+// static export: an Update rebuilt only the export, so next start would serve
+// the old UI. Both times are file modification times, of .next/BUILD_ID (next
+// build writes it anew, and build:static's rename and restore keep its time)
+// and of out/_tts-export.json (written last in a complete export).
+func serverBuildStale(root paths.Root) bool {
+	if !usableServerBuild(root) || !react_ui_backend.HasExport(root.Dir()) {
+		return false
+	}
+	server, err := os.Stat(filepath.Join(root.Dir(), "react-ui", ".next", "BUILD_ID"))
+	if err != nil {
+		return false
+	}
+	export, err := os.Stat(filepath.Join(react_ui_backend.ExportDir(root.Dir()), react_ui_backend.ExportMarker))
+	if err != nil {
+		return false
+	}
+	return server.ModTime().Before(export.ModTime())
+}
+
+// staleBuild returns buildStale when the server build that Next would serve
+// is older than the export. It cannot tell while the build is set aside; the
+// plan made after the recover decides then.
+func staleBuild(root paths.Root, recover bool) buildReason {
+	if !recover && serverBuildStale(root) {
+		return buildStale
+	}
+	return buildNone
 }
 
 // errClaimsOff is the error for a static install whose needed claims are off.
@@ -90,7 +129,7 @@ func planReactUI(root paths.Root, sw switches.Set) (reactUIPlan, error) {
 		// Without these claims the export's generation and upload cannot
 		// work, so Next serves the UI when it can, and otherwise nothing starts.
 		if usableServerBuild(root) || recover {
-			return reactUIPlan{mode: modeNextProxied, recover: recover, missing: missing}, nil
+			return reactUIPlan{mode: modeNextProxied, recover: recover, missing: missing, build: staleBuild(root, recover)}, nil
 		}
 		return reactUIPlan{}, fmt.Errorf("%w: TTS_GO_ROUTES turns off %s, and there is no Next server build to fall back to; unset TTS_GO_ROUTES or add those claims", errClaimsOff, missing)
 	}
@@ -100,7 +139,11 @@ func planReactUI(root paths.Root, sw switches.Set) (reactUIPlan, error) {
 		}
 		return reactUIPlan{mode: modeNextProxied, recover: recover}, nil
 	}
-	return reactUIPlan{mode: modeNextDirect, recover: recover, build: !usableServerBuild(root) && !recover}, nil
+	build := staleBuild(root, recover)
+	if !usableServerBuild(root) && !recover {
+		build = buildMissing
+	}
+	return reactUIPlan{mode: modeNextDirect, recover: recover, build: build}, nil
 }
 
 // prepareReactUI runs the recover and build steps the plan asks for and
@@ -112,7 +155,7 @@ func (s *Supervisor) prepareReactUI(ctx context.Context, sw switches.Set) (react
 	}
 	if plan.recover {
 		slog.Info("react-ui: a static export build was interrupted; restoring the server build (node build-static.js --recover)")
-		if err := s.runReactUITool(ctx, "node", "build-static.js", "--recover"); err != nil {
+		if err := s.tool()(ctx, "node", "build-static.js", "--recover"); err != nil {
 			return plan, fmt.Errorf("restoring the React UI server build: %w", err)
 		}
 		if plan, err = planReactUI(s.root, sw); err != nil {
@@ -125,13 +168,22 @@ func (s *Supervisor) prepareReactUI(ctx context.Context, sw switches.Set) (react
 			return plan, errUINotBuilt
 		}
 	}
-	if plan.build {
+	switch plan.build {
+	case buildMissing:
 		slog.Warn("react-ui: TTS_GO_PROXY=0 needs the Next server build, which is missing; building it once with npm run build (this takes a few minutes)")
-		if err := s.runReactUITool(ctx, "npm", "run", "build"); err != nil {
-			return plan, fmt.Errorf("building the React UI (npm run build): %w", err)
+	case buildStale:
+		slog.Warn("react-ui: the Next server build is older than the static export (an Update rebuilt only the export), so it would serve the old UI; rebuilding it once with npm run build (this takes a few minutes)")
+	}
+	if plan.build != buildNone {
+		// A failed build never falls back to the old server build.
+		if err := s.tool()(ctx, "npm", "run", "build"); err != nil {
+			return plan, fmt.Errorf("building the React UI (npm run build) failed, so the app was not started: %w", err)
 		}
 		if !usableServerBuild(s.root) {
-			return plan, errors.New("npm run build finished but react-ui/.next is still not a usable server build")
+			return plan, errors.New("npm run build finished but react-ui/.next is still not a usable server build, so the app was not started")
+		}
+		if serverBuildStale(s.root) {
+			return plan, errors.New("npm run build finished but react-ui/.next is still older than the static export, so the app was not started")
 		}
 		slog.Info("react-ui: server build finished")
 	}
@@ -146,6 +198,14 @@ func (s *Supervisor) prepareReactUI(ctx context.Context, sw switches.Set) (react
 		}
 	}
 	return plan, nil
+}
+
+// tool returns the function that runs react-ui tools; tests replace it.
+func (s *Supervisor) tool() func(ctx context.Context, name string, args ...string) error {
+	if s.runTool != nil {
+		return s.runTool
+	}
+	return s.runReactUITool
 }
 
 // runReactUITool runs a node tool in react-ui inside the conda environment and

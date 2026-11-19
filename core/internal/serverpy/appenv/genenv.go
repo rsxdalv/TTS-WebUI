@@ -1,0 +1,84 @@
+package appenv
+
+import (
+	"errors"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+)
+
+const envHeader = `
+# This file gets updated automatically from the UI
+
+# If you wish to manually specify any ENV variables, please do so in the .env.user file
+# The variables in .env.user will take PRIORITY!
+
+# Defaults
+USE_TF=0 # Disable Tensorflow for transformers
+
+# RVC Defaults
+weight_root=data/models/rvc/checkpoints # Root directory for RVC model weights
+weight_uvr5_root=data/models/rvc/uvr5_weights # Root directory for RVC model weights (UVR5)
+index_root=data/models/rvc/checkpoints # Root directory for RVC model indices
+outside_index_root=data/models/rvc/checkpoints # Root directory for RVC model indices (outside)
+rmvpe_root=data/models/rvc/rmvpe # Root directory for RVC model RMVPE
+
+`
+
+func envLine(name, value, comment string) string {
+	prefix := ""
+	if value == "" {
+		prefix = "# "
+	}
+	return "# " + comment + "\n" + prefix + name + "=" + value + "\n"
+}
+
+// GenerateEnv returns the text writer.py generate_env() produces, with "\n"
+// newlines. env is the process environment (name=value) it reads the model
+// location variables from.
+func GenerateEnv(env []string) string {
+	fold := runtime.GOOS == "windows"
+	return generateEnv(env, fold)
+}
+
+func generateEnv(env []string, fold bool) string {
+	get := func(k string) string { v, _ := lookupEnv(env, k, fold); return v }
+	s := envHeader
+	s += envLine("HUGGINGFACE_HUB_CACHE", get("HUGGINGFACE_HUB_CACHE"), "Environment variable for HuggingFace model location")
+	s += envLine("HF_HOME", get("HF_HOME"), "Environment variable for HuggingFace model location (alternative)")
+	s += envLine("TORCH_HOME", get("TORCH_HOME"), "Default location for Torch Hub models")
+	s += envLine("XDG_CACHE_HOME", get("XDG_CACHE_HOME"), "Default location for Torch Hub models (alternative)")
+	return s + "\n"
+}
+
+// EnsureEnv writes root/.env if it does not exist (init.py writes only when
+// os.path.exists(".env") is false). Python writes in text mode, so on Windows
+// the file gets CRLF line endings; this does the same. It reports whether the
+// file was created. The content is always UTF-8.
+func EnsureEnv(root string, env []string) (bool, error) {
+	return ensureEnv(root, env, runtime.GOOS == "windows")
+}
+
+func ensureEnv(root string, env []string, crlf bool) (bool, error) {
+	p := filepath.Join(root, ".env")
+	if _, err := os.Stat(p); err == nil {
+		return false, nil
+	}
+	text := GenerateEnv(env)
+	if crlf {
+		text = strings.ReplaceAll(text, "\n", "\r\n")
+	}
+	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return false, nil
+		}
+		return false, err
+	}
+	if _, err := f.WriteString(text); err != nil {
+		f.Close()
+		return false, err
+	}
+	return true, f.Close()
+}

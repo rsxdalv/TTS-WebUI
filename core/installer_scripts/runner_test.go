@@ -133,6 +133,27 @@ func TestRunStreamsAndReportsExit(t *testing.T) {
 	}
 }
 
+func TestCommandThatExitsBeforeAttachIsANormalFinish(t *testing.T) {
+	beforeAssign = func() { time.Sleep(1500 * time.Millisecond) }
+	defer func() { beforeAssign = func() {} }()
+
+	var log collector
+	r := &ExecRunner{Root: t.TempDir(), Log: log.add}
+	res, err := r.Run(context.Background(), Command{
+		Name: self(t),
+		Env:  []string{"RUNNER_TEST_CHILD=print", "RUNNER_TEST_VALUE=abc"},
+	})
+	if err != nil {
+		t.Fatalf("a finished command was reported as failed: %v", err)
+	}
+	if res.ExitCode != 7 {
+		t.Fatalf("exit = %d, want 7", res.ExitCode)
+	}
+	if !contains(log.all(), "VALUE=abc") {
+		t.Fatalf("output lost: %q", log.all())
+	}
+}
+
 func TestCaptureReturnsStdout(t *testing.T) {
 	var log collector
 	r := &ExecRunner{Root: t.TempDir(), Log: log.add}

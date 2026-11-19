@@ -29,6 +29,9 @@ const maxLine = 1 << 20
 // still in its pipes.
 const drainTimeout = 2 * time.Second
 
+// beforeAssign lets tests delay attaching a started process to its tree.
+var beforeAssign = func() {}
+
 // StderrPrefix marks stderr lines in the log, matching procs.Proc.
 const StderrPrefix = "[stderr] "
 
@@ -215,7 +218,9 @@ func (r *ExecRunner) Run(ctx context.Context, c Command) (Result, error) {
 		close(readersDone)
 	}()
 
-	if err := tree.Assign(cmd); err != nil {
+	beforeAssign()
+	// A short command can finish before it is attached. That is a normal finish.
+	if err := tree.Assign(cmd); err != nil && !errors.Is(err, procs.ErrProcessExited) {
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
 		out.finish()

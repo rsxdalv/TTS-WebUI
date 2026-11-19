@@ -1,6 +1,13 @@
 package procs
 
-import "os/exec"
+import (
+	"errors"
+	"os/exec"
+)
+
+// ErrProcessExited means the process ended before it could be attached to its
+// tree. The process ran normally, so callers carry on and collect its exit code.
+var ErrProcessExited = errors.New("process already exited")
 
 // Tree lets a caller that owns its own exec.Cmd (and its pipes) kill the whole
 // process tree, using the same job object or process group as Proc.
@@ -17,7 +24,8 @@ func NewTree(cmd *exec.Cmd) (*Tree, error) {
 	return &Tree{ps: ps}, nil
 }
 
-// Assign attaches the started process to the tree. Call it after cmd.Start.
+// Assign attaches the started process to the tree. Call it after cmd.Start. It
+// returns ErrProcessExited if the process has already ended.
 func (t *Tree) Assign(cmd *exec.Cmd) error { return t.ps.assign(cmd) }
 
 // Kill force-kills the process and all its descendants.

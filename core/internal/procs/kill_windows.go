@@ -59,10 +59,27 @@ func (ps *platformState) assign(cmd *exec.Cmd) error {
 
 	if err := windows.AssignProcessToJobObject(job, hProc); err != nil {
 		windows.CloseHandle(job)
+		// A process that already exited, or is exiting, cannot join a job.
+		if processExited(uint32(cmd.Process.Pid)) {
+			return ErrProcessExited
+		}
 		return fmt.Errorf("AssignProcessToJobObject: %w", err)
 	}
 	ps.job = job
 	return nil
+}
+
+// processExited reports whether pid has ended, allowing a moment for a process
+// that is still on its way out. It opens its own handle because waiting on the
+// PROCESS_ALL_ACCESS handle of an exited process is refused.
+func processExited(pid uint32) bool {
+	h, err := windows.OpenProcess(windows.SYNCHRONIZE, false, pid)
+	if err != nil {
+		return false
+	}
+	defer windows.CloseHandle(h)
+	event, err := windows.WaitForSingleObject(h, 1000)
+	return err == nil && event == windows.WAIT_OBJECT_0
 }
 
 // graceful sends CTRL_BREAK to the process group.

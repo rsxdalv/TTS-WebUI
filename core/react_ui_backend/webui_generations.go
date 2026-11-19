@@ -52,7 +52,8 @@ func newWebuiGenerations(deps Deps) http.Handler {
 			return
 		}
 		st, err := os.Stat(file)
-		if err != nil || !st.Mode().IsRegular() {
+		if err != nil || !st.Mode().IsRegular() || realNameHidden(deps.Root, file) {
+			// realNameHidden: a dotfile reached through its Windows 8.3 alias.
 			notFoundEmpty(w)
 			return
 		}

@@ -99,21 +99,29 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		return fmt.Errorf("allocating extension manager port: %w", err)
 	}
 
-	// With the proxy on, Go takes port 3000 and Next moves to a private port.
+	// With the proxy on (the default, D18), Go takes port 3000 and either
+	// serves the static export or proxies Next on a private port.
 	sw, err := switches.FromEnv()
+	if err != nil {
+		return err
+	}
+	plan, err := s.prepareReactUI(setupCtx, sw)
 	if err != nil {
 		return err
 	}
 	var front *react_ui_backend.Server
 	nextPort := react_ui_backend.PublicPort
 	if sw.Proxy {
-		if nextPort, err = freePort(); err != nil {
-			return fmt.Errorf("allocating React UI port: %w", err)
+		if plan.mode == modeNextProxied {
+			if nextPort, err = freePort(); err != nil {
+				return fmt.Errorf("allocating React UI port: %w", err)
+			}
 		}
 		front, err = react_ui_backend.Start(react_ui_backend.Config{
 			Root:         s.root.Dir(),
 			Port:         react_ui_backend.PublicPort,
 			NextAddr:     fmt.Sprintf("127.0.0.1:%d", nextPort),
+			Static:       plan.mode == modeStatic,
 			Routes:       sw,
 			LAN:          sw.ProxyLAN,
 			AllowedHosts: sw.ProxyAllowedHosts,
@@ -147,6 +155,9 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		{name: "react-ui", cmd: mamba, args: reactUIArgs(envPath, s.root.Dir(), nextPort, sw.Proxy), env: baseEnv},
 		{name: "extension-manager", cmd: mamba, args: []string{"-p", envPath, "run", "python", extMgrScript, "--port", fmt.Sprintf("%d", extPort)}, env: baseEnv},
 	}
+	if plan.mode == modeStatic {
+		defs = append(defs[:1], defs[2:]...) // no Next process: Go serves the UI
+	}
 
 	s.mu.Lock()
 
@@ -155,7 +166,9 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		if err := p.Start(supCtx, d.cmd, d.args, cwd, d.env); err != nil {
 			// Best-effort stop what's already started.
 			for _, running := range s.procs {
-				_ = running.proc.Stop()
+				if running.proc != nil {
+					_ = running.proc.Stop()
+				}
 			}
 			if front != nil {
 				front.Close()
@@ -173,6 +186,10 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		}
 		s.procs = append(s.procs, ap)
 		go s.watchExit(ap)
+	}
+	if plan.mode == modeStatic {
+		// The UI is the Go server itself; it shows as react-ui until Stop.
+		s.procs = append(s.procs, &appProcess{name: "react-ui", front: front})
 	}
 	s.mu.Unlock()
 	s.publishStatus() // must be called without mu held (publishStatus acquires mu itself)
@@ -194,7 +211,9 @@ func (s *Supervisor) Stop() {
 		if ap.front != nil {
 			ap.front.Close()
 		}
-		_ = ap.proc.Stop()
+		if ap.proc != nil {
+			_ = ap.proc.Stop()
+		}
 	}
 	if cancel != nil {
 		cancel() // signal any processes that missed graceful stop

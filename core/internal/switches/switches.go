@@ -1,7 +1,8 @@
 // Package switches reads the environment variables that turn on the Go ports.
 //
-// The proxy and route switches are off by default (the app runs Next exactly as
-// before). TTS_GO_STEPS is on by default: TTS_GO_STEPS=none runs the scripts. See
+// After the cutover the proxy and every route claim (D18) and the Go installer
+// steps (D19) are on by default. TTS_GO_PROXY=0, TTS_GO_ROUTES=none and
+// TTS_GO_STEPS=none turn them off. See
 // documentation/core-rewrite/CONTRACTS.md, section "Switches".
 package switches
 
@@ -53,21 +54,33 @@ func FromEnv() (Set, error) { return Parse(os.LookupEnv) }
 // Parse parses the switches using lookup. Unknown values are errors: a mistyped
 // switch must not silently run the other code path.
 func Parse(lookup func(string) (string, bool)) (Set, error) {
-	var s Set
+	s := Set{Proxy: true} // D18: the proxy is on unless TTS_GO_PROXY=0
 
 	if v, ok := lookup(EnvProxy); ok {
 		switch strings.TrimSpace(v) {
-		case "", "0":
-		case "1":
-			s.Proxy = true
+		case "", "1":
+		case "0":
+			s.Proxy = false
 		default:
 			return Set{}, fmt.Errorf("%s must be 0 or 1, got %q", EnvProxy, v)
 		}
 	}
 
 	var err error
-	if s.routes, s.allRoutes, err = parseList(lookup, EnvRoutes); err != nil {
+	routesGiven := false
+	if v, ok := lookup(EnvRoutes); ok && strings.TrimSpace(v) != "" {
+		routesGiven = true
+	}
+	if v, _ := lookup(EnvRoutes); strings.TrimSpace(v) == none {
+		// An explicit "none": no claim is on. Allowed with the proxy off.
+	} else if s.routes, s.allRoutes, err = parseList(lookup, EnvRoutes); err != nil {
 		return Set{}, err
+	} else if s.routes[none] {
+		return Set{}, fmt.Errorf("%s: invalid name %q: none cannot be combined with other names", EnvRoutes, none)
+	} else if routesGiven && !s.Proxy {
+		return Set{}, fmt.Errorf("%s needs the proxy: unset %s or set it to 1", EnvRoutes, EnvProxy)
+	} else if !routesGiven && s.Proxy {
+		s.allRoutes = true // D18: every claim is on unless TTS_GO_ROUTES says otherwise
 	}
 	if s.steps, s.allSteps, err = parseSteps(lookup); err != nil {
 		return Set{}, err
@@ -98,12 +111,9 @@ func Parse(lookup func(string) (string, bool)) (Set, error) {
 		}
 	}
 	if s.ProxyLAN && !s.Proxy {
-		return Set{}, fmt.Errorf("%s=lan needs %s=1: only the proxy can listen on the network", EnvProxyListen, EnvProxy)
+		return Set{}, fmt.Errorf("%s=lan needs the proxy (unset %s or set it to 1): only the proxy can listen on the network", EnvProxyListen, EnvProxy)
 	}
 
-	if !s.Proxy && (s.allRoutes || len(s.routes) > 0) {
-		return Set{}, fmt.Errorf("%s needs %s=1: routes can only be claimed by the proxy", EnvRoutes, EnvProxy)
-	}
 	return s, nil
 }
 
@@ -128,7 +138,8 @@ func parseList(lookup func(string) (string, bool), env string) (map[string]bool,
 	return names, everything, nil
 }
 
-// none is the TTS_GO_STEPS value that runs the original scripts for every step.
+// none turns a list switch off: TTS_GO_ROUTES=none turns every claim off, and
+// TTS_GO_STEPS=none runs the original scripts for every step.
 const none = "none"
 
 // parseSteps reads TTS_GO_STEPS. Unlike the other switches the steps are ON by

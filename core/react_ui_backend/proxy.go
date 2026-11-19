@@ -30,8 +30,11 @@ type Config struct {
 	Root string
 	// Port is the public port.
 	Port int
-	// NextAddr is the host:port where Next listens.
+	// NextAddr is the host:port where Next listens. Unused when Static is set.
 	NextAddr string
+	// Static serves the export in react-ui/out instead of proxying Next, so no
+	// Next process runs (CONTRACTS.md section 10).
+	Static bool
 	// Routes says which claims are on.
 	Routes switches.Set
 	// LAN listens on every interface instead of loopback only, and accepts
@@ -57,9 +60,14 @@ func NewHandler(cfg Config) (http.Handler, error) {
 	if err := cfg.Routes.CheckRoutes(claimNames()); err != nil {
 		return nil, err
 	}
-	next, err := newNextProxy(cfg)
-	if err != nil {
-		return nil, err
+	var next http.Handler
+	if cfg.Static {
+		next = newStaticExport(cfg.Root)
+	} else {
+		var err error
+		if next, err = newNextProxy(cfg); err != nil {
+			return nil, err
+		}
 	}
 
 	port := strconv.Itoa(cfg.Port)

@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
@@ -35,6 +36,24 @@ type reactUIPlan struct {
 	mode    reactUIMode
 	recover bool // run `node build-static.js --recover` first (CONTRACTS.md section 10)
 	build   bool // run `npm run build` first (escape hatch without a server build)
+	// missing names the export's claims that TTS_GO_ROUTES turns off, when
+	// they are why Next serves the UI instead of the export.
+	missing string
+}
+
+// errClaimsOff is the error for a static install whose needed claims are off.
+var errClaimsOff = errors.New("the static React UI needs route claims that are off")
+
+// missingExportClaims lists, comma separated, the claims the export needs that
+// the switches turn off.
+func missingExportClaims(sw switches.Set) string {
+	var missing []string
+	for _, name := range react_ui_backend.ExportClaims {
+		if !sw.Route(name) {
+			missing = append(missing, name)
+		}
+	}
+	return strings.Join(missing, ", ")
 }
 
 // errUINotBuilt is the error for an install with neither build.
@@ -62,10 +81,19 @@ func serverBuildSetAside(root paths.Root) bool {
 // planReactUI decides the mode from the switches and what is on disk. It is
 // called again after a recover, because that can change the answer.
 func planReactUI(root paths.Root, sw switches.Set) (reactUIPlan, error) {
-	if sw.Proxy && react_ui_backend.HasExport(root.Dir()) {
-		return reactUIPlan{mode: modeStatic}, nil
-	}
 	recover := serverBuildSetAside(root)
+	if sw.Proxy && react_ui_backend.HasExport(root.Dir()) {
+		missing := missingExportClaims(sw)
+		if missing == "" {
+			return reactUIPlan{mode: modeStatic}, nil
+		}
+		// Without these claims the export's generation and upload cannot
+		// work, so Next serves the UI when it can, and otherwise nothing starts.
+		if usableServerBuild(root) || recover {
+			return reactUIPlan{mode: modeNextProxied, recover: recover, missing: missing}, nil
+		}
+		return reactUIPlan{}, fmt.Errorf("%w: TTS_GO_ROUTES turns off %s, and there is no Next server build to fall back to; unset TTS_GO_ROUTES or add those claims", errClaimsOff, missing)
+	}
 	if sw.Proxy {
 		if !usableServerBuild(root) && !recover {
 			return reactUIPlan{}, errUINotBuilt
@@ -111,7 +139,11 @@ func (s *Supervisor) prepareReactUI(ctx context.Context, sw switches.Set) (react
 	case modeStatic:
 		slog.Info("react-ui: serving the static export from react-ui/out; no Next process")
 	case modeNextProxied:
-		slog.Warn("react-ui: no static export in react-ui/out, so the Next server build is proxied through next start; run Update to switch to the static export")
+		if plan.missing != "" {
+			slog.Warn("react-ui: the static export needs the route claims " + plan.missing + ", which TTS_GO_ROUTES turns off, so the Next server build is proxied through next start instead")
+		} else {
+			slog.Warn("react-ui: no static export in react-ui/out, so the Next server build is proxied through next start; run Update to switch to the static export")
+		}
 	}
 	return plan, nil
 }

@@ -148,9 +148,11 @@ func TestStaticExportRedirectsAndMethods(t *testing.T) {
 	if resp := request(t, "POST", front+"/", nil, nil); resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("POST /: %d", resp.StatusCode)
 	}
-	resp = request(t, "GET", front+"/api/unknown", nil, nil)
-	if got := body(t, resp); resp.StatusCode != 404 || strings.Contains(got, "<html>") {
-		t.Fatalf("/api/unknown: %d %q; an API path must not get a page", resp.StatusCode, got)
+	for _, method := range []string{"GET", "POST"} {
+		resp = request(t, method, front+"/api/unknown", nil, nil)
+		if got := body(t, resp); resp.StatusCode != 404 || strings.Contains(got, "<html>") {
+			t.Fatalf("%s /api/unknown: %d %q; an API path must get a plain 404", method, resp.StatusCode, got)
+		}
 	}
 	resp = request(t, "HEAD", front+"/tools", nil, nil)
 	if got := body(t, resp); resp.StatusCode != 200 || got != "" {

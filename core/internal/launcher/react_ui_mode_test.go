@@ -53,6 +53,13 @@ func TestPlanReactUI(t *testing.T) {
 		{"BUILD_ID only (killed first export)", []string{".next/BUILD_ID"}, proxyOn, reactUIPlan{}, errUINotBuilt},
 		{"killed export with the build set aside", []string{".next-server-saved/BUILD_ID", ".next-export-scratch"}, proxyOn, reactUIPlan{mode: modeNextProxied, recover: true}, nil},
 		{"proxy off ignores the export", append(export, server...), proxyOff, reactUIPlan{mode: modeNextDirect}, nil},
+		{"claims off, server build: Next serves the UI", append(export, server...), map[string]string{switches.EnvRoutes: "none"},
+			reactUIPlan{mode: modeNextProxied, missing: "gradio, gradio-file-proxy, upload, webui-generations, data-outputs, data-bark-voices"}, nil},
+		{"some claims off, server build", append(export, server...), map[string]string{switches.EnvRoutes: "gradio,gradio-file-proxy,webui-generations,data-outputs,data-bark-voices"},
+			reactUIPlan{mode: modeNextProxied, missing: "upload"}, nil},
+		{"claims off, no server build", export, map[string]string{switches.EnvRoutes: "none"}, reactUIPlan{}, errClaimsOff},
+		{"every needed claim listed", export, map[string]string{switches.EnvRoutes: "gradio,gradio-file-proxy,upload,webui-generations,data-outputs,data-bark-voices"},
+			reactUIPlan{mode: modeStatic}, nil},
 		{"proxy off without a server build builds it", export, proxyOff, reactUIPlan{mode: modeNextDirect, build: true}, nil},
 		{"proxy off with the build set aside recovers", []string{".next-server-saved/BUILD_ID"}, proxyOff, reactUIPlan{mode: modeNextDirect, recover: true}, nil},
 	}

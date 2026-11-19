@@ -17,6 +17,10 @@ import (
 	"strings"
 )
 
+// ExportClaims are the route claims the static export cannot work without:
+// with Next gone, nothing else answers these API paths.
+var ExportClaims = []string{"gradio", "gradio-file-proxy", "upload", "webui-generations", "data-outputs", "data-bark-voices"}
+
 // ExportMarker is the file that exists only in a complete export.
 const ExportMarker = "_tts-export.json"
 
@@ -51,16 +55,16 @@ var (
 )
 
 func (s *staticExport) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	p := r.URL.Path
+
+	// API paths no claim handled are 404, never a page, whatever the method.
+	if p == "/api" || strings.HasPrefix(p, "/api/") {
+		http.NotFound(w, r)
+		return
+	}
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	p := r.URL.Path
-
-	// API paths no claim handled are 404, never a page.
-	if p == "/api" || strings.HasPrefix(p, "/api/") {
-		http.NotFound(w, r)
 		return
 	}
 
@@ -169,6 +173,9 @@ func (s *staticExport) file(dir, urlPath string) (string, os.FileInfo, bool) {
 	st, err := os.Stat(full)
 	if err != nil || !st.Mode().IsRegular() {
 		return "", nil, false
+	}
+	if realNameHidden(dir, full) {
+		return "", nil, false // a dotfile reached through its 8.3 alias
 	}
 	return full, st, true
 }

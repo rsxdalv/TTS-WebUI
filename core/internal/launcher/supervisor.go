@@ -109,9 +109,6 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if plan.mode == modeStatic && (!sw.Route("data-outputs") || !sw.Route("data-bark-voices")) {
-		slog.Warn("react-ui: the static export needs the data-outputs and data-bark-voices claims; with them off the outputs and voices pages stay empty")
-	}
 	var front *react_ui_backend.Server
 	nextPort := react_ui_backend.PublicPort
 	if sw.Proxy {

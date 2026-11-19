@@ -9,3 +9,4 @@ Each file is a JSON array of `compare.Case`, run with
   `outputs/emptydir/`, `outputs/ünï.html`, `outputs/UPPER.PNG`, `collections/c.json`, `voices/x.npz` (3,000,000 bytes),
   `outputs-rvc/s.js`, `voices-tortoise/README`, `favorites/f.ogg`, `config.json`, `secretdir/s.txt`.
   Conditional-request cases (If-None-Match with the real ETag) were run separately with the validators read from Next.
+- `data-outputs.json`: fixtures from `gen-fixtures-outputs.js` (edit its root path); the BUILD_ID inside nextPath must be replaced with `react-ui/.next/BUILD_ID`; use collection names that were not prerendered at build. Next side is `/_next/data/<BUILD_ID>/outputs/<name>.json`, compared on `pageProps.outputs` only.

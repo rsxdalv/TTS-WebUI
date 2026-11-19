@@ -16,8 +16,8 @@ import (
 var knownGoSteps = []string{"mamba", "install", "update", "diagnostic"}
 
 // useGoStep reports whether step name runs its Go port instead of the script.
-// It is off unless TTS_GO_STEPS names the step (or says "all"). A bad value is an
-// error, so a typo never silently runs the other code path. Only TTS_GO_STEPS
+// It is on unless TTS_GO_STEPS=none or a list that leaves the step out (decision
+// D19). A bad value is an error, so a typo never silently runs the other code path. Only TTS_GO_STEPS
 // is read here: the proxy and route switches belong to the app supervisor.
 func useGoStep(name string) (bool, error) {
 	sw, err := switches.Parse(func(k string) (string, bool) {
@@ -59,6 +59,7 @@ func (l *Launcher) serveGoStep(w http.ResponseWriter, name string, fn goStepFunc
 	}
 	p := &procs.Proc{}
 	l.setProc(name, p)
+	p.Note(fmt.Sprintf("[launcher] %s: running the Go port (TTS_GO_STEPS=none runs the script instead)", name))
 	err = p.StartFunc(context.Background(), func(ctx context.Context, log func(string)) int {
 		code, err := fn(ctx, installer_scripts.NewStep(l.root.Dir(), log))
 		if err != nil {
@@ -86,4 +87,9 @@ func (l *Launcher) appRunning() bool {
 		}
 	}
 	return false
+}
+
+// scriptNote is the log line of a step that runs its original script.
+func scriptNote(name string) string {
+	return fmt.Sprintf("[launcher] %s: running the original script (TTS_GO_STEPS selects the Go port)", name)
 }

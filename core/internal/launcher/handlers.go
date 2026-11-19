@@ -116,6 +116,7 @@ func (l *Launcher) handleMamba() http.Handler {
 
 		p := &procs.Proc{}
 		l.setProc("mamba", p)
+		p.Note(scriptNote("mamba"))
 
 		var name string
 		var args []string
@@ -190,6 +191,7 @@ func (l *Launcher) handleInstall() http.Handler {
 
 		p := &procs.Proc{}
 		l.setProc("install", p)
+		p.Note(scriptNote("install"))
 
 		mamba := micromambaPath(l.root)
 		envPath := installEnvPath(l.root)
@@ -233,6 +235,7 @@ func (l *Launcher) handleAppDiagnostic() http.Handler {
 
 		p := &procs.Proc{}
 		l.setProc("diagnostic", p)
+		p.Note(scriptNote("diagnostic"))
 
 		var name string
 		var args []string
@@ -283,6 +286,7 @@ func (l *Launcher) handleUpdate() http.Handler {
 		// Run the same install command to update.
 		p := &procs.Proc{}
 		l.setProc("update", p)
+		p.Note(scriptNote("update"))
 
 		mamba := micromambaPath(l.root)
 		envPath := installEnvPath(l.root)

@@ -2,8 +2,11 @@ package preflight
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -291,6 +294,25 @@ func TestGCC(t *testing.T) {
 	})
 }
 
+// A machine without gcc must give the warning, not an error: the real runner
+// returns exec.ErrNotFound when the command is not on PATH.
+func TestGCC_CommandNotOnPath(t *testing.T) {
+	for _, e := range []error{exec.ErrNotFound, &exec.Error{Name: "gcc", Err: exec.ErrNotFound}, fs.ErrNotExist} {
+		c, err := checkGCC(context.Background(), func(context.Context, string, ...string) (string, string, int, error) {
+			return "", "", 0, e
+		})
+		if err != nil || c.Status != StatusWarn {
+			t.Fatalf("%v: got %+v err=%v", e, c, err)
+		}
+	}
+	// A real failure to run it is still an error.
+	if _, err := checkGCC(context.Background(), func(context.Context, string, ...string) (string, string, int, error) {
+		return "", "", 0, errors.New("boom")
+	}); err == nil {
+		t.Fatal("other errors must not be swallowed")
+	}
+}
+
 func TestAllPassed(t *testing.T) {
 	pass := []Check{{ID: "a", Status: StatusPass}, {ID: "b", Status: StatusWarn}}
 	if !AllPassed(pass) {
@@ -342,19 +364,4 @@ func TestRunReturnsPlatformChecks(t *testing.T) {
 		t.Error("SpacesInPath check missing")
 	}
 	_ = fmt.Sprintf("%v", checks) // compile smoke
-}
-
-// On a fresh Ubuntu there is no gcc at all, so starting it fails with
-// exec.ErrNotFound. That must be the warning, not a preflight error (HTTP 500).
-func TestGCCMissingExecutableWarns(t *testing.T) {
-	missing := func(ctx context.Context, _ string, args ...string) (string, string, int, error) {
-		return DefaultRunner(ctx, "tts-webui-no-such-gcc", args...)
-	}
-	c, err := checkGCC(context.Background(), missing)
-	if err != nil {
-		t.Fatalf("err = %v", err)
-	}
-	if c.Status != StatusWarn || !strings.Contains(c.Message, "gcc not found") {
-		t.Errorf("got %q %q", c.Status, c.Message)
-	}
 }

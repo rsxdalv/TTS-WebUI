@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -258,13 +259,15 @@ func checkMSVC(ctx context.Context, runner Runner) (Check, error) {
 
 func checkGCC(ctx context.Context, runner Runner) (Check, error) {
 	stdout, _, exitCode, err := runner(ctx, "gcc", "--version")
-	// A missing gcc is the case this check warns about, as root.sh does; only
-	// other failures to start it are errors.
-	missing := errors.Is(err, exec.ErrNotFound)
-	if err != nil && !missing {
+	if errors.Is(err, exec.ErrNotFound) || errors.Is(err, fs.ErrNotExist) {
+		// No gcc on PATH is exactly what this check warns about, not a failure to run it.
+		// (Found on a fresh Ubuntu in WSL: the step answered 500 instead of the warning.)
+		stdout, exitCode, err = "", 127, nil
+	}
+	if err != nil {
 		return Check{}, err
 	}
-	if missing || exitCode != 0 || strings.TrimSpace(stdout) == "" {
+	if exitCode != 0 || strings.TrimSpace(stdout) == "" {
 		hint := "sudo apt update && sudo apt install build-essential"
 		if runtime.GOOS == "darwin" {
 			hint = "xcode-select --install"

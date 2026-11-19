@@ -128,6 +128,8 @@ Code: `core/internal/switches`. All switches are environment variables read by t
 | `TTS_GO_PROXY` | unset, empty or `0` = off, `1` = on | Go listens on port 3000 in front of Next |
 | `TTS_GO_ROUTES` | comma list of claim names from section 5, or `all` | Those routes are answered by Go. Needs `TTS_GO_PROXY=1` |
 | `TTS_GO_STEPS` | comma list of `mamba`, `install`, `update`, `diagnostic`, or `all` | Those launcher steps run the Go port instead of the script (task I7) |
+| `TTS_GO_PROXY_LISTEN` | unset, empty or `loopback` = loopback only, `lan` = every interface | Where the proxy listens (section 6, D18). `lan` needs `TTS_GO_PROXY=1` |
+| `TTS_GO_PROXY_ALLOWED_HOSTS` | comma list of host names or IP addresses, without ports | Extra hosts the Host and Origin guards accept in LAN mode, such as a machine name. Needs `TTS_GO_PROXY_LISTEN=lan` |
 
 An invalid value stops the app from starting with a clear error, so a typo can never silently run the other code path.
 
@@ -202,21 +204,32 @@ that leaves its allowed directory, and must have a test for it.
 **Today**, `next start -p 3000` has no `-H`, so Next binds all interfaces (`next` 16.2.1 CLI help: "default: 0.0.0.0").
 It has no token, Host check or Origin check. This stays true whenever the proxy is off.
 
-**With the proxy on**, port 3000 follows D9 except for the token, as recorded in D17:
+**With the proxy on**, port 3000 follows D9 except for the token, as recorded in D17 and made final in D18:
 
 | Rule | Policy |
 |---|---|
-| Bind | `127.0.0.1:3000`, plus `[::1]:3000` when IPv6 loopback exists. Never all interfaces |
+| Bind | `127.0.0.1:3000`, plus `[::1]:3000` when IPv6 loopback exists. All interfaces only in LAN mode (below) |
 | Next | Binds `127.0.0.1` on its internal port only |
 | Host | The request must have host `127.0.0.1`, `localhost` or `[::1]` with port 3000. Otherwise `400` |
 | Origin | Checked on every `/api/*` request and every request that is not `GET` or `HEAD`. If an `Origin` header is present it must be `http://127.0.0.1:3000`, `http://localhost:3000` or `http://[::1]:3000`. Otherwise `403`. `Origin: null` is refused |
 | Token | None. Pages are served by Next and have no way to receive the launcher's token |
 | Launcher API | Never exposed on port 3000. Port 7700 keeps its token. A claim must not start processes or change the install |
 
+**LAN mode** (`TTS_GO_PROXY_LISTEN=lan`, opt-in, D18) changes only these rules:
+
+| Rule | Policy in LAN mode |
+|---|---|
+| Bind | `0.0.0.0:3000`, plus `[::]:3000` when IPv6 exists |
+| Host | Also accepts this machine's own interface addresses and the `TTS_GO_PROXY_ALLOWED_HOSTS` names, with port 3000. Every other name still gets `400`, so DNS rebinding stays blocked. The addresses are reread at most every 5 seconds when an unknown host arrives |
+| Origin | Also accepts `http://<an accepted host>:3000` exactly. Other schemes, ports, paths, user info and hosts still get `403` |
+| Warning | The launcher logs one line naming the network URLs and saying there is no password |
+
+Next and Gradio stay on loopback in every mode. There is still no password, so LAN mode is only for networks the user
+trusts.
+
 Consequences to keep in mind:
 
-- **LAN access is lost while the proxy is on.** Anyone who opens the UI from another device today must keep the proxy
-  off. This must be settled before the proxy ever becomes the default.
+- Without LAN mode, the UI cannot be opened from another device while the proxy is on.
 - Docker runs `python3 server.py --docker` and never uses the launcher, so it is not affected.
 - The internal Next port has no Host or Origin check. It is a random loopback port, so this is no wider than port 3000
   is today.

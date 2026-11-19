@@ -32,12 +32,12 @@ func runLaunch(ctx context.Context, args []string) error {
 	var root paths.Root
 	var err error
 	if *rootDir != "" {
-		root, err = paths.New(*rootDir)
+		root, err = paths.NewUninitialized(*rootDir)
 		if err != nil {
 			return fmt.Errorf("invalid root %q: %w", *rootDir, err)
 		}
 	} else {
-		root, err = paths.FromBinary()
+		root, err = paths.FromBinaryUninitialized()
 		if err != nil {
 			return fmt.Errorf("detecting install root: %w", err)
 		}

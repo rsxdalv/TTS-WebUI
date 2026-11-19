@@ -31,14 +31,41 @@ func New(dir string) (Root, error) {
 	return Root{dir: abs}, nil
 }
 
+// NewUninitialized returns a Root for dir without requiring installer_scripts/.
+// It is for the launcher, which downloads installer_scripts/ into an empty folder.
+func NewUninitialized(dir string) (Root, error) {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return Root{}, fmt.Errorf("resolving root %q: %w", dir, err)
+	}
+	return Root{dir: abs}, nil
+}
+
 // FromBinary returns a Root derived from the parent directory of the running
 // binary. In production the binary lives directly in the install root.
 func FromBinary() (Root, error) {
+	exe, err := binaryDir()
+	if err != nil {
+		return Root{}, err
+	}
+	return New(exe)
+}
+
+// FromBinaryUninitialized is FromBinary without the installer_scripts/ check.
+func FromBinaryUninitialized() (Root, error) {
+	exe, err := binaryDir()
+	if err != nil {
+		return Root{}, err
+	}
+	return NewUninitialized(exe)
+}
+
+func binaryDir() (string, error) {
 	exe, err := os.Executable()
 	if err != nil {
-		return Root{}, fmt.Errorf("finding binary path: %w", err)
+		return "", fmt.Errorf("finding binary path: %w", err)
 	}
-	return New(filepath.Dir(exe))
+	return filepath.Dir(exe), nil
 }
 
 // Dir returns the absolute root directory path.

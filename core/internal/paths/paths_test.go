@@ -74,3 +74,14 @@ func TestSubPaths(t *testing.T) {
 		}
 	}
 }
+
+func TestNewUninitializedAllowsEmptyDir(t *testing.T) {
+	dir := t.TempDir()
+	root, err := paths.NewUninitialized(dir)
+	if err != nil {
+		t.Fatalf("NewUninitialized on empty dir: %v", err)
+	}
+	if root.Dir() == "" {
+		t.Fatal("empty Dir")
+	}
+}

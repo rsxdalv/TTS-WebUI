@@ -6,6 +6,7 @@
     "dev": "next dev -p 3001",
     "prebuild": "node build-static.js --recover && node generate-plugin-imports.js",
     "build": "next build",
+    "postbuild": "node build-static.js --stamp-server",
     "build:static": "node build-static.js",
     "start": "next start",
     "lint": "next lint",

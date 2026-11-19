@@ -32,8 +32,15 @@ func touch(t *testing.T, root string, names ...string) {
 		if err := os.WriteFile(full, []byte("x"), 0o644); err != nil {
 			t.Fatal(err)
 		}
+		// One time for every file, so no build looks older than another
+		// unless a test says so.
+		if err := os.Chtimes(full, fixtureTime, fixtureTime); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
+
+var fixtureTime = time.Now().Add(-3 * time.Hour)
 
 func TestPlanReactUI(t *testing.T) {
 	export := []string{"out/_tts-export.json", "out/index.html"}

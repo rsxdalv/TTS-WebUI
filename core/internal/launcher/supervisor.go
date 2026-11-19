@@ -91,6 +91,23 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	s.supCancel = supCancel
 	s.mu.Unlock()
 
+	// Every switch is checked before anything runs, so a typo never starts a
+	// build or a process first (R2-5).
+	sw, err := switches.FromEnv()
+	if err != nil {
+		return err
+	}
+	if err := sw.CheckRoutes(react_ui_backend.ClaimNames()); err != nil {
+		return err
+	}
+	if err := sw.CheckSteps(knownGoSteps); err != nil {
+		return err
+	}
+
+	// A launcher that was killed (SIGKILL, power loss) may have left the app
+	// running on Linux and macOS; stop it before ports collide.
+	sweepOrphans(s.root)
+
 	// GPU label is required before any process can start.
 	if _, err := readGPULabel(setupCtx, s.root); err != nil {
 		return fmt.Errorf("determining GPU: %w", err)
@@ -105,10 +122,6 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 
 	// With the proxy on (the default, D18), Go takes port 3000 and either
 	// serves the static export or proxies Next on a private port.
-	sw, err := switches.FromEnv()
-	if err != nil {
-		return err
-	}
 	plan, err := s.prepareReactUI(setupCtx, sw)
 	if err != nil {
 		return err
@@ -196,6 +209,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		s.procs = append(s.procs, &appProcess{name: "react-ui", front: front})
 	}
 	s.mu.Unlock()
+	s.recordProcesses()
 	s.publishStatus() // must be called without mu held (publishStatus acquires mu itself)
 	return nil
 }
@@ -211,17 +225,26 @@ func (s *Supervisor) Stop() {
 	s.procs = nil
 	s.mu.Unlock()
 
+	// Stop the processes in parallel, so the whole app is gone within one
+	// graceful period (5 s) plus the kill, not one period per process.
+	var wg sync.WaitGroup
 	for _, ap := range ps {
 		if ap.front != nil {
 			ap.front.Close()
 		}
 		if ap.proc != nil {
-			_ = ap.proc.Stop()
+			wg.Add(1)
+			go func(p *procs.Proc) {
+				defer wg.Done()
+				_ = p.Stop()
+			}(ap.proc)
 		}
 	}
+	wg.Wait()
 	if cancel != nil {
 		cancel() // signal any processes that missed graceful stop
 	}
+	s.clearRecord()
 	s.publishStatus()
 }
 

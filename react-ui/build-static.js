@@ -58,7 +58,31 @@ function run(cmd, args, env) {
   return r.status === 0;
 }
 
+// sourceCommit is the git commit of the install the build comes from, or null
+// outside a git checkout. Go compares it with HEAD to tell a stale build.
+function sourceCommit() {
+  const r = spawnSync("git", ["rev-parse", "HEAD"], {
+    cwd: path.join(root, ".."),
+    encoding: "utf8",
+    shell: process.platform === "win32",
+  });
+  const out = (r.stdout || "").trim();
+  return r.status === 0 && /^[0-9a-f]{40,64}$/.test(out) ? out : null;
+}
+
+// stampServer records which commit the server build in .next comes from
+// (postbuild of npm run build). See CONTRACTS.md section 10.
+function stampServer() {
+  if (!fs.existsSync(path.join(NEXT, "BUILD_ID"))) return 0;
+  fs.writeFileSync(
+    path.join(NEXT, "tts-build.json"),
+    JSON.stringify({ commit: sourceCommit(), builtAt: new Date().toISOString() }) + "\n"
+  );
+  return 0;
+}
+
 function main() {
+  if (process.argv.includes("--stamp-server")) return stampServer();
   recover();
   if (process.argv.includes("--recover")) return 0;
 
@@ -98,7 +122,7 @@ function main() {
 
   fs.writeFileSync(
     path.join(BUILDING, "_tts-export.json"),
-    JSON.stringify({ buildId, builtAt: new Date().toISOString() }) + "\n"
+    JSON.stringify({ buildId, builtAt: new Date().toISOString(), commit: sourceCommit() }) + "\n"
   );
   // Next copies public/ into the export. Uploads (file-input-cache) are served
   // live from public/ by Go, and a copy here would be stale.

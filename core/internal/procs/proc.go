@@ -149,6 +149,17 @@ func (p *Proc) Stop() error {
 	}
 }
 
+// Pid returns the process ID, or 0 before Start or for a StartFunc job. On
+// Unix it is also the process group ID, because each child gets its own group.
+func (p *Proc) Pid() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.cmd == nil || p.cmd.Process == nil {
+		return 0
+	}
+	return p.cmd.Process.Pid
+}
+
 // Wait blocks until the process exits.
 func (p *Proc) Wait() {
 	p.mu.Lock()

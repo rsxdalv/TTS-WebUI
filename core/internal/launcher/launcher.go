@@ -48,6 +48,38 @@ func New(root paths.Root) *Launcher {
 	}
 }
 
+// Shutdown stops the app and any running install step, for a launcher that
+// is exiting (Ctrl+C, SIGTERM, SIGHUP). It returns when they are gone.
+func (l *Launcher) Shutdown() {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		l.sup.Stop()
+	}()
+	l.mu.Lock()
+	var steps []*procs.Proc
+	for _, p := range l.sprocs {
+		if p != nil && p.Running() {
+			steps = append(steps, p)
+		}
+	}
+	l.mu.Unlock()
+	for _, p := range steps {
+		wg.Add(1)
+		go func(p *procs.Proc) {
+			defer wg.Done()
+			_ = p.Stop()
+		}(p)
+	}
+	wg.Wait()
+}
+
+// CleanupOrphans stops what a killed launcher left running for this install
+// (Linux and macOS; Windows job objects leave nothing). It returns how many
+// processes it stopped.
+func (l *Launcher) CleanupOrphans() int { return sweepOrphans(l.root) }
+
 // Register adds all /api/steps/* and /api/app/* endpoints to srv.
 // The server's existing token guard covers these because they are registered
 // under /api/.

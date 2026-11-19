@@ -64,7 +64,7 @@ func happyAnswers(c Command) (int, string) {
 }
 
 func TestRootWindowsHappyPath(t *testing.T) {
-	noConda(t)
+	noConda(t, "vswhere") // on the base PATH, so the lookup also works where PATH uses ":"
 	s, fr, lines, root := rootFixture(t, happyAnswers)
 	os.WriteFile(filepath.Join(root, "installer_files", "env", "Library", "bin", "vswhere.exe"), nil, 0o755)
 

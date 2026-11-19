@@ -140,15 +140,25 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("/", s.uiHandler(uiFS))
 }
 
+// tokenCookieName is the name of the token cookie for the port the request came
+// in on. Cookies ignore ports, so with one shared name a second launcher on the
+// same host would overwrite the first one's cookie and break its streams (R2-7).
+func tokenCookieName(r *http.Request) string {
+	if _, port, err := net.SplitHostPort(r.Host); err == nil && port != "" {
+		return "tts-token-" + port
+	}
+	return "tts-token"
+}
+
 // tokenGuard wraps a handler to require either the X-TTS-Token header or the
-// tts-token cookie (set by serveIndexWithToken for EventSource and media requests).
+// tts-token-<port> cookie (set by serveIndexWithToken for EventSource and media requests).
 func (s *Server) tokenGuard(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if subtle.ConstantTimeCompare([]byte(r.Header.Get("X-TTS-Token")), []byte(s.token)) == 1 {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if c, err := r.Cookie("tts-token"); err == nil && subtle.ConstantTimeCompare([]byte(c.Value), []byte(s.token)) == 1 {
+		if c, err := r.Cookie(tokenCookieName(r)); err == nil && subtle.ConstantTimeCompare([]byte(c.Value), []byte(s.token)) == 1 {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -161,7 +171,7 @@ func (s *Server) uiHandler(files fs.FS) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p := r.URL.Path
 		if p == "/" || p == "/index.html" || p == "" {
-			serveIndexWithToken(w, files, s.token)
+			serveIndexWithToken(w, files, s.token, tokenCookieName(r))
 			return
 		}
 		fileServer.ServeHTTP(w, r)
@@ -170,7 +180,7 @@ func (s *Server) uiHandler(files fs.FS) http.HandlerFunc {
 
 // serveIndexWithToken reads index.html, injects the token meta tag, and sets
 // a SameSite=Strict HttpOnly cookie so EventSource and <audio src> can authenticate.
-func serveIndexWithToken(w http.ResponseWriter, files fs.FS, token string) {
+func serveIndexWithToken(w http.ResponseWriter, files fs.FS, token, cookieName string) {
 	data, err := fs.ReadFile(files, "index.html")
 	if err != nil {
 		http.Error(w, "index.html not found", http.StatusInternalServerError)
@@ -181,7 +191,7 @@ func serveIndexWithToken(w http.ResponseWriter, files fs.FS, token string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	http.SetCookie(w, &http.Cookie{
-		Name:     "tts-token",
+		Name:     cookieName,
 		Value:    token,
 		Path:     "/",
 		SameSite: http.SameSiteStrictMode,

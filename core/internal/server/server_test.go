@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -178,7 +179,7 @@ func TestCookieAuth(t *testing.T) {
 	}))
 
 	req, _ := http.NewRequest("GET", ts.URL+"/api/cookietest", nil)
-	req.AddCookie(&http.Cookie{Name: "tts-token", Value: srv.Token()})
+	req.AddCookie(&http.Cookie{Name: tokenCookie(ts), Value: srv.Token()})
 	resp, err := ts.Client().Do(req)
 	if err != nil {
 		t.Fatalf("Do: %v", err)
@@ -205,7 +206,7 @@ func TestCookieAuthForeignOriginBlocked(t *testing.T) {
 	}))
 
 	req, _ := http.NewRequest("GET", ts.URL+"/api/cookietest2", nil)
-	req.AddCookie(&http.Cookie{Name: "tts-token", Value: srv.Token()})
+	req.AddCookie(&http.Cookie{Name: tokenCookie(ts), Value: srv.Token()})
 	req.Header.Set("Origin", "http://evil.com")
 	resp, err := ts.Client().Do(req)
 	if err != nil {
@@ -228,7 +229,7 @@ func TestSSEWithCookieAuth(t *testing.T) {
 
 	// With cookie → 200 + SSE content-type
 	req, _ := http.NewRequest("GET", ts.URL+"/api/ssetest", nil)
-	req.AddCookie(&http.Cookie{Name: "tts-token", Value: srv.Token()})
+	req.AddCookie(&http.Cookie{Name: tokenCookie(ts), Value: srv.Token()})
 	resp, err := ts.Client().Do(req)
 	if err != nil {
 		t.Fatalf("Do (with cookie): %v", err)
@@ -257,7 +258,7 @@ func TestFileServeWithCookieAuth(t *testing.T) {
 
 	// With cookie → 200
 	req, _ := http.NewRequest("GET", ts.URL+"/api/filetest", nil)
-	req.AddCookie(&http.Cookie{Name: "tts-token", Value: srv.Token()})
+	req.AddCookie(&http.Cookie{Name: tokenCookie(ts), Value: srv.Token()})
 	resp, err := ts.Client().Do(req)
 	if err != nil {
 		t.Fatalf("Do (with cookie): %v", err)
@@ -279,7 +280,7 @@ func TestCookieAuthForeignOrigin(t *testing.T) {
 	srv, ts := newTestServer(t)
 
 	req, _ := http.NewRequest("GET", ts.URL+"/api/anything", nil)
-	req.AddCookie(&http.Cookie{Name: "tts-token", Value: srv.Token()})
+	req.AddCookie(&http.Cookie{Name: tokenCookie(ts), Value: srv.Token()})
 	req.Header.Set("Origin", "http://evil.com")
 	resp, err := ts.Client().Do(req)
 	if err != nil {
@@ -297,11 +298,51 @@ func TestIndexSetsCookie(t *testing.T) {
 	defer resp.Body.Close()
 	var found bool
 	for _, c := range resp.Cookies() {
-		if c.Name == "tts-token" && c.Value == srv.Token() {
+		if c.Name == tokenCookie(ts) && c.Value == srv.Token() {
 			found = true
 		}
 	}
 	if !found {
 		t.Error("GET / did not set tts-token cookie")
+	}
+}
+
+// tokenCookie is the token cookie's name for the test server's port.
+func tokenCookie(ts *httptest.Server) string {
+	return "tts-token-" + strings.TrimPrefix(ts.URL[strings.LastIndex(ts.URL, ":"):], ":")
+}
+
+// Two launchers on one host share a browser cookie jar (cookies ignore ports).
+// Opening the second must not break the first one's cookie-authenticated calls,
+// such as step streams (R2-7).
+func TestTwoLaunchersKeepTheirOwnCookie(t *testing.T) {
+	srvA, tsA := newTestServer(t)
+	srvB, tsB := newTestServer(t)
+	for _, srv := range []*server.Server{srvA, srvB} {
+		srv.Handle("GET /api/cookietest", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+	}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := &http.Client{Jar: jar}
+	for _, u := range []string{tsA.URL + "/", tsB.URL + "/"} {
+		resp, err := c.Get(u)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+	}
+	for name, u := range map[string]string{"first": tsA.URL, "second": tsB.URL} {
+		resp, err := c.Get(u + "/api/cookietest")
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("%s launcher: cookie call got %d after both pages were opened", name, resp.StatusCode)
+		}
 	}
 }

@@ -1,8 +1,7 @@
 # Go core rewrite — ring plan
 
 Convert TTS WebUI's launcher and runtime to a Go core, one working ring at a time, keeping uv venvs with hardlinks.
-Decisions are in [DECISIONS.md](DECISIONS.md). What was built before this plan, with its detailed gap lists, is in
-[archive/PLAN-runs-1-4.md](archive/PLAN-runs-1-4.md). Read that only for the ring you are on.
+Decisions are in [DECISIONS.md](DECISIONS.md). Run logs, handoff notes and the earlier plan stay on the `core/rewrite` branch, not here.
 
 ## How rings work
 
@@ -62,7 +61,7 @@ uv mode, torch pins, tool table gaps, audio.cpp, the router, `ui/`, updates.
 
 ## Later rings
 
-Each coordinator expands its ring at the plan gate. Old checkpoint ids point into the archive.
+Each coordinator expands its ring at the plan gate. Old checkpoint ids refer to notes on `core/rewrite`.
 
 **Ring 3, uv env** (`C4.1`, `C4.2`, `C4.3`).
 Goal: the same old `server.py`, unchanged, running from `.venvs/main`.
@@ -82,7 +81,7 @@ Demo: `--proxy=core`, builtin tabs work, and one proxy extension's page loads th
 One extension per slice, in an order the human picks. Each generates real audio before `extensions.json` changes.
 
 **Ring 6, native engines** (`C8.0`, `C8.1`, `C8.2`).
-The known gaps are in the archive's "Still open after R2.3b". Demo: install, generate, cancel mid-generation.
+The known gaps are on `core/rewrite`. Demo: install, generate, cancel mid-generation.
 
 **Ring 7, React UI** (`C6.x`). The first gate is whether to do it at all.
 

@@ -9,13 +9,37 @@ func env(m map[string]string) func(string) (string, bool) {
 	return func(k string) (string, bool) { v, ok := m[k]; return v, ok }
 }
 
-func TestDefaultsAreOff(t *testing.T) {
-	s, err := Parse(env(nil))
-	if err != nil {
-		t.Fatal(err)
+func TestDefaultsAfterCutover(t *testing.T) {
+	for _, e := range []map[string]string{nil, {EnvProxy: "", EnvRoutes: ""}, {EnvProxy: "1"}} {
+		s, err := Parse(env(e))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !s.Proxy || !s.Route("upload") || !s.Route("data-outputs") || !s.Route("anything") {
+			t.Fatalf("%v: want the proxy and every claim on, got %+v", e, s)
+		}
+		if s.ProxyLAN {
+			t.Fatalf("%v: LAN mode must stay opt-in", e)
+		}
 	}
-	if s.Proxy || s.Route("upload") || s.Step("mamba") {
-		t.Fatalf("expected everything off, got %+v", s)
+}
+
+func TestOptOuts(t *testing.T) {
+	s, err := Parse(env(map[string]string{EnvProxy: "0"}))
+	if err != nil || s.Proxy || s.Route("upload") {
+		t.Fatalf("proxy off: %+v %v", s, err)
+	}
+	s, err = Parse(env(map[string]string{EnvRoutes: "none"}))
+	if err != nil || !s.Proxy || s.Route("upload") || s.Route("gradio") {
+		t.Fatalf("routes none: %+v %v", s, err)
+	}
+	s, err = Parse(env(map[string]string{EnvProxy: "0", EnvRoutes: "none"}))
+	if err != nil || s.Proxy || s.Route("upload") {
+		t.Fatalf("proxy off and routes none: %+v %v", s, err)
+	}
+	s, err = Parse(env(map[string]string{EnvRoutes: "upload"}))
+	if err != nil || !s.Route("upload") || s.Route("gradio") {
+		t.Fatalf("a route list limits the claims: %+v %v", s, err)
 	}
 }
 
@@ -53,8 +77,9 @@ func TestRejected(t *testing.T) {
 		want string
 	}{
 		{"proxy typo", map[string]string{EnvProxy: "true"}, EnvProxy},
-		{"routes without proxy", map[string]string{EnvRoutes: "upload"}, "needs"},
-		{"all routes without proxy", map[string]string{EnvRoutes: "all"}, "needs"},
+		{"routes with proxy off", map[string]string{EnvProxy: "0", EnvRoutes: "upload"}, "needs the proxy"},
+		{"all routes with proxy off", map[string]string{EnvProxy: "0", EnvRoutes: "all"}, "needs the proxy"},
+		{"none mixed with names", map[string]string{EnvRoutes: "none,upload"}, "invalid name"},
 		{"bad route name", map[string]string{EnvProxy: "1", EnvRoutes: "Up_load"}, "invalid name"},
 		{"empty list item", map[string]string{EnvSteps: "mamba,,install"}, "invalid name"},
 	}
@@ -111,7 +136,7 @@ func TestProxyListenRejected(t *testing.T) {
 		want string
 	}{
 		{"unknown listen value", map[string]string{EnvProxy: "1", EnvProxyListen: "all"}, "loopback or lan"},
-		{"lan without proxy", map[string]string{EnvProxyListen: "lan"}, "needs TTS_GO_PROXY=1"},
+		{"lan with proxy off", map[string]string{EnvProxy: "0", EnvProxyListen: "lan"}, "needs the proxy"},
 		{"hosts without lan", map[string]string{EnvProxy: "1", EnvProxyAllowedHosts: "mypc"}, "needs TTS_GO_PROXY_LISTEN=lan"},
 		{"host with port", map[string]string{EnvProxy: "1", EnvProxyListen: "lan", EnvProxyAllowedHosts: "mypc:3000"}, "invalid host"},
 		{"wildcard", map[string]string{EnvProxy: "1", EnvProxyListen: "lan", EnvProxyAllowedHosts: "*"}, "invalid host"},

@@ -137,8 +137,18 @@ An invalid value stops the app from starting with a clear error, so a typo can n
 
 **Proxy off** (`TTS_GO_PROXY=0`, the escape hatch) means the launcher starts Next with the same arguments as before:
 `npm --prefix react-ui start -- -p 3000`. No Go listener exists on port 3000. A unit test asserts these arguments. If
-`react-ui/.next` is not a usable server build (section 10), the supervisor first runs `npm run build` once in
-`react-ui`, logs that it does, and only then starts Next. Start waits for that build.
+`react-ui/.next` is not a usable server build (section 10), or is older than the static export, the supervisor first
+runs `npm run build` once in `react-ui`, logs which of the two it is, and only then starts Next. Start waits for that
+build. If the build fails, or leaves a build that is still missing or older than the export, Start fails and nothing
+starts: the old server build is never served instead.
+
+**Stale server build (S2F).** The Go install and update steps rebuild only the export, so an older `.next` can stay
+behind. The server build counts as stale when a complete export exists and the modification time of
+`.next/BUILD_ID` is earlier than that of `out/_tts-export.json`. Modification times are used for both, rather than
+`builtAt` inside the export marker, because `BUILD_ID` holds no time, and comparing two file times keeps one clock and
+one source. `next build` writes `BUILD_ID` anew. `build:static` only renames `.next` aside and back, which keeps the
+file's time, so a restored old build still counts as old (a unit test checks the rename). The same rule applies to
+mode 2 below when the export exists but its claims are off.
 
 **Proxy on** (the default) means the supervisor picks one of three modes when the app starts (D18):
 

@@ -150,7 +150,9 @@ class GoProcess:
         except CoreError as e:
             raise _user_error(f"Could not stop extension {self.package}: {e}") from e
         if status not in (200, 404):  # 404: already gone, which is fine
-            raise _user_error(_api_error(f"Stopping extension {self.package}", status, data))
+            raise _user_error(
+                _api_error(f"Stopping extension {self.package}", status, data)
+            )
         if self.returncode is None:
             self.returncode = 0
 
@@ -302,7 +304,9 @@ def install(environ=None):
         return True
     token = environ.get("TTS_CORE_TOKEN", "")
     if not token:
-        _report("TTS_CORE_URL is set but TTS_CORE_TOKEN is not; the core will refuse requests")
+        _report(
+            "TTS_CORE_URL is set but TTS_CORE_TOKEN is not; the core will refuse requests"
+        )
     _state.update(
         client=_Client(url, token),
         env0=dict(os.environ),

@@ -39,7 +39,14 @@ class StubCore:
                 n = int(self.headers.get("Content-Length") or 0)
                 raw = self.rfile.read(n) if n else b""
                 body = json.loads(raw) if raw else None
-                outer.requests.append((self.command, self.path, {k.title(): v for k, v in self.headers.items()}, body))
+                outer.requests.append(
+                    (
+                        self.command,
+                        self.path,
+                        {k.title(): v for k, v in self.headers.items()},
+                        body,
+                    )
+                )
                 if self.headers.get("X-TTS-Core-Token") != TOKEN:
                     code, data = 403, {"error": "bad token"}
                 elif self.path.endswith("/start"):
@@ -73,7 +80,9 @@ def fake_module():
     mod = types.ModuleType("fake_setup_proxy_extension")
     mod.subprocess = subprocess
     mod.calls = []
-    mod.wait_for_server = lambda port, timeout=30: mod.calls.append(("wait", port)) or True
+    mod.wait_for_server = lambda port, timeout=30: (
+        mod.calls.append(("wait", port)) or True
+    )
     mod.add_extension_route = lambda name, port: mod.calls.append(("route", name, port))
     return mod
 
@@ -166,7 +175,9 @@ class PopenTests(Base):
     def test_token_and_url_never_forwarded(self):
         mod = self.installed_module()
         bridge._state["env0"] = {}
-        mod.subprocess.Popen(["p"], env=self.ext_env(TTS_CORE_TOKEN="t", TTS_CORE_URL="u"))
+        mod.subprocess.Popen(
+            ["p"], env=self.ext_env(TTS_CORE_TOKEN="t", TTS_CORE_URL="u")
+        )
         self.assertNotIn("TTS_CORE_TOKEN", self.core.requests[-1][3]["env"])
         self.assertNotIn("TTS_CORE_URL", self.core.requests[-1][3]["env"])
 
@@ -174,7 +185,9 @@ class PopenTests(Base):
         mod = self.installed_module()
         proc = mod.subprocess.Popen(["p"], env=self.ext_env())
         proc.terminate()
-        self.assertEqual(("POST", "/api/extensions/pkg/stop"), self.core.requests[-1][:2])
+        self.assertEqual(
+            ("POST", "/api/extensions/pkg/stop"), self.core.requests[-1][:2]
+        )
         self.assertEqual(0, proc.returncode)
 
     def test_terminate_ignores_404(self):
@@ -194,7 +207,10 @@ class PopenTests(Base):
     def test_poll_and_wait(self):
         mod = self.installed_module()
         proc = mod.subprocess.Popen(["p"], env=self.ext_env())
-        self.core.list_response = (200, [{"package": "pkg", "pid": 4242, "state": "ready"}])
+        self.core.list_response = (
+            200,
+            [{"package": "pkg", "pid": 4242, "state": "ready"}],
+        )
         self.assertIsNone(proc.poll())
         with self.assertRaises(subprocess.TimeoutExpired):
             proc.wait(timeout=0.3)
@@ -247,7 +263,10 @@ class PopenTests(Base):
 
     def test_port_mismatch_translates_wait_and_route(self):
         mod = self.installed_module()
-        self.core.start_response = (200, {"port": 30000, "pid": 9, "already_running": True})
+        self.core.start_response = (
+            200,
+            {"port": 30000, "pid": 9, "already_running": True},
+        )
         proc = mod.subprocess.Popen(["p"], env=self.ext_env())
         self.assertEqual(30000, proc.port)
         mod.wait_for_server(27771, timeout=5)
@@ -293,7 +312,11 @@ class RealModuleTest(Base):
             )
             r = subprocess.run(
                 [sys.executable, "-c", textwrap.dedent(REAL_MODULE_SCRIPT)],
-                cwd=cwd, env=env, capture_output=True, text=True, timeout=180,
+                cwd=cwd,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=180,
             )
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
         self.assertIn("OK", r.stdout)

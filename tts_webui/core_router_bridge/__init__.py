@@ -98,7 +98,9 @@ def install():
     main.setup_gradio_proxy_tree = _setup_gradio_proxy_tree
     main.add_extension_route = add_extension_route
     _installed = True
-    _log(f"Go core at {os.environ['TTS_CORE_URL']} routes the public port; Python proxy tree off")
+    _log(
+        f"Go core at {os.environ['TTS_CORE_URL']} routes the public port; Python proxy tree off"
+    )
     return True
 
 

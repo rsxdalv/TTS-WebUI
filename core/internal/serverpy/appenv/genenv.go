@@ -60,13 +60,15 @@ func EnsureEnv(root string, env []string) (bool, error) {
 	return ensureEnv(root, env, runtime.GOOS == "windows")
 }
 
-func ensureEnv(root string, env []string, crlf bool) (bool, error) {
+// windows selects Windows behaviour: env names fold case and the file gets
+// CRLF. Tests pass true on every OS because the golden file was made there.
+func ensureEnv(root string, env []string, windows bool) (bool, error) {
 	p := filepath.Join(root, ".env")
 	if _, err := os.Stat(p); err == nil {
 		return false, nil
 	}
-	text := GenerateEnv(env)
-	if crlf {
+	text := generateEnv(env, windows)
+	if windows {
 		text = strings.ReplaceAll(text, "\n", "\r\n")
 	}
 	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)

@@ -27,7 +27,11 @@ class Stub:
             def do_POST(self):
                 n = int(self.headers.get("Content-Length", 0))
                 stub.requests.append(
-                    (self.path, {k.lower(): v for k, v in self.headers.items()}, json.loads(self.rfile.read(n)))
+                    (
+                        self.path,
+                        {k.lower(): v for k, v in self.headers.items()},
+                        json.loads(self.rfile.read(n)),
+                    )
                 )
                 code = stub.statuses.pop(0) if stub.statuses else 200
                 self.send_response(code)
@@ -137,14 +141,22 @@ class InstallTest(unittest.TestCase):
         self.assertIsNot(self.main.add_extension_route, bridge.register_route)
 
     def test_keeps_existing_host_and_port_when_unset(self):
-        with mock.patch.dict(os.environ, {"TTS_CORE_URL": "http://x"}, clear=True), mock.patch("builtins.print"):
+        with (
+            mock.patch.dict(os.environ, {"TTS_CORE_URL": "http://x"}, clear=True),
+            mock.patch("builtins.print"),
+        ):
             bridge.install()
-        self.assertEqual((self.opts["server_port"], self.opts["server_name"]), (7770, "127.0.0.1"))
+        self.assertEqual(
+            (self.opts["server_port"], self.opts["server_name"]), (7770, "127.0.0.1")
+        )
         self.assertIs(self.opts["inbrowser"], False)
 
     def test_install_is_idempotent_and_no_tree_flag_not_duplicated(self):
         sys.argv[:] = ["x", "--no-tree-proxy"]
-        with mock.patch.dict(os.environ, {"TTS_CORE_URL": "http://x"}, clear=True), mock.patch("builtins.print"):
+        with (
+            mock.patch.dict(os.environ, {"TTS_CORE_URL": "http://x"}, clear=True),
+            mock.patch("builtins.print"),
+        ):
             bridge.install()
             bridge.install()
         self.assertEqual(sys.argv.count("--no-tree-proxy"), 1)

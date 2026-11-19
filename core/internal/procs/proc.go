@@ -5,6 +5,7 @@ package procs
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -65,7 +66,7 @@ func (p *Proc) Start(ctx context.Context, name string, args []string, cwd string
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("starting process: %w", err)
 	}
-	if err := ps.assign(cmd); err != nil {
+	if err := ps.assign(cmd); err != nil && !errors.Is(err, ErrProcessExited) {
 		// Non-fatal: log and continue (process is running; kill falls back to cmd.Process.Kill).
 		_ = cmd.Process.Kill()
 		return fmt.Errorf("assigning to job/process-group: %w", err)

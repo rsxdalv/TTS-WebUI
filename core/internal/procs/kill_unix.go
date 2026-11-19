@@ -44,3 +44,6 @@ func (ps *platformState) force() error {
 	}
 	return syscall.Kill(-ps.pgid, syscall.SIGKILL)
 }
+
+// release has nothing to free: a process group needs no handle.
+func (ps *platformState) release() {}

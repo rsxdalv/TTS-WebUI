@@ -58,6 +58,9 @@ func downloadAndExtract(ctx context.Context, url, destDir string, lg *Log) error
 	if err := extractZip(ctx, zipPath, destDir, lg); err != nil {
 		return fmt.Errorf("extracting: %w", err)
 	}
+	if err := os.Remove(zipPath); err != nil {
+		lg.AddLine(fmt.Sprintf("warning: could not remove %s: %v", zipPath, err))
+	}
 	lg.AddLine("Extraction complete.")
 	return nil
 }
@@ -99,7 +102,28 @@ func copyWithProgress(ctx context.Context, dst io.Writer, src io.Reader, total i
 	return written, nil
 }
 
-// extractZip extracts a zip archive into destDir, stripping one top-level directory.
+// commonTopDir returns "dir/" when every entry lives under the same single
+// top-level folder, otherwise "". A zip with files at the root, or with several
+// top-level entries (such as .git/ plus installer_scripts/), is not stripped.
+func commonTopDir(files []*zip.File) string {
+	prefix := ""
+	for _, f := range files {
+		i := strings.Index(f.Name, "/")
+		if i < 0 {
+			return "" // a file at the zip root
+		}
+		top := f.Name[:i+1]
+		if prefix == "" {
+			prefix = top
+		} else if prefix != top {
+			return ""
+		}
+	}
+	return prefix
+}
+
+// extractZip extracts a zip archive into destDir, stripping the top-level
+// directory only when all entries share one.
 func extractZip(ctx context.Context, zipPath, destDir string, lg *Log) error {
 	r, err := zip.OpenReader(zipPath)
 	if err != nil {
@@ -108,13 +132,7 @@ func extractZip(ctx context.Context, zipPath, destDir string, lg *Log) error {
 	defer r.Close()
 
 	// Detect the common prefix (strip the top-level zip directory).
-	var prefix string
-	if len(r.File) > 0 {
-		parts := strings.SplitN(r.File[0].Name, "/", 2)
-		if len(parts) == 2 {
-			prefix = parts[0] + "/"
-		}
-	}
+	prefix := commonTopDir(r.File)
 
 	for _, f := range r.File {
 		if ctx.Err() != nil {

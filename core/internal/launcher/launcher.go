@@ -33,6 +33,7 @@ type Launcher struct {
 	mu            sync.Mutex
 	sprocs        map[string]*procs.Proc // subprocess steps: mamba, install, update, run
 	slogs         map[string]*Log        // log-only steps: download
+	stepMu        sync.Mutex             // held while a step request checks and starts (R2-3)
 	sup           *Supervisor            // C3.2: app process supervisor
 	updateOnce    sync.Once
 	updateChecked bool // true = already up to date (cached after first check)
@@ -107,12 +108,17 @@ func (l *Launcher) handleStatus() http.Handler {
 			}
 		}
 
+		// A running step is never reported done, so a reload during it shows it
+		// running and keeps the later steps unavailable (R2-3).
+		dlRunning := l.downloadRunning()
+		mambaRunning := l.isStepRunning("mamba")
+		installRunning := l.isStepRunning("install")
 		statuses := []StepStatus{
-			{Step: "download", Done: downloadDone(l.root)},
+			{Step: "download", Done: downloadDone(l.root) && !dlRunning, Running: dlRunning},
 			{Step: "preflight", Done: preflightDone(l.root)},
-			{Step: "mamba", Done: mambaDone(l.root), Running: l.isStepRunning("mamba")},
+			{Step: "mamba", Done: mambaDone(l.root) && !mambaRunning, Running: mambaRunning},
 			{Step: "gpu", Done: gpuDone(l.root)},
-			{Step: "install", Done: installDone(l.root), Running: l.isStepRunning("install")},
+			{Step: "install", Done: installDone(l.root) && !installRunning, Running: installRunning},
 			{Step: "update", Done: updateDone, Running: l.isStepRunning("update")},
 		}
 		w.Header().Set("Content-Type", "application/json")

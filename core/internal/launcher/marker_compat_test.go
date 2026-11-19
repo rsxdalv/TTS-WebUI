@@ -82,6 +82,7 @@ func TestMarkers_LauncherReadsLegacyMarkers(t *testing.T) {
 	// micromamba exists too, so every marker-based step is done.
 	os.MkdirAll(filepath.Join(root.InstallerFiles(), "mamba"), 0o755)
 	os.WriteFile(filepath.Join(root.InstallerFiles(), "mamba", exeName()), []byte("x"), 0o755)
+	writeEnvHistory(t, root)
 	os.WriteFile(filepath.Join(root.InstallerScripts(), ".preflight_ok"), []byte("ok\n"), 0o666)
 
 	resp := doRequest(t, srv, token, http.MethodGet, "/api/steps/status", "")

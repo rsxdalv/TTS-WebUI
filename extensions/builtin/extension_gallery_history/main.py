@@ -3,6 +3,7 @@ import gradio as gr
 
 import json
 import shutil
+from tts_webui import core_history_bridge
 from tts_webui.history_tab.collections_directories_atom import (
     collections_directories_atom,
     get_collections,
@@ -38,6 +39,8 @@ audio_list_img = []
 
 
 def get_wav_files_img(directory: str):
+    if core_history_bridge.enabled():
+        return core_history_bridge.items(directory)
     list_of_directories = glob.glob(f"{directory}/**/*.png", recursive=True)
     return list_of_directories
 
@@ -156,7 +159,10 @@ def history_content(directory, show_collections):
 
     def select_audio_history2(_list, evt: gr.SelectData):
         filename = audio_list_img[evt.index].replace(".png", ".wav")  # type: ignore
-        json_text = json.load(open(filename.replace(".wav", ".json")))
+        if core_history_bridge.enabled():
+            json_text = core_history_bridge.item_json(filename)
+        else:
+            json_text = json.load(open(filename.replace(".wav", ".json")))
         return _select_audio_history(filename, json_text)
 
     outputs = [
@@ -237,6 +243,11 @@ def create_collection_ui(directories_state):
     new_collection_name = gr.Textbox(label="New collection name", value="")
 
     def create_collection(new_collection_name):
+        if core_history_bridge.enabled():
+            return [
+                core_history_bridge.create_collection(new_collection_name),
+                gr.Button(value="Created"),
+            ]
         os.makedirs(os.path.join("collections", new_collection_name))
         return [
             get_collections(),

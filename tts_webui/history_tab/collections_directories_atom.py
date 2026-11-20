@@ -4,6 +4,11 @@ import gradio as gr
 
 
 def get_collections():
+    from tts_webui import core_history_bridge
+
+    if core_history_bridge.enabled():
+        return core_history_bridge.collections()
+
     from tts_webui.utils.get_path_from_root import get_path_from_root
 
     path = get_path_from_root("collections")

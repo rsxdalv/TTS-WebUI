@@ -8,8 +8,7 @@ from tts_webui.core_bridge import bridge
 
 
 def save_to_favorites(directory: str):
-    bridge.history.copy(directory, "favorites")
-    return gr.Button(value="Saved")
+    return bridge.history.copy(directory, "favorites")
 
 
 def save_to_collection(directory: str, collection: str):

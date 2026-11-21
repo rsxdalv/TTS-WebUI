@@ -12,6 +12,8 @@ import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from unittest import mock
 
+import gradio as gr
+
 from tts_webui.core_bridge import CoreBridgeError, bridge
 
 
@@ -60,6 +62,30 @@ class RoutingTest(unittest.TestCase):
             bridge._private
 
 
+class ResolveTest(unittest.TestCase):
+    def test_markers(self):
+        from tts_webui.core_bridge.gradio_resolve import (
+            GradioMarkerError,
+            marker,
+            resolve,
+        )
+
+        b = resolve(marker("Button", value="Saved"))
+        self.assertIsInstance(b, gr.Button)
+        self.assertEqual(b.value, "Saved")
+        got = resolve({"a": [marker("Dropdown", value="x", choices=["x"])], "n": 1})
+        self.assertIsInstance(got["a"][0], gr.Dropdown)
+        self.assertEqual(got["n"], 1)
+        for bad in (
+            marker("Blocks"),
+            marker("Button", fn="x"),
+            {"__gradio__": "Button", "props": {}, "extra": 1},
+            {"__gradio__": "Button", "props": []},
+        ):
+            with self.assertRaises(GradioMarkerError):
+                resolve(bad)
+
+
 class RemoteTest(unittest.TestCase):
     def setUp(self):
         self.stub = Stub()
@@ -72,7 +98,8 @@ class RemoteTest(unittest.TestCase):
 
     def test_copy_goes_to_go(self):
         got = bridge.history.copy("outputs\\x", "favorites")
-        self.assertEqual(got, "favorites" + os.sep + "x")
+        self.assertIsInstance(got, gr.Button)
+        self.assertEqual(got.value, "Saved")
         self.assertEqual(
             self.stub.requests,
             [("/api/history/copy", "tok", {"dir": "outputs/x", "to": "favorites"})],
@@ -102,10 +129,8 @@ class LocalTest(unittest.TestCase):
                 os.makedirs("favorites")
                 open("outputs/a/a.wav", "w").close()
                 self.assertFalse(bridge.history.enabled)
-                self.assertEqual(
-                    bridge.history.copy("outputs/a", "favorites"),
-                    os.path.join("favorites", "a"),
-                )
+                got = bridge.history.copy("outputs/a", "favorites")
+                self.assertIsInstance(got, gr.Button)
                 self.assertTrue(os.path.exists("favorites/a/a.wav"))
                 with self.assertRaises(FileExistsError):
                     bridge.history.copy("outputs/a", "favorites")

@@ -91,6 +91,10 @@ func (s *Store) Handler() http.Handler { return http.HandlerFunc(s.serve) }
 func (s *Store) Load() ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.loadLocked()
+}
+
+func (s *Store) loadLocked() ([]byte, error) {
 	data, err := os.ReadFile(s.path)
 	if os.IsNotExist(err) {
 		v, _ := parse([]byte(defaultDoc))
@@ -104,34 +108,77 @@ func (s *Store) Load() ([]byte, error) {
 	return data, err
 }
 
-// Save validates and writes doc (a JSON object) as json.dump(indent=2) would.
-func (s *Store) Save(doc []byte) error {
-	v, err := parse(doc)
-	if err != nil {
-		return &invalidError{fmt.Sprintf("invalid JSON: %v", err)}
-	}
+// validate checks what Save checks about a whole document.
+func validate(v any) (*object, error) {
 	obj, ok := v.(*object)
 	if !ok {
-		return &invalidError{"config must be a JSON object"}
+		return nil, &invalidError{"config must be a JSON object"}
 	}
 	if g, ok := obj.get("gradio_interface_options"); ok {
 		if gobj, ok := g.(*object); ok {
 			if p, ok := gobj.get("server_port"); ok {
 				n, isNum := p.(json.Number)
 				if !isNum {
-					return &invalidError{"gradio_interface_options.server_port must be an integer"}
+					return nil, &invalidError{"gradio_interface_options.server_port must be an integer"}
 				}
 				if _, err := n.Int64(); err != nil {
-					return &invalidError{"gradio_interface_options.server_port must be an integer"}
+					return nil, &invalidError{"gradio_interface_options.server_port must be an integer"}
 				}
 			}
 		}
+	}
+	return obj, nil
+}
+
+// Save validates and writes doc (a JSON object) as json.dump(indent=2) would.
+func (s *Store) Save(doc []byte) error {
+	v, err := parse(doc)
+	if err != nil {
+		return &invalidError{fmt.Sprintf("invalid JSON: %v", err)}
+	}
+	obj, err := validate(v)
+	if err != nil {
+		return err
 	}
 	out := marshal(obj)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	old, _ := os.ReadFile(s.path)
+	if err := s.writeLocked(out); err != nil {
+		return err
+	}
+	s.logChanges(old, out)
+	return nil
+}
+
+// update is the one read-modify-write: under the mutex it loads the document
+// (creating the default when missing), lets fn change it, validates, and
+// writes it only when fn reports a change. Every operation in ops.go goes
+// through here, so concurrent changes cannot lose each other.
+func (s *Store) update(fn func(doc *object) (changed bool, err error)) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	old, err := s.loadLocked()
+	if err != nil {
+		return err
+	}
+	v, err := parse(old)
+	if err != nil {
+		return fmt.Errorf("config.json is not valid JSON: %w", err)
+	}
+	doc, ok := v.(*object)
+	if !ok {
+		return &invalidError{"config.json is not a JSON object"}
+	}
+	changed, err := fn(doc)
+	if err != nil || !changed {
+		return err
+	}
+	if _, err := validate(doc); err != nil {
+		return err
+	}
+	out := marshal(doc)
 	if err := s.writeLocked(out); err != nil {
 		return err
 	}

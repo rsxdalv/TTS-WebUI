@@ -139,10 +139,14 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 	mux := http.NewServeMux()
 	mux.Handle("/api/routes", rt.ControlHandler())
 	// Go is the only reader and writer of config.json (see appconfig).
-	mux.Handle(appconfig.Path, appconfig.New(appconfig.Options{
+	// One Store serves the document and the single-setting operations, so every
+	// change to the file goes through the same mutex.
+	cfg := appconfig.New(appconfig.Options{
 		Root: root.Dir(), Token: token,
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
-	}).Handler())
+	})
+	mux.Handle(appconfig.Path, cfg.Handler())
+	mux.Handle(appconfig.OpsPrefix, cfg.OpsHandler())
 	// Gallery History tab: Go does the filesystem work (see history).
 	mux.Handle(history.Prefix, history.New(history.Options{
 		Root: root.Dir(), Token: token,

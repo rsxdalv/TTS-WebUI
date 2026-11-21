@@ -1,14 +1,9 @@
-import shutil
-
-from tts_webui import core_history_bridge
+from tts_webui.core_bridge import bridge
 
 
 def delete_generation_cb(refresh):
     def delete_generation(directory: str, *args):
-        if core_history_bridge.enabled():
-            core_history_bridge.delete(directory)
-        else:
-            shutil.rmtree(directory)
+        bridge.history.delete(directory=directory)
         return refresh(*args)
 
     return delete_generation

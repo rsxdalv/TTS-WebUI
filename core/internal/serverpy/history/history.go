@@ -1,6 +1,6 @@
 // Package history is the Go side of the Gallery History tab. Python's Gradio
 // handlers (extensions/builtin/extension_gallery_history) call it through
-// tts_webui/core_history_bridge when TTS_CORE_URL is set; Go does all the
+// tts_webui/core_bridge (bridge.history) when TTS_CORE_URL is set; Go does all the
 // filesystem work so the path checks live in one place.
 package history
 
@@ -322,9 +322,9 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 	op := strings.TrimPrefix(r.URL.Path, Prefix)
 	want := http.MethodPost
 	switch op {
-	case "collections", "items", "item":
+	case "collections", "items", "select":
 		want = http.MethodGet
-	case "create-collection", "delete", "copy":
+	case "create-collection", "delete", "copy", "save-to-voices":
 	default:
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
 		return
@@ -349,13 +349,13 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, 200, map[string]any{"items": it})
-	case "item":
-		b, err := s.ItemJSON(r.URL.Query().Get("path"))
+	case "select":
+		ui, err := s.Select(r.URL.Query().Get("path"))
 		if err != nil {
 			s.fail(w, err)
 			return
 		}
-		writeJSON(w, 200, map[string]json.RawMessage{"json": b})
+		writeJSON(w, 200, ui)
 	case "create-collection":
 		var in struct {
 			Name string `json:"name"`
@@ -373,7 +373,7 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 			s.fail(w, err)
 			return
 		}
-		writeJSON(w, 200, map[string]any{"collections": c})
+		writeJSON(w, 200, map[string]any{"collections": c, "ui": mk("Button", map[string]any{"value": "Created"})})
 	case "delete":
 		var in struct {
 			Directory string `json:"directory"`
@@ -402,6 +402,19 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, 200, map[string]any{"ui": savedUI(p)})
+	case "save-to-voices":
+		var in struct {
+			Npz string `json:"npz"`
+		}
+		if err := decode(w, r, &in); err != nil {
+			s.fail(w, err)
+			return
+		}
+		if err := s.SaveToVoices(in.Npz); err != nil {
+			s.fail(w, err)
+			return
+		}
+		writeJSON(w, 200, map[string]any{"ui": mk("Button", map[string]any{"value": "Saved"})})
 	}
 }
 

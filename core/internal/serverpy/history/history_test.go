@@ -293,16 +293,22 @@ func TestHTTP(t *testing.T) {
 	if c != 200 || string(m["items"]) != "[\"outputs/a/a.png\"]\n" && !strings.Contains(string(m["items"]), "outputs/a/a.png") {
 		t.Errorf("items: %d %s", c, m["items"])
 	}
-	c, m = call(t, h, "GET", "/api/history/item?path=outputs/a/a.wav", "", "tok")
-	if c != 200 || !strings.Contains(string(m["json"]), `"text"`) {
-		t.Errorf("item: %d %s", c, m["json"])
+	c, m = call(t, h, "GET", "/api/history/select?path=outputs%5Ca%5Ca.png", "", "tok")
+	if c != 200 || !strings.Contains(string(m["audio"]), `"value":"outputs/a/a.wav"`) ||
+		!strings.Contains(string(m["json"]), `"text"`) || string(m["folder_root"]) != `"outputs/a"` ||
+		!strings.Contains(string(m["save_to_favorites"]), `"visible":true`) {
+		t.Errorf("select: %d %v", c, m)
 	}
-	if c, _ = call(t, h, "GET", "/api/history/item?path=../x.wav", "", "tok"); c != 400 {
-		t.Errorf("item traversal: %d", c)
+	if c, _ = call(t, h, "GET", "/api/history/select?path=../x.wav", "", "tok"); c != 400 {
+		t.Errorf("select traversal: %d", c)
+	}
+	if c, _ = call(t, h, "GET", "/api/history/item?path=outputs/a/a.wav", "", "tok"); c != 404 {
+		t.Errorf("old item route: %d", c)
 	}
 	c, m = call(t, h, "POST", "/api/history/create-collection", `{"name":"mine"}`, "tok")
-	if c != 200 || !strings.Contains(string(m["collections"]), "collections/mine") {
-		t.Errorf("create: %d %s", c, m["collections"])
+	if c != 200 || !strings.Contains(string(m["collections"]), "collections/mine") ||
+		!strings.Contains(string(m["ui"]), `"value":"Created"`) {
+		t.Errorf("create: %d %v", c, m)
 	}
 	if c, _ = call(t, h, "POST", "/api/history/create-collection", `{"name":"mine"}`, "tok"); c != 409 {
 		t.Errorf("create twice: %d", c)
@@ -352,5 +358,62 @@ func TestEmptyTokenRefusesAll(t *testing.T) {
 	h := New(Options{Root: t.TempDir()}).Handler()
 	if c, _ := call(t, h, "GET", "/api/history/collections", "", ""); c != 403 {
 		t.Fatalf("got %d", c)
+	}
+}
+
+func TestSelectHidesFavoriteButtonInFavorites(t *testing.T) {
+	s, root := newStore(t)
+	gen(t, root, "favorites", "f")
+	ui, err := s.Select("favorites/f/f.wav")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := json.Marshal(ui["save_to_favorites"])
+	if !strings.Contains(string(b), `"visible":false`) {
+		t.Fatalf("got %s", b)
+	}
+	for _, bad := range []string{"outputs/f.wav", "favorites/zz/zz.wav", "x.png", "favorites/f/f.txt", ""} {
+		if _, err := s.Select(bad); err == nil {
+			t.Errorf("Select(%q) succeeded", bad)
+		}
+	}
+}
+
+func TestSaveToVoices(t *testing.T) {
+	s, root := newStore(t)
+	gen(t, root, "outputs", "a")
+	write(t, root, "outputs/a/a.npz", "NPZ1")
+	if err := s.SaveToVoices(`outputs\a\a.npz`); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(filepath.Join(root, "voices", "a.npz"))
+	if string(b) != "NPZ1" {
+		t.Fatalf("voices/a.npz = %q", b)
+	}
+	write(t, root, "outputs/a/a.npz", "NPZ2") // replaces, like shutil.copy
+	if err := s.SaveToVoices("outputs/a/a.npz"); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ = os.ReadFile(filepath.Join(root, "voices", "a.npz")); string(b) != "NPZ2" {
+		t.Fatalf("not replaced: %q", b)
+	}
+	if ents, _ := os.ReadDir(filepath.Join(root, "voices")); len(ents) != 1 {
+		t.Fatalf("temp file left: %v", ents)
+	}
+	for _, bad := range []string{"", "outputs/a/a.wav", "outputs/a/missing.npz", "../a.npz", "outputs/a.npz", "secret/x.npz", "outputs/a"} {
+		if err := s.SaveToVoices(bad); err == nil {
+			t.Errorf("SaveToVoices(%q) succeeded", bad)
+		}
+	}
+	h := s.Handler()
+	if c, m := call(t, h, "POST", "/api/history/save-to-voices", `{"npz":"outputs/a/a.npz"}`, "tok"); c != 200 ||
+		!strings.Contains(string(m["ui"]), `"value":"Saved"`) {
+		t.Errorf("http: %d %v", c, m)
+	}
+	if c, _ := call(t, h, "POST", "/api/history/save-to-voices", `{"npz":"../a.npz"}`, "tok"); c != 400 {
+		t.Errorf("http traversal: %d", c)
+	}
+	if c, _ := call(t, h, "POST", "/api/history/save-to-voices", `{"npz":"outputs/a/gone.npz"}`, "tok"); c != 404 {
+		t.Errorf("http missing: %d", c)
 	}
 }

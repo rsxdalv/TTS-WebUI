@@ -1,9 +1,6 @@
-import os
 import gradio as gr
 
-import json
-import shutil
-from tts_webui import core_history_bridge
+from tts_webui.core_bridge import bridge
 from tts_webui.history_tab.collections_directories_atom import (
     collections_directories_atom,
     get_collections,
@@ -11,10 +8,6 @@ from tts_webui.history_tab.collections_directories_atom import (
 from tts_webui.history_tab.delete_generation_cb import delete_generation_cb
 from tts_webui.history_tab.save_to_favorites import save_to_collection, save_to_favorites
 from tts_webui.utils.open_folder import open_folder
-
-
-import glob
-import os
 
 
 def extension__tts_generation_webui():
@@ -39,10 +32,7 @@ audio_list_img = []
 
 
 def get_wav_files_img(directory: str):
-    if core_history_bridge.enabled():
-        return core_history_bridge.items(directory)
-    list_of_directories = glob.glob(f"{directory}/**/*.png", recursive=True)
-    return list_of_directories
+    return bridge.history.items(directory)
 
 
 def clear_audio():
@@ -55,8 +45,7 @@ def clear_audio():
 
 
 def save_to_voices_cb(npz_filename: str):
-    shutil.copy(npz_filename, "voices/")
-    return gr.Button(value="Saved")
+    return bridge.history.save_to_voices(npz=npz_filename)
 
 
 def history_content(directory, show_collections):
@@ -141,29 +130,24 @@ def history_content(directory, show_collections):
                 collections_directories_atom,
             )
 
-    def _select_audio_history(filename: str, json_text):
+    def _select_audio_history(png_path: str):
+        # Go decides what each control shows; Python only maps names to components.
+        ui = bridge.history.select(path=png_path)
         return {
-            history_bundle_name: gr.Textbox(value=os.path.dirname(filename)),
-            folder_root: os.path.dirname(filename),
-            history_audio: gr.Audio(value=filename, label=filename),
-            history_image: gr.Image(value=filename.replace(".wav", ".png")),
-            history_json: gr.JSON(value=json_text),
-            history_npz: gr.Textbox(value=filename.replace(".wav", ".npz")),
-            delete_from_history: gr.Button(visible=True),
-            save_to_favorites_history: gr.Button(
-                visible=directory != "favorites", value="Save to favorites"
-            ),
-            save_to_voices: gr.Button(visible=True, value="Save to voices"),
-            open_folder_button: gr.Button(visible=True),
+            history_bundle_name: ui["bundle_name"],
+            folder_root: ui["folder_root"],
+            history_audio: ui["audio"],
+            history_image: ui["image"],
+            history_json: ui["json"],
+            history_npz: ui["npz"],
+            delete_from_history: ui["delete"],
+            save_to_favorites_history: ui["save_to_favorites"],
+            save_to_voices: ui["save_to_voices"],
+            open_folder_button: ui["open_folder"],
         }
 
     def select_audio_history2(_list, evt: gr.SelectData):
-        filename = audio_list_img[evt.index].replace(".png", ".wav")  # type: ignore
-        if core_history_bridge.enabled():
-            json_text = core_history_bridge.item_json(filename)
-        else:
-            json_text = json.load(open(filename.replace(".wav", ".json")))
-        return _select_audio_history(filename, json_text)
+        return _select_audio_history(audio_list_img[evt.index])  # type: ignore
 
     outputs = [
         history_bundle_name,
@@ -243,16 +227,8 @@ def create_collection_ui(directories_state):
     new_collection_name = gr.Textbox(label="New collection name", value="")
 
     def create_collection(new_collection_name):
-        if core_history_bridge.enabled():
-            return [
-                core_history_bridge.create_collection(new_collection_name),
-                gr.Button(value="Created"),
-            ]
-        os.makedirs(os.path.join("collections", new_collection_name))
-        return [
-            get_collections(),
-            gr.Button(value="Created"),
-        ]
+        res = bridge.history.create_collection(name=new_collection_name)
+        return [res["collections"], res["ui"]]
 
     create_collection_button = gr.Button(value="Create collection")
 

@@ -53,6 +53,13 @@ ANSWERS = {
         "info": "Parsed entries: 1",
     },
     ("POST", "add"): {"status": "Saved | Added: n.one | Skipped (exists): none", "json": "{}"},
+    # config
+    ("POST", "extension-enable"): {"changed": True, "disabled": False, "info": "Enabled extension. Restart."},
+    ("POST", "extension-disable"): {"changed": True, "disabled": True, "info": "Disabled extension. Restart."},
+    ("POST", "extension-toggle"): {"changed": True, "disabled": True, "info": "Disabled extension. Restart."},
+    ("POST", "extension-autostart"): {"changed": True, "enabled": True},
+    ("POST", "set-value"): {"changed": True},
+    ("POST", "replace-section"): {"changed": True},
 }
 
 # POST ops that answer with NDJSON lines
@@ -360,6 +367,92 @@ class CoreOffTest(unittest.TestCase):
                 with self.assertRaises(CoreBridgeError) as cm:
                     call()
                 self.assertIn("not running", str(cm.exception))
+
+
+class ConfigTest(unittest.TestCase):
+    def setUp(self):
+        self.stub = Stub()
+        self.addCleanup(self.stub.close)
+        env = mock.patch.dict(
+            os.environ, {"TTS_CORE_URL": self.stub.url, "TTS_CORE_TOKEN": "tok"}
+        )
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_ops_send_named_fields(self):
+        c = bridge.config
+        self.assertTrue(c.extension_disable("ext.a")["disabled"])
+        self.assertEqual(c.extension_autostart("ext.a", True)["enabled"], True)
+        c.set_value("ns", "key", {"a": [1, None]})
+        c.replace_section("gradio_interface_options", {"server_port": 7771})
+        self.assertEqual(
+            [(r[1], r[3]) for r in self.stub.requests],
+            [
+                ("extension-disable", {"package_name": "ext.a"}),
+                ("extension-autostart", {"package_name": "ext.a", "enabled": True}),
+                ("set-value", {"namespace": "ns", "key": "key", "value": {"a": [1, None]}}),
+                (
+                    "replace-section",
+                    {"namespace": "gradio_interface_options", "values": {"server_port": 7771}},
+                ),
+            ],
+        )
+        with self.assertRaises(TypeError):
+            c.set_value("ns", "key")
+        with self.assertRaises(AttributeError):
+            c.save_everything
+
+    def test_extension_handlers(self):
+        from tts_webui.extensions_loader import interface_extensions as ie
+
+        with mock.patch.object(ie.gr, "Info") as info:
+            self.assertEqual(ie.toggle_extension_state("ext.a")(), "Enable")
+            ie.enable_extension("ext.a")()
+            ie.disable_extension("ext.a")()
+            ie.toggle_autostart("ext.a")(False)
+        self.assertEqual(info.call_count, 3)
+        info.assert_any_call("Disabled extension. Restart.")
+        self.assertEqual(
+            [r[1] for r in self.stub.requests],
+            ["extension-toggle", "extension-enable", "extension-disable", "extension-autostart"],
+        )
+        self.assertEqual(self.stub.requests[3][3], {"package_name": "ext.a", "enabled": False})
+
+    def test_set_config_value_and_gradio_settings(self):
+        from tts_webui.config.config import config
+        from tts_webui.config.config_utils import get_config_value, set_config_value
+        from tts_webui.config.save_config_gradio import save_config_gradio
+
+        with mock.patch.dict(config, {}, clear=False):
+            set_config_value("ns_test", "k", 5)
+            self.assertEqual(get_config_value("ns_test", "k"), 5)
+            msg = save_config_gradio(["server_port", "auth"], ["7771", ["u", "p"]])
+            self.assertIn("7771", msg)
+            config.pop("ns_test", None)
+        self.assertEqual(self.stub.requests[0][3], {"namespace": "ns_test", "key": "k", "value": 5})
+        self.assertEqual(
+            self.stub.requests[1][3],
+            {
+                "namespace": "gradio_interface_options",
+                "values": {"server_port": 7771, "auth": "u:p"},
+            },
+        )
+
+    def test_core_off_raises(self):
+        with mock.patch.dict(os.environ, clear=False):
+            os.environ.pop("TTS_CORE_URL")
+            with self.assertRaises(CoreBridgeError) as cm:
+                bridge.config.extension_enable("ext.a")
+            self.assertIn("TTS_CORE_URL", str(cm.exception))
+            from tts_webui.config.config_utils import set_config_value
+
+            with self.assertRaises(CoreBridgeError):
+                set_config_value("ns", "k", 1)
+
+    def test_go_error_is_raised(self):
+        with mock.patch.dict(os.environ, {"TTS_CORE_TOKEN": "bad"}):
+            with self.assertRaises(CoreBridgeError):
+                bridge.config.extension_enable("ext.a")
 
 
 if __name__ == "__main__":

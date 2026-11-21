@@ -10,6 +10,7 @@ CoreBridgeError.
 """
 
 from .base import SubBridge
+from .config import ConfigBridge
 from .extcatalog import ExtCatalogBridge
 from .history import HistoryBridge
 from .transport import CoreBridgeError, enabled
@@ -17,6 +18,7 @@ from .transport import CoreBridgeError, enabled
 __all__ = ["bridge", "Bridge", "SubBridge", "CoreBridgeError", "enabled"]
 
 _SUBBRIDGES = {
+    "config": ConfigBridge,
     "extcatalog": ExtCatalogBridge,
     "history": HistoryBridge,
 }

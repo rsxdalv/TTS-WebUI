@@ -4,8 +4,8 @@ from importlib.metadata import version
 
 import gradio as gr
 
-from tts_webui.config._save_config import _save_config
 from tts_webui.config.config import config
+from tts_webui.core_bridge import bridge
 from tts_webui.extensions_loader.extensions_data_loader import (
     filter_extensions_by_type_and_class,
     get_interface_extensions,
@@ -72,7 +72,7 @@ def _handle_package(package_name, title_name, requirements, proxy=None):
                 gr.Markdown(f"## {title_name} Extension is disabled")
                 enable_btn = gr.Button("Enable")
                 enable_btn.click(
-                    fn=toggle_extension_state(package_name, disabled_extensions),
+                    fn=toggle_extension_state(package_name),
                     outputs=[enable_btn],
                 )
         return
@@ -143,49 +143,48 @@ def _handle_package(package_name, title_name, requirements, proxy=None):
 
 def enable_extension(package_name):
     def _enable_extension():
-        disabled_extensions.remove(package_name)
+        res = bridge.config.extension_enable(package_name)
         print(f"Enabled extension {package_name}")
-        gr.Info(
-            "Enabled extension. Please restart the application for changes to take effect."
-        )
-        _save_config(config)
+        gr.Info(res["info"])
 
     return _enable_extension
 
 
 def disable_extension(package_name):
     def _disable_extension():
-        disabled_extensions.append(package_name)
+        res = bridge.config.extension_disable(package_name)
         print(f"Disabled extension {package_name}")
-        gr.Info(
-            "Disabled extension. Please restart the application for changes to take effect."
-        )
-        _save_config(config)
+        gr.Info(res["info"])
 
     return _disable_extension
 
 
-def toggle_extension_state(package_name, disabled_list):
+def toggle_extension_state(package_name):
+    """Button handler: flips the extension and returns the new button label.
+
+    Go decides from config.json, not from the lists loaded at startup, which
+    stay as they were until the restart the toast asks for.
+    """
+
     def _toggle_extension_state():
-        if package_name in disabled_list:
-            enable_extension(package_name)()
-            return "Disable"
-        else:
-            disable_extension(package_name)()
+        res = bridge.config.extension_toggle(package_name)
+        gr.Info(res["info"])
+        if res["disabled"]:
+            print(f"Disabled extension {package_name}")
             return "Enable"
+        print(f"Enabled extension {package_name}")
+        return "Disable"
 
     return _toggle_extension_state
 
 
-def toggle_autostart(package_name, autostart_list):
+def toggle_autostart(package_name):
     def _toggle_autostart(state):
+        bridge.config.extension_autostart(package_name, bool(state))
         if state:
-            autostart_list.append(package_name)
             print(f"Added {package_name} to autostart list")
         else:
-            autostart_list.remove(package_name)
             print(f"Removed {package_name} from autostart list")
-        _save_config(config)
 
     return _toggle_autostart
 
@@ -244,7 +243,7 @@ def _extension_management_ui(
                 )
                 start_with_webui_checkbox.change(
                     inputs=[start_with_webui_checkbox],
-                    fn=toggle_autostart(package_name, autostart_extensions),
+                    fn=toggle_autostart(package_name),
                 )
             else:
                 gr.Button("Check for updates").click(
@@ -279,7 +278,7 @@ def _extension_management_ui(
             toggle_btn = gr.Button("Disable", variant="secondary")
             toggle_btn.click(
                 outputs=[toggle_btn],
-                fn=toggle_extension_state(package_name, disabled_extensions),
+                fn=toggle_extension_state(package_name),
             )
             # load_on_open_checkbox = gr.Checkbox(
             #     label="Load on Open", value=True, interactive=False

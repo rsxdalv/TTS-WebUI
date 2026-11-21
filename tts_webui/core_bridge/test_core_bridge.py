@@ -34,7 +34,6 @@ class Stub:
                 elif self.path == "/api/history/copy":
                     kind = "Button" if body["to"] == "favorites" else "Dropdown"
                     code, out = 200, {
-                        "path": body["to"] + "/" + body["dir"].split("/")[-1],
                         "ui": {"__gradio__": kind, "props": {"value": "Saved"}},
                     }
                 else:
@@ -106,7 +105,7 @@ class RemoteTest(unittest.TestCase):
         self.assertEqual(got.value, "Saved")
         self.assertEqual(
             self.stub.requests,
-            [("/api/history/copy", "tok", {"dir": "outputs/x", "to": "favorites"})],
+            [("/api/history/copy", "tok", {"directory": "outputs\\x", "to": "favorites"})],
         )
 
     def test_error_and_unreachable_raise(self):

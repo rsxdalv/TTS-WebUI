@@ -310,28 +310,28 @@ func TestHTTP(t *testing.T) {
 	if c, _ = call(t, h, "POST", "/api/history/create-collection", `{"name":".."}`, "tok"); c != 400 {
 		t.Errorf("create ..: %d", c)
 	}
-	c, m = call(t, h, "POST", "/api/history/copy", `{"dir":"outputs/a","to":"favorites"}`, "tok")
+	c, m = call(t, h, "POST", "/api/history/copy", `{"directory":"outputs/a","to":"favorites"}`, "tok")
 	if c != 200 || len(m) != 1 ||
 		!strings.Contains(string(m["ui"]), `"__gradio__":"Button"`) || !strings.Contains(string(m["ui"]), `"value":"Saved"`) {
 		t.Errorf("copy: %d %v", c, m)
 	}
-	c, m = call(t, h, "POST", "/api/history/copy", `{"dir":"outputs/a","to":"collections/mine"}`, "tok")
+	c, m = call(t, h, "POST", "/api/history/copy", `{"directory":"outputs/a","to":"collections/mine"}`, "tok")
 	if c != 200 || !strings.Contains(string(m["ui"]), `"__gradio__":"Dropdown"`) {
 		t.Errorf("copy to collection: %d %s", c, m["ui"])
 	}
-	if c, _ = call(t, h, "POST", "/api/history/copy", `{"dir":"outputs/a","to":"favorites"}`, "tok"); c != 409 {
+	if c, _ = call(t, h, "POST", "/api/history/copy", `{"directory":"outputs/a","to":"favorites"}`, "tok"); c != 409 {
 		t.Errorf("copy twice: %d", c)
 	}
-	if c, _ = call(t, h, "POST", "/api/history/copy", `{"dir":"outputs/a","extra":1}`, "tok"); c != 400 {
+	if c, _ = call(t, h, "POST", "/api/history/copy", `{"directory":"outputs/a","extra":1}`, "tok"); c != 400 {
 		t.Errorf("unknown field: %d", c)
 	}
-	if c, _ = call(t, h, "POST", "/api/history/delete", `{"dir":"../../etc"}`, "tok"); c != 400 {
+	if c, _ = call(t, h, "POST", "/api/history/delete", `{"directory":"../../etc"}`, "tok"); c != 400 {
 		t.Errorf("delete traversal: %d", c)
 	}
 	if c, _ = call(t, h, "POST", "/api/history/delete", `{not json`, "tok"); c != 400 {
 		t.Errorf("bad json: %d", c)
 	}
-	r = httptest.NewRequest("POST", "/api/history/delete", strings.NewReader(`{"dir":"outputs/a"}`))
+	r = httptest.NewRequest("POST", "/api/history/delete", strings.NewReader(`{"directory":"outputs/a"}`))
 	r.RemoteAddr = "127.0.0.1:1"
 	r.Header.Set(TokenHeader, "tok")
 	r.Header.Set("Content-Type", "text/plain")
@@ -340,10 +340,10 @@ func TestHTTP(t *testing.T) {
 	if w.Code != 400 || !exists(root, "outputs/a/a.wav") {
 		t.Errorf("text/plain delete: %d", w.Code)
 	}
-	if c, _ = call(t, h, "POST", "/api/history/delete", `{"dir":"outputs/a"}`, "tok"); c != 200 || exists(root, "outputs/a") {
+	if c, _ = call(t, h, "POST", "/api/history/delete", `{"directory":"outputs/a"}`, "tok"); c != 200 || exists(root, "outputs/a") {
 		t.Errorf("delete: %d", c)
 	}
-	if c, _ = call(t, h, "POST", "/api/history/delete", `{"dir":"outputs/a"}`, "tok"); c != 404 {
+	if c, _ = call(t, h, "POST", "/api/history/delete", `{"directory":"outputs/a"}`, "tok"); c != 404 {
 		t.Errorf("delete again: %d", c)
 	}
 }

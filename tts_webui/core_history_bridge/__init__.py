@@ -101,5 +101,5 @@ def create_collection(name):
 
 
 def delete(directory):
-    _call("POST", "delete", body={"dir": _wire(directory)})
+    _call("POST", "delete", body={"directory": _wire(directory)})
 

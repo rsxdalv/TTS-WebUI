@@ -18,8 +18,8 @@ use `/` (the bridge turns them into `os.sep`). Errors are `{"error": "..."}`:
 | `GET /api/history/items?collection=` | `outputs`, `favorites` or `collections/<name>` | `{"items": ["outputs/<dir>/<dir>.png", ...]}`: PNGs that have a `.wav` next to them, sorted |
 | `GET /api/history/item?path=` | a `.wav` or `.png` path | `{"json": <the .json next to it>}` |
 | `POST /api/history/create-collection` | `{"name"}` | `{"collections": [...]}`; 409 if it exists |
-| `POST /api/history/delete` | `{"dir"}` (a generation directory) | `{"ok": true}` |
-| `POST /api/history/copy` | `{"dir", "to"}` (`to` = a collection) | `{"ui": <marker>}` (the "Saved" update); 409 if it exists |
+| `POST /api/history/delete` | `{"directory"}` (a generation directory) | `{"ok": true}` |
+| `POST /api/history/copy` | `{"directory", "to"}` (`to` = a collection) | `{"ui": <marker>}` (the "Saved" update); 409 if it exists |
 
 `ui` is a Gradio object marker, `{"__gradio__": "Button", "props": {"value": "Saved"}}`
 (`Dropdown` for a collection other than favorites). The Python bridge

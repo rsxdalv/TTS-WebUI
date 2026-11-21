@@ -44,7 +44,7 @@ class Stub:
                 if p == "/api/history/create-collection":
                     return self._reply(200, {"collections": ["outputs", "favorites", "collections/" + body["name"]]})
                 if p == "/api/history/delete":
-                    if body["dir"] == "gone":
+                    if body["directory"] == "gone":
                         return self._reply(404, {"error": "not found: gone"})
                     return self._reply(200, {"ok": True})
                 if p == "/api/history/copy":
@@ -93,7 +93,7 @@ class BridgeTest(unittest.TestCase):
         self.assertIn("collection=collections%2Fa", reqs[1][1])
         self.assertIn("path=outputs%2Fx%2Fx.wav", reqs[2][1])
         self.assertEqual(reqs[3][3], {"name": "new"})
-        self.assertEqual(reqs[4][3], {"dir": "outputs/x"})
+        self.assertEqual(reqs[4][3], {"directory": "outputs/x"})
 
     def test_http_error_carries_go_message(self):
         with self.assertRaises(bridge.CoreHistoryError) as cm:

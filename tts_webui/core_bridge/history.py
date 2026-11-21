@@ -1,6 +1,4 @@
-from . import transport
 from .base import SubBridge
-from .gradio_resolve import resolve
 
 
 class HistoryBridge(SubBridge):
@@ -14,7 +12,4 @@ class HistoryBridge(SubBridge):
         Returns the Gradio update Go sends for the control that triggered it:
         the "Saved" Button for favorites, the "Saved" Dropdown otherwise.
         """
-        res = self._remote(
-            "copy", {"dir": transport.wire(directory), "to": transport.wire(to)}
-        )
-        return resolve(res["ui"])
+        return self._remote("copy", directory=directory, to=to)["ui"]

@@ -376,27 +376,27 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]any{"collections": c})
 	case "delete":
 		var in struct {
-			Dir string `json:"dir"`
+			Directory string `json:"directory"`
 		}
 		if err := decode(w, r, &in); err != nil {
 			s.fail(w, err)
 			return
 		}
-		if err := s.Delete(in.Dir); err != nil {
+		if err := s.Delete(in.Directory); err != nil {
 			s.fail(w, err)
 			return
 		}
 		writeJSON(w, 200, map[string]bool{"ok": true})
 	case "copy":
 		var in struct {
-			Dir string `json:"dir"`
-			To  string `json:"to"`
+			Directory string `json:"directory"`
+			To        string `json:"to"`
 		}
 		if err := decode(w, r, &in); err != nil {
 			s.fail(w, err)
 			return
 		}
-		p, err := s.Copy(in.Dir, in.To)
+		p, err := s.Copy(in.Directory, in.To)
 		if err != nil {
 			s.fail(w, err)
 			return

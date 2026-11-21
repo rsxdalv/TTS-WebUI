@@ -44,11 +44,17 @@ func (s *Store) Select(p string) (map[string]any, error) {
 	}
 	stem := strings.TrimSuffix(wav, ".wav")
 	folder := pathpkg.Dir(wav)
+	// The image is only shown when there is one: the History tab lists every
+	// generation folder, not only the ones with a picture.
+	image := mk("Image", map[string]any{"value": nil})
+	if _, _, _, err := s.resolve(stem + ".png"); err == nil {
+		image = mk("Image", map[string]any{"value": stem + ".png"})
+	}
 	return map[string]any{
 		"bundle_name":       mk("Markdown", map[string]any{"value": folder}),
 		"folder_root":       folder,
 		"audio":             mk("Audio", map[string]any{"value": wav, "label": wav}),
-		"image":             mk("Image", map[string]any{"value": stem + ".png"}),
+		"image":             image,
 		"json":              mk("JSON", map[string]any{"value": json.RawMessage(meta)}),
 		"npz":               mk("Textbox", map[string]any{"value": stem + ".npz"}),
 		"delete":            mk("Button", map[string]any{"visible": true}),

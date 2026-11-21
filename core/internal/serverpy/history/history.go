@@ -322,7 +322,7 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 	op := strings.TrimPrefix(r.URL.Path, Prefix)
 	want := http.MethodPost
 	switch op {
-	case "collections", "items", "select":
+	case "collections", "items", "select", "rows":
 		want = http.MethodGet
 	case "create-collection", "delete", "copy", "save-to-voices":
 	default:
@@ -356,6 +356,13 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, 200, ui)
+	case "rows":
+		rows, err := s.Rows(r.URL.Query().Get("directory"))
+		if err != nil {
+			s.fail(w, err)
+			return
+		}
+		writeJSON(w, 200, rows)
 	case "create-collection":
 		var in struct {
 			Name string `json:"name"`

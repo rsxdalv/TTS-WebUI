@@ -246,6 +246,15 @@ func TestOutputsLinkedByUser(t *testing.T) {
 
 func call(t *testing.T, h http.Handler, method, path, body, tok string) (int, map[string]json.RawMessage) {
 	t.Helper()
+	code, raw := callRaw(t, h, method, path, body, tok)
+	var m map[string]json.RawMessage
+	_ = json.Unmarshal([]byte(raw), &m)
+	return code, m
+}
+
+// callRaw returns the body as text, for answers that are not JSON objects.
+func callRaw(t *testing.T, h http.Handler, method, path, body, tok string) (int, string) {
+	t.Helper()
 	r := httptest.NewRequest(method, path, strings.NewReader(body))
 	r.RemoteAddr = "127.0.0.1:5555"
 	if body != "" {
@@ -256,9 +265,7 @@ func call(t *testing.T, h http.Handler, method, path, body, tok string) (int, ma
 	}
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
-	var m map[string]json.RawMessage
-	_ = json.Unmarshal(w.Body.Bytes(), &m)
-	return w.Code, m
+	return w.Code, w.Body.String()
 }
 
 func TestHTTP(t *testing.T) {
@@ -289,10 +296,11 @@ func TestHTTP(t *testing.T) {
 	if c, _ := call(t, h, "GET", "/api/history/delete", "", "tok"); c != 405 {
 		t.Errorf("GET delete: %d", c)
 	}
-	c, m := call(t, h, "GET", "/api/history/items?collection=outputs", "", "tok")
-	if c != 200 || string(m["items"]) != "[\"outputs/a/a.png\"]\n" && !strings.Contains(string(m["items"]), "outputs/a/a.png") {
-		t.Errorf("items: %d %s", c, m["items"])
+	c, raw := callRaw(t, h, "GET", "/api/history/items?collection=outputs", "", "tok")
+	if c != 200 || strings.TrimSpace(raw) != `["outputs/a/a.png"]` {
+		t.Errorf("items: %d %s", c, raw)
 	}
+	var m map[string]json.RawMessage
 	c, m = call(t, h, "GET", "/api/history/select?path=outputs%5Ca%5Ca.png", "", "tok")
 	if c != 200 || !strings.Contains(string(m["audio"]), `"value":"outputs/a/a.wav"`) ||
 		!strings.Contains(string(m["json"]), `"text"`) || string(m["folder_root"]) != `"outputs/a"` ||
@@ -317,13 +325,12 @@ func TestHTTP(t *testing.T) {
 		t.Errorf("create ..: %d", c)
 	}
 	c, m = call(t, h, "POST", "/api/history/copy", `{"directory":"outputs/a","to":"favorites"}`, "tok")
-	if c != 200 || len(m) != 1 ||
-		!strings.Contains(string(m["ui"]), `"__gradio__":"Button"`) || !strings.Contains(string(m["ui"]), `"value":"Saved"`) {
+	if c != 200 || string(m["__gradio__"]) != `"Button"` || !strings.Contains(string(m["props"]), `"value":"Saved"`) {
 		t.Errorf("copy: %d %v", c, m)
 	}
 	c, m = call(t, h, "POST", "/api/history/copy", `{"directory":"outputs/a","to":"collections/mine"}`, "tok")
-	if c != 200 || !strings.Contains(string(m["ui"]), `"__gradio__":"Dropdown"`) {
-		t.Errorf("copy to collection: %d %s", c, m["ui"])
+	if c != 200 || string(m["__gradio__"]) != `"Dropdown"` {
+		t.Errorf("copy to collection: %d %v", c, m)
 	}
 	if c, _ = call(t, h, "POST", "/api/history/copy", `{"directory":"outputs/a","to":"favorites"}`, "tok"); c != 409 {
 		t.Errorf("copy twice: %d", c)
@@ -407,7 +414,7 @@ func TestSaveToVoices(t *testing.T) {
 	}
 	h := s.Handler()
 	if c, m := call(t, h, "POST", "/api/history/save-to-voices", `{"npz":"outputs/a/a.npz"}`, "tok"); c != 200 ||
-		!strings.Contains(string(m["ui"]), `"value":"Saved"`) {
+		!strings.Contains(string(m["props"]), `"value":"Saved"`) {
 		t.Errorf("http: %d %v", c, m)
 	}
 	if c, _ := call(t, h, "POST", "/api/history/save-to-voices", `{"npz":"../a.npz"}`, "tok"); c != 400 {

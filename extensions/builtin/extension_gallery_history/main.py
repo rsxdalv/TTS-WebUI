@@ -6,7 +6,7 @@ from tts_webui.history_tab.collections_directories_atom import (
     get_collections,
 )
 from tts_webui.history_tab.delete_generation_cb import delete_generation_cb
-from tts_webui.history_tab.save_to_favorites import save_to_collection, save_to_favorites
+from tts_webui.history_tab.save_to_favorites import save_to_favorites
 from tts_webui.utils.open_folder import open_folder
 
 
@@ -31,10 +31,6 @@ def extension__tts_generation_webui():
 audio_list_img = []
 
 
-def get_wav_files_img(directory: str):
-    return bridge.history.items(directory)
-
-
 def clear_audio():
     return [
         gr.Audio(value=None),
@@ -42,10 +38,6 @@ def clear_audio():
         gr.JSON(value=None),
         gr.Button(visible=False),
     ]
-
-
-def save_to_voices_cb(npz_filename: str):
-    return bridge.history.save_to_voices(npz=npz_filename)
 
 
 def history_content(directory, show_collections):
@@ -118,7 +110,7 @@ def history_content(directory, show_collections):
                 )
 
                 save_to_voices.click(
-                    fn=save_to_voices_cb,
+                    fn=bridge.history.save_to_voices,
                     inputs=history_npz,
                     outputs=save_to_voices,
                 )
@@ -132,7 +124,7 @@ def history_content(directory, show_collections):
 
     def _select_audio_history(png_path: str):
         # Go decides what each control shows; Python only maps names to components.
-        ui = bridge.history.select(path=png_path)
+        ui = bridge.history.select(png_path)
         return {
             history_bundle_name: ui["bundle_name"],
             folder_root: ui["folder_root"],
@@ -171,7 +163,7 @@ def history_content(directory, show_collections):
 
     def update_history_tab(directory: str):
         global audio_list_img
-        audio_list_img = get_wav_files_img(directory)
+        audio_list_img = bridge.history.items(directory)
         return gr.Gallery(value=audio_list_img)
 
     delete_from_history.click(
@@ -211,7 +203,7 @@ def save_to_collection_ui(
         )
 
     move_to_collection.select(
-        fn=save_to_collection,
+        fn=bridge.history.copy,
         inputs=[folder_root, move_to_collection],
         outputs=[move_to_collection],
     )
@@ -227,7 +219,7 @@ def create_collection_ui(directories_state):
     new_collection_name = gr.Textbox(label="New collection name", value="")
 
     def create_collection(new_collection_name):
-        res = bridge.history.create_collection(name=new_collection_name)
+        res = bridge.history.create_collection(new_collection_name)
         return [res["collections"], res["ui"]]
 
     create_collection_button = gr.Button(value="Create collection")

@@ -341,14 +341,14 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 			s.fail(w, err)
 			return
 		}
-		writeJSON(w, 200, map[string]any{"collections": c})
+		writeJSON(w, 200, c)
 	case "items":
 		it, err := s.Items(r.URL.Query().Get("collection"))
 		if err != nil {
 			s.fail(w, err)
 			return
 		}
-		writeJSON(w, 200, map[string]any{"items": it})
+		writeJSON(w, 200, it)
 	case "select":
 		ui, err := s.Select(r.URL.Query().Get("path"))
 		if err != nil {
@@ -401,7 +401,7 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 			s.fail(w, err)
 			return
 		}
-		writeJSON(w, 200, map[string]any{"ui": savedUI(p)})
+		writeJSON(w, 200, savedUI(p))
 	case "save-to-voices":
 		var in struct {
 			Npz string `json:"npz"`
@@ -414,7 +414,7 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 			s.fail(w, err)
 			return
 		}
-		writeJSON(w, 200, map[string]any{"ui": mk("Button", map[string]any{"value": "Saved"})})
+		writeJSON(w, 200, mk("Button", map[string]any{"value": "Saved"}))
 	}
 }
 

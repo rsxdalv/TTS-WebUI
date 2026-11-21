@@ -3,8 +3,9 @@
 Package `core/internal/serverpy/history`. The Gallery History tab
 (`extensions/builtin/extension_gallery_history/main.py`) keeps its Gradio layout;
 its logic (list, select, create, delete, copy, save to voices) is done by Go and
-the Python handlers are one-line calls through `tts_webui/core_bridge`
-(`bridge.history.<op>(...)`). This is the first "thin Gradio" tab.
+the Python handlers are calls through `tts_webui/core_bridge`
+(`bridge.history.<op>(...)`, a table of verb and parameter names in
+`core_bridge/history.py`; bound operations are used directly as Gradio handlers). This is the first "thin Gradio" tab.
 
 ## API (loopback, header `X-TTS-Core-Token`, otherwise 403)
 
@@ -13,16 +14,18 @@ use `/`. Errors are `{"error": "..."}`: 400 bad path or body, 404 missing,
 409 target exists, 403 token or non-loopback. POST bodies must be
 `application/json` with no unknown fields. Python forwards its keyword
 arguments by name, so the JSON field names are the Python parameter names.
+A response is exactly the value the caller needs: a list, a marker, or an object
+of markers (no wrapper object around a single value).
 
 | Method and path | Body / query | Answer |
 |---|---|---|
-| `GET /api/history/collections` | | `{"collections": ["outputs","favorites","collections/<name>",...]}` (names sorted) |
-| `GET /api/history/items?collection=` | `outputs`, `favorites` or `collections/<name>` | `{"items": ["outputs/<dir>/<dir>.png", ...]}`: PNGs that have a `.wav` next to them, sorted |
+| `GET /api/history/collections` | | `["outputs","favorites","collections/<name>",...]` (names sorted) |
+| `GET /api/history/items?collection=` | `outputs`, `favorites` or `collections/<name>` | `["outputs/<dir>/<dir>.png", ...]`: PNGs that have a `.wav` next to them, sorted |
 | `GET /api/history/select?path=` | an item's `.png` or `.wav` | one marker per output control, see below |
 | `POST /api/history/create-collection` | `{"name"}` | `{"collections": [...], "ui": <Button "Created">}`; 409 if it exists |
 | `POST /api/history/delete` | `{"directory"}` (a generation directory) | `{"ok": true}` |
-| `POST /api/history/copy` | `{"directory", "to"}` (`to` = a collection) | `{"ui": <marker>}`; 409 if it exists |
-| `POST /api/history/save-to-voices` | `{"npz"}` (an item's `.npz`) | `{"ui": <Button "Saved">}`; replaces `voices/<name>.npz` |
+| `POST /api/history/copy` | `{"directory", "to"}` (`to` = a collection) | a marker; 409 if it exists |
+| `POST /api/history/save-to-voices` | `{"npz"}` (an item's `.npz`) | the "Saved" Button marker; replaces `voices/<name>.npz` |
 
 "Save to favorites" is `copy` with `to: "favorites"`.
 

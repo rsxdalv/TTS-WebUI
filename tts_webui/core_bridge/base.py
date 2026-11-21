@@ -1,27 +1,50 @@
 from . import transport
 from .gradio_resolve import resolve
 
+GET = "GET"
+POST = "POST"
+
 
 class SubBridge:
     """One area of the Go core (history, ...), reached as ``bridge.<name>``.
 
-    Subclasses are written by hand. A method forwards its arguments to the Go
-    endpoint by name, so Python and Go use the same field names:
+    A subclass lists its operations in ``ops``: name -> (verb, parameter names).
+    ``bridge.history.copy(directory, to)`` then calls ``POST /api/history/copy``
+    with ``{"directory": ..., "to": ...}`` (GET sends a query string). Arguments
+    may be positional or keyword, so a bound operation can be a Gradio event
+    handler directly. An operation name maps to its endpoint with ``_`` -> ``-``.
 
-        def copy(self, directory, to):
-            return self._remote("copy", directory=directory, to=to)["ui"]
-
-    ``/api/<name>/<op>`` is the endpoint convention. Gradio markers in the
-    answer come back as Gradio components. There is no Python fallback:
-    without the core the call raises CoreBridgeError.
+    Go answers with exactly the value the caller needs, and Gradio markers in
+    it come back as components. There is no Python fallback: without the core
+    a call raises CoreBridgeError.
     """
 
     name = ""
+    ops = {}
 
-    def _remote(self, op, **body):
-        """POST the keyword arguments as JSON; return the resolved answer."""
-        return resolve(transport.call("POST", f"/api/{self.name}/{op}", body=body))
+    def __getattr__(self, op):
+        ops = type(self).ops
+        if op.startswith("_") or op not in ops:
+            raise AttributeError(
+                f"{type(self).__name__} has no operation {op!r}; known: {sorted(ops)}"
+            )
+        verb, params = ops[op]
+        path = f"/api/{self.name}/{op.replace('_', '-')}"
 
-    def _get(self, op, **query):
-        """GET with the keyword arguments as the query string."""
-        return resolve(transport.call("GET", f"/api/{self.name}/{op}", query=query))
+        def call(*args, **kwargs):
+            if len(args) > len(params):
+                raise TypeError(f"{op}() takes {len(params)} arguments ({len(args)} given)")
+            fields = dict(zip(params, args))
+            for k, v in kwargs.items():
+                if k not in params or k in fields:
+                    raise TypeError(f"{op}() got an unexpected or repeated argument {k!r}")
+                fields[k] = v
+            missing = [p for p in params if p not in fields]
+            if missing:
+                raise TypeError(f"{op}() missing arguments: {missing}")
+            if verb == GET:
+                return resolve(transport.call("GET", path, query=fields or None))
+            return resolve(transport.call("POST", path, body=fields))
+
+        call.__name__ = op
+        return call

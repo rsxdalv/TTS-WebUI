@@ -22,8 +22,8 @@ def M(kind, **props):
 
 
 ANSWERS = {
-    ("GET", "collections"): {"collections": ["outputs", "favorites", "collections/a"]},
-    ("GET", "items"): {"items": ["outputs/x/x.png"]},
+    ("GET", "collections"): ["outputs", "favorites", "collections/a"],
+    ("GET", "items"): ["outputs/x/x.png"],
     ("GET", "select"): {
         "bundle_name": M("Markdown", value="outputs/x"),
         "folder_root": "outputs/x",
@@ -41,8 +41,8 @@ ANSWERS = {
         "ui": M("Button", value="Created"),
     },
     ("POST", "delete"): {"ok": True},
-    ("POST", "copy"): {"ui": M("Button", value="Saved")},
-    ("POST", "save-to-voices"): {"ui": M("Button", value="Saved")},
+    ("POST", "copy"): M("Button", value="Saved"),
+    ("POST", "save-to-voices"): M("Button", value="Saved"),
 }
 
 
@@ -133,11 +133,11 @@ class RemoteTest(unittest.TestCase):
 
     def test_plain_values(self):
         self.assertEqual(
-            bridge.history.collections(), ANSWERS[("GET", "collections")]["collections"]
+            bridge.history.collections(), ANSWERS[("GET", "collections")]
         )
         self.assertEqual(bridge.history.items("collections\\a"), ["outputs/x/x.png"])
         self.assertEqual(self.stub.requests[1][2], {"collection": "collections\\a"})
-        self.assertIsNone(bridge.history.delete(directory="outputs\\x"))
+        self.assertEqual(bridge.history.delete(directory="outputs\\x"), {"ok": True})
         self.assertEqual(self.stub.requests[2][3], {"directory": "outputs\\x"})
 
     def test_select_returns_components_and_plain_values(self):
@@ -206,6 +206,45 @@ class RemoteTest(unittest.TestCase):
             [r[1] for r in self.stub.requests],
             ["collections", "copy", "copy", "delete"],
         )
+
+
+class OpsTest(unittest.TestCase):
+    def setUp(self):
+        self.stub = Stub()
+        self.addCleanup(self.stub.close)
+        env = mock.patch.dict(
+            os.environ, {"TTS_CORE_URL": self.stub.url, "TTS_CORE_TOKEN": "tok"}
+        )
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_positional_keyword_and_argument_errors(self):
+        h = bridge.history
+        self.assertEqual(h.copy("outputs/x", "favorites").value, "Saved")
+        self.assertEqual(h.copy(directory="outputs/x", to="favorites").value, "Saved")
+        self.assertEqual(h.copy("outputs/x", to="favorites").value, "Saved")
+        self.assertEqual({tuple(r[3].items()) for r in self.stub.requests}, {(("directory", "outputs/x"), ("to", "favorites"))})
+        for bad in (
+            lambda: h.copy("a"),
+            lambda: h.copy("a", "b", "c"),
+            lambda: h.copy("a", directory="b", to="c"),
+            lambda: h.copy(directory="a", nope="b"),
+            lambda: h.collections("x"),
+        ):
+            with self.assertRaises(TypeError):
+                bad()
+        with self.assertRaises(AttributeError) as cm:
+            h.nope
+        self.assertIn("copy", str(cm.exception))
+        self.assertEqual(len(self.stub.requests), 3)  # bad calls never reached Go
+
+    def test_bound_operation_is_a_gradio_handler(self):
+        handler = bridge.history.save_to_voices
+        self.assertEqual(handler.__name__, "save_to_voices")
+        with gr.Blocks():
+            txt = gr.Textbox(visible=False)
+            btn = gr.Button()
+            btn.click(fn=handler, inputs=txt, outputs=btn)
 
 
 class CoreOffTest(unittest.TestCase):

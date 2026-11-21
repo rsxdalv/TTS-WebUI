@@ -10,6 +10,7 @@ from tts_webui.extensions_loader.extensions_data_loader import (
     filter_extensions_by_type_and_class,
     get_interface_extensions,
 )
+from tts_webui.extensions_loader.list_tab import extension_list_ui
 from tts_webui.extensions_loader.LoadingIndicator import LoadingIndicator
 from tts_webui.extensions_loader.setup_proxy_extension import setup_proxy_extension
 from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
@@ -18,10 +19,6 @@ from tts_webui.utils.pip_install import (
     pip_uninstall_wrapper,
     venv_setup_wrapper,
 )
-
-
-def uninstall_extension(package_name):
-    yield from pip_uninstall_wrapper(package_name, package_name)()
 
 
 def check_if_package_installed(package_name, proxy):
@@ -324,64 +321,7 @@ def handle_extension_class(extension_class, config):
 
 
 def extension_list_tab():
-    gr.Markdown("List of all extensions")
-    table_string = """| Title | Description |\n| --- | --- |\n"""
-    for x in extension_list_json:
-        table_string += (
-            # f"| {x['name']} (v{x['version']}) "
-            f"| {x['name']} "
-            + f"| {x['description']} (website: {x['website']}) (extension_website: {x['extension_website']}) |\n"
-        )
-    gr.Markdown(table_string)
-
-    external_extension_list = [
-        x for x in extension_list_json if "builtin" not in x["package_name"]
-    ]
-    # sort
-    external_extension_list = sorted(
-        external_extension_list, key=lambda x: x["name"].lower()
-    )
-
-    with gr.Row():
-        with gr.Column():
-            gr.Markdown("Install/Uninstall Extensions")
-
-            install_dropdown = gr.Dropdown(
-                label="Select Extension to Install",
-                choices=[x["package_name"] for x in external_extension_list],
-            )
-
-            install_button = gr.Button("Install extension")
-
-            def install_extension(package_name):
-                requirements = [
-                    x["requirements"]
-                    for x in external_extension_list
-                    if x["package_name"] == package_name
-                ][0]
-                yield from pip_install_wrapper(requirements, package_name)()
-
-            install_button.click(
-                fn=install_extension,
-                inputs=[install_dropdown],
-                outputs=[gr.HTML()],
-                api_name="install_extension",
-            )
-
-        with gr.Column():
-            gr.Markdown("Uninstall Extensions")
-            uninstall_dropdown = gr.Dropdown(
-                label="Select Extension to Uninstall",
-                choices=[x["package_name"] for x in external_extension_list],
-            )
-            uninstall_button = gr.Button("Uninstall extension")
-
-            uninstall_button.click(
-                fn=uninstall_extension,
-                inputs=[uninstall_dropdown],
-                outputs=[gr.HTML()],
-                api_name="uninstall_extension",
-            )
+    extension_list_ui("interface")
 
 
 if __name__ == "__main__":

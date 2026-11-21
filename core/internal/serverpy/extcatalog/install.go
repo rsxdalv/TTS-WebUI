@@ -168,6 +168,9 @@ func (s *Store) venvSetup(ctx context.Context, entry *Obj, emit func(string)) bo
 // stdout and stderr merged, to emit.
 func (s *Store) run(ctx context.Context, args []string, emit func(string)) error {
 	full := append(append([]string{}, s.opts.Run...), args...)
+	if s.opts.Python != "" && args[0] == "python" {
+		full = append([]string{s.opts.Python}, args[1:]...)
+	}
 	cmd := exec.CommandContext(ctx, full[0], full[1:]...)
 	cmd.Dir = s.opts.Root
 	if s.opts.Env != nil {

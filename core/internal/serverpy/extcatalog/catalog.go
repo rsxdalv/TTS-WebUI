@@ -29,8 +29,11 @@ type Options struct {
 	Root  string   // project root: holds extensions.json, .venvs/, installer_scripts/
 	Token string   // required; requests without it get 403
 	Run   []string // command prefix of the main env (micromamba -p env run); empty runs directly
-	Env   []string // environment of the install commands; nil inherits
-	Logf  func(format string, args ...any)
+	// Python, when set, is the program used for "python" instead of Run + python
+	// (for trying the API outside the launcher).
+	Python string
+	Env    []string // environment of the install commands; nil inherits
+	Logf   func(format string, args ...any)
 }
 
 // Store serves the extcatalog API for one project root.

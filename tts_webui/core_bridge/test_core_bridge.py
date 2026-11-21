@@ -43,6 +43,22 @@ ANSWERS = {
     ("POST", "delete"): {"ok": True},
     ("POST", "copy"): M("Button", value="Saved"),
     ("POST", "save-to-voices"): M("Button", value="Saved"),
+    # extcatalog
+    ("GET", "list"): [{"package_name": "a.one", "name": "A One"}],
+    ("GET", "table"): M("Markdown", value="| Title | Description |"),
+    ("GET", "picker"): M("Dropdown", label="Pick", choices=["a.one", "b.two"]),
+    ("POST", "parse"): {
+        "entries": [{"package_name": "n.one"}],
+        "preview": M("Markdown", value="| Name |"),
+        "info": "Parsed entries: 1",
+    },
+    ("POST", "add"): {"status": "Saved | Added: n.one | Skipped (exists): none", "json": "{}"},
+}
+
+# POST ops that answer with NDJSON lines
+STREAMS = {
+    "install": [{"line": "Collecting x"}, {"line": "Installed x"}, {"done": True, "ok": True}],
+    "uninstall": [{"line": "Removed x"}, {"done": True, "ok": True}],
 }
 
 
@@ -56,7 +72,7 @@ class Stub:
                 u = urlparse(self.path)
                 n = int(self.headers.get("Content-Length", 0))
                 body = json.loads(self.rfile.read(n)) if n else None
-                op = u.path.removeprefix("/api/history/")
+                op = u.path.rsplit("/", 1)[-1]
                 token = self.headers.get("X-TTS-Core-Token")
                 query = {k: v[0] for k, v in parse_qs(u.query).items()}
                 stub.requests.append((self.command, op, query, body, token))
@@ -64,6 +80,16 @@ class Stub:
                     code, out = 403, {"error": "forbidden"}
                 elif op == "delete" and body["directory"] == "gone":
                     code, out = 404, {"error": "not found: gone"}
+                elif op == "install" and body["package_name"] == "missing":
+                    code, out = 404, {"error": 'not found: no installable extension "missing"'}
+                elif self.command == "POST" and op in STREAMS:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/x-ndjson")
+                    self.end_headers()
+                    for rec in STREAMS[op]:
+                        self.wfile.write((json.dumps(rec) + chr(10)).encode())
+                        self.wfile.flush()
+                    return
                 elif (self.command, op) in ANSWERS:
                     code, out = 200, ANSWERS[(self.command, op)]
                 else:
@@ -206,6 +232,80 @@ class RemoteTest(unittest.TestCase):
             [r[1] for r in self.stub.requests],
             ["collections", "copy", "copy", "delete"],
         )
+
+
+class ExtCatalogTest(unittest.TestCase):
+    def setUp(self):
+        self.stub = Stub()
+        self.addCleanup(self.stub.close)
+        env = mock.patch.dict(
+            os.environ, {"TTS_CORE_URL": self.stub.url, "TTS_CORE_TOKEN": "tok"}
+        )
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_read_ops(self):
+        e = bridge.extcatalog
+        self.assertEqual(e.list("interface"), [{"package_name": "a.one", "name": "A One"}])
+        self.assertEqual(self.stub.requests[0][2], {"kind": "interface"})
+        with gr.Blocks():
+            md = e.table("decorator")
+            dd = e.picker("interface", "Pick")
+        self.assertIsInstance(md, gr.Markdown)
+        self.assertIsInstance(dd, gr.Dropdown)
+        self.assertEqual([c[0] for c in dd.choices], ["a.one", "b.two"])
+        self.assertEqual(self.stub.requests[2][2], {"kind": "interface", "label": "Pick"})
+
+    def test_parse_and_add(self):
+        res = bridge.extcatalog.parse("{}")
+        self.assertEqual(res["info"], "Parsed entries: 1")
+        self.assertIsInstance(res["preview"], gr.Markdown)
+        self.assertEqual(self.stub.requests[0][3], {"text": "{}"})
+        res = bridge.extcatalog.add([{"package_name": "n.one"}])
+        self.assertTrue(res["status"].startswith("Saved"))
+        self.assertEqual(self.stub.requests[1][3], {"entries": [{"package_name": "n.one"}]})
+
+    def test_install_streams_the_console_html(self):
+        import inspect
+
+        install = bridge.extcatalog.install
+        self.assertTrue(inspect.isgeneratorfunction(install))  # Gradio streams generators
+        self.assertEqual(
+            list(install("a.one")),
+            ["Collecting x", "Collecting x<br />Installed x"],
+        )
+        self.assertEqual(list(bridge.extcatalog.uninstall(package_name="a.one")), ["Removed x"])
+        self.assertEqual(self.stub.requests[0][3], {"package_name": "a.one"})
+
+    def test_errors_before_the_stream_raise(self):
+        with self.assertRaises(CoreBridgeError) as cm:
+            list(bridge.extcatalog.install("missing"))
+        self.assertIn("no installable extension", str(cm.exception))
+        with self.assertRaises(TypeError):
+            list(bridge.extcatalog.install())
+
+    def test_list_tab_builds(self):
+        from tts_webui.extensions_loader.list_tab import extension_list_ui
+
+        with gr.Blocks() as demo:
+            extension_list_ui("interface")
+        kinds = [type(b).__name__ for b in demo.blocks.values()]
+        self.assertEqual(kinds.count("Dropdown"), 2)
+        self.assertIn("HTML", kinds)
+        self.assertGreaterEqual(kinds.count("Markdown"), 3)  # intro, table, two headings
+        self.assertEqual(sum(1 for f in demo.fns.values() if f.api_name and "extension" in f.api_name), 2)
+
+    def test_custom_installer_handlers(self):
+        import importlib
+
+        m = importlib.import_module("extensions.builtin.extension_custom_extensions_installer.main")
+        entries, preview, info = m._on_parse("{}")
+        self.assertEqual((entries, info), ([{"package_name": "n.one"}], "Parsed entries: 1"))
+        self.assertIsInstance(preview, gr.Markdown)
+        self.assertEqual(m._add_to_external(entries)[1], "{}")
+        out = list(m._install_selected([{"package_name": "a.one"}, {"package_name": "a.one"}]))
+        self.assertEqual(out, ["Collecting x", "Collecting x<br />Installed x"] * 2)
+        self.assertEqual(list(m._install_selected([])), ["<i>Nothing selected to install.</i>"])
 
 
 class OpsTest(unittest.TestCase):

@@ -8,11 +8,11 @@ from typing import Literal
 import gradio as gr
 
 from tts_webui.config.config import config
+from tts_webui.extensions_loader.list_tab import extension_list_ui
 from tts_webui.extensions_loader.extensions_data_loader import (
     get_decorator_extensions,
     get_decorator_extensions_by_class,
 )
-from tts_webui.utils.pip_install import pip_install_wrapper, pip_uninstall_wrapper
 
 # A list of disabled extensions and decorators
 # disabled_extensions = ["decorator_disabled"]
@@ -27,63 +27,7 @@ extension_list_json = get_decorator_extensions()
 
 def extension_decorator_list_tab():
     with gr.Tab("Decorator Extensions List"):
-        gr.Markdown("List of all extensions")
-        table_string = """| Title | Description |\n| --- | --- |\n"""
-        for x in extension_list_json:
-            table_string += (
-                # f"| {x['name']} (v{x['version']}) "
-                f"| {x['name']} "
-                + f"| {x['description']} (website: {x['website']}) (extension_website: {x['extension_website']}) |\n"
-            )
-        gr.Markdown(table_string)
-
-        external_extension_list = [
-            x for x in extension_list_json if "builtin" not in x["package_name"]
-        ]
-
-        with gr.Row():
-            with gr.Column():
-                gr.Markdown("Install/Uninstall Extensions")
-
-                install_dropdown = gr.Dropdown(
-                    label="Select Extension to Install",
-                    choices=[x["package_name"] for x in external_extension_list],
-                )
-
-                install_button = gr.Button("Install extension")
-
-                def install_extension(package_name):
-                    requirements = [
-                        x["requirements"]
-                        for x in external_extension_list
-                        if x["package_name"] == package_name
-                    ][0]
-                    yield from pip_install_wrapper(requirements, package_name)()
-
-                install_button.click(
-                    fn=install_extension,
-                    inputs=[install_dropdown],
-                    outputs=[gr.HTML()],
-                    api_name="install_extension",
-                )
-
-            with gr.Column():
-                gr.Markdown("Uninstall Extensions")
-                uninstall_dropdown = gr.Dropdown(
-                    label="Select Extension to Uninstall",
-                    choices=[x["package_name"] for x in external_extension_list],
-                )
-                uninstall_button = gr.Button("Uninstall extension")
-
-                def uninstall_extension(package_name):
-                    yield from pip_uninstall_wrapper(package_name, package_name)()
-
-                uninstall_button.click(
-                    fn=uninstall_extension,
-                    inputs=[uninstall_dropdown],
-                    outputs=[gr.HTML()],
-                    api_name="uninstall_extension",
-                )
+        extension_list_ui("decorator")
 
 
 def _get_pretty_time(elapsed):

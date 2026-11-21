@@ -3,6 +3,7 @@ from .gradio_resolve import resolve
 
 GET = "GET"
 POST = "POST"
+STREAM = "STREAM"
 
 
 class SubBridge:
@@ -13,6 +14,10 @@ class SubBridge:
     with ``{"directory": ..., "to": ...}`` (GET sends a query string). Arguments
     may be positional or keyword, so a bound operation can be a Gradio event
     handler directly. An operation name maps to its endpoint with ``_`` -> ``-``.
+
+    STREAM is a POST whose answer is a stream of output lines (an install). The
+    operation is a generator that yields the console HTML so far (lines joined
+    with ``<br />``) after each line, so Gradio treats it as a streaming handler.
 
     Go answers with exactly the value the caller needs, and Gradio markers in
     it come back as components. There is no Python fallback: without the core
@@ -31,7 +36,7 @@ class SubBridge:
         verb, params = ops[op]
         path = f"/api/{self.name}/{op.replace('_', '-')}"
 
-        def call(*args, **kwargs):
+        def fields_of(args, kwargs):
             if len(args) > len(params):
                 raise TypeError(f"{op}() takes {len(params)} arguments ({len(args)} given)")
             fields = dict(zip(params, args))
@@ -42,9 +47,24 @@ class SubBridge:
             missing = [p for p in params if p not in fields]
             if missing:
                 raise TypeError(f"{op}() missing arguments: {missing}")
-            if verb == GET:
-                return resolve(transport.call("GET", path, query=fields or None))
-            return resolve(transport.call("POST", path, body=fields))
+            return fields
+
+        if verb == STREAM:
+
+            def call(*args, **kwargs):
+                lines = []
+                for rec in transport.stream(path, body=fields_of(args, kwargs)):
+                    if "line" in rec:
+                        lines.append(rec["line"])
+                        yield "<br />".join(lines)
+
+        else:
+
+            def call(*args, **kwargs):
+                fields = fields_of(args, kwargs)
+                if verb == GET:
+                    return resolve(transport.call("GET", path, query=fields or None))
+                return resolve(transport.call("POST", path, body=fields))
 
         call.__name__ = op
         return call

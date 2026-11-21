@@ -5,17 +5,19 @@
 
 ``bridge.<name>`` returns the sub-bridge registered for ``<name>``. The
 registry is a hand-written table, not discovery: add a class in this package
-and one line below. With ``TTS_CORE_URL`` unset each sub-bridge runs the
-original Python code, so nothing changes when the Go port is off.
+and one line below. Without ``TTS_CORE_URL`` (the Go core) every call raises
+CoreBridgeError.
 """
 
 from .base import SubBridge
+from .extcatalog import ExtCatalogBridge
 from .history import HistoryBridge
 from .transport import CoreBridgeError, enabled
 
 __all__ = ["bridge", "Bridge", "SubBridge", "CoreBridgeError", "enabled"]
 
 _SUBBRIDGES = {
+    "extcatalog": ExtCatalogBridge,
     "history": HistoryBridge,
 }
 

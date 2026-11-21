@@ -14,6 +14,7 @@ import urllib.request
 
 TOKEN_HEADER = "X-TTS-Core-Token"
 DEFAULT_TIMEOUT = 120
+STREAM_TIMEOUT = 3600
 
 # The core is always local: never go through a system or environment proxy.
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -37,7 +38,8 @@ def local(path):
     return path.replace("/", os.sep)
 
 
-def call(method, path, query=None, body=None, timeout=DEFAULT_TIMEOUT):
+def _open(method, path, query, body, timeout):
+    """Open a request to the core; returns the response (a context manager)."""
     if not enabled():
         raise CoreBridgeError(
             "the Go core is not running (TTS_CORE_URL is not set); start the app "
@@ -53,8 +55,7 @@ def call(method, path, query=None, body=None, timeout=DEFAULT_TIMEOUT):
         headers["Content-Type"] = "application/json"
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
-        with _OPENER.open(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode())
+        return _OPENER.open(req, timeout=timeout)
     except urllib.error.HTTPError as e:
         raw = e.read().decode(errors="replace")
         try:
@@ -67,3 +68,24 @@ def call(method, path, query=None, body=None, timeout=DEFAULT_TIMEOUT):
             f"cannot reach the TTS core at {url} ({getattr(e, 'reason', e)}); "
             "is the launcher still running?"
         ) from e
+
+
+def call(method, path, query=None, body=None, timeout=DEFAULT_TIMEOUT):
+    with _open(method, path, query, body, timeout) as resp:
+        return json.loads(resp.read().decode())
+
+
+def stream(path, body=None, timeout=STREAM_TIMEOUT):
+    """POST and yield the answer's JSON lines (NDJSON) as they arrive.
+
+    ``timeout`` is how long a single read may block: an install can be quiet
+    for minutes between lines.
+    """
+    with _open("POST", path, None, body if body is not None else {}, timeout) as resp:
+        try:
+            for raw in resp:
+                raw = raw.strip()
+                if raw:
+                    yield json.loads(raw.decode())
+        except OSError as e:
+            raise CoreBridgeError(f"{path}: the stream broke ({e})") from e

@@ -92,8 +92,20 @@ func TestItemJSON(t *testing.T) {
 	if _, err := s.ItemJSON("outputs/a/a.txt"); !errors.Is(err, errInvalid) {
 		t.Fatalf("ext: %v", err)
 	}
-	if _, err := s.ItemJSON("outputs/zz/zz.wav"); !errors.Is(err, errNotFound) {
-		t.Fatalf("missing: %v", err)
+	// A generation without metadata has no metadata, not an error: the tab
+	// shows an empty component.
+	for _, p := range []string{"outputs/zz/zz.wav", "outputs/a/missing.wav"} {
+		b, err := s.ItemJSON(p)
+		if err != nil || b != nil {
+			t.Fatalf("%s: %s %v", p, b, err)
+		}
+	}
+	// A file that is not JSON is no metadata either.
+	write(t, root, "outputs/b/b.json", "not json")
+	write(t, root, "outputs/b/b.wav", "RIFF")
+	b, err := s.ItemJSON("outputs/b/b.wav")
+	if err != nil || b != nil {
+		t.Fatalf("not json: %s %v", b, err)
 	}
 	if _, err := s.ItemJSON("../outside/a.wav"); !errors.Is(err, errInvalid) {
 		t.Fatalf("traversal: %v", err)

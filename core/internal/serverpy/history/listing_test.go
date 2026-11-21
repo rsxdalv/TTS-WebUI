@@ -1,6 +1,7 @@
 package history
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -161,10 +162,14 @@ func TestRowsSkipsWhatCannotBeSelected(t *testing.T) {
 			t.Errorf("listed %q", r.path())
 		}
 	}
-	// The folder without a .wav is still listed (the old tab listed it), but
-	// selecting it fails: there is no audio.
-	if _, err := s.Select("outputs/nowav/nowav.wav"); err == nil {
-		t.Error("selected a generation without a wav")
+	// The folder without a .wav is still listed (the old tab listed it), and
+	// it can still be selected: the tab shows what it has.
+	ui, err := s.Select("outputs/nowav/nowav.wav")
+	if err != nil {
+		t.Fatalf("a generation without a wav: %v", err)
+	}
+	if v := markerValue(t, ui, "audio"); v != "outputs/nowav/nowav.wav" {
+		t.Fatalf("audio = %v", v)
 	}
 }
 
@@ -203,8 +208,9 @@ func TestRowsHTTP(t *testing.T) {
 	}
 }
 
-// markerValue is the value of a Gradio marker of a component.
-func markerValue(t *testing.T, ui map[string]any, key string) any {
+// markerProp is a property of a Gradio marker. A property that is JSON null
+// (an empty component) comes back as nil.
+func markerProp(t *testing.T, ui map[string]any, key, prop string) any {
 	t.Helper()
 	marker, ok := ui[key].(map[string]any)
 	if !ok {
@@ -214,7 +220,21 @@ func markerValue(t *testing.T, ui map[string]any, key string) any {
 	if !ok {
 		t.Fatalf("%s has no props: %v", key, marker)
 	}
-	return props["value"]
+	v := props[prop]
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) == "null" {
+		return nil
+	}
+	return v
+}
+
+// markerValue is the value of a Gradio marker.
+func markerValue(t *testing.T, ui map[string]any, key string) any {
+	t.Helper()
+	return markerProp(t, ui, key, "value")
 }
 
 func TestSelectWithoutImage(t *testing.T) {
@@ -238,6 +258,96 @@ func TestSelectWithoutImage(t *testing.T) {
 	}
 	if v := markerValue(t, ui, "image"); v != "outputs/b/b.png" {
 		t.Fatalf("image = %v", v)
+	}
+}
+
+// A generation that is not complete is still selectable: the old tab showed
+// what it had, so a broken folder can still be deleted.
+func TestSelectWithoutJSON(t *testing.T) {
+	s, root := newStore(t)
+	gen(t, root, "outputs", "a")
+	if err := os.Remove(filepath.Join(root, "outputs", "a", "a.json")); err != nil {
+		t.Fatal(err)
+	}
+	ui, err := s.Select("outputs/a/a.wav")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v := markerValue(t, ui, "json"); v != nil {
+		t.Fatalf("json = %v, want no value", v)
+	}
+	// The other controls are there.
+	if v := markerValue(t, ui, "audio"); v != "outputs/a/a.wav" {
+		t.Fatalf("audio = %v", v)
+	}
+	if ui["folder_root"] != "outputs/a" {
+		t.Fatalf("folder_root = %v", ui["folder_root"])
+	}
+	if v := markerProp(t, ui, "delete", "visible"); v != true {
+		t.Fatalf("delete = %v, want visible", v)
+	}
+	// A file that is not JSON is the same as no file.
+	write(t, root, "outputs/b/b.wav", "RIFF")
+	write(t, root, "outputs/b/b.json", "not json")
+	ui, err = s.Select("outputs/b/b.wav")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v := markerValue(t, ui, "json"); v != nil {
+		t.Fatalf("json = %v, want no value", v)
+	}
+}
+
+func TestSelectWithoutWav(t *testing.T) {
+	s, root := newStore(t)
+	gen(t, root, "outputs", "a")
+	if err := os.Remove(filepath.Join(root, "outputs", "a", "a.wav")); err != nil {
+		t.Fatal(err)
+	}
+	ui, err := s.Select("outputs/a/a.wav")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The audio keeps the path it would have, the rest is there.
+	if v := markerValue(t, ui, "audio"); v != "outputs/a/a.wav" {
+		t.Fatalf("audio = %v", v)
+	}
+	if v := markerValue(t, ui, "json"); v == nil {
+		t.Fatal("the metadata is gone")
+	}
+	if ui["folder_root"] != "outputs/a" {
+		t.Fatalf("folder_root = %v", ui["folder_root"])
+	}
+	if v := markerProp(t, ui, "delete", "visible"); v != true {
+		t.Fatalf("delete = %v, want visible", v)
+	}
+	// A folder that is not there at all is still an error.
+	if _, err := s.Select("outputs/zz/zz.wav"); err == nil {
+		t.Error("selected a folder that does not exist")
+	}
+}
+
+// The path rules stay in force: a path that leaves the collection is refused,
+// also when the file itself is missing.
+func TestSelectRefusesBadPaths(t *testing.T) {
+	s, root := newStore(t)
+	gen(t, root, "outputs", "a")
+	for _, p := range []string{
+		"../outside/a.wav", "outputs/../secret/a.wav", "secret/a.wav",
+		"C:/Windows/a.wav", "/outputs/a/a.wav", "outputs/a/a.txt", "a.wav",
+	} {
+		if _, err := s.Select(p); err == nil {
+			t.Errorf("Select(%q) succeeded", p)
+		}
+	}
+	// A .wav that is a link out of the collection is refused.
+	outside := t.TempDir()
+	write(t, outside, "v.wav", "x")
+	if err := os.Symlink(filepath.Join(outside, "v.wav"), filepath.Join(root, "outputs", "a", "link.wav")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if _, err := s.Select("outputs/a/link.wav"); err == nil {
+		t.Error("selected a wav through a link")
 	}
 }
 

@@ -76,7 +76,7 @@ and a Dropdown for any other collection.
 | `bundle_name` | Markdown, the generation folder |
 | `folder_root` | plain string, the generation folder (feeds delete/copy) |
 | `audio`, `image` | Audio (value and label = the `.wav`), Image (the `.png`, or no value when there is none) |
-| `json` | JSON, the item's `.json` |
+| `json` | JSON, the item's `.json` (no value when there is none or it is not JSON) |
 | `npz` | Textbox, the `.npz` path (feeds save-to-voices) |
 | `delete`, `save_to_voices`, `open_folder` | Button, `visible: true` |
 | `save_to_favorites` | Button, hidden when the item is already in `favorites/` |
@@ -101,6 +101,11 @@ non-regular file, copies into a temp directory and renames, and creates
 `save-to-voices` only takes a regular `.npz` inside a generation directory,
 refuses a linked `voices/`, and writes through a temp file. Collection names go
 through the same element rules. Writes are serialised; `delete` logs the path.
+
+`select` checks the path of the folder (it has to exist and to be inside a
+collection) and of the `.wav` and the `.json`. A file that is not there is not
+an error: the tab shows what it has. A file that is a link out of the
+collection is an error, like everywhere else.
 
 The hidden "Delete (API ONLY)" button of the History tab (the api the React UI
 calls) went through `shutil.rmtree` on any path the caller supplied. It is now
@@ -142,10 +147,13 @@ calls) went through `shutil.rmtree` on any path the caller supplied. It is now
   - a collection that does not exist is a 404; the old tab raised.
 - The image is only shown when there is a `.png` next to the `.wav`. The old
   Gallery tab always had one, the old History tab checked with `os.path.exists`.
+- A generation that is not complete is still selectable: a folder without a
+  `.wav` gets the controls (the audio keeps the path it would have), a folder
+  without a `.json` (or with one that is not JSON) gets an empty JSON
+  component. The old tab showed the same, so a broken folder can still be
+  selected and deleted. A path that leaves the collection is still an error.
 - `bundle_name` is a Markdown update (Python sent a Textbox update to a
   Markdown).
-- A generation without a `.json` is a 404 on select; the old History tab
-  swallowed the error and showed an empty JSON component.
 - Creating a collection that exists, and saving to a target that exists, are
   409 errors (Python raised too).
 - The "Save to favorites" button is hidden for items already in `favorites/`.

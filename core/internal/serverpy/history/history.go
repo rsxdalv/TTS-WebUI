@@ -117,6 +117,11 @@ func (s *Store) Items(collection string) ([]string, error) {
 
 // ItemJSON returns the metadata file next to an item, given its .wav (or .png)
 // path: the same stem with .json.
+//
+// A generation without metadata (no file, a file that is not JSON, a file that
+// is too big) has no metadata: the answer is nil and the tab shows an empty
+// component. The old Python tab did the same. A path that leaves the
+// collection is still an error.
 func (s *Store) ItemJSON(path string) ([]byte, error) {
 	p := strings.ReplaceAll(path, "\\", "/")
 	i := strings.LastIndexByte(p, '.')
@@ -130,21 +135,21 @@ func (s *Store) ItemJSON(path string) ([]byte, error) {
 	}
 	abs, _, _, err := s.resolve(p[:i] + ".json")
 	if err != nil {
+		if errors.Is(err, errNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	fi, err := os.Lstat(abs)
 	if err != nil || !fi.Mode().IsRegular() {
-		return nil, fmt.Errorf("%w: %s", errNotFound, path)
+		return nil, nil
 	}
 	if fi.Size() > 32<<20 {
-		return nil, invalidf("metadata file too large")
+		return nil, nil
 	}
 	b, err := os.ReadFile(abs)
-	if err != nil {
-		return nil, err
-	}
-	if !json.Valid(b) {
-		return nil, invalidf("metadata file is not valid JSON")
+	if err != nil || !json.Valid(b) {
+		return nil, nil
 	}
 	return b, nil
 }

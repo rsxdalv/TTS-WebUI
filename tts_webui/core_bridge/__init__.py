@@ -13,6 +13,7 @@ from .base import SubBridge
 from .config import ConfigBridge
 from .extcatalog import ExtCatalogBridge
 from .history import HistoryBridge
+from .logs import LogsBridge
 from .pip import PipBridge
 from .transport import CoreBridgeError, enabled
 
@@ -22,6 +23,7 @@ _SUBBRIDGES = {
     "config": ConfigBridge,
     "extcatalog": ExtCatalogBridge,
     "history": HistoryBridge,
+    "logs": LogsBridge,
     "pip": PipBridge,
 }
 

@@ -116,7 +116,7 @@
                 "extension_platform_version": "0.0.1"
             },
             {
-                "package_name": "tts_webui_extension.log_viewer",
+                "package_name": "extensions.builtin.extension_log_viewer",
                 "name": "Log Viewer",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.log_viewer@main",
                 "description": "View, search, and manage log files from the TTS Generation WebUI. Browse installation logs, filter by keywords, and clean up old logs.",

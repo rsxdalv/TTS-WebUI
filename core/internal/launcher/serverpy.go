@@ -20,6 +20,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extcatalog"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extprocs"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/history"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/logview"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/piplist"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/router"
 )
@@ -163,6 +164,11 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 	mux.Handle(piplist.Path, piplist.New(piplist.Options{
 		Root: root.Dir(), Token: token,
 		Run: append([]string(nil), prefix...), Env: append([]string(nil), baseEnv...),
+		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+	}).Handler())
+	// Log Viewer: list, read, search and delete installer_scripts/logs (see logview).
+	mux.Handle(logview.Prefix, logview.New(logview.Options{
+		Root: root.Dir(), Token: token,
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}).Handler())
 	mux.Handle("/api/extensions", mgr.Handler())

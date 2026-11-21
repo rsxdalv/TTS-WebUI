@@ -54,6 +54,16 @@ ANSWERS = {
     },
     ("POST", "add"): {"status": "Saved | Added: n.one | Skipped (exists): none", "json": "{}"},
     ("GET", "pip-list"): [{"name": "Alpha", "version": "1.0"}, {"name": "numpy", "version": "2.0"}],
+    # logs
+    ("GET", "logs-files"): ["pip-install-a.log", "notes.log"],
+    ("GET", "logs-pip-logs"): [{"name": "a", "file": "pip-install-a.log"}],
+    ("GET", "logs-stats"): "**Total Log Files:** 2",
+    ("GET", "logs-summary"): "# Summary",
+    ("GET", "logs-info"): "**File:** pip-install-a.log",
+    ("GET", "logs-analyze"): "# Analysis",
+    ("GET", "logs-read"): "line\n",
+    ("POST", "logs-delete"): {"status": "Successfully deleted notes.log", "files": ["pip-install-a.log"]},
+    ("POST", "logs-delete-all"): {"status": "Deleted 1 log file(s)", "files": []},
     # config
     ("POST", "extension-enable"): {"changed": True, "disabled": False, "info": "Enabled extension. Restart."},
     ("POST", "extension-disable"): {"changed": True, "disabled": True, "info": "Disabled extension. Restart."},
@@ -81,6 +91,8 @@ class Stub:
                 n = int(self.headers.get("Content-Length", 0))
                 body = json.loads(self.rfile.read(n)) if n else None
                 op = u.path.rsplit("/", 1)[-1]
+                if u.path.startswith("/api/logs/"):
+                    op = "logs-" + op  # "delete" etc. are also history ops
                 if u.path == "/api/pip/list":
                     op = "pip-list"  # "list" is also an extcatalog op
                 token = self.headers.get("X-TTS-Core-Token")
@@ -492,6 +504,69 @@ class PipTest(unittest.TestCase):
             with self.assertRaises(CoreBridgeError) as cm:
                 bridge.pip.list()
             self.assertIn("TTS_CORE_URL", str(cm.exception))
+
+
+class LogViewerTest(unittest.TestCase):
+    def setUp(self):
+        self.stub = Stub()
+        self.addCleanup(self.stub.close)
+        env = mock.patch.dict(
+            os.environ, {"TTS_CORE_URL": self.stub.url, "TTS_CORE_TOKEN": "tok"}
+        )
+        env.start()
+        self.addCleanup(env.stop)
+
+    def _load(self):
+        import importlib.util
+        import sys
+
+        spec = importlib.util.spec_from_file_location(
+            "log_viewer_main",
+            os.path.join("extensions", "builtin", "extension_log_viewer", "main.py"),
+        )
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["log_viewer_main"] = mod
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_ops_send_named_fields(self):
+        b = bridge.logs
+        self.assertEqual(b.files(), ["pip-install-a.log", "notes.log"])
+        self.assertEqual(b.pip_logs("install")[0]["file"], "pip-install-a.log")
+        b.read("a.log", "err", 500)
+        b.delete("a.log")
+        b.delete_all()
+        got = [(r[0], r[1], r[2], r[3]) for r in self.stub.requests]
+        self.assertEqual(got[1], ("GET", "logs-pip-logs", {"kind": "install"}, None))
+        self.assertEqual(
+            got[2], ("GET", "logs-read", {"file": "a.log", "search": "err", "max_lines": "500"}, None)
+        )
+        self.assertEqual(got[3], ("POST", "logs-delete", {}, {"file": "a.log"}))
+        self.assertEqual(got[4], ("POST", "logs-delete-all", {}, {}))
+
+    def test_tab_builds_and_handlers(self):
+        mod = self._load()
+        with gr.Blocks():
+            info = mod.extension__tts_generation_webui()
+        self.assertEqual(info["package_name"], "extensions.builtin.extension_log_viewer")
+        self.assertEqual(mod._choices("install"), [("a", "pip-install-a.log")])
+        self.assertEqual(mod._read("", "x", 10), "No file selected")
+        self.assertEqual(mod._read("a.log", None, None), "line\n")
+        self.assertEqual(self.stub.requests[-1][2]["max_lines"], "1000")
+        self.assertEqual(mod._info_and_analysis(None), ("No file selected", "Select a log file to see analysis"))
+        self.assertEqual(mod._info_and_content("a.log", "", 100)[0], "**File:** pip-install-a.log")
+
+    def test_core_off_and_go_error(self):
+        with mock.patch.dict(os.environ, {"TTS_CORE_TOKEN": "bad"}):
+            with self.assertRaises(CoreBridgeError):
+                bridge.logs.files()
+        with mock.patch.dict(os.environ, clear=False):
+            os.environ.pop("TTS_CORE_URL")
+            with self.assertRaises(CoreBridgeError) as cm:
+                bridge.logs.stats()
+            self.assertIn("TTS_CORE_URL", str(cm.exception))
+            with self.assertRaises(CoreBridgeError):
+                self._load()._read("a.log", "", 10)
 
 
 if __name__ == "__main__":

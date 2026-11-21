@@ -279,7 +279,7 @@ func TestRelativeDate(t *testing.T) {
 
 func TestPrettyName(t *testing.T) {
 	// The names and the answers of the old Python tab
-	// (tts_webui/history_tab/generate_pretty_name.py).
+	// (tts_webui/history_tab/generate_pretty_name.py, now gone).
 	cases := map[string]string{
 		"2023-06-02_10-54-24__bark__None":                             "Bark history: none",
 		"audio__bark__continued_generation__2023-05-21_15-36-14_long": "Bark history: continued (long)",

@@ -175,7 +175,8 @@ func floorDiv(a, b int64) int64 {
 
 // prettyName is the name of a generation: the folder name without the
 // timestamp, with the words the generators put in it spelled out. The rules
-// are the ones of generate_pretty_name.py, in the same order.
+// are the ones of the old Python tab (generate_pretty_name.py, now gone), in
+// the same order.
 func prettyName(name string) string {
 	n := stampRe.ReplaceAllString(name, "")
 	n = strings.ReplaceAll(n, "audio", "")

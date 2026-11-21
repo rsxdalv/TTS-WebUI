@@ -15,6 +15,7 @@ converted to ``os.sep`` so Gradio sees the same form ``glob`` and
 
 import json
 import os
+import shutil
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -106,6 +107,13 @@ def delete(directory):
 
 
 def copy(directory, to):
-    """Copy a generation directory into a collection; returns the new path."""
+    """Copy a generation directory into a collection; returns the new path.
+
+    Without the core this is the original handler's shutil.copytree.
+    """
+    if not enabled():
+        target = os.path.join(to, os.path.basename(directory))
+        shutil.copytree(directory, target)
+        return target
     res = _call("POST", "copy", body={"dir": _wire(directory), "to": _wire(to)})
     return _local(res["path"])

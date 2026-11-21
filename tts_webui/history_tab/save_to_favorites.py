@@ -7,10 +7,7 @@ from tts_webui import core_history_bridge
 
 
 def save_to_favorites(directory: str):
-    if core_history_bridge.enabled():
-        core_history_bridge.copy(directory, "favorites")
-        return gr.Button(value="Saved")
-    shutil.copytree(directory, os.path.join("favorites", os.path.basename(directory)))
+    core_history_bridge.copy(directory, "favorites")
     return gr.Button(value="Saved")
 
 

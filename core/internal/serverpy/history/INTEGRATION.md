@@ -19,7 +19,12 @@ use `/` (the bridge turns them into `os.sep`). Errors are `{"error": "..."}`:
 | `GET /api/history/item?path=` | a `.wav` or `.png` path | `{"json": <the .json next to it>}` |
 | `POST /api/history/create-collection` | `{"name"}` | `{"collections": [...]}`; 409 if it exists |
 | `POST /api/history/delete` | `{"dir"}` (a generation directory) | `{"ok": true}` |
-| `POST /api/history/copy` | `{"dir", "to"}` (`to` = a collection) | `{"path": "<to>/<basename>"}`; 409 if it exists |
+| `POST /api/history/copy` | `{"dir", "to"}` (`to` = a collection) | `{"path": "<to>/<basename>", "ui": <marker>}`; 409 if it exists |
+
+`ui` is a Gradio object marker, `{"__gradio__": "Button", "props": {"value": "Saved"}}`
+(`Dropdown` for a collection other than favorites). The Python bridge
+(`tts_webui/core_bridge/gradio_resolve.py`) turns it into the component; only
+the components and props listed there are accepted.
 
 POST bodies must be `application/json` with no unknown fields. "Save to
 favorites" is `copy` with `to: "favorites"`.

@@ -310,8 +310,14 @@ func TestHTTP(t *testing.T) {
 	if c, _ = call(t, h, "POST", "/api/history/create-collection", `{"name":".."}`, "tok"); c != 400 {
 		t.Errorf("create ..: %d", c)
 	}
-	if c, _ = call(t, h, "POST", "/api/history/copy", `{"dir":"outputs/a","to":"favorites"}`, "tok"); c != 200 {
-		t.Errorf("copy: %d", c)
+	c, m = call(t, h, "POST", "/api/history/copy", `{"dir":"outputs/a","to":"favorites"}`, "tok")
+	if c != 200 || string(m["path"]) != `"favorites/a"` ||
+		!strings.Contains(string(m["ui"]), `"__gradio__":"Button"`) || !strings.Contains(string(m["ui"]), `"value":"Saved"`) {
+		t.Errorf("copy: %d %s %s", c, m["path"], m["ui"])
+	}
+	c, m = call(t, h, "POST", "/api/history/copy", `{"dir":"outputs/a","to":"collections/mine"}`, "tok")
+	if c != 200 || !strings.Contains(string(m["ui"]), `"__gradio__":"Dropdown"`) {
+		t.Errorf("copy to collection: %d %s", c, m["ui"])
 	}
 	if c, _ = call(t, h, "POST", "/api/history/copy", `{"dir":"outputs/a","to":"favorites"}`, "tok"); c != 409 {
 		t.Errorf("copy twice: %d", c)

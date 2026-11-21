@@ -32,7 +32,11 @@ class Stub:
                 if self.headers.get("X-TTS-Core-Token") != "tok":
                     code, out = 403, {"error": "forbidden"}
                 elif self.path == "/api/history/copy":
-                    code, out = 200, {"path": body["to"] + "/" + body["dir"].split("/")[-1]}
+                    kind = "Button" if body["to"] == "favorites" else "Dropdown"
+                    code, out = 200, {
+                        "path": body["to"] + "/" + body["dir"].split("/")[-1],
+                        "ui": {"__gradio__": kind, "props": {"value": "Saved"}},
+                    }
                 else:
                     code, out = 404, {"error": "not found"}
                 self.send_response(code)

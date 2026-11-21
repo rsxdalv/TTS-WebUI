@@ -48,7 +48,10 @@ class Stub:
                         return self._reply(404, {"error": "not found: gone"})
                     return self._reply(200, {"ok": True})
                 if p == "/api/history/copy":
-                    return self._reply(200, {"path": body["to"] + "/" + body["dir"].split("/")[-1]})
+                    return self._reply(200, {
+                        "path": body["to"] + "/" + body["dir"].split("/")[-1],
+                        "ui": {"__gradio__": "Button", "props": {"value": "Saved"}},
+                    })
                 self._reply(404, {"error": "not found"})
 
             do_GET = do_POST = _handle

@@ -401,6 +401,18 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 			s.fail(w, err)
 			return
 		}
-		writeJSON(w, 200, map[string]string{"path": p})
+		writeJSON(w, 200, map[string]any{"path": p, "ui": savedUI(p)})
 	}
+}
+
+// savedUI is the Gradio update the tab shows after a copy: the "Saved" Button
+// for favorites, the "Saved" Dropdown for any other collection. It is a
+// marker the Python bridge turns into the component (see
+// tts_webui/core_bridge/gradio_resolve.py).
+func savedUI(newPath string) map[string]any {
+	kind := "Dropdown"
+	if strings.HasPrefix(newPath, "favorites/") {
+		kind = "Button"
+	}
+	return map[string]any{"__gradio__": kind, "props": map[string]any{"value": "Saved"}}
 }

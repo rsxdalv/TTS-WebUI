@@ -24,6 +24,10 @@ def M(kind, **props):
 ANSWERS = {
     ("GET", "collections"): ["outputs", "favorites", "collections/a"],
     ("GET", "items"): ["outputs/x/x.png"],
+    ("GET", "rows"): [
+        ["2023-06-02T10:54:24", "Bark history: none", "3 days ago", "outputs/x/x.wav"],
+        ["1970-01-01T00:00:00", "No_date_here", "Unknown", "outputs/y/y.wav"],
+    ],
     ("GET", "select"): {
         "bundle_name": M("Markdown", value="outputs/x"),
         "folder_root": "outputs/x",
@@ -256,6 +260,79 @@ class RemoteTest(unittest.TestCase):
         )
 
 
+class HistoryTabTest(unittest.TestCase):
+    """The History tab (Outputs > History and its Favorites and Collections
+    siblings) is thin Gradio over the Go history API."""
+
+    def setUp(self):
+        self.stub = Stub()
+        self.addCleanup(self.stub.close)
+        env = mock.patch.dict(
+            os.environ, {"TTS_CORE_URL": self.stub.url, "TTS_CORE_TOKEN": "tok"}
+        )
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_rows_come_from_go(self):
+        rows = bridge.history.rows("outputs")
+        self.assertEqual(rows, ANSWERS[("GET", "rows")])
+        self.assertEqual(self.stub.requests[-1][1], "rows")
+        self.assertEqual(self.stub.requests[-1][2], {"directory": "outputs"})
+
+    def test_rows_fit_the_dataframe(self):
+        # The tab hands the rows to gr.Dataframe as they are.
+        rows = bridge.history.rows("outputs")
+        df = gr.Dataframe(
+            value=rows,
+            type="array",
+            col_count=4,
+            datatype=["date", "str", "str", "str"],
+        )
+        self.assertEqual(df.postprocess(rows).data, rows)
+
+    def test_delete_generation_goes_through_go(self):
+        from tts_webui.history_tab.delete_generation import delete_generation
+
+        self.stub.requests.clear()
+        self.assertEqual(delete_generation("outputs/x"), {"ok": True})
+        self.assertEqual(self.stub.requests[-1][1], "delete")
+        self.assertEqual(self.stub.requests[-1][3], {"directory": "outputs/x"})
+
+    def test_tab_builds_and_keeps_the_api_names(self):
+        import importlib
+
+        m = importlib.import_module("extensions.builtin.extension_history_tab.main")
+        with gr.Blocks() as demo:
+            m.extension__tts_generation_webui()
+        names = {f.api_name for f in demo.fns.values() if f.api_name}
+        for want in (
+            "outputs_refresh_history",
+            "favorites_refresh_history",
+            "collections_refresh_history",
+            "save_to_voices",
+            "delete_generation",
+            "open_folder",
+        ):
+            self.assertIn(want, names)
+
+    def test_tab_has_no_filesystem_logic_left(self):
+        import importlib
+
+        m = importlib.import_module("extensions.builtin.extension_history_tab.main")
+        with open(m.__file__, encoding="utf-8") as f:
+            src = f.read()
+        for gone in (
+            "shutil",
+            "os.makedirs",
+            "open(",
+            "json.load",
+            "get_wav_files",
+            "generate_pretty_name",
+            "generate_relative_date",
+        ):
+            self.assertNotIn(gone, src)
+
+
 class ExtCatalogTest(unittest.TestCase):
     def setUp(self):
         self.stub = Stub()
@@ -375,9 +452,12 @@ class CoreOffTest(unittest.TestCase):
         with mock.patch.dict(os.environ, env, clear=True):
             for call in (
                 lambda: bridge.history.collections(),
+                lambda: bridge.history.items("outputs"),
+                lambda: bridge.history.rows("outputs"),
                 lambda: bridge.history.select(path="outputs/x/x.png"),
                 lambda: bridge.history.delete(directory="outputs/x"),
                 lambda: bridge.history.copy("outputs/x", "favorites"),
+                lambda: bridge.history.save_to_voices(npz="outputs/x/x.npz"),
             ):
                 with self.assertRaises(CoreBridgeError) as cm:
                     call()

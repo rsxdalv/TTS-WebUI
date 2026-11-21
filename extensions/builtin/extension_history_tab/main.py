@@ -1,14 +1,11 @@
-import os
 import gradio as gr
 
-import json
-import shutil
-from tts_webui.history_tab.delete_generation import delete_generation
+from tts_webui.core_bridge import bridge
 from tts_webui.history_tab.collections_directories_atom import (
     collections_directories_atom,
     get_collections,
 )
-from tts_webui.history_tab.get_wav_files import get_wav_files
+from tts_webui.history_tab.delete_generation import delete_generation
 from tts_webui.history_tab.delete_generation_cb import delete_generation_cb
 from tts_webui.history_tab.save_to_favorites import (
     save_to_collection,
@@ -26,20 +23,6 @@ def _get_filename(table, index):
     return table["data"][index][-1]
 
 
-def get_json_text(filename):
-    try:
-        with open(filename) as f:
-            return json.load(f)
-    except:
-        return None
-
-
-def _select_audio(table, evt: gr.SelectData):
-    index = _get_row_index(evt)
-    filename = _get_filename(table, index)
-    return filename, get_json_text(filename.replace(".wav", ".json"))
-
-
 def clear_audio():
     return [
         gr.Audio(value=None),
@@ -47,11 +30,6 @@ def clear_audio():
         gr.JSON(value=None),
         gr.Button(visible=False),
     ]
-
-
-def save_to_voices_cb(npz_filename: str):
-    shutil.copy(npz_filename, "voices/")
-    return gr.Button(value="Saved")
 
 
 def history_tab(directory="outputs", show_collections=False):
@@ -139,7 +117,7 @@ def history_content(directory, history_tab, show_collections):
                 )
 
                 save_to_voices.click(
-                    fn=save_to_voices_cb,
+                    fn=bridge.history.save_to_voices,
                     inputs=history_npz,
                     outputs=save_to_voices,
                     api_name=directory == "favorites" and "save_to_voices" or None,
@@ -152,31 +130,23 @@ def history_content(directory, history_tab, show_collections):
                 collections_directories_atom,
             )
 
-    def _select_audio_history(filename: str, json_text):
-        return {
-            history_bundle_name: gr.Textbox(value=os.path.dirname(filename)),
-            folder_root: os.path.dirname(filename),
-            history_audio: gr.Audio(value=filename, label=filename),
-            history_image: (
-                gr.Image(value=filename.replace(".wav", ".png"))
-                if os.path.exists(filename.replace(".wav", ".png"))
-                else gr.Image(value=None)
-            ),
-            history_json: gr.JSON(value=json_text),
-            history_npz: gr.Textbox(value=filename.replace(".wav", ".npz")),
-            delete_from_history: gr.Button(visible=True),
-            save_to_favorites_history: gr.Button(
-                visible=directory != "favorites", value="Save to favorites"
-            ),
-            save_to_voices: gr.Button(visible=True, value="Save to voices"),
-            open_folder_button: gr.Button(visible=True),
-        }
-
     def select_audio_history(table, evt: gr.SelectData):
-        return _select_audio_history(*_select_audio(table, evt))
-
-    def select_audio_history2(_list, evt: gr.SelectData, table):
-        return _select_audio_history(*_select_audio(table, evt))
+        # Go decides what each control shows; Python only maps names to
+        # components.
+        filename = _get_filename(table, _get_row_index(evt))
+        ui = bridge.history.select(filename)
+        return {
+            history_bundle_name: ui["bundle_name"],
+            folder_root: ui["folder_root"],
+            history_audio: ui["audio"],
+            history_image: ui["image"],
+            history_json: ui["json"],
+            history_npz: ui["npz"],
+            delete_from_history: ui["delete"],
+            save_to_favorites_history: ui["save_to_favorites"],
+            save_to_voices: ui["save_to_voices"],
+            open_folder_button: ui["open_folder"],
+        }
 
     outputs = [
         history_bundle_name,
@@ -199,7 +169,7 @@ def history_content(directory, history_tab, show_collections):
     )
 
     def update_history_tab(directory: str):
-        return gr.Dataframe(value=get_wav_files(directory))
+        return gr.Dataframe(value=bridge.history.rows(directory))
 
     delete_from_history.click(
         fn=clear_audio,
@@ -235,8 +205,9 @@ def history_content(directory, history_tab, show_collections):
     )
 
     reload_button.click(
-        fn=lambda x: gr.Dataframe(value=get_wav_files(x)),
+        fn=update_history_tab,
         inputs=[directory_dropdown],
+        # outputs=[history_list, history_list_as_gallery],
         outputs=[history_list],
         api_name=f"{'collections' if show_collections else directory}_refresh_history",
     )
@@ -272,10 +243,10 @@ def create_collection_ui(directories_state):
     new_collection_name = gr.Textbox(label="New collection name", value="")
 
     def create_collection(new_collection_name):
-        os.makedirs(os.path.join("collections", new_collection_name))
+        res = bridge.history.create_collection(new_collection_name)
         return [
-            get_collections(),
-            gr.Button(value="Created"),
+            res["collections"],
+            res["ui"],
         ]
 
     create_collection_button = gr.Button(value="Create collection")

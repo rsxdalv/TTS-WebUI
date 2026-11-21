@@ -17,6 +17,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appconfig"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appenv"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extcatalog"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extprocs"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/history"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/router"
@@ -145,6 +146,12 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 	// Gallery History tab: Go does the filesystem work (see history).
 	mux.Handle(history.Prefix, history.New(history.Options{
 		Root: root.Dir(), Token: token,
+		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+	}).Handler())
+	// Extension lists, Custom Extensions Installer, pip/uv installs (see extcatalog).
+	mux.Handle(extcatalog.Prefix, extcatalog.New(extcatalog.Options{
+		Root: root.Dir(), Token: token,
+		Run: append([]string(nil), prefix...), Env: append([]string(nil), baseEnv...),
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}).Handler())
 	mux.Handle("/api/extensions", mgr.Handler())

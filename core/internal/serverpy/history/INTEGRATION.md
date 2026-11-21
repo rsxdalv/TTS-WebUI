@@ -19,7 +19,7 @@ use `/` (the bridge turns them into `os.sep`). Errors are `{"error": "..."}`:
 | `GET /api/history/item?path=` | a `.wav` or `.png` path | `{"json": <the .json next to it>}` |
 | `POST /api/history/create-collection` | `{"name"}` | `{"collections": [...]}`; 409 if it exists |
 | `POST /api/history/delete` | `{"dir"}` (a generation directory) | `{"ok": true}` |
-| `POST /api/history/copy` | `{"dir", "to"}` (`to` = a collection) | `{"path": "<to>/<basename>", "ui": <marker>}`; 409 if it exists |
+| `POST /api/history/copy` | `{"dir", "to"}` (`to` = a collection) | `{"ui": <marker>}` (the "Saved" update); 409 if it exists |
 
 `ui` is a Gradio object marker, `{"__gradio__": "Button", "props": {"value": "Saved"}}`
 (`Dropdown` for a collection other than favorites). The Python bridge
@@ -65,13 +65,17 @@ Collection names go through the same element rules. Writes are serialised.
 - `collections` lists only names that pass the element rules.
 - Creating a collection that exists is a 409 error (Python raised `FileExistsError`).
 - Saving to a target that exists is a 409 error (Python raised too).
+- The "Saved" Button/Dropdown update comes from Go as a marker (see above).
 
 ## Switch off
 
-Without `TTS_CORE_URL` (the launcher sets it only when `TTS_GO_SERVERPY=1`)
-`core_history_bridge.enabled()` is false and every handler runs the original
-Python code. With it set and Go unreachable the bridge raises
-`CoreHistoryError`; it never falls back to Python.
+`save_to_favorites` / `save_to_collection` (`bridge.history.copy`) have no
+Python fallback: without `TTS_CORE_URL` (the launcher sets it only when
+`TTS_GO_SERVERPY=1`) they raise `CoreBridgeError` ("the Go core is not running").
+The other handlers (list, select, create, delete) still check
+`core_history_bridge.enabled()` and run the original Python code when it is
+off. With the core set but unreachable every bridge call raises; none falls
+back to Python.
 
 ## Wiring
 

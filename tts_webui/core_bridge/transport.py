@@ -38,6 +38,11 @@ def local(path):
 
 
 def call(method, path, query=None, body=None, timeout=DEFAULT_TIMEOUT):
+    if not enabled():
+        raise CoreBridgeError(
+            "the Go core is not running (TTS_CORE_URL is not set); start the app "
+            "through the launcher with TTS_GO_SERVERPY=1"
+        )
     url = os.environ["TTS_CORE_URL"].rstrip("/") + path
     if query:
         url += "?" + urllib.parse.urlencode(query)

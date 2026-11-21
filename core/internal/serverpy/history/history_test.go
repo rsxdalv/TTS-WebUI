@@ -311,9 +311,9 @@ func TestHTTP(t *testing.T) {
 		t.Errorf("create ..: %d", c)
 	}
 	c, m = call(t, h, "POST", "/api/history/copy", `{"dir":"outputs/a","to":"favorites"}`, "tok")
-	if c != 200 || string(m["path"]) != `"favorites/a"` ||
+	if c != 200 || len(m) != 1 ||
 		!strings.Contains(string(m["ui"]), `"__gradio__":"Button"`) || !strings.Contains(string(m["ui"]), `"value":"Saved"`) {
-		t.Errorf("copy: %d %s %s", c, m["path"], m["ui"])
+		t.Errorf("copy: %d %v", c, m)
 	}
 	c, m = call(t, h, "POST", "/api/history/copy", `{"dir":"outputs/a","to":"collections/mine"}`, "tok")
 	if c != 200 || !strings.Contains(string(m["ui"]), `"__gradio__":"Dropdown"`) {

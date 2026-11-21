@@ -401,7 +401,7 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 			s.fail(w, err)
 			return
 		}
-		writeJSON(w, 200, map[string]any{"path": p, "ui": savedUI(p)})
+		writeJSON(w, 200, map[string]any{"ui": savedUI(p)})
 	}
 }
 

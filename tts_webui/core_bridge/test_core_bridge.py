@@ -120,8 +120,8 @@ class RemoteTest(unittest.TestCase):
         self.assertIn("cannot reach the TTS core", str(cm.exception))
 
 
-class LocalTest(unittest.TestCase):
-    def test_copy_without_core_is_copytree(self):
+class CoreOffTest(unittest.TestCase):
+    def test_copy_without_core_raises_and_copies_nothing(self):
         env = {k: v for k, v in os.environ.items() if k != "TTS_CORE_URL"}
         old = os.getcwd()
         with tempfile.TemporaryDirectory() as d, mock.patch.dict(
@@ -131,13 +131,10 @@ class LocalTest(unittest.TestCase):
             try:
                 os.makedirs("outputs/a")
                 os.makedirs("favorites")
-                open("outputs/a/a.wav", "w").close()
-                self.assertFalse(bridge.history.enabled)
-                got = bridge.history.copy("outputs/a", "favorites")
-                self.assertIsInstance(got, gr.Button)
-                self.assertTrue(os.path.exists("favorites/a/a.wav"))
-                with self.assertRaises(FileExistsError):
+                with self.assertRaises(CoreBridgeError) as cm:
                     bridge.history.copy("outputs/a", "favorites")
+                self.assertIn("not running", str(cm.exception))
+                self.assertEqual(os.listdir("favorites"), [])
             finally:
                 os.chdir(old)
 

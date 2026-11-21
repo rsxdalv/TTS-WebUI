@@ -49,7 +49,6 @@ class Stub:
                     return self._reply(200, {"ok": True})
                 if p == "/api/history/copy":
                     return self._reply(200, {
-                        "path": body["to"] + "/" + body["dir"].split("/")[-1],
                         "ui": {"__gradio__": "Button", "props": {"value": "Saved"}},
                     })
                 self._reply(404, {"error": "not found"})
@@ -89,16 +88,12 @@ class BridgeTest(unittest.TestCase):
             bridge.create_collection("new")[-1], "collections" + sep + "new"
         )
         bridge.delete("outputs\\x")
-        self.assertEqual(
-            bridge.copy("outputs\\x", "favorites"), "favorites" + sep + "x"
-        )
         reqs = self.stub.requests
         self.assertTrue(all(r[2] == "tok" for r in reqs))
         self.assertIn("collection=collections%2Fa", reqs[1][1])
         self.assertIn("path=outputs%2Fx%2Fx.wav", reqs[2][1])
         self.assertEqual(reqs[3][3], {"name": "new"})
         self.assertEqual(reqs[4][3], {"dir": "outputs/x"})
-        self.assertEqual(reqs[5][3], {"dir": "outputs/x", "to": "favorites"})
 
     def test_http_error_carries_go_message(self):
         with self.assertRaises(bridge.CoreHistoryError) as cm:
@@ -144,9 +139,10 @@ class BridgeTest(unittest.TestCase):
 
 
 class SwitchOffTest(unittest.TestCase):
-    """Without TTS_CORE_URL the original Python code runs, on the local disk."""
+    """Without TTS_CORE_URL: delete keeps the original Python; saving needs the core."""
 
-    def test_python_path_unchanged(self):
+    def test_python_path_and_clear_error(self):
+        from tts_webui.core_bridge import CoreBridgeError
         from tts_webui.history_tab.delete_generation_cb import delete_generation_cb
         from tts_webui.history_tab.save_to_favorites import (
             save_to_collection,
@@ -164,10 +160,13 @@ class SwitchOffTest(unittest.TestCase):
                     os.makedirs(p)
                 open("outputs/a/a.wav", "w").close()
                 self.assertFalse(bridge.enabled())
-                save_to_favorites("outputs/a")
-                save_to_collection("outputs/a", "collections/c")
-                self.assertTrue(os.path.exists("favorites/a/a.wav"))
-                self.assertTrue(os.path.exists("collections/c/a/a.wav"))
+                for call in (
+                    lambda: save_to_favorites("outputs/a"),
+                    lambda: save_to_collection("outputs/a", "collections/c"),
+                ):
+                    with self.assertRaises(CoreBridgeError):
+                        call()
+                self.assertFalse(os.path.exists("favorites/a"))
                 delete_generation_cb(lambda *a: None)("outputs/a")
                 self.assertFalse(os.path.exists("outputs/a"))
             finally:

@@ -4,10 +4,11 @@ import shutil
 import gradio as gr
 
 from tts_webui import core_history_bridge
+from tts_webui.core_bridge import bridge
 
 
 def save_to_favorites(directory: str):
-    core_history_bridge.copy(directory, "favorites")
+    bridge.history.copy(directory, "favorites")
     return gr.Button(value="Saved")
 
 

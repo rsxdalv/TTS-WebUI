@@ -20,6 +20,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extcatalog"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extprocs"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/history"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/piplist"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/router"
 )
 
@@ -154,6 +155,12 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 	}).Handler())
 	// Extension lists, Custom Extensions Installer, pip/uv installs (see extcatalog).
 	mux.Handle(extcatalog.Prefix, extcatalog.New(extcatalog.Options{
+		Root: root.Dir(), Token: token,
+		Run: append([]string(nil), prefix...), Env: append([]string(nil), baseEnv...),
+		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+	}).Handler())
+	// Settings > Installed Packages: pip list in the main env (see piplist).
+	mux.Handle(piplist.Path, piplist.New(piplist.Options{
 		Root: root.Dir(), Token: token,
 		Run: append([]string(nil), prefix...), Env: append([]string(nil), baseEnv...),
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },

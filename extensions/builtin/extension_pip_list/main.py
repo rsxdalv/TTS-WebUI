@@ -1,5 +1,6 @@
 import gradio as gr
-import importlib.metadata
+
+from tts_webui.core_bridge import bridge
 
 
 def pip_list_tab():
@@ -15,14 +16,8 @@ def pip_list_tab():
 
 
 def get_pip_list():
-    packages = [
-        {
-            "name": x.name,
-            "version": x.version,
-        }
-        for x in importlib.metadata.distributions()
-    ]
-    return packages
+    # Go runs `pip list` in the main env; the shape is [{"name", "version"}].
+    return bridge.pip.list()
 
 
 def render_pip_list(pip_list):

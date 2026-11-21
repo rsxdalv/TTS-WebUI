@@ -53,6 +53,7 @@ ANSWERS = {
         "info": "Parsed entries: 1",
     },
     ("POST", "add"): {"status": "Saved | Added: n.one | Skipped (exists): none", "json": "{}"},
+    ("GET", "pip-list"): [{"name": "Alpha", "version": "1.0"}, {"name": "numpy", "version": "2.0"}],
     # config
     ("POST", "extension-enable"): {"changed": True, "disabled": False, "info": "Enabled extension. Restart."},
     ("POST", "extension-disable"): {"changed": True, "disabled": True, "info": "Disabled extension. Restart."},
@@ -80,6 +81,8 @@ class Stub:
                 n = int(self.headers.get("Content-Length", 0))
                 body = json.loads(self.rfile.read(n)) if n else None
                 op = u.path.rsplit("/", 1)[-1]
+                if u.path == "/api/pip/list":
+                    op = "pip-list"  # "list" is also an extcatalog op
                 token = self.headers.get("X-TTS-Core-Token")
                 query = {k: v[0] for k, v in parse_qs(u.query).items()}
                 stub.requests.append((self.command, op, query, body, token))
@@ -453,6 +456,42 @@ class ConfigTest(unittest.TestCase):
         with mock.patch.dict(os.environ, {"TTS_CORE_TOKEN": "bad"}):
             with self.assertRaises(CoreBridgeError):
                 bridge.config.extension_enable("ext.a")
+
+
+class PipTest(unittest.TestCase):
+    def setUp(self):
+        self.stub = Stub()
+        self.addCleanup(self.stub.close)
+        env = mock.patch.dict(
+            os.environ, {"TTS_CORE_URL": self.stub.url, "TTS_CORE_TOKEN": "tok"}
+        )
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_installed_packages_tab(self):
+        import importlib.util
+        import sys
+
+        spec = importlib.util.spec_from_file_location(
+            "pip_list_main", os.path.join("extensions", "builtin", "extension_pip_list", "main.py")
+        )
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["pip_list_main"] = mod
+        spec.loader.exec_module(mod)
+        got = mod.get_pip_list()
+        self.assertEqual(got[0], {"name": "Alpha", "version": "1.0"})
+        self.assertEqual(mod.refresh_pip_list(), "Alpha==1.0\n\nnumpy==2.0")
+        self.assertEqual(self.stub.requests[0][2], {})
+
+    def test_core_off_and_pip_failure(self):
+        with mock.patch.dict(os.environ, {"TTS_CORE_TOKEN": "bad"}):
+            with self.assertRaises(CoreBridgeError):
+                bridge.pip.list()
+        with mock.patch.dict(os.environ, clear=False):
+            os.environ.pop("TTS_CORE_URL")
+            with self.assertRaises(CoreBridgeError) as cm:
+                bridge.pip.list()
+            self.assertIn("TTS_CORE_URL", str(cm.exception))
 
 
 if __name__ == "__main__":

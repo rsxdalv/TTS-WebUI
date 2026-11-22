@@ -44,6 +44,9 @@ type ParseResult struct {
 
 // ParseInput is _parse_json_input plus _render_preview: one object or an array
 // of objects, validated entry by entry. Entries keep their key order.
+//
+// The JSON is read with the CPython-compatible scanner (pyjson.go), so the
+// error the user sees is the one json.loads would give.
 func ParseInput(text string) ParseResult {
 	res := ParseResult{Entries: []any{}}
 	text = strings.TrimSpace(text)
@@ -52,9 +55,9 @@ func ParseInput(text string) ParseResult {
 		res.Preview = mk("Markdown", "<i>No valid entries to preview.</i>")
 		return res
 	}
-	v, err := Parse([]byte(text))
-	if err != nil {
-		res.Info = fmt.Sprintf("JSON parse error: %v", err)
+	v, perr := pyParse(text)
+	if perr != nil {
+		res.Info = fmt.Sprintf("JSON parse error: %v", perr)
 		res.Preview = mk("Markdown", "<i>No valid entries to preview.</i>")
 		return res
 	}

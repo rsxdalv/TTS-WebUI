@@ -93,7 +93,8 @@ func only(o *Obj, keys ...string) error {
 var ops = map[string]string{
 	"list": http.MethodGet, "table": http.MethodGet, "picker": http.MethodGet,
 	"parse": http.MethodPost, "add": http.MethodPost,
-	"install": http.MethodPost, "uninstall": http.MethodPost,
+	"install": http.MethodPost, "install-entry": http.MethodPost,
+	"uninstall": http.MethodPost,
 }
 
 func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
@@ -175,5 +176,7 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, res)
 	case "install", "uninstall":
 		s.serveInstall(w, r, op)
+	case "install-entry":
+		s.serveInstallEntry(w, r)
 	}
 }

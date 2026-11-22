@@ -38,6 +38,20 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 	}
 	defer s.install.Unlock()
 
+	s.stream(w, r, func(ctx context.Context, emit func(string)) bool {
+		if op == "uninstall" {
+			return s.pipUninstall(ctx, pkg, emit)
+		}
+		if entry.Str("proxy") == "native" {
+			return s.venvSetup(ctx, entry, emit)
+		}
+		return s.pipInstall(ctx, entry, emit)
+	})
+}
+
+// stream writes the NDJSON answer of an install: one {"line": "..."} per
+// output line, then {"done": true, "ok": bool}.
+func (s *Store) stream(w http.ResponseWriter, r *http.Request, run func(context.Context, func(string)) bool) {
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusOK)
@@ -50,16 +64,7 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 		}
 	}
 	emit := func(line string) { send(map[string]string{"line": line}) }
-
-	var ok bool
-	if op == "uninstall" {
-		ok = s.pipUninstall(r.Context(), pkg, emit)
-	} else if entry.Str("proxy") == "native" {
-		ok = s.venvSetup(r.Context(), entry, emit)
-	} else {
-		ok = s.pipInstall(r.Context(), entry, emit)
-	}
-	send(map[string]any{"done": true, "ok": ok})
+	send(map[string]any{"done": true, "ok": run(r.Context(), emit)})
 }
 
 const gradioPin = "gradio==5.49.1"
@@ -80,6 +85,15 @@ func (s *Store) pipInstall(ctx context.Context, entry *Obj, emit func(string)) b
 	if err != nil {
 		emit(fmt.Sprintf("Failed to install %s dependencies: bad requirements: %v", name, err))
 		return false
+	}
+	return s.pipInstallTokens(ctx, entry, toks, emit)
+}
+
+// pipInstallTokens is pipInstall with the requirements already split.
+func (s *Store) pipInstallTokens(ctx context.Context, entry *Obj, toks []string, emit func(string)) bool {
+	name := entry.Str("name")
+	if name == "" {
+		name = entry.Str("package_name")
 	}
 	var log []string
 	rec := func(l string) { log = append(log, l); emit(l) }
@@ -116,6 +130,15 @@ const compatibility = `gradio<=5.49.1 gradio-goodtabs>=0.0.5 gradio-goodtab>=0.0
 // venvSetup is venv_setup_wrapper: .venvs/<package> with uv, torch for the
 // chosen GPU, torchcodec, xformers, then the requirements.
 func (s *Store) venvSetup(ctx context.Context, entry *Obj, emit func(string)) bool {
+	reqToks, err := shellSplit(entry.Str("requirements"))
+	if err != nil {
+		reqToks = nil
+	}
+	return s.venvSetupTokens(ctx, entry, reqToks, emit)
+}
+
+// venvSetupTokens is venvSetup with the requirements already split.
+func (s *Store) venvSetupTokens(ctx context.Context, entry *Obj, reqToks []string, emit func(string)) bool {
 	name := entry.Str("name")
 	pkg := entry.Str("package_name")
 	if name == "" {
@@ -132,8 +155,7 @@ func (s *Store) venvSetup(ctx context.Context, entry *Obj, emit func(string)) bo
 	if !pkgDir.MatchString(pkg) {
 		return fail("Failed: %q is not a valid package name for a virtual environment", pkg)
 	}
-	reqToks, err := shellSplit(entry.Str("requirements"))
-	if err != nil || len(reqToks) == 0 {
+	if len(reqToks) == 0 {
 		return fail("Failed: bad requirements for %s", name)
 	}
 	torch, err := s.torchArgs()

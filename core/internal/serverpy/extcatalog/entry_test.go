@@ -3,6 +3,9 @@ package extcatalog
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -489,4 +492,111 @@ func TestInstallEntryHTTP(t *testing.T) {
 	if c, _ := call(t, h, "POST", "/api/extcatalog/install-entry", `{"entry":`+goodEntry+`}`, ""); c != 403 {
 		t.Errorf("no token: %d", c)
 	}
+}
+
+// TestEndToEndAgainstTheRealHandler drives the whole tab over HTTP, the way
+// the Python tab does: parse, then add. It shows the bytes of
+// extensions.external.json before and after.
+func TestEndToEndAgainstTheRealHandler(t *testing.T) {
+	root := t.TempDir()
+	s := New(Options{Root: root, Token: "tok"})
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+
+	post := func(path, body string) string {
+		t.Helper()
+		req, err := http.NewRequest("POST", srv.URL+path, strings.NewReader(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set(TokenHeader, "tok")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			b, _ := io.ReadAll(resp.Body)
+			t.Fatalf("%s: %d %s", path, resp.StatusCode, b)
+		}
+		b, _ := io.ReadAll(resp.Body)
+		return string(b)
+	}
+
+	// the file is not there yet
+	path := filepath.Join(root, "extensions.external.json")
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("the file exists before the add")
+	}
+	t.Logf("before: no extensions.external.json")
+
+	// parse: the preview is the one the old Python tab showed
+	answer := post("/api/extcatalog/parse", `{"text":`+mustJSON(t, goodEntry)+`}`)
+	if !strings.Contains(answer, `| One | tts_webui_extension.one | text-to-speech | interface |`) {
+		t.Fatalf("parse: %s", answer)
+	}
+	t.Logf("preview: %s", answer)
+
+	// add
+	answer = post("/api/extcatalog/add", "{\"entries\":["+goodEntry+","+goodEntryTwo+"]}")
+	if !strings.Contains(answer, `"status":"Saved | Added: tts_webui_extension.one, tts_webui_extension.two | Skipped (exists): none"`) {
+		t.Fatalf("add: %s", answer)
+	}
+
+	// after: the file Go wrote
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("after: %s", b)
+	want := "{\n    \"tabs\": [\n        {\n            \"package_name\": \"tts_webui_extension.one\",\n" +
+		"            \"name\": \"One\",\n" +
+		"            \"requirements\": \"git+https://github.com/rsxdalv/tts_webui_extension.one@main\",\n" +
+		"            \"description\": \"The first one\",\n" +
+		"            \"extension_type\": \"interface\",\n" +
+		"            \"extension_class\": \"text-to-speech\",\n" +
+		"            \"author\": \"a\",\n" +
+		"            \"extension_author\": \"b\",\n" +
+		"            \"license\": \"MIT\",\n" +
+		"            \"website\": \"https://w\",\n" +
+		"            \"extension_website\": \"https://e\",\n" +
+		"            \"extension_platform_version\": \"0.0.1\"\n        },\n" +
+		"        {\n            \"package_name\": \"tts_webui_extension.two\",\n" +
+		"            \"name\": \"Two\",\n" +
+		"            \"requirements\": \"git+https://github.com/rsxdalv/tts_webui_extension.two@main\",\n" +
+		"            \"description\": \"The second one\",\n" +
+		"            \"extension_type\": \"interface\",\n" +
+		"            \"extension_class\": \"text-to-speech\",\n" +
+		"            \"author\": \"a\",\n" +
+		"            \"extension_author\": \"b\",\n" +
+		"            \"license\": \"MIT\",\n" +
+		"            \"website\": \"https://w\",\n" +
+		"            \"extension_website\": \"https://e\",\n" +
+		"            \"extension_platform_version\": \"0.0.1\"\n        }\n    ],\n" +
+		"    \"decorators\": []\n}"
+	if string(b) != want {
+		t.Fatalf("the file is not what json.dump(indent=4, ensure_ascii=False) writes:\n%s", b)
+	}
+
+	// a second add of the same entries changes nothing
+	size := len(b)
+	answer = post("/api/extcatalog/add", "{\"entries\":["+goodEntry+","+goodEntryTwo+"]}")
+	if !strings.Contains(answer, `"status":"Saved | Added: none | Skipped (exists): tts_webui_extension.one, tts_webui_extension.two"`) {
+		t.Fatalf("second add: %s", answer)
+	}
+	b2, _ := os.ReadFile(path)
+	if len(b2) != size {
+		t.Fatalf("the file changed on the second add")
+	}
+}
+
+// mustJSON is the compact JSON of a string.
+func mustJSON(t *testing.T, s string) string {
+	t.Helper()
+	b, err := json.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
 }

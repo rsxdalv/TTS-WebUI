@@ -161,7 +161,7 @@ func (p *pyScanner) scanString() (string, *pyJSONError) {
 					// CPython reports the position of the "u".
 					return "", p.err(`Invalid \uXXXX escape`, p.i)
 				}
-				p.i++ // readHex4 left the cursor on the last hex digit
+				p.i++ // past the last hex digit of the escape
 				// A surrogate pair is one character, like CPython's.
 				if r >= 0xd800 && r <= 0xdbff && p.has("\\u") {
 					save := p.i

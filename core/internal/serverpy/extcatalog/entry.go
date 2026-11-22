@@ -99,6 +99,11 @@ func validateRequirements(req string) ([]string, error) {
 }
 
 // checkRequirement refuses one requirement token.
+//
+// The rule is a whitelist, not a blacklist: a token is either a plain package
+// name (PEP 508 name, extras and version specifiers) or an https URL. Every
+// other shape is refused, so nothing that pip would treat as a path, a URL of
+// another scheme or an option can get through.
 func checkRequirement(tok string) error {
 	refuse := func(reason string) error {
 		return fmt.Errorf("requirements refused: %s %q", reason, tok)
@@ -126,25 +131,147 @@ func checkRequirement(tok string) error {
 		if !reqSchemes[scheme] {
 			return fmt.Errorf("requirements refused: URL scheme %q in %q (allowed: https, git+https)", scheme, tok)
 		}
+		// The rest of the URL: a host, a path and an optional @ref.
+		if !validHTTPSURL(tok[i+3:]) {
+			return refuse("malformed URL in")
+		}
 		return nil
 	}
-	// No scheme: a plain name, not a path. A path would make pip run the
-	// setup.py of a local directory.
-	if strings.ContainsAny(tok, `/\`) || strings.HasPrefix(tok, ".") {
-		return refuse("local path")
-	}
-	if isDriveLetter(tok) {
-		return refuse("local path")
+	// No scheme: a plain package name, not a path and not a direct URL.
+	if !validPackageName(tok) {
+		return refuse("not a package name")
 	}
 	return nil
 }
 
-// isDriveLetter reports whether tok starts with a Windows drive letter
-// ("C:..."), which pip would take as a local path.
-func isDriveLetter(tok string) bool {
-	if len(tok) < 2 || tok[1] != ':' {
+// validPackageName reports whether tok is a PEP 508 name with optional
+// extras and version specifiers: "name", "name[extra]", "name>=1.0",
+// "name[extra]==1.0", "name>=1.0,<2.0".
+func validPackageName(tok string) bool {
+	name, rest := tok, ""
+	if i := strings.IndexAny(tok, "[<>=!~;"); i >= 0 {
+		name, rest = tok[:i], tok[i:]
+	}
+	if name == "" {
 		return false
 	}
-	c := tok[0]
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+	for i, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		case r == '-' || r == '_' || r == '.':
+			if i == 0 || i == len(name)-1 {
+				return false
+			}
+		default:
+			// A space, a backslash, a slash, an "@": not a package name.
+			return false
+		}
+	}
+	if rest == "" {
+		return true
+	}
+	// The extras: "[a,b]" and nothing else.
+	if strings.HasPrefix(rest, "[") {
+		j := strings.Index(rest, "]")
+		if j < 0 {
+			return false
+		}
+		for _, e := range strings.Split(rest[1:j], ",") {
+			if e == "" {
+				return false
+			}
+			for i, r := range e {
+				switch {
+				case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+				case r == '-' || r == '_' || r == '.':
+					if i == 0 || i == len(e)-1 {
+						return false
+					}
+				default:
+					return false
+				}
+			}
+		}
+		rest = rest[j+1:]
+	}
+	if rest == "" {
+		return true
+	}
+	// The specifiers: ">=1.0", "==1.0", "<2.0", "!=1.0", "~=1.0", each with a
+	// version number that may hold letters, digits and dots.
+	for _, spec := range strings.Split(rest, ",") {
+		if spec == "" {
+			return false
+		}
+		op := ""
+		for _, o := range []string{"===", "==", ">=", "<=", "!=", "~=", ">", "<"} {
+			if strings.HasPrefix(spec, o) {
+				op = o
+				break
+			}
+		}
+		if op == "" {
+			return false
+		}
+		ver := spec[len(op):]
+		if ver == "" {
+			return false
+		}
+		for _, r := range ver {
+			switch {
+			case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+			case r == '.' || r == '*' || r == '+' || r == '-' || r == '!':
+			default:
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// validHTTPSURL checks the part of an https URL that follows the scheme:
+// a host, then a path, then an optional @ref.
+//
+// The "@" of a git ref (git+https://host/repo@main) is in the path, not in
+// the userinfo: only an "@" before the first "/" is a userinfo.
+func validHTTPSURL(rest string) bool {
+	if rest == "" {
+		return false
+	}
+	// A userinfo ("user@host") is allowed, but only with a plain name.
+	if i := strings.Index(rest, "@"); i >= 0 {
+		if j := strings.IndexAny(rest, "/?#"); j < 0 || i < j {
+			user := rest[:i]
+			if user == "" || strings.ContainsAny(user, "/\\ ") {
+				return false
+			}
+			rest = rest[i+1:]
+		}
+	}
+	// The host: letters, digits, dots and dashes (an IP is digits and dots).
+	host, path := rest, ""
+	if i := strings.IndexAny(rest, "/?#"); i >= 0 {
+		host, path = rest[:i], rest[i:]
+	}
+	if host == "" {
+		return false
+	}
+	for _, r := range host {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		case r == '.' || r == '-' || r == ':':
+		default:
+			return false
+		}
+	}
+	// The path: no spaces, no backslashes (a Windows path), no "..".
+	for _, r := range path {
+		if r <= 0x20 || r == 0x7f || r == '\\' {
+			return false
+		}
+	}
+	if strings.Contains(path, "..") {
+		return false
+	}
+	return true
 }

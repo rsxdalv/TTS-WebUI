@@ -352,10 +352,20 @@ func TestValidateRequirementsRefusesUntrustedInput(t *testing.T) {
 		"git+file:///tmp/evil",           // a local git repo (runs setup.py)
 		"ssh://git@evil/repo",            // a shell over ssh
 		"git+ssh://git@evil/repo",
-		"ext::evil --version", // pip runs the command
-		"./local/dir",         // a local path
-		"/tmp/local",          // an absolute path
-		"..\\windows\\evil",   // a local path
+		"ext::evil --version",  // pip runs the command
+		"./local/dir",          // a local path
+		"/tmp/local",           // an absolute path
+		"..\\windows\\evil",    // a local path
+		"C:\\windows\\evil",    // a drive letter
+		"evil @ file:///etc/x", // a PEP 508 direct URL to a local file
+		"evil @ https://x/y",   // a PEP 508 direct URL
+		`"name with space"`,    // one token with a space: not a package name
+		"x/../y",               // a path
+		"foo@bar",              // not a package name
+		"name==",               // a specifier without a version
+		"name[]",               // empty extras
+		"https://",             // no host
+		"https://x/../etc",     // a path with ..
 	} {
 		if toks, err := validateRequirements(req); err == nil {
 			t.Errorf("validateRequirements(%q) accepted it: %v", req, toks)
@@ -368,6 +378,11 @@ func TestValidateRequirementsRefusesUntrustedInput(t *testing.T) {
 		"numpy",
 		"numpy>=1.0,<2.0",
 		"package[extra]==1.0",
+		"package[extra1,extra2]>=1.0",
+		"numpy==1.26.4",
+		"numpy!=1.0",
+		"numpy~=1.0",
+		"torch==2.11.0+cu128",
 	} {
 		if _, err := validateRequirements(req); err != nil {
 			t.Errorf("validateRequirements(%q) refused it: %v", req, err)
@@ -474,6 +489,35 @@ func TestInstallEntryIsRefusedWhileAnotherInstallRuns(t *testing.T) {
 		t.Errorf("busy: %d %s", c, b)
 	}
 	s.install.Unlock()
+}
+
+// TestByNameInstallIsUnchanged checks the install by package name (the path
+// the list tabs use) still behaves as it did: the requirements come from the
+// catalog files, a native entry goes to the venv, and a bad requirements
+// string is refused with the same message.
+func TestByNameInstallIsUnchanged(t *testing.T) {
+	s, root, log := installStore(t)
+	writeFile(t, root, "extensions.json", `{"tabs":[`+entry("ext.one", "One")+`]}`)
+
+	// the requirements come from the catalog file, not from the caller
+	code, got, _ := stream(t, s, `install {"package_name":"ext.one"}`)
+	if code != 200 || !got.ok {
+		t.Fatalf("install: %d %+v", code, got)
+	}
+	if l := readLog(t, log); len(l) != 1 || !strings.Contains(l[0], "git+https://example.com/ext.one@main") {
+		t.Fatalf("command: %q", l)
+	}
+
+	// a bad requirements string in the catalog file: the same message as
+	// before the refactor (a quote that is never closed)
+	bad := strings.Replace(entry("ext.bad", "Bad"),
+		"git+https://example.com/ext.bad@main", `has an unclosed \" quote`, 1)
+	writeFile(t, root, "extensions.json", `{"tabs":[`+bad+`]}`)
+	os.Remove(log)
+	_, got, _ = stream(t, s, `install {"package_name":"ext.bad"}`)
+	if got.ok || !strings.Contains(strings.Join(got.lines, "\n"), "bad requirements") {
+		t.Fatalf("bad requirements: %+v", got)
+	}
 }
 
 // TestInstallEntryHTTP checks the endpoint's shape.

@@ -67,13 +67,15 @@ before anything runs (`entry.go`):
 - The entry must be a complete extension entry (the same 12 keys the parse
   step checks), or the request is refused with 400.
 - The requirements are split like `shlex.split` and each token must be a
-  package name with optional version specifiers (`pkg[extra]>=1.0`) or an
-  `https` / `git+https` URL. Refused: anything starting with `-` (pip takes
-  options from the same place, so `--index-url`, `--extra-index-url` and `-e`
-  are out), shell metacharacters (`; & | $ \``), control characters, local
-  paths (`./x`, `/x`, `C:\x`, `..\x`), `ext::` (pip runs the command), and every
-  URL scheme but `https` and `git+https` (so `http://`, `file://`,
-  `git+file://`, `ssh://` and `git+ssh://` are out).
+  plain package name (PEP 508: `name`, `name[extra]`, `name>=1.0`,
+  `name[extra]==1.0`) or an `https` / `git+https` URL (a host, a path, an
+  optional `@ref`). The rule is a whitelist, so everything else is refused:
+  anything starting with `-` (pip takes options from the same place, so
+  `--index-url`, `--extra-index-url` and `-e` are out), shell metacharacters
+  (`; & | $ \``), control characters, local paths (`./x`, `/x`, `C:\x`,
+  `..\x`), `ext::` (pip runs the command), PEP 508 direct URLs
+  (`name @ url`), and every URL scheme but `https` and `git+https` (so
+  `http://`, `file://`, `git+file://`, `ssh://` and `git+ssh://` are out).
 - A refused requirement is a line in the stream and `ok: false`; nothing runs.
 
 This narrows what the tab can do compared to the Python code it replaces: the
@@ -82,7 +84,8 @@ straight from the pasted text (`shell=True` for the venv path, so a pasted
 `;` was a shell command). Go runs the requirements as arguments of `pip` /
 `uv pip`, never through a shell, and refuses the ones that could turn pip into
 something else. The by-name `install` endpoint is unchanged: it still only
-installs what the catalog files list.
+installs what the catalog files list, and it does not validate them (they are
+trusted data of the catalog, not input from the browser).
 
 ### The Extension Catalog tab
 

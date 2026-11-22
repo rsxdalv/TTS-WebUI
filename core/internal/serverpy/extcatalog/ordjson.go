@@ -132,6 +132,9 @@ func write(b *bytes.Buffer, v any, indent string, depth int, pretty bool) {
 		b.WriteString(x.String())
 	case float64:
 		// Python's json.dumps writes a float with repr(): 1000.0, not 1000.
+		// Only pyParse (the pasted text of the Extension Catalog tab) makes
+		// float64 values; the file reader keeps the numbers as they were
+		// written (json.Number).
 		b.WriteString(formatFloat(x))
 	case string:
 		writeString(b, x)

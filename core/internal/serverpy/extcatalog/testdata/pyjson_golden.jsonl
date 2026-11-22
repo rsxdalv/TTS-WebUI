@@ -1,0 +1,100 @@
+{"dump": "{}", "input": "{}", "value": {}}
+{"dump": "[]", "input": "[]", "value": []}
+{"dump": "{\"a\": 1}", "input": "{\"a\":1}", "value": {"a": 1}}
+{"dump": "[1, 2, 3]", "input": "[1,2,3]", "value": [1, 2, 3]}
+{"dump": "null", "input": "null", "value": null}
+{"dump": "true", "input": "true", "value": true}
+{"dump": "false", "input": "false", "value": false}
+{"dump": "0", "input": "0", "value": 0}
+{"dump": "-1", "input": "-1", "value": -1}
+{"dump": "1.5", "input": "1.5", "value": 1.5}
+{"dump": "1000.0", "input": "1e3", "value": 1000.0}
+{"dump": "1000.0", "input": "1E+3", "value": 1000.0}
+{"dump": "-0.0015", "input": "-1.5e-3", "value": -0.0015}
+{"dump": "\"x\"", "input": "\"x\"", "value": "x"}
+{"dump": "\"\"", "input": "\"\"", "value": ""}
+{"dump": "\"\u00e9\"", "input": "\"\\u00e9\"", "value": "\u00e9"}
+{"dump": "\"\ud83d\ude00\"", "input": "\"\\ud83d\\ude00\"", "value": "\ud83d\ude00"}
+{"dump": "{\"a\": {\"b\": [1, {\"c\": 2}]}}", "input": "{\"a\":{\"b\":[1,{\"c\":2}]}}", "value": {"a": {"b": [1, {"c": 2}]}}}
+{"dump": "{\"a\": 1}", "input": "  {\"a\": 1}  ", "value": {"a": 1}}
+{"dump": "[1]", "input": "\n\t[1]\n", "value": [1]}
+{"dump": "{\"a\": 2}", "input": "{\"a\":1,\"a\":2}", "value": {"a": 2}}
+{"dump": "{\"\": 1}", "input": "{\"\":1}", "value": {"": 1}}
+{"dump": "[]", "input": "[]", "value": []}
+{"dump": "[[[[]]]]", "input": "[[[[]]]]", "value": [[[[]]]]}
+{"error": "Expecting value: line 1 column 1 (char 0)", "input": ""}
+{"error": "Expecting value: line 1 column 4 (char 3)", "input": "   "}
+{"error": "Expecting value: line 1 column 1 (char 0)", "input": "nope"}
+{"error": "Expecting value: line 1 column 1 (char 0)", "input": "tru"}
+{"error": "Expecting value: line 1 column 1 (char 0)", "input": "fals"}
+{"error": "Expecting value: line 1 column 1 (char 0)", "input": "nul"}
+{"error": "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)", "input": "{oops"}
+{"error": "Expecting property name enclosed in double quotes: line 1 column 8 (char 7)", "input": "{\"a\":1,}"}
+{"error": "Expecting value: line 1 column 4 (char 3)", "input": "[1,"}
+{"error": "Expecting value: line 1 column 4 (char 3)", "input": "[1,]"}
+{"error": "Expecting ':' delimiter: line 1 column 6 (char 5)", "input": "{\"a\" 1}"}
+{"error": "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)", "input": "{'a': 1}"}
+{"error": "Unterminated string starting at: line 1 column 1 (char 0)", "input": "\"unterminated"}
+{"error": "Invalid \\escape: line 1 column 5 (char 4)", "input": "\"bad\\qescape\""}
+{"error": "Extra data: line 1 column 9 (char 8)", "input": "{\"a\":1} x"}
+{"error": "Extra data: line 1 column 2 (char 1)", "input": "1."}
+{"error": "Extra data: line 1 column 2 (char 1)", "input": "01"}
+{"error": "Expecting value: line 1 column 1 (char 0)", "input": "-"}
+{"error": "Expecting value: line 1 column 1 (char 0)", "input": "+1"}
+{"error": "Expecting ',' delimiter: line 1 column 4 (char 3)", "input": "[1 2]"}
+{"error": "Expecting ',' delimiter: line 1 column 8 (char 7)", "input": "{\"a\":1 \"b\":2}"}
+{"error": "Expecting value: line 1 column 2 (char 1)", "input": "["}
+{"error": "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)", "input": "{"}
+{"error": "Invalid control character at: line 1 column 5 (char 4)", "input": "\"tab\there\""}
+{"error": "Unterminated string starting at: line 1 column 6 (char 5)", "input": "{\"a\":\"x"}
+{"error": "Expecting value: line 1 column 1 (char 0)", "input": "nan"}
+{"error": "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)", "input": "{,}"}
+{"error": "Expecting value: line 1 column 6 (char 5)", "input": "[\"a\",]"}
+{"error": "Expecting value: line 1 column 12 (char 11)", "input": "{\"a\":1,\"b\":}"}
+{"error": "Expecting ',' delimiter: line 1 column 5 (char 4)", "input": "[1,2"}
+{"error": "Expecting ',' delimiter: line 1 column 5 (char 4)", "input": "[1,2}"}
+{"error": "Expecting ',' delimiter: line 1 column 7 (char 6)", "input": "{\"a\":1"}
+{"error": "Expecting ':' delimiter: line 1 column 5 (char 4)", "input": "{\"a\""}
+{"error": "Expecting value: line 1 column 6 (char 5)", "input": "{\"a\":"}
+{"error": "Invalid \\uXXXX escape: line 1 column 3 (char 2)", "input": "\"\\u12\""}
+{"error": "Invalid \\uXXXX escape: line 1 column 3 (char 2)", "input": "\"\\uZZZZ\""}
+{"error": "Expecting property name enclosed in double quotes: line 1 column 8 (char 7)", "input": "{\"a\":1,,\"b\":2}"}
+{"error": "Extra data: line 1 column 2 (char 1)", "input": "1e"}
+{"error": "Extra data: line 1 column 2 (char 1)", "input": "1e+"}
+{"error": "Extra data: line 1 column 4 (char 3)", "input": "1.2.3"}
+{"error": "Extra data: line 1 column 2 (char 1)", "input": "0x10"}
+{"error": "Extra data: line 1 column 2 (char 1)", "input": "00"}
+{"error": "Extra data: line 1 column 5 (char 4)", "input": "truex"}
+{"dump": "{}", "input": "{}", "value": {}}
+{"error": "Expecting value: line 1 column 1 (char 0)", "input": "]"}
+{"error": "Expecting value: line 1 column 1 (char 0)", "input": "}"}
+{"error": "Expecting value: line 1 column 1 (char 0)", "input": ","}
+{"error": "Expecting value: line 1 column 1 (char 0)", "input": ":"}
+{"error": "Expecting property name enclosed in double quotes: line 1 column 8 (char 7)", "input": "{\"a\":1,}}"}
+{"error": "Expecting ',' delimiter: line 1 column 6 (char 5)", "input": "[\"a\" \"b\"]"}
+{"dump": "{\"a\": 1, \"b\": 2}", "input": "{\"a\" : 1 , \"b\" : 2}", "value": {"a": 1, "b": 2}}
+{"error": "Expecting value: line 1 column 1 (char 0)", "input": "/*c*/1"}
+{"error": "Expecting value: line 1 column 1 (char 0)", "input": "#c\n1"}
+{"error": "Expecting value: line 1 column 6 (char 5)", "input": "{\"a\":tru}"}
+{"error": "Expecting value: line 1 column 2 (char 1)", "input": "[,]"}
+{"error": "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)", "input": "{,}"}
+{"error": "Extra data: line 1 column 3 (char 2)", "input": "1 2"}
+{"error": "Invalid \\escape: line 1 column 2 (char 1)", "input": "\"\\x41\""}
+{"error": "Invalid \\uXXXX escape: line 1 column 3 (char 2)", "input": "\"\\u00\""}
+{"dump": "1000.0", "input": "1e3", "value": 1000.0}
+{"dump": "1000.0", "input": "1E+3", "value": 1000.0}
+{"dump": "-0.0015", "input": "-1.5e-3", "value": -0.0015}
+{"dump": "0.1", "input": "0.1", "value": 0.1}
+{"dump": "1e+100", "input": "1e100", "value": 1e+100}
+{"dump": "1e-07", "input": "1e-7", "value": 1e-07}
+{"dump": "3.0", "input": "3.0", "value": 3.0}
+{"dump": "1e+16", "input": "1e16", "value": 1e+16}
+{"dump": "1e+17", "input": "1e17", "value": 1e+17}
+{"dump": "0.30000000000000004", "input": "0.30000000000000004", "value": 0.30000000000000004}
+{"dump": "1e-05", "input": "1e-5", "value": 1e-05}
+{"dump": "2.5e-10", "input": "2.5e-10", "value": 2.5e-10}
+{"dump": "1.5", "input": "1.50", "value": 1.5}
+{"dump": "123456789012345678901234567890", "input": "123456789012345678901234567890", "value": 123456789012345678901234567890}
+{"dump": "\"\ud83d\ude00\"", "input": "\"\\ud83d\\ude00\"", "value": "\ud83d\ude00"}
+{"dump": "\"\ud800\"", "input": "\"\\ud800\"", "value": "\ud800"}
+{"dump": "\"\udc00\"", "input": "\"\\udc00\"", "value": "\udc00"}

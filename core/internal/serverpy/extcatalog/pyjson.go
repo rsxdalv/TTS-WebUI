@@ -3,6 +3,7 @@ package extcatalog
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -160,8 +161,20 @@ func (p *pyScanner) scanString() (string, *pyJSONError) {
 					// CPython reports the position of the "u".
 					return "", p.err(`Invalid \uXXXX escape`, p.i)
 				}
-				b.WriteRune(r)
 				p.i++ // readHex4 left the cursor on the last hex digit
+				// A surrogate pair is one character, like CPython's.
+				if r >= 0xd800 && r <= 0xdbff && p.has("\\u") {
+					save := p.i
+					p.i = save + 1 // the "u" of the second escape
+					r2, ok2 := p.readHex4()
+					if ok2 && r2 >= 0xdc00 && r2 <= 0xdfff {
+						p.i++ // past the last hex digit
+						b.WriteRune(0x10000 + (r-0xd800)<<10 + (r2 - 0xdc00))
+						continue
+					}
+					p.i = save
+				}
+				b.WriteRune(r)
 				continue
 			default:
 				return "", p.err(`Invalid \escape`, esc)
@@ -275,6 +288,10 @@ func (p *pyScanner) scanArray() (any, *pyJSONError) {
 }
 
 // scanNumber is CPython's NUMBER_RE: -?(0|[1-9]\d*)(\.\d+)?([eE][-+]?\d+)?.
+//
+// The value is a float when it has a fraction or an exponent (CPython makes
+// it one), and an int otherwise. The int keeps its text, so a big number
+// stays as it was written.
 func (p *pyScanner) scanNumber() (any, *pyJSONError) {
 	start := p.i
 	i := p.i
@@ -284,6 +301,7 @@ func (p *pyScanner) scanNumber() (any, *pyJSONError) {
 	if i >= len(p.s) {
 		return nil, p.err("Expecting value", start)
 	}
+	isFloat := false
 	switch {
 	case p.s[i] == '0':
 		i++
@@ -301,6 +319,7 @@ func (p *pyScanner) scanNumber() (any, *pyJSONError) {
 		}
 		if j > i+1 {
 			i = j
+			isFloat = true
 		}
 	}
 	if i < len(p.s) && (p.s[i] == 'e' || p.s[i] == 'E') {
@@ -314,8 +333,17 @@ func (p *pyScanner) scanNumber() (any, *pyJSONError) {
 		}
 		if k > j {
 			i = k
+			isFloat = true
 		}
 	}
 	p.i = i
-	return json.Number(string(p.s[start:i])), nil
+	text := string(p.s[start:i])
+	if isFloat {
+		f, err := strconv.ParseFloat(text, 64)
+		if err != nil {
+			return nil, p.err("Expecting value", start)
+		}
+		return f, nil
+	}
+	return json.Number(text), nil
 }

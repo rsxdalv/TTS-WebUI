@@ -234,13 +234,13 @@ func TestPyParseMatchesCPython(t *testing.T) {
 }
 
 // TestPyParseAcceptsWhatPythonAccepts checks the scanner takes the same
-// values (numbers stay as written, the key order is kept).
+// values (the key order is kept, a float is a float, an int keeps its text).
 func TestPyParseAcceptsWhatPythonAccepts(t *testing.T) {
-	v, err := pyParse(`{"z":1,"a":[{"y":"é","b":null,"c":true}],"n":[],"f":1.50,"e":2e3}`)
+	v, err := pyParse(`{"z":1,"a":[{"y":"é","b":null,"c":true}],"n":[],"f":1.50,"e":2e3,"big":12345678901234567890}`)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := string(Marshal(v, "")); got != `{"z":1,"a":[{"y":"é","b":null,"c":true}],"n":[],"f":1.50,"e":2e3}` {
+	if got := string(Marshal(v, "")); got != `{"z":1,"a":[{"y":"é","b":null,"c":true}],"n":[],"f":1.5,"e":2000.0,"big":12345678901234567890}` {
 		t.Fatalf("values: %s", got)
 	}
 }

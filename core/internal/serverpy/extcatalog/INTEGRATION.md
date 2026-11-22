@@ -111,8 +111,12 @@ need.
 - `pyjson.go` is CPython's JSON scanner for the pasted text of the Extension
   Catalog tab: same error messages, same positions ("Expecting value: line 1
   column 1 (char 0)"), so the parse answer of the tab is the one it always
-  showed. Checked against CPython 3.10 for 37 inputs
-  (`TestPyParseMatchesCPython`).
+  showed. Checked against CPython 3.10 for 100 inputs
+  (`testdata/pyjson_golden.jsonl`, written by
+  `testdata/make_pyjson_golden.py`; `TestPyParseMatchesTheCPythonGolden`).
+  The golden file covers the error messages, the floats (Python writes them
+  with `repr()`: `1000.0`), the big integers (they keep their text) and the
+  surrogate pairs (one character, like CPython's).
 
 ## Differences from the Python code
 
@@ -130,8 +134,7 @@ need.
   package names while it looped).
 - The JSON parse error text is CPython's, not Go's (see the frozen copies).
   `NaN` and `Infinity`, which `json.loads` accepts, are refused: the file
-  writer cannot write them back.
-- No `True`/`False` line at the end of a pip stream (Python yielded the result
+  writer cannot write them back.- No `True`/`False` line at the end of a pip stream (Python yielded the result
   flag into the console).
 - pip runs as `python -m pip` in the main env instead of `pip` from `PATH`.
 - The install of a native entry writes its log under the entry's `name`; the

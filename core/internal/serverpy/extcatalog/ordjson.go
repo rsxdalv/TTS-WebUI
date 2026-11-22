@@ -130,6 +130,9 @@ func write(b *bytes.Buffer, v any, indent string, depth int, pretty bool) {
 		b.WriteString(strconv.FormatBool(x))
 	case json.Number:
 		b.WriteString(x.String())
+	case float64:
+		// Python's json.dumps writes a float with repr(): 1000.0, not 1000.
+		b.WriteString(formatFloat(x))
 	case string:
 		writeString(b, x)
 	case *Obj:
@@ -175,6 +178,18 @@ func write(b *bytes.Buffer, v any, indent string, depth int, pretty bool) {
 		}
 		b.Write(raw)
 	}
+}
+
+// formatFloat writes a float like Python's repr(): the shortest text that
+// gives the float back, always with a point or an exponent.
+func formatFloat(f float64) string {
+	s := strconv.FormatFloat(f, 'g', -1, 64)
+	if !strings.ContainsAny(s, ".eE") {
+		s += ".0"
+	}
+	// Go writes 1e+100, Python writes 1e+100 too; but Go writes 1e-07 where
+	// Python writes 1e-07: both use at least two digits.
+	return s
 }
 
 func writeString(b *bytes.Buffer, s string) {

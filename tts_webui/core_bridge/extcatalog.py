@@ -13,6 +13,8 @@ class ExtCatalogBridge(SubBridge):
     - add(entries): {"status": str, "json": str}; Go writes extensions.external.json
     - install(package_name), uninstall(package_name): generators that yield the
       console HTML (output lines joined with <br />) as the command runs
+    - install_entry(entry): the same, but Go installs the entry it is given
+      (its own requirements and proxy), not a package it looks up by name
     """
 
     name = "extcatalog"
@@ -23,5 +25,6 @@ class ExtCatalogBridge(SubBridge):
         "parse": (POST, ("text",)),
         "add": (POST, ("entries",)),
         "install": (STREAM, ("package_name",)),
+        "install_entry": (STREAM, ("entry",)),
         "uninstall": (STREAM, ("package_name",)),
     }

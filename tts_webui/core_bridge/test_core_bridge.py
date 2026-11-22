@@ -59,8 +59,7 @@ ANSWERS = {
     ("POST", "add"): {"status": "Saved | Added: n.one | Skipped (exists): none", "json": "{}"},
     ("GET", "pip-list"): [{"name": "Alpha", "version": "1.0"}, {"name": "numpy", "version": "2.0"}],
     # logs
-    ("GET", "logs-files"): ["pip-install-a.log", "notes.log"],
-    ("GET", "logs-pip-logs"): [{"name": "a", "file": "pip-install-a.log"}],
+    ("GET", "logs-files"): ["pip-install-a.log", "notes.log"],    ("GET", "logs-pip-logs"): [{"name": "a", "file": "pip-install-a.log"}],
     ("GET", "logs-stats"): "**Total Log Files:** 2",
     ("GET", "logs-summary"): "# Summary",
     ("GET", "logs-info"): "**File:** pip-install-a.log",
@@ -80,6 +79,11 @@ ANSWERS = {
 # POST ops that answer with NDJSON lines
 STREAMS = {
     "install": [{"line": "Collecting x"}, {"line": "Installed x"}, {"done": True, "ok": True}],
+    "install-entry": [
+        {"line": "Collecting x"},
+        {"line": "Installed x"},
+        {"done": True, "ok": True},
+    ],
     "uninstall": [{"line": "Removed x"}, {"done": True, "ok": True}],
 }
 
@@ -376,6 +380,17 @@ class ExtCatalogTest(unittest.TestCase):
         self.assertEqual(list(bridge.extcatalog.uninstall(package_name="a.one")), ["Removed x"])
         self.assertEqual(self.stub.requests[0][3], {"package_name": "a.one"})
 
+    def test_install_entry_takes_the_entry(self):
+        entry = {"package_name": "n.one", "requirements": "git+https://x/y@main"}
+        out = list(bridge.extcatalog.install_entry(entry))
+        self.assertEqual(out, ["Collecting x", "Collecting x<br />Installed x"])
+        self.assertEqual(self.stub.requests[0][1], "install-entry")
+        self.assertEqual(self.stub.requests[0][3], {"entry": entry})
+        with self.assertRaises(TypeError):
+            list(bridge.extcatalog.install_entry())
+        with self.assertRaises(TypeError):
+            list(bridge.extcatalog.install_entry({"package_name": "a"}, "b"))
+
     def test_errors_before_the_stream_raise(self):
         with self.assertRaises(CoreBridgeError) as cm:
             list(bridge.extcatalog.install("missing"))
@@ -405,6 +420,100 @@ class ExtCatalogTest(unittest.TestCase):
         out = list(m._install_selected([{"package_name": "a.one"}, {"package_name": "a.one"}]))
         self.assertEqual(out, ["Collecting x", "Collecting x<br />Installed x"] * 2)
         self.assertEqual(list(m._install_selected([])), ["<i>Nothing selected to install.</i>"])
+
+
+class ExtensionCatalogTabTest(unittest.TestCase):
+    """The Extension Catalog tab (extensions/builtin/extension_extension_catalog)
+    is thin Gradio over the Go extcatalog API: it parses, previews, adds and
+    installs through the bridge, and holds no JSON or file logic of its own."""
+
+    def setUp(self):
+        self.stub = Stub()
+        self.addCleanup(self.stub.close)
+        env = mock.patch.dict(
+            os.environ, {"TTS_CORE_URL": self.stub.url, "TTS_CORE_TOKEN": "tok"}
+        )
+        env.start()
+        self.addCleanup(env.stop)
+        import importlib
+
+        self.m = importlib.import_module(
+            "extensions.builtin.extension_extension_catalog.main"
+        )
+
+    def test_parse_goes_through_go(self):
+        entries, preview, info = self.m._on_parse('{"package_name": "n.one"}')
+        self.assertEqual(entries, [{"package_name": "n.one"}])
+        self.assertEqual(info, "Parsed entries: 1")
+        self.assertIsInstance(preview, gr.Markdown)
+        self.assertEqual(self.stub.requests[-1][1], "parse")
+        self.assertEqual(self.stub.requests[-1][3], {"text": '{"package_name": "n.one"}'})
+
+    def test_add_goes_through_go(self):
+        status, shown = self.m._add_to_external([{"package_name": "n.one"}])
+        self.assertTrue(status.startswith("Saved"))
+        self.assertEqual(shown, "{}")
+        self.assertEqual(self.stub.requests[-1][1], "add")
+        self.assertEqual(self.stub.requests[-1][3], {"entries": [{"package_name": "n.one"}]})
+
+    def test_install_goes_through_go_with_the_entry(self):
+        entry = {"package_name": "n.one", "requirements": "git+https://x/y@main"}
+        out = list(self.m._install_selected([entry]))
+        self.assertEqual(out, ["Collecting x", "Collecting x<br />Installed x"])
+        self.assertEqual(self.stub.requests[-1][1], "install-entry")
+        self.assertEqual(self.stub.requests[-1][3], {"entry": entry})
+
+    def test_install_of_nothing_says_so(self):
+        self.assertEqual(
+            list(self.m._install_selected([])), ["<i>Nothing selected to install.</i>"]
+        )
+        self.assertEqual(len(self.stub.requests), 0)
+
+    def test_tab_builds(self):
+        with gr.Blocks() as demo:
+            info = self.m.extension__tts_generation_webui()
+        self.assertEqual(info["package_name"], "extensions.builtin.extension_extension_catalog")
+        kinds = [type(b).__name__ for b in demo.blocks.values()]
+        self.assertIn("HTML", kinds)  # the iframe and the console
+        self.assertIn("Markdown", kinds)  # the preview
+        self.assertIn("Code", kinds)  # the current extensions.external.json
+
+    def test_tab_has_no_json_or_file_logic_left(self):
+        with open(self.m.__file__, encoding="utf-8") as f:
+            src = f.read()
+        for gone in (
+            "json.load",
+            "json.dump",
+            "json.loads",
+            "json.JSONDecodeError",
+            "REQUIRED_KEYS",
+            "_validate_entry",
+            "_parse_json_input",
+            "_render_preview",
+            "_load_external_extensions",
+            "_save_external_extensions",
+            "pip_install_wrapper",
+            "venv_setup_wrapper",
+            "open(",
+            "EXTERNAL_EXTENSIONS_FILE",
+        ):
+            self.assertNotIn(gone, src)
+
+    def test_core_off_raises(self):
+        with mock.patch.dict(os.environ, clear=False):
+            os.environ.pop("TTS_CORE_URL")
+            with self.assertRaises(CoreBridgeError) as cm:
+                self.m._on_parse("{}")
+            self.assertIn("TTS_CORE_URL", str(cm.exception))
+            with self.assertRaises(CoreBridgeError):
+                self.m._add_to_external([])
+            with self.assertRaises(CoreBridgeError):
+                list(self.m._install_selected([{"package_name": "n.one"}]))
+
+    def test_go_error_is_raised(self):
+        with mock.patch.dict(os.environ, {"TTS_CORE_TOKEN": "bad"}):
+            with self.assertRaises(CoreBridgeError):
+                self.m._on_parse("{}")
 
 
 class OpsTest(unittest.TestCase):
@@ -458,6 +567,11 @@ class CoreOffTest(unittest.TestCase):
                 lambda: bridge.history.delete(directory="outputs/x"),
                 lambda: bridge.history.copy("outputs/x", "favorites"),
                 lambda: bridge.history.save_to_voices(npz="outputs/x/x.npz"),
+                lambda: bridge.extcatalog.parse("{}"),
+                lambda: bridge.extcatalog.add([]),
+                lambda: list(bridge.extcatalog.install("a.one")),
+                lambda: list(bridge.extcatalog.install_entry({"package_name": "a.one"})),
+                lambda: bridge.extcatalog.list("interface"),
             ):
                 with self.assertRaises(CoreBridgeError) as cm:
                     call()

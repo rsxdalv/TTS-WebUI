@@ -68,7 +68,7 @@ type Options struct {
 	BaseEnv []string
 	// ExtraEnv, when set, is asked at each start for KEY=VALUE variables that
 	// Go computes for the extension (the resolved decorators). They win over
-	// BaseEnv and the request's Env, so Python cannot override them.
+	// BaseEnv, so Python cannot override them.
 	ExtraEnv func() ([]string, error)
 	// Routes receives AddRoute/RemoveRoute calls. May be nil.
 	Routes RouteRegistrar
@@ -85,10 +85,6 @@ type Options struct {
 type StartRequest struct {
 	Port            int    `json:"port,omitempty"`
 	OpenAIProxyHost string `json:"openai_proxy_host,omitempty"`
-	// Env is an optional set of extra variables (Python's changes to its own
-	// environment, e.g. values loaded from .env.user). An extension of the
-	// base contract.
-	Env map[string]string `json:"env,omitempty"`
 }
 
 // StartResult is returned by Start.
@@ -183,11 +179,6 @@ func (m *Manager) Start(ctx context.Context, pkg string, req StartRequest) (Star
 	if err := ctx.Err(); err != nil {
 		return StartResult{}, err
 	}
-	for k, v := range req.Env {
-		if k == "" || strings.ContainsAny(k, "=\x00") || strings.Contains(v, "\x00") {
-			return StartResult{}, fmt.Errorf("invalid env entry %q", k)
-		}
-	}
 	if strings.Contains(req.OpenAIProxyHost, "\x00") {
 		return StartResult{}, errors.New("invalid openai_proxy_host")
 	}
@@ -272,9 +263,6 @@ func (m *Manager) buildEnv(pkg string, port int, req StartRequest) ([]string, er
 		base = os.Environ()
 	}
 	env := append([]string{}, base...)
-	for k, v := range req.Env {
-		env = setEnv(env, k, v)
-	}
 	if m.opts.ExtraEnv != nil {
 		extra, err := m.opts.ExtraEnv()
 		if err != nil {

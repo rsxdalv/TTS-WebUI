@@ -13,6 +13,7 @@ from .base import SubBridge
 from .config import ConfigBridge
 from .env import EnvBridge
 from .extcatalog import ExtCatalogBridge
+from .extensions import ExtensionsBridge
 from .history import HistoryBridge
 from .launch import LaunchBridge
 from .logs import LogsBridge
@@ -25,6 +26,7 @@ _SUBBRIDGES = {
     "config": ConfigBridge,
     "env": EnvBridge,
     "extcatalog": ExtCatalogBridge,
+    "extensions": ExtensionsBridge,
     "history": HistoryBridge,
     "launch": LaunchBridge,
     "logs": LogsBridge,

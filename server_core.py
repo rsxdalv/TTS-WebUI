@@ -1,8 +1,8 @@
 """Entry point used by the Go core instead of server.py.
 
 Installs the Go bridges (each is a no-op unless TTS_CORE_URL is set) and then
-runs the thin Gradio entry
-(tts_webui.core_server); server.py stays as the legacy path.
+runs the thin Gradio entry (tts_webui.core_server); server.py stays as the
+legacy path. Extension processes are started through bridge.extensions.
 """
 
 import os
@@ -23,15 +23,6 @@ def main():
     from tts_webui.core_router_bridge import install as install_router
 
     install_router()
-
-    try:
-        from tts_webui.core_ext_bridge import install as install_ext
-    except ModuleNotFoundError as e:
-        # Only "the bridge does not exist"; a broken bridge must still fail loudly.
-        if e.name not in ("tts_webui.core_ext_bridge", "tts_webui"):
-            raise
-    else:
-        install_ext()
 
     from tts_webui.core_server import main as run_server
 

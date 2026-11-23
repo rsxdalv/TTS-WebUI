@@ -121,9 +121,17 @@ STREAMS = {
 }
 
 
+# the extension processes Go runs: answers of GET /api/extensions, one per poll
+STARTING = [{"package": "ext.one", "port": 41234, "pid": 99, "state": "starting"}]
+READY = [{"package": "ext.one", "port": 41234, "pid": 99, "state": "ready"}]
+
+
 class Stub:
     def __init__(self):
         self.requests = []  # (method, op, query, body, token)
+        self.ext_polls = [READY]  # successive GET /api/extensions answers (the last repeats)
+        self.ext_stop = (200, {"stopped": True})
+        self.ext_start = (200, {"port": 41234, "pid": 99})
         stub = self
 
         class H(BaseHTTPRequestHandler):
@@ -143,6 +151,8 @@ class Stub:
                     code, out = 403, {"error": "forbidden"}
                 elif op == "delete" and body["directory"] == "gone":
                     code, out = 404, {"error": "not found: gone"}
+                elif u.path.startswith("/api/extensions"):
+                    code, out = stub.extensions(self.command, u.path)
                 elif op == "resolve":
                     code, out = 200, RESOLVED.get(
                         (query["kind"], query["extension_class"]),
@@ -174,6 +184,13 @@ class Stub:
         self.server = HTTPServer(("127.0.0.1", 0), H)
         self.url = "http://127.0.0.1:%d" % self.server.server_port
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def extensions(self, method, path):
+        """/api/extensions (list) and /api/extensions/<package>/<start|stop>."""
+        action = path.rstrip("/").rsplit("/", 1)[-1]
+        if method == "GET":
+            return 200, self.ext_polls.pop(0) if len(self.ext_polls) > 1 else self.ext_polls[0]
+        return self.ext_start if action == "start" else self.ext_stop
 
     def close(self):
         self.server.shutdown()
@@ -811,6 +828,141 @@ class ExtensionLoadingTest(unittest.TestCase):
 
             with self.assertRaises(CoreBridgeError):
                 ie.handle_extension_class("tools")
+
+
+class ExtensionsBridgeTest(unittest.TestCase):
+    """bridge.extensions: Go starts, stops and watches the extension processes."""
+
+    def setUp(self):
+        self.stub = Stub()
+        self.addCleanup(self.stub.close)
+        env = mock.patch.dict(
+            os.environ, {"TTS_CORE_URL": self.stub.url, "TTS_CORE_TOKEN": "tok"}
+        )
+        env.start()
+        self.addCleanup(env.stop)
+        poll = mock.patch("tts_webui.core_bridge.extensions.POLL_SECONDS", 0)
+        poll.start()
+        self.addCleanup(poll.stop)
+
+    def test_start_sends_the_proxy_host_and_nothing_else(self):
+        self.assertEqual(
+            bridge.extensions.start("ext.one", "http://localhost:7778"),
+            {"port": 41234, "pid": 99},
+        )
+        method, op, _, body, token = self.stub.requests[0]
+        self.assertEqual((method, op, token), ("POST", "start", "tok"))
+        self.assertEqual(body, {"openai_proxy_host": "http://localhost:7778"})
+        bridge.extensions.start("ext.one")
+        self.assertEqual(self.stub.requests[1][3], {})
+
+    def test_stop_treats_an_unknown_extension_as_stopped(self):
+        bridge.extensions.stop("ext.one")
+        self.stub.ext_stop = (404, {"error": "not found"})
+        bridge.extensions.stop("ext.one")
+        self.stub.ext_stop = (500, {"error": "did not exit"})
+        with self.assertRaises(CoreBridgeError) as cm:
+            bridge.extensions.stop("ext.one")
+        self.assertEqual(cm.exception.status, 500)
+        self.assertIn("did not exit", str(cm.exception))
+
+    def test_wait_ready_polls_until_ready(self):
+        self.stub.ext_polls = [STARTING, STARTING, READY]
+        self.assertEqual(bridge.extensions.wait_ready("ext.one")["state"], "ready")
+        self.assertEqual([r[1] for r in self.stub.requests], ["extensions"] * 3)
+
+    def test_wait_ready_raises_with_gos_reason(self):
+        failed = [
+            {
+                "package": "ext.one",
+                "port": 1,
+                "pid": 9,
+                "state": "failed",
+                "error": "exited before ready (code 1)",
+            }
+        ]
+        self.stub.ext_polls = [STARTING, failed]
+        with self.assertRaises(CoreBridgeError) as cm:
+            bridge.extensions.wait_ready("ext.one")
+        self.assertIn("exited before ready (code 1)", str(cm.exception))
+        self.stub.ext_polls = [[]]
+        with self.assertRaises(CoreBridgeError) as cm:
+            bridge.extensions.wait_ready("ext.one")
+        self.assertIn("not running", str(cm.exception))
+        self.stub.ext_polls = [STARTING]
+        with self.assertRaises(CoreBridgeError) as cm:
+            bridge.extensions.wait_ready("ext.one", timeout=0)
+        self.assertIn("did not start", str(cm.exception))
+
+    def test_core_off_raises(self):
+        with mock.patch.dict(os.environ, clear=False):
+            os.environ.pop("TTS_CORE_URL")
+            with self.assertRaises(CoreBridgeError) as cm:
+                bridge.extensions.start("ext.one")
+            self.assertIn("TTS_CORE_URL", str(cm.exception))
+
+
+class SetupProxyExtensionTest(unittest.TestCase):
+    """The proxy-extension tab starts and stops its process through Go."""
+
+    def setUp(self):
+        self.stub = Stub()
+        self.addCleanup(self.stub.close)
+        env = mock.patch.dict(
+            os.environ, {"TTS_CORE_URL": self.stub.url, "TTS_CORE_TOKEN": "tok"}
+        )
+        env.start()
+        self.addCleanup(env.stop)
+        poll = mock.patch("tts_webui.core_bridge.extensions.POLL_SECONDS", 0)
+        poll.start()
+        self.addCleanup(poll.stop)
+        from tts_webui.extensions_loader import setup_proxy_extension as spe
+
+        self.spe = spe
+        with gr.Blocks() as self.demo:
+            with gr.Tab("T") as tab:
+                trigger = gr.Textbox()
+                spe.setup_proxy_extension(
+                    "ext.one", "Ext", tab, install_trigger=trigger, is_installed=True
+                )
+        self.handlers = {b.fn.__name__: b.fn for b in self.demo.fns.values() if b.fn}
+
+    def _run(self):
+        return [
+            [getattr(c, "value", c) for c in step]
+            for step in self.handlers["run_extension"]()
+        ]
+
+    def test_start_shows_the_iframe_once_go_says_ready(self):
+        self.stub.ext_polls = [STARTING, READY]
+        steps = self._run()
+        self.assertEqual(steps[0][0], "Starting extension, please wait...")
+        self.assertIn(f'src="{self.spe.GRADIO_TREE_URL}/ext.one/"', steps[-1][0])
+        self.assertEqual(
+            [r[1] for r in self.stub.requests], ["start", "extensions", "extensions"]
+        )
+        # Go picks the port and builds the process environment
+        self.assertEqual(set(self.stub.requests[0][3]), {"openai_proxy_host"})
+
+    def test_a_failed_start_says_why_and_keeps_start_enabled(self):
+        self.stub.ext_polls = [
+            [{"package": "ext.one", "port": 1, "pid": 9, "state": "failed", "error": "boom"}]
+        ]
+        steps = self._run()
+        self.assertEqual(len(steps), 2)
+        self.assertIn("boom", steps[-1][0])
+        self.assertNotIn("iframe", steps[-1][0])
+
+    def test_shutdown_stops_the_extension_in_go(self):
+        out = self.handlers["shutdown_extension"]()
+        self.assertEqual(out[0].value, "Extension stopped.")
+        self.assertEqual(self.stub.requests[-1][:2], ("POST", "stop"))
+
+    def test_no_process_code_is_left_in_python(self):
+        with open(self.spe.__file__, encoding="utf-8") as f:
+            src = f.read()
+        for gone in ("subprocess", "Popen", "wait_for_server", ".venvs", "PORT_ROUTER", "os.environ"):
+            self.assertNotIn(gone, src)
 
 
 class InstallCallersTest(unittest.TestCase):

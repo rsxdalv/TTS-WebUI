@@ -1,41 +1,13 @@
-import functools
-import os
-import subprocess
-import sys
-
 import gradio as gr
 
 from tts_webui.config.config_utils import get_config_value
-from tts_webui.gradio_proxy_tree.main import (
-    GRADIO_TREE_URL,
-    add_extension_route,
-)
-
-PORT_ROUTER = 27770
+from tts_webui.core_bridge import CoreBridgeError, bridge
+from tts_webui.gradio_proxy_tree.main import GRADIO_TREE_URL
 
 
 def get_openai_api_host():
     port = get_config_value("extension_openai_tts_api", "port", 7778)
     return f"http://localhost:{port}"
-
-
-def wait_for_server(port, timeout=30):
-    import socket
-    import time
-
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(1)
-            result = sock.connect_ex(("127.0.0.1", port))
-            sock.close()
-            if result == 0:
-                return True
-        except Exception:
-            pass
-        time.sleep(0.25)
-    return False
 
 
 def setup_proxy_extension(
@@ -48,11 +20,7 @@ def setup_proxy_extension(
     is_installed=False,
 ):
     extension_ran = False
-    global PORT_ROUTER
-    PORT_ROUTER += 1
-    port = PORT_ROUTER
     iframe = f'<iframe src="{GRADIO_TREE_URL}/{package_name}/" style="width: 100%; height: 100vh;"></iframe>'
-    process = None
 
     run_guard = gr.State(False)
     first_load_guard = gr.State(False)
@@ -65,11 +33,10 @@ def setup_proxy_extension(
 
     def shutdown_extension():
         try:
-            nonlocal process, extension_ran
-            process.terminate()
+            nonlocal extension_ran
+            bridge.extensions.stop(package_name)
             gr.Info("Extension stopped")
-            print(f"Terminated {title_name} extension process with PID {process.pid}")
-            process = None
+            print(f"Stopped the {title_name} extension")
             extension_ran = False
             return (
                 gr.HTML("Extension stopped."),
@@ -88,49 +55,31 @@ def setup_proxy_extension(
         else "Press 'Start Extension'"
     )
 
-    @functools.lru_cache(maxsize=1)
-    def add_route_once():
-        return add_extension_route(package_name, port)
-
     def run_extension():
-        nonlocal extension_ran, process
+        nonlocal extension_ran
 
         yield gr.HTML("Starting extension, please wait..."), gr.skip(), gr.skip()
 
-        print(
-            f"\nStarting {title_name} extension in a separate process on port {port}/{package_name}..."
-        )
-        executable = sys.executable
-        venv_python = (
-            f".venvs/{package_name}/Scripts/python.exe"
-            if os.name == "nt"
-            else f".venvs/{package_name}/bin/python"
-        )
-        if os.path.exists(venv_python):
-            executable = venv_python
-        process = subprocess.Popen(
-            [executable, "-m", "tts_webui.extensions_loader.proxy_harness"],
-            env={
-                **os.environ,
-                "GRADIO_SERVER_PORT": str(port),
-                "GRADIO_ROOT_PATH": f"/{package_name}",
-                "TTS_WEBUI_EXTENSION_PACKAGE": package_name,
-                "OPENAI_PROXY_HOST": get_openai_api_host(),
-            },
-        )
-        # Somehow lift up the errors to gr.Error and yield
-        # process.stdout
-        extension_ran = True
-
-        if not wait_for_server(port, timeout=120):
-            gr.Error(f"Warning: Server on port {port} did not start within timeout")
-        add_route_once()
+        print(f"\nStarting {title_name} extension in a separate process...")
+        try:
+            started = bridge.extensions.start(package_name, get_openai_api_host())
+            extension_ran = True
+            print(f"{title_name} extension runs on port {started['port']}/{package_name}")
+            bridge.extensions.wait_ready(package_name)
+        except CoreBridgeError as e:
+            extension_ran = False
+            gr.Warning(f"Could not start {title_name}: {e}")
+            yield (
+                gr.HTML(f"Could not start the extension: {e}"),
+                gr.Button(interactive=True),
+                gr.Button(interactive=False),
+            )
+            return
         yield (
             gr.HTML(iframe, padding=False),
             gr.Button(interactive=False),
             gr.Button(interactive=True),
         )
-        return
 
     def run_extension_guard(first_load_guard_value):
         if extension_ran:

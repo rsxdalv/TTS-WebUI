@@ -268,15 +268,16 @@ catalog clone and a `config.json` with disabled, autostart and
   tabs or load decorators (every call raises `CoreBridgeError`), as for every
   other ported tab.
 
-### `setup_proxy_extension.py` (not changed in this step)
+### `setup_proxy_extension.py` (step 27)
 
 What is left there is the Gradio side of a native extension (buttons, iframe,
-state) plus process code that `core_ext_bridge` replaces at import (`subprocess`
-is swapped for a shim that calls Go's `extprocs`): the venv python lookup, the
-environment and `wait_for_server`. It also imports `gradio_proxy_tree`, which
-`core_router_bridge` patches. Rewriting it to call Go directly belongs with the
-removal of `server.py` and the proxy tree, so the dead spawn code goes in one
-change with them.
+state). The process code (the venv python lookup, the environment, the port
+counter, `wait_for_server`, the `subprocess` call and the route add) is gone: the
+tab calls `bridge.extensions.start / wait_ready / stop`, and Go runs the process
+and registers the route (see extprocs). `tts_webui/core_ext_bridge`, which swapped
+`subprocess` for a shim at import, is deleted with its tests (they moved to
+`test_core_bridge`). It still imports `GRADIO_TREE_URL` from `gradio_proxy_tree`
+for the iframe address.
 
 ## Stays in Python
 

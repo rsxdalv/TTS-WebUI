@@ -204,3 +204,47 @@ func TestRealPipInstallThroughBridge(t *testing.T) {
 		t.Errorf("no \"Successfully installed\" in the install console")
 	}
 }
+
+// TestRealBridgeStartsAndStopsExtension drives a real extension from Python:
+// bridge.extensions.start, wait_ready and stop against the launcher's control
+// API, as setup_proxy_extension does. Opt-in like the others, plus
+// LAUNCHER_REAL_PYTHON (the main env's python.exe, which runs the bridge).
+func TestRealBridgeStartsAndStopsExtension(t *testing.T) {
+	root := realRoot(t)
+	py := os.Getenv("LAUNCHER_REAL_PYTHON")
+	if py == "" {
+		t.Skip("LAUNCHER_REAL_PYTHON not set")
+	}
+	pkg := os.Getenv("LAUNCHER_REAL_PKG")
+	if pkg == "" {
+		pkg = "tts_webui_extension.mms"
+	}
+	baseEnv := append(os.Environ(), "MAMBA_ROOT_PREFIX="+filepath.Join(root.InstallerFiles(), "mamba"), "PYTHONIOENCODING=utf-8")
+	sp, err := startServerPy(root, realPrefix(root), baseEnv, appenv.Flags{NoReact: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sp.Close()
+
+	script := "import sys\n" +
+		"from tts_webui.core_bridge import bridge\n" +
+		"pkg = sys.argv[1]\n" +
+		"print('started', bridge.extensions.start(pkg, 'http://localhost:7778'))\n" +
+		"print('ready', bridge.extensions.wait_ready(pkg, 170))\n" +
+		"bridge.extensions.stop(pkg)\n" +
+		"bridge.extensions.stop(pkg)\n" +
+		"print('stopped', [s['state'] for s in bridge.extensions.status()])\n"
+	cmd := exec.Command(py, "-c", script, pkg)
+	cmd.Dir = root.Dir()
+	cmd.Env = append(append([]string(nil), sp.gradioEnv...), "PYTHONPATH="+root.Dir())
+	out, err := cmd.CombinedOutput()
+	t.Logf("bridge output:\n%s", out)
+	if err != nil {
+		t.Fatalf("bridge: %v", err)
+	}
+	for _, want := range []string{"started {", "ready {", "'state': 'ready'", "stopped ['exited']"} {
+		if !strings.Contains(string(out), want) {
+			t.Errorf("output lacks %q", want)
+		}
+	}
+}

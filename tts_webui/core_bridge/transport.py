@@ -21,7 +21,14 @@ _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 class CoreBridgeError(RuntimeError):
-    """The Go core could not be reached or refused the request."""
+    """The Go core could not be reached or refused the request.
+
+    ``status`` is the HTTP status when Go answered with one.
+    """
+
+    def __init__(self, message, status=None):
+        super().__init__(message)
+        self.status = status
 
 
 def enabled():
@@ -62,7 +69,7 @@ def _open(method, path, query, body, timeout):
             detail = json.loads(raw).get("error", raw)
         except ValueError:
             detail = raw
-        raise CoreBridgeError(f"{path}: {detail[:300]} (HTTP {e.code})") from e
+        raise CoreBridgeError(f"{path}: {detail[:300]} (HTTP {e.code})", e.code) from e
     except (urllib.error.URLError, OSError) as e:
         raise CoreBridgeError(
             f"cannot reach the TTS core at {url} ({getattr(e, 'reason', e)}); "

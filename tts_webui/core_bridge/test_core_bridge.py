@@ -512,23 +512,19 @@ class ExtCatalogTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             list(bridge.extcatalog.install())
 
-    def test_list_tab_builds(self):
+    def test_list_tab_is_an_iframe_of_the_go_page(self):
         from tts_webui.extensions_loader.list_tab import extension_list_ui
 
-        with gr.Blocks() as demo:
-            extension_list_ui("interface")
-        kinds = [type(b).__name__ for b in demo.blocks.values()]
-        self.assertEqual(kinds.count("Dropdown"), 2)
-        self.assertIn("HTML", kinds)
-        self.assertGreaterEqual(
-            kinds.count("Markdown"), 3
-        )  # intro, table, two headings
-        self.assertEqual(
-            sum(
-                1 for f in demo.fns.values() if f.api_name and "extension" in f.api_name
-            ),
-            2,
-        )
+        for kind in ("interface", "decorator"):
+            with gr.Blocks() as demo:
+                extension_list_ui(kind)
+            blocks = list(demo.blocks.values())
+            html = [b for b in blocks if isinstance(b, gr.HTML)]
+            self.assertEqual(len(html), 1)
+            self.assertIn(f'src="/_core/ext/list?kind={kind}"', html[0].value)
+            self.assertIn("<iframe", html[0].value)
+            self.assertEqual(len(demo.fns), 0)  # no handlers: Go runs the page
+        self.assertEqual(self.stub.requests, [])  # and Python asks Go nothing
 
     def test_custom_installer_handlers(self):
         import importlib

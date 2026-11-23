@@ -1,3 +1,4 @@
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -8,6 +9,14 @@ import typer
 app = typer.Typer(help="tts-webui command line")
 ext_app = typer.Typer(help="Manage extensions")
 app.add_typer(ext_app, name="extension")
+
+
+def _os_name() -> str:
+    return "macos" if sys.platform == "darwin" else "linux"
+
+
+def _arch_name() -> str:
+    return "arm64" if platform.machine().lower() in ("arm64", "aarch64") else "amd64"
 
 
 def _run_process(cmd: List[str]) -> int:
@@ -22,37 +31,43 @@ def _run_process(cmd: List[str]) -> int:
 def serve(
     extra_args: Optional[List[str]] = typer.Argument(None),
 ) -> int:  # pragma: no cover - manual run
-    """Start the web UI server by delegating to `server.py` in the project root."""
+    """Start the web UI through the Go launcher (tts-webui[.exe] in the project root).
+
+    The launcher runs this Python environment as is (--system-python) and starts
+    the app right away (--start); extra arguments go to the launcher.
+    """
     project_root = Path.cwd()
-    server = project_root / "server.py"
-    if not server.exists():
-        typer.secho("Error: server.py not found in project root.", fg=typer.colors.RED)
-        raise typer.Exit(code=2)
-
-    cmd = [sys.executable, str(server)] + (extra_args or [])
-    typer.secho("Starting server with: " + " ".join(cmd))
-    raise typer.Exit(code=_run_process(cmd))
-
-
-@app.command()
-def extension_manager(
-    extra_args: Optional[List[str]] = typer.Argument(None),
-) -> int:  # pragma: no cover - manual run
-    """Launch the Extension Manager GUI."""
-    project_root = Path.cwd()
-    # New location under installer_scripts/tools with fallback to old tools/
-    manager_new = project_root / "installer_scripts" / "tools" / "extension_manager.py"
-    manager_old = project_root / "tools" / "extension_manager.py"
-    manager = manager_new if manager_new.exists() else manager_old
-    if not manager.exists():
+    launcher = next(
+        (
+            p
+            for p in (
+                project_root / "tts-webui.exe",
+                project_root / "tts-webui",
+                project_root / f"tts-webui-{_os_name()}-{_arch_name()}",
+                project_root / "core" / "tts-webui",
+            )
+            if p.is_file()
+        ),
+        None,
+    )
+    if launcher is None:
         typer.secho(
-            "Error: extension_manager.py not found (checked installer_scripts/tools and tools).",
+            "Error: the Go launcher not found in the project root. The release zip "
+            "contains it; or build it: cd core && go build -o ../tts-webui "
+            "./cmd/tts-webui",
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=2)
 
-    cmd = [sys.executable, str(manager)] + (extra_args or [])
-    typer.secho("Starting extension manager with: " + " ".join(cmd))
+    cmd = [
+        str(launcher),
+        "launch",
+        "--root",
+        str(project_root),
+        "--system-python",
+        "--start",
+    ] + (extra_args or [])
+    typer.secho("Starting the launcher with: " + " ".join(cmd))
     raise typer.Exit(code=_run_process(cmd))
 
 
@@ -82,11 +97,11 @@ def troubleshoot() -> None:
         typer.echo("Warning: requirements.txt not found in project root.")
         errors += 1
 
-    server = project_root / "server.py"
+    server = project_root / "server_core.py"
     if server.exists():
-        typer.echo("Found server.py")
+        typer.echo("Found server_core.py")
     else:
-        typer.echo("Warning: server.py not found. 'serve' may not work.")
+        typer.echo("Warning: server_core.py not found. The app may not start.")
         errors += 1
 
     try:

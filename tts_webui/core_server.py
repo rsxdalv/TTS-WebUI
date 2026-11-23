@@ -1,79 +1,43 @@
 """Gradio-only server entry for the Go core (replaces server.py's start()).
 
 The Go core has already created outputs/ and favorites/, written .env when it
-was missing, loaded .env/.env.user, started the router, React and the
-extension processes. This module only does the work that must happen inside
-the interpreter: patches, config, the Gradio app and its launch on
-TTS_GRADIO_HOST:TTS_GRADIO_PORT (applied to the config by core_router_bridge).
+was missing, loaded .env/.env.user into this process's environment, started the
+router, React and the extension processes, and decided how Gradio is launched
+(core/internal/serverpy/launchopts). This module only does the work that must
+happen inside the interpreter: patches, config, the Gradio app and its launch.
 
 It does not set up a proxy tree, start React or a database, or open a browser.
 """
 
-import os
 
-FAVICON_PATH = "./react-ui/public/favicon.ico"
-_DROPPED_OPTIONS = (
-    "file_directories",
-    "favicon_path",
-    "show_tips",
-    "enable_queue",
-    "prevent_thread_lock",
-)
+def launch_kwargs(options):
+    """Go's launch options as ``launch()`` takes them.
 
-
-def upgrade_gradio_options(options):
-    """server.py's upgrade_gradio_options: auth to a tuple, drop old keys.
-
-    Mutates and returns ``options``.
+    JSON has no tuples: auth arrives as a list of [user, password] pairs, which
+    Gradio wants as tuples.
     """
-    auth = options.get("auth")
-    if auth is not None:
-        if isinstance(auth, str):
-            options["auth"] = tuple(auth.split(":"))
-        elif isinstance(auth, (list, tuple)):
-            options["auth"] = tuple(auth)
-        print("Gradio server authentication enabled")
-    for key in _DROPPED_OPTIONS:
-        options.pop(key, None)
+    options = dict(options)
+    if options.get("auth"):
+        options["auth"] = [tuple(pair) for pair in options["auth"]]
     return options
-
-
-def launch_options(gr_options, overrides=None):
-    """The keyword arguments for ``demo.queue().launch``.
-
-    Works on a copy: ``gr_options`` is the shared config dict that the Settings
-    tab saves, so the private Gradio host/port in ``overrides`` must never land
-    in it.
-    """
-    options = upgrade_gradio_options(dict(gr_options))
-    options.update(overrides or {})
-    options["inbrowser"] = False  # the Go launcher opens the browser
-    return {
-        **options,
-        "allowed_paths": ["."],
-        "favicon_path": FAVICON_PATH,
-        "prevent_thread_lock": True,
-    }
 
 
 def main():
     print("Starting TTS WebUI... ", end="")
 
-    import tts_webui.dotenv_manager.init as dotenv_init
     from tts_webui.utils.suppress_warnings import suppress_warnings
     from tts_webui.utils.torch_load_patch import apply_torch_load_patch
 
-    dotenv_init.init()
     apply_torch_load_patch()
     suppress_warnings()
 
     from tts_webui.config.config import config
-    from tts_webui.core_router_bridge import gradio_overrides
-    from tts_webui.gradio.print_gradio_options import print_gradio_options
+    from tts_webui.core_bridge import bridge
 
-    overrides = gradio_overrides() if os.environ.get("TTS_CORE_URL") else {}
-    kwargs = launch_options(config["gradio_interface_options"], overrides)
-    print_gradio_options(kwargs)
+    launch = bridge.launch.options()
+    for line in launch["lines"]:
+        print(line)
+    kwargs = launch_kwargs(launch["options"])
 
     from tts_webui.gradio.blocks import main_block
 

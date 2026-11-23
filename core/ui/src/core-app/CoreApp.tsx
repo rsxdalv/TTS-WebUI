@@ -4,6 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import { StepList } from "./StepList";
 import { DarkThemeProvider, ThemeToggle } from "../DarkThemeProvider";
 import { client } from "./client";
+import { ExtensionsView } from "./ExtensionsView";
+
+type Page = "setup" | "extensions";
+
+const pageFromHash = (): Page =>
+  window.location.hash === "#extensions" ? "extensions" : "setup";
 
 export interface StepStatus {
   step: string;
@@ -14,6 +20,13 @@ export interface StepStatus {
 export function CoreApp() {
   const [statuses, setStatuses] = useState<StepStatus[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState<Page>(pageFromHash);
+
+  useEffect(() => {
+    const onHash = () => setPage(pageFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -34,21 +47,39 @@ export function CoreApp() {
     <DarkThemeProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
         <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-          <h1 className="text-lg font-semibold">TTS WebUI Setup</h1>
+          <div className="flex items-center gap-6">
+            <h1 className="text-lg font-semibold">TTS WebUI</h1>
+            <nav className="flex gap-4 text-sm">
+              {(["setup", "extensions"] as const).map((p) => (
+                <a
+                  key={p}
+                  href={p === "setup" ? "#" : `#${p}`}
+                  className={
+                    page === p
+                      ? "font-semibold underline underline-offset-4"
+                      : "text-gray-500 dark:text-gray-400 hover:underline"
+                  }
+                >
+                  {p === "setup" ? "Setup" : "Extensions"}
+                </a>
+              ))}
+            </nav>
+          </div>
           <ThemeToggle />
         </header>
-        <main className="max-w-2xl mx-auto px-4 py-8">
-          {error && (
+        <main className={`${page === "extensions" ? "max-w-4xl" : "max-w-2xl"} mx-auto px-4 py-8`}>
+          {page === "extensions" && <ExtensionsView />}
+          {page === "setup" && error && (
             <div className="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm">
               Cannot reach Go core: {error}. Is the binary running?
             </div>
           )}
-          {statuses === null && !error && (
+          {page === "setup" && statuses === null && !error && (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
               Detecting installation state…
             </p>
           )}
-          {statuses !== null && (
+          {page === "setup" && statuses !== null && (
             <StepList statuses={statuses} onRefresh={fetchStatus} />
           )}
         </main>

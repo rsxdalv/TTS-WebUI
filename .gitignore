@@ -101,6 +101,12 @@ coverage.xml
 package-lock.json
 tts-webui-installer.zip
 
+# The Go launcher, built into the release zip (and by hand, see README)
+/tts-webui.exe
+/tts-webui
+/tts-webui-linux-*
+/tts-webui-macos-*
+
 # Neutralino
 .tmp
 neutralinojs.log

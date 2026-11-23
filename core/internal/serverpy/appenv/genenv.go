@@ -1,11 +1,8 @@
 package appenv
 
 import (
-	"errors"
-	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 )
 
 const envHeader = `
@@ -63,24 +60,5 @@ func EnsureEnv(root string, env []string) (bool, error) {
 // windows selects Windows behaviour: env names fold case and the file gets
 // CRLF. Tests pass true on every OS because the golden file was made there.
 func ensureEnv(root string, env []string, windows bool) (bool, error) {
-	p := filepath.Join(root, ".env")
-	if _, err := os.Stat(p); err == nil {
-		return false, nil
-	}
-	text := generateEnv(env, windows)
-	if windows {
-		text = strings.ReplaceAll(text, "\n", "\r\n")
-	}
-	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
-	if err != nil {
-		if errors.Is(err, os.ErrExist) {
-			return false, nil
-		}
-		return false, err
-	}
-	if _, err := f.WriteString(text); err != nil {
-		f.Close()
-		return false, err
-	}
-	return true, f.Close()
+	return writeEnvFile(filepath.Join(root, ".env"), envText(generateEnv(env, windows), windows), false)
 }

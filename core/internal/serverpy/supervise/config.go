@@ -16,7 +16,7 @@ import (
 const (
 	DefaultPublicPort    = 7770
 	DefaultReactPort     = 3000
-	DefaultGradioEntry   = "server.py"
+	DefaultGradioEntry   = "server_core.py"
 	DefaultReadyTimeout  = 10 * time.Minute
 	DefaultProbeInterval = 250 * time.Millisecond
 )
@@ -37,12 +37,9 @@ type Config struct {
 	PublicPort int
 	// ReactPort is the port `next start` gets via -p. 0 = 3000.
 	ReactPort int
-	// ExtensionManagerPort is the extension manager's port. 0 = OS-assigned on
-	// every Start (the legacy 7771 collides with extension ports).
-	ExtensionManagerPort int
 
 	// GradioEntry is the Python script run for Gradio, relative to Root.
-	// "" = server.py. Integration switches this to server_core.py.
+	// "" = server_core.py.
 	GradioEntry string
 	// GradioArgs are the arguments after the entry script. nil = --no-react,
 	// an empty non-nil slice = no arguments. Used verbatim.
@@ -72,8 +69,13 @@ type Config struct {
 	ReadyTimeout time.Duration
 
 	// SkipGPUCheck disables the "installer_scripts/.gpu must exist and parse"
-	// gate that the legacy supervisor enforced before any start.
+	// gate that the launcher enforces before any start.
 	SkipGPUCheck bool
+	// SystemPython runs python, npm and uv straight from PATH, with no
+	// micromamba prefix: a container, Colab or any env the user manages. It
+	// implies SkipGPUCheck (there is no installer_scripts/.gpu without the
+	// installer) and CommandPrefix stays empty.
+	SystemPython bool
 
 	// SkipReactTab opens only the public URL, not the React one, when
 	// OpenBrowser is on. The launcher sets it: the React UI is not a separate
@@ -120,17 +122,13 @@ func (c Config) normalized() (Config, error) {
 	for _, p := range []struct {
 		name string
 		port int
-	}{{"PublicPort", c.PublicPort}, {"ReactPort", c.ReactPort}, {"ExtensionManagerPort", c.ExtensionManagerPort}} {
+	}{{"PublicPort", c.PublicPort}, {"ReactPort", c.ReactPort}} {
 		if p.port < 0 || p.port > 65535 {
 			return Config{}, fmt.Errorf("supervise: %s %d out of range", p.name, p.port)
 		}
 	}
 	if !c.NoReact && c.ReactPort == c.PublicPort {
 		return Config{}, fmt.Errorf("supervise: ReactPort and PublicPort are both %d", c.PublicPort)
-	}
-	if c.ExtensionManagerPort != 0 &&
-		(c.ExtensionManagerPort == c.PublicPort || (!c.NoReact && c.ExtensionManagerPort == c.ReactPort)) {
-		return Config{}, fmt.Errorf("supervise: ExtensionManagerPort %d collides with another port", c.ExtensionManagerPort)
 	}
 	if c.GradioEntry == "" {
 		c.GradioEntry = DefaultGradioEntry
@@ -146,7 +144,9 @@ func (c Config) normalized() (Config, error) {
 	if c.ProbeInterval <= 0 {
 		c.ProbeInterval = DefaultProbeInterval
 	}
-	if len(c.CommandPrefix) == 0 {
+	if c.SystemPython {
+		c.CommandPrefix, c.SkipGPUCheck = nil, true
+	} else if len(c.CommandPrefix) == 0 {
 		c.CommandPrefix = micromambaPrefix(c.Root)
 	} else {
 		c.CommandPrefix = append([]string(nil), c.CommandPrefix...)
@@ -207,9 +207,16 @@ func mambaRootEnv(root paths.Root) string {
 }
 
 // baseEnv is the environment shared by all children.
-func (c Config) baseEnv(extPort int) []string {
-	env := append(os.Environ(),
-		fmt.Sprintf("TTS_EXTENSION_MANAGER_PORT=%d", extPort),
-		mambaRootEnv(c.Root))
+func (c Config) baseEnv() []string {
+	env := append(os.Environ(), mambaRootEnv(c.Root))
 	return append(env, c.ExtraEnv...)
 }
+
+// CommandPrefix is the command that runs a program in the main env
+// (`micromamba -p <root>/installer_files/env run`), for callers that run
+// pip or uv while the app is stopped.
+func CommandPrefix(root paths.Root) []string { return micromambaPrefix(root) }
+
+// MambaRootEnv is MAMBA_ROOT_PREFIX=<root>/installer_files/mamba, which
+// micromamba needs to find its own state.
+func MambaRootEnv(root paths.Root) string { return mambaRootEnv(root) }

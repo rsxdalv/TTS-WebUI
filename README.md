@@ -135,18 +135,23 @@ Prerequisites:
     pip install -r requirements.txt
     ```
 
-3. Run the server:
+3. Get the Go launcher, which runs the app (the installer zip ships `tts-webui.exe` and `tts-webui-<linux|macos>-<amd64|arm64>`; or build it with Go 1.27):
    ```bash
-   python server.py --no-react
+   cd core && go build -o ../tts-webui ./cmd/tts-webui && cd ..
    ```
 
-4. For React UI:
+4. Run the server with the Python environment you installed into:
+   ```bash
+   ./tts-webui launch --system-python --start --no-react
+   ```
+
+5. For React UI, build it and leave out `--no-react`:
    ```bash
    cd react-ui
    npm install
    npm run build
    cd ..
-   python server.py
+   ./tts-webui launch --system-python --start
    ```
 
 For detailed manual installation instructions, please refer to the [Manual Installation Guide](./documentation/manual_installation.md).
@@ -234,7 +239,7 @@ See the [2023 Changelog](./documentation/changelog-2023.md) for a detailed list 
 
 ## Extensions
 
-Extensions are available to install from the webui itself, or using React UI. They can also be installed using the extension manager or the External Extensions Installer (a built-in tool for adding custom extensions from JSON).
+Extensions are available to install from the webui itself, or using React UI. They can also be installed using the launcher's Extensions page (`tts-webui launch`, then Extensions) or the External Extensions Installer (a built-in tool for adding custom extensions from JSON).
 
 Internally, extensions are just python packages that are installed using pip. Multiple extensions can be installed at the same time, but there might be compatibility issues between them. After installing or updating an extension, you need to restart the app to load it.
 

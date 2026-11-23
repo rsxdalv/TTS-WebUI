@@ -7,9 +7,21 @@ import (
 	"strings"
 )
 
+// DockerPublicPort is the front door under --docker, whatever config.json says.
+const DockerPublicPort = 7770
+
+// PublicPortFor is the port the front door (the router) listens on when
+// config.json says configPort: --docker moves it to DockerPublicPort. The
+// launcher uses it before Plan runs, for its readiness probe.
+func PublicPortFor(configPort int, f Flags) int {
+	if f.Docker {
+		return DockerPublicPort
+	}
+	return configPort
+}
+
 const (
 	treeBackendPort = 7767 // gradio's port behind the proxy tree
-	dockerPublic    = 7770
 	defaultTreePort = 7769 // GRADIO_TREE_PORT default in gradio_proxy_tree/main.py
 	defaultReact    = 3000
 )
@@ -105,7 +117,7 @@ func PlanFor(cfg Config, env []string, f Flags) (PortPlan, error) {
 		p.Host = "0.0.0.0"
 		p.GradioPort = treeBackendPort
 		treeEnv = true
-		treePortEnv = strconv.Itoa(dockerPublic)
+		treePortEnv = strconv.Itoa(DockerPublicPort)
 	}
 
 	switch {

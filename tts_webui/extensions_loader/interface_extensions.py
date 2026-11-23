@@ -4,24 +4,11 @@ from importlib.metadata import version
 
 import gradio as gr
 
-from tts_webui.config._save_config import _save_config
-from tts_webui.config.config import config
-from tts_webui.extensions_loader.extensions_data_loader import (
-    filter_extensions_by_type_and_class,
-    get_interface_extensions,
-)
+from tts_webui.core_bridge import bridge
+from tts_webui.extensions_loader.list_tab import extension_list_ui
 from tts_webui.extensions_loader.LoadingIndicator import LoadingIndicator
 from tts_webui.extensions_loader.setup_proxy_extension import setup_proxy_extension
 from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
-from tts_webui.utils.pip_install import (
-    pip_install_wrapper,
-    pip_uninstall_wrapper,
-    venv_setup_wrapper,
-)
-
-
-def uninstall_extension(package_name):
-    yield from pip_uninstall_wrapper(package_name, package_name)()
 
 
 def check_if_package_installed(package_name, proxy):
@@ -43,39 +30,36 @@ def _get_version(package_name, proxy):
             return "Built-in"
         if proxy == "native":
             return ""
-            import os
-            import subprocess
-
-            venv_python = (
-                f".venvs/{package_name}/Scripts/python.exe"
-                if os.name == "nt"
-                else f".venvs/{package_name}/bin/python"
-            )
-            result = subprocess.run(
-                [
-                    venv_python,
-                    "-c",
-                    f"import importlib.metadata; print(importlib.metadata.version('{package_name}'))",
-                ],
-                capture_output=True,
-                text=True,
-            )
-            return result.stdout.strip()  # "0.0.3"
-        else:
-            return f"v{version(package_name)}"
+        return f"v{version(package_name)}"
     except Exception as e:
         print(f"Error getting version for {package_name}: {e}")
         return "Unknown"
 
 
-def _handle_package(package_name, title_name, requirements, proxy=None):
-    if package_name in disabled_extensions:
+def _stream(operation, package_name):
+    """A Gradio handler that streams one Go install operation for this extension.
+
+    Go installs, updates and checks by package name: it reads the requirements
+    and the proxy kind from the extension lists, and runs pip or uv itself.
+    """
+
+    def run():
+        yield from operation(package_name)
+
+    return run
+
+
+def _handle_package(ext):
+    """Builds the tab of one extension from Go's entry (see bridge.extcatalog.resolve)."""
+    package_name, title_name = ext["package_name"], ext["name"]
+    requirements, proxy = ext["requirements"], ext["proxy"]
+    if not ext["enabled"]:
         with LoadingIndicator(title_name, skipped=True):
             with gr.Tab(f"[Disabled] {title_name}"):
                 gr.Markdown(f"## {title_name} Extension is disabled")
                 enable_btn = gr.Button("Enable")
                 enable_btn.click(
-                    fn=toggle_extension_state(package_name, disabled_extensions),
+                    fn=toggle_extension_state(package_name),
                     outputs=[enable_btn],
                 )
         return
@@ -85,34 +69,25 @@ def _handle_package(package_name, title_name, requirements, proxy=None):
     if not is_installed and proxy != "native":
         with gr.Tab(f"[Available] {title_name}"):
             gr.Markdown(f"{title_name} Extension not installed")
-            install_btn = gr.Button(
-                f"Install {title_name} Extension {'uv venv' if proxy == 'native' else ''}"
-            )
+            install_btn = gr.Button(f"Install {title_name} Extension ")
             with gr.Accordion("Installation Console", open=True):
                 console_text = gr.HTML()
-            if proxy == "native":
-                install_btn.click(
-                    venv_setup_wrapper(requirements, title_name, package_name),
-                    outputs=[console_text],
-                )
-            else:
-                install_btn.click(
-                    pip_install_wrapper(requirements, title_name),
-                    outputs=[console_text],
-                )
+            install_btn.click(
+                _stream(bridge.extcatalog.install, package_name),
+                outputs=[console_text],
+            )
         return
 
     with LoadingIndicator(title_name):
         try:
             with gr.Tab(title_name) as tab:
-                autostart = package_name in autostart_extensions
+                autostart = ext["autostart"]
                 if "builtin" in package_name:
                     pass
                 else:
                     install_trigger = _extension_management_ui(
                         package_name,
                         title_name,
-                        requirements,
                         version=_get_version(package_name, proxy),
                         show=not is_installed,
                         proxy=proxy,
@@ -138,57 +113,64 @@ def _handle_package(package_name, title_name, requirements, proxy=None):
                         main_tab()
                 except Exception as e:
                     generic_error_tab_advanced(
-                        e, name=title_name, requirements=requirements
+                        e,
+                        name=title_name,
+                        requirements=requirements,
+                        package_name=package_name,
                     )
         except Exception as e:
-            generic_error_tab_advanced(e, name=title_name, requirements=requirements)
+            generic_error_tab_advanced(
+                e,
+                name=title_name,
+                requirements=requirements,
+                package_name=package_name,
+            )
 
 
 def enable_extension(package_name):
     def _enable_extension():
-        disabled_extensions.remove(package_name)
+        res = bridge.config.extension_enable(package_name)
         print(f"Enabled extension {package_name}")
-        gr.Info(
-            "Enabled extension. Please restart the application for changes to take effect."
-        )
-        _save_config(config)
+        gr.Info(res["info"])
 
     return _enable_extension
 
 
 def disable_extension(package_name):
     def _disable_extension():
-        disabled_extensions.append(package_name)
+        res = bridge.config.extension_disable(package_name)
         print(f"Disabled extension {package_name}")
-        gr.Info(
-            "Disabled extension. Please restart the application for changes to take effect."
-        )
-        _save_config(config)
+        gr.Info(res["info"])
 
     return _disable_extension
 
 
-def toggle_extension_state(package_name, disabled_list):
+def toggle_extension_state(package_name):
+    """Button handler: flips the extension and returns the new button label.
+
+    Go decides from config.json, not from the lists loaded at startup, which
+    stay as they were until the restart the toast asks for.
+    """
+
     def _toggle_extension_state():
-        if package_name in disabled_list:
-            enable_extension(package_name)()
-            return "Disable"
-        else:
-            disable_extension(package_name)()
+        res = bridge.config.extension_toggle(package_name)
+        gr.Info(res["info"])
+        if res["disabled"]:
+            print(f"Disabled extension {package_name}")
             return "Enable"
+        print(f"Enabled extension {package_name}")
+        return "Disable"
 
     return _toggle_extension_state
 
 
-def toggle_autostart(package_name, autostart_list):
+def toggle_autostart(package_name):
     def _toggle_autostart(state):
+        bridge.config.extension_autostart(package_name, bool(state))
         if state:
-            autostart_list.append(package_name)
             print(f"Added {package_name} to autostart list")
         else:
-            autostart_list.remove(package_name)
             print(f"Removed {package_name} from autostart list")
-        _save_config(config)
 
     return _toggle_autostart
 
@@ -196,14 +178,7 @@ def toggle_autostart(package_name, autostart_list):
 def get_latest_version(package_name):
     def _get_latest_version():
         print(f"Getting latest version of {package_name}")
-        for line in pip_install_wrapper(
-            f"--dry-run --no-deps {package_name}",
-            f"{package_name} (dry run, update check)",
-        )():
-            if "Would install" in line:
-                return line.split(" ")[-1]
-
-        return "Already up to date (sometimes incorrect)"
+        return bridge.extcatalog.latest_version(package_name)
 
     return _get_latest_version
 
@@ -211,7 +186,6 @@ def get_latest_version(package_name):
 def _extension_management_ui(
     package_name,
     title_name,
-    requirements,
     version,
     show=True,
     proxy=None,
@@ -231,7 +205,7 @@ def _extension_management_ui(
                     fn=lambda: gr.Button("Updating...", interactive=False),
                     outputs=[venv_install],
                 ).then(
-                    venv_setup_wrapper(requirements, title_name, package_name),
+                    _stream(bridge.extcatalog.install, package_name),
                     outputs=[output],
                 ).then(
                     fn=lambda: gr.Button("Update (uv venv)", interactive=True),
@@ -247,7 +221,7 @@ def _extension_management_ui(
                 )
                 start_with_webui_checkbox.change(
                     inputs=[start_with_webui_checkbox],
-                    fn=toggle_autostart(package_name, autostart_extensions),
+                    fn=toggle_autostart(package_name),
                 )
             else:
                 gr.Button("Check for updates").click(
@@ -260,7 +234,7 @@ def _extension_management_ui(
                     fn=lambda: gr.Button("Updating...", interactive=False),
                     outputs=[attempt_update],
                 ).then(
-                    pip_install_wrapper(requirements, title_name),
+                    _stream(bridge.extcatalog.install, package_name),
                     outputs=[output],
                 ).then(
                     fn=lambda: gr.Button("Update", interactive=True),
@@ -272,7 +246,7 @@ def _extension_management_ui(
                     fn=lambda: gr.Button("Uninstalling...", interactive=False),
                     outputs=[uninstall_extension_btn],
                 ).then(
-                    pip_uninstall_wrapper(package_name, title_name),
+                    _stream(bridge.extcatalog.uninstall, package_name),
                     outputs=[output],
                 ).then(
                     fn=lambda: gr.Button("Uninstall", interactive=True),
@@ -282,7 +256,7 @@ def _extension_management_ui(
             toggle_btn = gr.Button("Disable", variant="secondary")
             toggle_btn.click(
                 outputs=[toggle_btn],
-                fn=toggle_extension_state(package_name, disabled_extensions),
+                fn=toggle_extension_state(package_name),
             )
             # load_on_open_checkbox = gr.Checkbox(
             #     label="Load on Open", value=True, interactive=False
@@ -295,7 +269,7 @@ def _extension_management_ui(
                     fn=lambda: gr.Button("Checking...", interactive=False),
                     outputs=[check_dependencies_btn],
                 ).then(
-                    pip_install_wrapper(f"--dry-run {requirements}", title_name),
+                    _stream(bridge.extcatalog.check_dependencies, package_name),
                     outputs=[output],
                 ).then(
                     fn=lambda: gr.Button("Check Dependencies", interactive=True),
@@ -306,88 +280,11 @@ def _extension_management_ui(
             return install_trigger
 
 
-# Get the interface extensions list from the data loader
-extension_list_json = get_interface_extensions()
-disabled_extensions: list[str] = config.get("extensions", {}).get("disabled", [])
-autostart_extensions: list[str] = config.get("extensions", {}).get("autostart", [])
-config.setdefault("extensions", {}).setdefault("disabled", disabled_extensions)
-config.setdefault("extensions", {}).setdefault("autostart", autostart_extensions)
-
-
-def handle_extension_class(extension_class, config):
-    # Get interface extensions filtered by class from the data loader
-    filtered_extensions = filter_extensions_by_type_and_class(
-        extension_list_json, "interface", extension_class
-    )
-    for x in filtered_extensions:
-        _handle_package(x["package_name"], x["name"], x["requirements"], x.get("proxy"))
+def handle_extension_class(extension_class):
+    """Go lists the extensions of the class in tab order, with their state."""
+    for ext in bridge.extcatalog.resolve("interface", extension_class)["extensions"]:
+        _handle_package(ext)
 
 
 def extension_list_tab():
-    gr.Markdown("List of all extensions")
-    table_string = """| Title | Description |\n| --- | --- |\n"""
-    for x in extension_list_json:
-        table_string += (
-            # f"| {x['name']} (v{x['version']}) "
-            f"| {x['name']} "
-            + f"| {x['description']} (website: {x['website']}) (extension_website: {x['extension_website']}) |\n"
-        )
-    gr.Markdown(table_string)
-
-    external_extension_list = [
-        x for x in extension_list_json if "builtin" not in x["package_name"]
-    ]
-    # sort
-    external_extension_list = sorted(
-        external_extension_list, key=lambda x: x["name"].lower()
-    )
-
-    with gr.Row():
-        with gr.Column():
-            gr.Markdown("Install/Uninstall Extensions")
-
-            install_dropdown = gr.Dropdown(
-                label="Select Extension to Install",
-                choices=[x["package_name"] for x in external_extension_list],
-            )
-
-            install_button = gr.Button("Install extension")
-
-            def install_extension(package_name):
-                requirements = [
-                    x["requirements"]
-                    for x in external_extension_list
-                    if x["package_name"] == package_name
-                ][0]
-                yield from pip_install_wrapper(requirements, package_name)()
-
-            install_button.click(
-                fn=install_extension,
-                inputs=[install_dropdown],
-                outputs=[gr.HTML()],
-                api_name="install_extension",
-            )
-
-        with gr.Column():
-            gr.Markdown("Uninstall Extensions")
-            uninstall_dropdown = gr.Dropdown(
-                label="Select Extension to Uninstall",
-                choices=[x["package_name"] for x in external_extension_list],
-            )
-            uninstall_button = gr.Button("Uninstall extension")
-
-            uninstall_button.click(
-                fn=uninstall_extension,
-                inputs=[uninstall_dropdown],
-                outputs=[gr.HTML()],
-                api_name="uninstall_extension",
-            )
-
-
-if __name__ == "__main__":
-    with gr.Blocks() as demo:
-        handle_extension_class("audio-music-generation")
-        handle_extension_class("audio-conversion")
-        handle_extension_class("text-to-speech")
-
-        demo.launch()
+    extension_list_ui("interface")

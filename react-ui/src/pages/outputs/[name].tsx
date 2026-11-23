@@ -8,16 +8,26 @@ import { Template } from "../../components/Template";
 import { useGoData } from "../../data/useGoData";
 
 interface Props {
-  outputs: GenerationRaw[];
+  // The server build passes the data (getStaticProps); the browser build gets
+  // it from the API, so the props are optional.
+  outputs?: GenerationRaw[];
   isFavorites?: boolean;
 }
 
+// The browser build has no props: the data comes from the API. The empty
+// list must be the same array every time, or the effect of useGoData would
+// run on every render.
+const NO_OUTPUTS: GenerationRaw[] = [];
+
 export default function Home({
-  outputs: staticOutputs,
-  isFavorites = false,
+  outputs: staticOutputs = NO_OUTPUTS,
+  isFavorites: propIsFavorites,
 }: Props) {
   const { query } = useRouter();
   const name = typeof query.name === "string" ? query.name : "";
+  // The server build gets the flag from getStaticProps; the browser reads it
+  // from the URL.
+  const isFavorites = propIsFavorites ?? name === "favorites";
   // With the Go proxy's data-outputs claim on, the list comes from Go;
   // otherwise (and if the request fails) the getStaticProps value is shown.
   const outputs = useGoData<GenerationRaw[]>(

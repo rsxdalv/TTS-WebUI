@@ -37,7 +37,18 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-$MICROMAMBA_EXE run -p ./installer_files/env python server.py
+LAUNCHER=""
+case "$(uname -s)" in Darwin) OS=macos ;; *) OS=linux ;; esac
+case "$(uname -m)" in arm64|aarch64) ARCH=arm64 ;; *) ARCH=amd64 ;; esac
+for candidate in "./tts-webui" "./tts-webui-$OS-$ARCH"; do
+    if [ -x "$candidate" ]; then LAUNCHER="$candidate"; break; fi
+done
+if [ -z "$LAUNCHER" ]; then
+    echo "The launcher was not found in . (tts-webui or tts-webui-$OS-$ARCH)."
+    echo "Download the TTS WebUI zip again (it contains the launchers) or build it: cd core && go build -o ../tts-webui ./cmd/tts-webui"
+    exit 1
+fi
+"$LAUNCHER" launch --start
 if [ $? -ne 0 ]; then
     echo "Failed to start the app, exiting..."
     exit 1

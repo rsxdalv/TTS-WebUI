@@ -1,7 +1,7 @@
 from typing import Any
 
-from tts_webui.config._save_config import _save_config
 from tts_webui.config.config import config
+from tts_webui.core_bridge import bridge
 
 
 def get_config_value(namespace: str, key: str, default: Any = None) -> Any:
@@ -28,7 +28,7 @@ def get_config_value(namespace: str, key: str, default: Any = None) -> Any:
 
 def set_config_value(namespace: str, key: str, value: Any) -> None:
     """
-    Safely set a value in config with namespace support and save to disk.
+    Safely set a value in config with namespace support and save it through the Go core.
 
     Args:
         namespace: The namespace (section) in config
@@ -38,9 +38,9 @@ def set_config_value(namespace: str, key: str, value: Any) -> None:
     Returns:
         None
     """
-    if namespace not in config:
+    bridge.config.set_value(namespace, key, value)
+
+    # Go wrote the file; keep this process's view (get_config_value) in step.
+    if not isinstance(config.get(namespace), dict):
         config[namespace] = {}
-
     config[namespace][key] = value
-
-    _save_config(config)

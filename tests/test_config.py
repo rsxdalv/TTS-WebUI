@@ -90,8 +90,11 @@ class TestConfigUtils:
     def test_set_config_value(self, mock_config):
         """Test setting a config value."""
         with patch("tts_webui.config.config_utils.config", mock_config):
-            with patch("tts_webui.config.config_utils._save_config"):
+            with patch("tts_webui.config.config_utils.bridge") as bridge:
                 set_config_value("test_extension", "new_key", "new_value")
+                bridge.config.set_value.assert_called_once_with(
+                    "test_extension", "new_key", "new_value"
+                )
                 assert mock_config["test_extension"]["new_key"] == "new_value"
 
 
@@ -159,13 +162,10 @@ class TestSaveConfig:
         keys = ["server_port", "server_name", "inbrowser"]
         inputs = [7770, "127.0.0.1", True]
 
-        # Need to create a basic config first
-        with open("config.json", "w") as f:
-            json.dump({"gradio_interface_options": {}}, f)
+        with patch("tts_webui.config.save_config_gradio.bridge") as bridge:
+            save_config_gradio(keys, inputs)
 
-        save_config_gradio(keys, inputs)
-
-        with open("config.json") as f:
-            result = json.load(f)
-
-        assert "gradio_interface_options" in result
+        bridge.config.replace_section.assert_called_once_with(
+            "gradio_interface_options",
+            {"server_port": 7770, "server_name": "127.0.0.1", "inbrowser": True},
+        )

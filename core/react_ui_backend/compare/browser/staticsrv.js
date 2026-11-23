@@ -1,13 +1,14 @@
 // Reference implementation of the static export serving contract
 // (documentation/core-rewrite/CONTRACTS.md, "Static export"). Test tool only:
 // the real server is Go (task S2). `node staticsrv.js <out dir> <port> [<public dir>]`.
-// Routes unknown to the export (everything under /api/) answer 404 here; put the
-// Go proxy in front of it (gosrv -next 127.0.0.1:<port>) to get them.
+// Paths under /api/ answer 404 here; put the Go proxy in front of it to get
+// the claimed routes.
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
-const [out, port, pub] = [process.argv[2], Number(process.argv[3]), process.argv[4]];
+// Resolved, so the "inside the folder" check compares like with like on Windows.
+const [out, port, pub] = [path.resolve(process.argv[2]), Number(process.argv[3]), process.argv[4] && path.resolve(process.argv[4])];
 const types = { ".html": "text/html; charset=utf-8", ".js": "application/javascript; charset=UTF-8", ".css": "text/css; charset=UTF-8", ".json": "application/json", ".ico": "image/x-icon", ".txt": "text/plain; charset=utf-8", ".woff2": "font/woff2" };
 
 const fileIn = (root, rel) => {
@@ -16,14 +17,16 @@ const fileIn = (root, rel) => {
   try { return fs.statSync(f).isFile() ? f : null; } catch { return null; }
 };
 
-// URL path -> file in the export, as in the contract.
+// URL path -> file in the export, as in the contract (single-page app): a file
+// of the export under its own name, else the entry page for a route, else 404
+// for a path with a file extension.
 function resolve(p) {
   if (p === "/") return fileIn(out, "index.html");
   const rel = p.replace(/\/+$/, "");
-  const data = /^(\/_next\/data\/[^/]+)\/extensions\/[^/]+\.json$/.exec(rel);
-  return fileIn(out, rel) || fileIn(out, rel + ".html") || fileIn(out, rel + "/index.html") ||
-    (/^\/extensions\/[^/]+$/.test(rel) ? fileIn(out, "extensions/_shell.html") : null) ||
-    (data ? fileIn(out, data[1] + "/extensions/_shell.json") : null);
+  const file = fileIn(out, rel);
+  if (file) return file;
+  if (/\.[^/]*$/.test(path.posix.basename(rel))) return null;
+  return fileIn(out, "index.html");
 }
 
 http.createServer((req, res) => {
@@ -33,13 +36,12 @@ http.createServer((req, res) => {
   let f = pub && p.startsWith("/file-input-cache/") ? fileIn(pub, p.slice(1)) : null;
   let status = 200;
   if (!f) f = resolve(p);
-  if (!f) { f = fileIn(out, "404.html"); status = 404; }
-  const immutable = p.startsWith("/_next/static/");
+  if (!f) { res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate" }).end("404 page not found\n"); return; }
+  const immutable = p.startsWith("/assets/");
   const html = f.endsWith(".html");
   res.writeHead(status, {
     "Content-Type": types[path.extname(f)] || "application/octet-stream",
-    "Cache-Control": status === 404 ? "private, no-cache, no-store, max-age=0, must-revalidate"
-      : immutable ? "public, max-age=31536000, immutable" : html || p.startsWith("/_next/data/") ? "s-maxage=31536000" : "public, max-age=0",
+    "Cache-Control": immutable ? "public, max-age=31536000, immutable" : html ? "s-maxage=31536000" : "public, max-age=0",
   });
   fs.createReadStream(f).pipe(res);
 }).listen(port, "127.0.0.1");

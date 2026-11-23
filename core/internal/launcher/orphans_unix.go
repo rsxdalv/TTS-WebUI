@@ -38,19 +38,6 @@ func recordPath(root paths.Root) string {
 	return filepath.Join(root.InstallerFiles(), "app-processes.json")
 }
 
-// recordProcesses writes the process groups of the running app.
-func (s *Supervisor) recordProcesses() {
-	s.mu.Lock()
-	var refs []appProc
-	for _, ap := range s.procs {
-		if ap.proc != nil {
-			refs = append(refs, appProc{Name: ap.name, PID: ap.proc.Pid()})
-		}
-	}
-	s.mu.Unlock()
-	recordGroups(s.root, refs)
-}
-
 // recordGroups writes the record for the given app processes.
 func recordGroups(root paths.Root, procs []appProc) {
 	rec := appRecord{Root: root.Dir()}
@@ -70,9 +57,7 @@ func recordGroups(root paths.Root, procs []appProc) {
 	}
 }
 
-// clearRecord removes the record after a clean Stop.
-func (s *Supervisor) clearRecord() { clearRecordFor(s.root) }
-
+// clearRecordFor removes the record after a clean Stop.
 func clearRecordFor(root paths.Root) { _ = os.Remove(recordPath(root)) }
 
 // sweepOrphans stops processes a killed launcher left running for this

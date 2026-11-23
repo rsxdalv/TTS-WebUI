@@ -1,7 +1,7 @@
 from typing import Any, List
 
-from tts_webui.config._save_config import _save_config
 from tts_webui.config.config import config
+from tts_webui.core_bridge import bridge
 
 
 def _convert_empty_strings_to_none(dictionary: dict):
@@ -31,7 +31,8 @@ def _generate_gradio_settings(keys: List[str], inputs: List[Any]):
 
 
 def save_config_gradio(keys: List[str], inputs: List[Any]):
-    config["gradio_interface_options"] = _generate_gradio_settings(keys, inputs)
-    _save_config(config)
+    options = _generate_gradio_settings(keys, inputs)
+    bridge.config.replace_section("gradio_interface_options", options)
+    config["gradio_interface_options"] = options
 
     return f"Saved {config['gradio_interface_options']}"

@@ -52,6 +52,45 @@ Then:
    types (`%v`, `%+v`, `%#v`, `String()`) redacts the password; read
    `.Password` explicitly only where it is needed. Never put it in env or logs.
 
+## Writing `.env` (`writeenv.go`, `envapi.go`)
+
+Go writes `.env`, through one function (`writeEnvFile`, one mutex): `EnsureEnv`
+creates it when missing (exclusive create, as before) and `SaveModelLocations`
+replaces it (temp file and rename). The only Python caller that rewrote it was
+the Model Location Settings tab (`write_env(generate_env(4 values))`); it now
+calls `bridge.env.save_model_locations(huggingface_hub_cache, hf_home,
+torch_home, xdg_cache_home)` -> `POST /api/env/save-model-locations`, and Go
+writes the same bytes (default text, CRLF on Windows, an empty value written as
+`# NAME=`; `TestSaveModelLocationsWritesWhatWriteEnvWrote` compares it with
+`EnsureEnv`'s generator, and the completion pass compared it with the real
+`write_env(generate_env(...))`). `os.environ` of the running process is still set
+by the tab; the restart the tab asks for applies the file.
+
+- **`.env.user` has no writer.** Nothing in Python or React writes it (it is the
+  file users edit by hand), so there are no set/many/remove operations for it;
+  see the decision card LAB-27 (the question is whether the tab should write
+  `.env.user` instead).
+- Encoding: Go writes UTF-8. The old `write_env` used the locale encoding: a
+  value with a character outside cp1252 raised `UnicodeEncodeError` (the save
+  failed), and `é` was written as one cp1252 byte, which the UTF-8 reader of
+  `LoadEnv` rejects. Checked against the real `write_env(generate_env(...))`
+  for five ASCII cases (all four set, all empty, two set, `#` `=` and spaces,
+  a 300-character path): identical bytes (CRLF on Windows), and `.env.user` is
+  not touched.
+- The file is replaced as a whole, as before: a hand edit of `.env` is lost
+  (the header says so; it belongs in `.env.user`).
+- Refused with 400: a body that is not one JSON object, unknown or missing
+  fields, non-string values, a value with a control character (a line break would
+  add a variable to the file every child loads; the old code wrote it as given)
+  or longer than 4096 bytes. Loopback + token only. Values are never logged.
+- Python's `dotenv_manager/writer.py` keeps `generate_env` and `write_env` only
+  for `init.py` on the legacy `server.py` path (it creates a missing `.env`;
+  the Go path has created it already). The unused `env_store.json` helpers
+  (`update_dotenv`, `delete_namespace`, ...) are deleted.
+- `core_server.main()` no longer calls `dotenv_manager.init.init()`: the gradio
+  child's environment is already the merged launcher env + `.env` + `.env.user`
+  (`gradioEnv`), so the two `load_dotenv` calls only repeated Go's work.
+
 ## Which `.env` is loaded
 
 `load_dotenv()` without a path calls `find_dotenv()`, which starts at the
@@ -134,22 +173,28 @@ installer_files\env\python.exe core\internal\serverpy\appenv\testdata\gen_golden
 ```
 (it writes only to a temp dir and the output path).
 
-## Wired in (LAB-13.2, `TTS_GO_SERVERPY=1`)
+## Wired in (LAB-13.2)
+
+Since step 29 this is the only path: `server.py`, its Python proxy tree and the
+`TTS_GO_SERVERPY=0` rollback are deleted. `testdata/gen_golden.py` read the real
+`server.py`, `dotenv_manager`, `print_gradio_options.py` and `gradio_proxy_tree`,
+so `golden.json` can no longer be regenerated; it stays as the record of what
+those files did, and the tests keep checking the Go port against it.
 
 `launcher/serverpy.go` `startServerPy` now does, before any child starts:
 `EnsureFolders` -> `EnsureEnv(root, baseEnv)` (logs when it creates `.env`) ->
 `LoadEnvReport` -> `Plan`. The merged environment (`rep.Env`: launcher env +
 `.env` + `.env.user`) is the extprocs `BaseEnv` and the start of the gradio
-child's env (`serverPy.gradioEnv`, followed by `TTS_CORE_*`/`TTS_GRADIO_*`).
+child's env (`serverPy.gradioEnv`, followed by `TTS_CORE_*`; the `TTS_GRADIO_*` variables
+were replaced by the launch options API, see `launchopts`).
 
 On the Python side `server_core.py` installs the bridges and calls
 `tts_webui.core_server.main()` instead of running `server.py`. `core_server`
-does only: `dotenv_manager.init.init()` (harmless after Go; it re-loads the
-same files), torch-load patch, `suppress_warnings`, config, the auth/legacy
-option clean-up from `upgrade_gradio_options`, `main_block`, and
-`demo.queue().launch(...)` on `TTS_GRADIO_HOST:TTS_GRADIO_PORT` with
-`inbrowser=False`. No proxy tree, React, database or browser. `server.py` is
-unchanged (legacy path).
+does only: the torch-load patch, `suppress_warnings`, config, the printing of
+the launch options Go answers (`launchopts`), `main_block`, and
+`demo.queue().launch(**options)`. It no longer runs `dotenv_manager.init.init()`
+(the environment is already merged) nor builds the options itself. No proxy tree,
+React, database or browser. `server.py` is unchanged (legacy path).
 
 Verified: a `.env` generated by Go is byte-identical to `write_env(generate_env())`.
 Remaining stray output: `Gradio Proxy Tree initialized on ...:7769` is printed

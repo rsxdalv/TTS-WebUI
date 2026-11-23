@@ -211,7 +211,7 @@ func TestRootUnix(t *testing.T) {
 	d := fr.desc()
 	mamba := filepath.Join(root, "installer_files", "mamba", "micromamba")
 	n := len(d)
-	if d[n-2] != mamba+" run -p ./installer_files/env node ./installer_scripts/init_app.js" || d[n-1] != mamba+" run -p ./installer_files/env python server.py" {
+	if d[n-2] != mamba+" run -p ./installer_files/env node ./installer_scripts/init_app.js" || d[n-1] != filepath.Join(root, "tts-webui")+" launch --start" {
 		t.Fatalf("commands: %q", d)
 	}
 	if v, ok := mambaEnvOf(fr.cmds[n-1], "GCC_AVAILABLE"); !ok || v != "F" {

@@ -1,8 +1,9 @@
 package react_ui_backend
 
 // Serving the React UI static export (S2), following CONTRACTS.md section 10:
-// react-ui/out holds the export, and react-ui/public is served live for files
-// the export lacks, so uploads in file-input-cache are reachable at once.
+// react-ui/out holds the single-page app (Vite), and react-ui/public is served
+// live for files the export lacks, so uploads in file-input-cache are reachable
+// at once.
 
 import (
 	"compress/gzip"
@@ -11,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -47,11 +47,6 @@ const (
 	cachePage      = "s-maxage=31536000"
 	cacheImmutable = "public, max-age=31536000, immutable"
 	cacheNotFound  = "private, no-cache, no-store, max-age=0, must-revalidate"
-)
-
-var (
-	extensionPage = regexp.MustCompile(`^/extensions/[^/]+$`)
-	extensionData = regexp.MustCompile(`^/_next/data/([^/]+)/extensions/[^/]+\.json$`)
 )
 
 func (s *staticExport) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -98,44 +93,37 @@ func (s *staticExport) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Rules 3 and 4: a file of the export.
+	// Rule 3: the app's entry page.
 	if p == "/" {
 		s.page(w, r, filepath.Join(s.out, "index.html"), http.StatusOK)
 		return
 	}
+
+	// Rule 4: a file of the export under its own name.
 	if file, st, ok := s.file(s.out, p); ok {
 		s.exportFile(w, r, p, file, st)
 		return
 	}
-	for _, candidate := range []string{p + ".html", p + "/index.html"} {
-		if file, _, ok := s.file(s.out, candidate); ok {
-			s.page(w, r, file, http.StatusOK)
-			return
-		}
-	}
 
-	// Rule 2, second half: any other file of public the export lacks.
+	// Rule 5: any other file of public the export lacks.
 	if file, st, ok := s.file(s.public, p); ok {
 		serveSendStatic(w, r, file, st)
 		return
 	}
 
-	// Rules 5 and 6: the extension shell serves any extension name.
-	if extensionPage.MatchString(p) {
-		if file, _, ok := s.file(s.out, "/extensions/_shell.html"); ok {
-			s.page(w, r, file, http.StatusOK)
-			return
-		}
+	// Rule 6: a path with a file extension is a missing asset, so 404. Any
+	// other path is a route of the app: the entry page, and the app renders
+	// its own not-found view for a route it does not know.
+	if hasExtension(p) {
+		s.notFound(w, r)
+		return
 	}
-	if m := extensionData.FindStringSubmatch(p); m != nil {
-		if file, _, ok := s.file(s.out, "/_next/data/"+m[1]+"/extensions/_shell.json"); ok {
-			s.page(w, r, file, http.StatusOK)
-			return
-		}
-	}
+	s.page(w, r, filepath.Join(s.out, "index.html"), http.StatusOK)
+}
 
-	// Rule 7.
-	s.notFound(w, r)
+// hasExtension reports whether the last segment of p has a dot.
+func hasExtension(p string) bool {
+	return strings.Contains(p[strings.LastIndex(p, "/")+1:], ".")
 }
 
 // safeExportPath applies rule 1 to the raw and the decoded path.
@@ -180,12 +168,14 @@ func (s *staticExport) file(dir, urlPath string) (string, os.FileInfo, bool) {
 	return full, st, true
 }
 
-// exportFile serves a file of the export found under its own name.
+// exportFile serves a file of the export found under its own name. The build
+// names its hashed bundles under /assets/, which never change, so they are
+// immutable.
 func (s *staticExport) exportFile(w http.ResponseWriter, r *http.Request, p, file string, st os.FileInfo) {
 	switch {
-	case strings.HasPrefix(p, "/_next/static/"):
+	case strings.HasPrefix(p, "/assets/"):
 		serveSendStatic(cacheControlWriter{w, cacheImmutable}, r, file, st)
-	case strings.HasPrefix(p, "/_next/data/") || strings.HasSuffix(p, ".html"):
+	case strings.HasSuffix(p, ".html"):
 		s.page(w, r, file, http.StatusOK)
 	default:
 		serveSendStatic(w, r, file, st)
@@ -193,17 +183,12 @@ func (s *staticExport) exportFile(w http.ResponseWriter, r *http.Request, p, fil
 }
 
 func (s *staticExport) notFound(w http.ResponseWriter, r *http.Request) {
-	file := filepath.Join(s.out, "404.html")
-	if _, err := os.Stat(file); err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	s.page(w, r, file, http.StatusNotFound)
+	w.Header().Set("Cache-Control", cacheNotFound)
+	http.NotFound(w, r)
 }
 
-// page sends an HTML page or a data JSON file as `next start` does: a strong
-// ETag from Next's hash, 304 for a matching If-None-Match, and compression from
-// 1 KB up.
+// page sends the app's HTML page as `next start` did: a strong ETag, 304 for a
+// matching If-None-Match, and compression from 1 KB up.
 func (s *staticExport) page(w http.ResponseWriter, r *http.Request, file string, status int) {
 	data, err := os.ReadFile(file)
 	if err != nil {
@@ -211,11 +196,7 @@ func (s *staticExport) page(w http.ResponseWriter, r *http.Request, file string,
 		return
 	}
 	h := w.Header()
-	if strings.HasSuffix(file, ".json") {
-		h.Set("Content-Type", "application/json; charset=utf-8")
-	} else {
-		h.Set("Content-Type", "text/html; charset=utf-8")
-	}
+	h.Set("Content-Type", "text/html; charset=utf-8")
 	h.Set("Vary", "Accept-Encoding")
 	if status == http.StatusNotFound {
 		h.Set("Cache-Control", cacheNotFound)

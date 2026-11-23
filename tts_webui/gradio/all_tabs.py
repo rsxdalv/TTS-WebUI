@@ -37,4 +37,4 @@ def all_tabs(config):
                 with gr.Tab("Main"):
                     gr.Markdown(f"## {name}")
                     gr.Markdown("Select a tab to start.")
-            handle_extension_class(extension_class, config)
+            handle_extension_class(extension_class)

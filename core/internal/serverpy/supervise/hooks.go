@@ -100,6 +100,20 @@ func (c *closingRunner) Stop() error {
 	return err
 }
 
+// Subscribe passes the process's live output through the wrapper, which is what
+// SubscribeLogs asks for. A runner that cannot stream gives an already closed
+// channel.
+func (c *closingRunner) Subscribe() (<-chan string, func()) {
+	if s, ok := c.runner.(interface {
+		Subscribe() (<-chan string, func())
+	}); ok {
+		return s.Subscribe()
+	}
+	ch := make(chan string)
+	close(ch)
+	return ch, func() {}
+}
+
 func (c *closingRunner) Pid() int {
 	if p, ok := c.runner.(pidder); ok {
 		return p.Pid()

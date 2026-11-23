@@ -122,15 +122,17 @@ node installer_scripts/js/applyDatabaseConfig.js
 
 ### 5. Start Server
 
-Run the server:
+Get the Go launcher (the installer zip ships it as `tts-webui.exe` and `tts-webui-<linux|macos>-<amd64|arm64>`; or build it with Go 1.27) and run the server with the Python environment you installed into:
 
 ```bash
-python server.py
-# or
-python server.py --no-react
-# or
-python server.py --no-react --no-database
+cd core && go build -o ../tts-webui ./cmd/tts-webui && cd ..
+./tts-webui launch --system-python --start
+# or, without the React UI
+./tts-webui launch --system-python --start --no-react
 ```
+
+Other options: `--share` (public Gradio link), `--docker` (listen on 0.0.0.0:7770), `--no-browser`, `--port N` (the launcher's own page, default 7700).
+Extensions can be installed, updated and enabled or disabled with the app stopped: run `./tts-webui launch --system-python` and open its Extensions page.
 
 ### 6. (Optional) Default Extensions
 
@@ -188,8 +190,8 @@ If you want to work on the React UI:
    npm start
    ```
 
-4. In a separate terminal, run the Python server:
+4. In a separate terminal, run the app through the launcher:
    ```bash
-   python server.py
+   ./tts-webui launch --system-python --start --no-react
    ```
    or use the `start_tts_webui` script

@@ -33,6 +33,18 @@ const (
 	modeNextDirect
 )
 
+// reactPrep runs the React UI recover and build steps before the app starts.
+type reactPrep struct {
+	root         paths.Root
+	systemPython bool // run node tools from PATH, not the micromamba env
+	// runTool, when set, replaces the real tool runner (tests).
+	runTool func(ctx context.Context, name string, args ...string) error
+}
+
+func newReactPrep(root paths.Root, systemPython bool) *reactPrep {
+	return &reactPrep{root: root, systemPython: systemPython}
+}
+
 // reactUIPlan is what Start must do before starting the processes.
 type reactUIPlan struct {
 	mode    reactUIMode
@@ -212,7 +224,7 @@ func planReactUI(root paths.Root, sw switches.Set) (reactUIPlan, error) {
 
 // prepareReactUI runs the recover and build steps the plan asks for and
 // returns the final plan.
-func (s *Supervisor) prepareReactUI(ctx context.Context, sw switches.Set) (reactUIPlan, error) {
+func (s *reactPrep) prepareReactUI(ctx context.Context, sw switches.Set) (reactUIPlan, error) {
 	plan, err := planReactUI(s.root, sw)
 	if err != nil {
 		return plan, err
@@ -295,20 +307,26 @@ func hasBuildStaticScript(root paths.Root) bool {
 }
 
 // tool returns the function that runs react-ui tools; tests replace it.
-func (s *Supervisor) tool() func(ctx context.Context, name string, args ...string) error {
+func (s *reactPrep) tool() func(ctx context.Context, name string, args ...string) error {
 	if s.runTool != nil {
 		return s.runTool
 	}
 	return s.runReactUITool
 }
 
-// runReactUITool runs a node tool in react-ui inside the conda environment and
-// logs its output.
-func (s *Supervisor) runReactUITool(ctx context.Context, name string, args ...string) error {
-	full := append([]string{"-p", installEnvPath(s.root), "run", name}, args...)
+// runReactUITool runs a node tool in react-ui, inside the conda environment (or
+// straight from PATH with system python), and logs its output.
+func (s *reactPrep) runReactUITool(ctx context.Context, name string, args ...string) error {
 	p := &procs.Proc{}
 	dir := filepath.Join(s.root.Dir(), "react-ui")
-	if err := p.Start(ctx, micromambaPath(s.root), full, dir, mambaEnv(s.root)); err != nil {
+	var err error
+	if s.systemPython {
+		err = p.Start(ctx, name, args, dir, os.Environ())
+	} else {
+		full := append([]string{"-p", installEnvPath(s.root), "run", name}, args...)
+		err = p.Start(ctx, micromambaPath(s.root), full, dir, mambaEnv(s.root))
+	}
+	if err != nil {
 		return err
 	}
 	lines, unsub := p.Subscribe()

@@ -12,28 +12,23 @@ import (
 	"testing"
 )
 
-// exportFixture writes a small export and public folder.
+// exportIndex is the app's entry page. It is larger than 1 KB so that the
+// compression test has something to compress.
+var exportIndex = "<html>home" + strings.Repeat("<p>filler</p>", 200) + "</html>"
+
+// exportFixture writes a small single-page export and public folder.
 func exportFixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	big := strings.Repeat("<p>filler</p>", 200)
 	files := map[string]string{
-		"react-ui/out/index.html":                                "<html>home</html>",
-		"react-ui/out/tools.html":                                "<html>tools</html>",
-		"react-ui/out/tools/gpu_info.html":                       "<html>gpu</html>",
-		"react-ui/out/text-to-speech/mms.html":                   "<html>mms" + big + "</html>",
-		"react-ui/out/404.html":                                  "<html>not found</html>",
-		"react-ui/out/favicon.ico":                               "ICO",
-		"react-ui/out/_tts-export.json":                          `{"buildId":"B1"}`,
-		"react-ui/out/_next/static/chunks/a.js":                  "console.log(1)",
-		"react-ui/out/_next/data/B1/outputs/outputs.json":        `{"pageProps":{},"__N_SSG":true}`,
-		"react-ui/out/extensions/_shell.html":                    "<html>shell</html>",
-		"react-ui/out/extensions/huggingface_cache_manager.html": "<html>hf</html>",
-		"react-ui/out/_next/data/B1/extensions/_shell.json":      `{"pageProps":{"name":"_shell"}}`,
-		"react-ui/out/.hidden":                                   "hidden",
-		"react-ui/public/robots.txt":                             "robots",
-		"react-ui/public/file-input-cache/.secret":               "secret",
-		"react-ui/public/.env":                                   "secret",
+		"react-ui/out/index.html":                  exportIndex,
+		"react-ui/out/assets/a.js":                 "console.log(1)",
+		"react-ui/out/favicon.ico":                 "ICO",
+		"react-ui/out/_tts-export.json":            `{"commit":"C1"}`,
+		"react-ui/out/.hidden":                     "hidden",
+		"react-ui/public/robots.txt":               "robots",
+		"react-ui/public/file-input-cache/.secret": "secret",
+		"react-ui/public/.env":                     "secret",
 	}
 	for name, content := range files {
 		full := filepath.Join(root, filepath.FromSlash(name))
@@ -64,6 +59,9 @@ func body(t *testing.T, resp *http.Response) string {
 	return string(b)
 }
 
+// notFoundBody is what http.NotFound writes.
+const notFoundBody = "404 page not found\n"
+
 func TestHasExport(t *testing.T) {
 	root := exportFixture(t)
 	if !HasExport(root) {
@@ -87,35 +85,39 @@ func TestStaticExportMapping(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	const html = "text/html; charset=utf-8"
 	cases := []struct {
 		path, want   string
 		status       int
 		cacheControl string
 		contentType  string
 	}{
-		{"/", "<html>home</html>", 200, cachePage, "text/html; charset=utf-8"},
-		{"/tools", "<html>tools</html>", 200, cachePage, "text/html; charset=utf-8"},
-		{"/tools/gpu_info", "<html>gpu</html>", 200, cachePage, "text/html; charset=utf-8"},
-		{"/_next/static/chunks/a.js", "console.log(1)", 200, cacheImmutable, "application/javascript; charset=UTF-8"},
-		{"/_next/data/B1/outputs/outputs.json", `{"pageProps":{},"__N_SSG":true}`, 200, cachePage, "application/json; charset=utf-8"},
+		// Routes of the app: every one gets the entry page, so a reload works.
+		{"/", exportIndex, 200, cachePage, html},
+		{"/index.html", exportIndex, 200, cachePage, html},
+		{"/tools", exportIndex, 200, cachePage, html},
+		{"/tools/gpu_info", exportIndex, 200, cachePage, html},
+		{"/outputs/favorites", exportIndex, 200, cachePage, html},
+		{"/extensions/my_new_extension", exportIndex, 200, cachePage, html},
+		{"/extensions/a/b", exportIndex, 200, cachePage, html},
+		{"/nope", exportIndex, 200, cachePage, html},
+		// Files of the export.
+		{"/assets/a.js", "console.log(1)", 200, cacheImmutable, "application/javascript; charset=UTF-8"},
 		{"/favicon.ico", "ICO", 200, "public, max-age=0", "image/x-icon"},
-		{"/extensions/my_new_extension", "<html>shell</html>", 200, cachePage, ""},
-		{"/extensions/huggingface_cache_manager", "<html>hf</html>", 200, cachePage, ""},
-		{"/_next/data/B1/extensions/my_new_extension.json", `{"pageProps":{"name":"_shell"}}`, 200, cachePage, ""},
 		{"/file-input-cache/up.wav", "RIFF", 200, "public, max-age=0", "audio/wav"},
 		{"/robots.txt", "robots", 200, "public, max-age=0", ""},
-		{"/nope", "<html>not found</html>", 404, cacheNotFound, "text/html; charset=utf-8"},
-		{"/outputs/other", "<html>not found</html>", 404, cacheNotFound, ""},
-		{"/extensions/a/b", "<html>not found</html>", 404, "", ""},
-		{"/file-input-cache/missing.wav", "<html>not found</html>", 404, "", ""},
+		// A missing file (a path with an extension) is a 404, not the entry page.
+		{"/missing.js", notFoundBody, 404, cacheNotFound, ""},
+		{"/assets/missing.js", notFoundBody, 404, cacheNotFound, ""},
+		{"/file-input-cache/missing.wav", notFoundBody, 404, cacheNotFound, ""},
 		// Rule 1: dotfiles and odd paths never reach a file.
-		{"/.hidden", "<html>not found</html>", 404, "", ""},
-		{"/.env", "<html>not found</html>", 404, "", ""},
-		{"/file-input-cache/.secret", "<html>not found</html>", 404, "", ""},
-		{"/%2ehidden", "<html>not found</html>", 404, "", ""},
-		{"/x/..%2f.hidden", "<html>not found</html>", 404, "", ""},
-		{"/tools%5cgpu_info", "<html>not found</html>", 404, "", ""},
-		{"/a%00b", "<html>not found</html>", 404, "", ""},
+		{"/.hidden", notFoundBody, 404, cacheNotFound, ""},
+		{"/.env", notFoundBody, 404, cacheNotFound, ""},
+		{"/file-input-cache/.secret", notFoundBody, 404, cacheNotFound, ""},
+		{"/%2ehidden", notFoundBody, 404, cacheNotFound, ""},
+		{"/x/..%2f.hidden", notFoundBody, 404, cacheNotFound, ""},
+		{"/tools%5cgpu_info", notFoundBody, 404, cacheNotFound, ""},
+		{"/a%00b", notFoundBody, 404, cacheNotFound, ""},
 	}
 	for _, c := range cases {
 		resp := request(t, "GET", front+c.path, nil, nil)
@@ -165,21 +167,21 @@ func TestStaticExportETagAndCompression(t *testing.T) {
 
 	resp := request(t, "GET", front+"/tools", nil, nil)
 	etag := resp.Header.Get("ETag")
-	if etag != nextETag("<html>tools</html>") {
+	if etag != nextETag(exportIndex) {
 		t.Fatalf("ETag %q", etag)
 	}
 	if resp := request(t, "GET", front+"/tools", nil, map[string]string{"If-None-Match": etag}); resp.StatusCode != http.StatusNotModified {
 		t.Fatalf("If-None-Match: %d", resp.StatusCode)
 	}
 
-	resp = request(t, "GET", front+"/_next/static/chunks/a.js", nil, nil)
+	resp = request(t, "GET", front+"/assets/a.js", nil, nil)
 	weak := resp.Header.Get("ETag")
-	resp = request(t, "GET", front+"/_next/static/chunks/a.js", nil, map[string]string{"If-None-Match": weak})
+	resp = request(t, "GET", front+"/assets/a.js", nil, map[string]string{"If-None-Match": weak})
 	if resp.StatusCode != http.StatusNotModified || resp.Header.Get("Cache-Control") != cacheImmutable {
 		t.Fatalf("static 304: %d %q", resp.StatusCode, resp.Header.Get("Cache-Control"))
 	}
 
-	req, _ := http.NewRequest("GET", front+"/text-to-speech/mms", nil)
+	req, _ := http.NewRequest("GET", front+"/tools", nil)
 	req.Host = "127.0.0.1:31050"
 	req.Header.Set("Accept-Encoding", "gzip")
 	gz, err := http.DefaultTransport.RoundTrip(req)
@@ -195,7 +197,7 @@ func TestStaticExportETagAndCompression(t *testing.T) {
 		t.Fatal(err)
 	}
 	plain, _ := io.ReadAll(zr)
-	if !bytes.HasPrefix(plain, []byte("<html>mms")) {
+	if !bytes.Equal(plain, []byte(exportIndex)) {
 		t.Fatalf("decompressed %q", plain[:20])
 	}
 }

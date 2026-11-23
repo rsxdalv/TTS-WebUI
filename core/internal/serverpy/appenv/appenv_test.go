@@ -420,3 +420,24 @@ func (p *portVal) UnmarshalJSON(b []byte) error {
 	*p = portVal(n)
 	return err
 }
+
+func TestFlagsArgsRoundTrip(t *testing.T) {
+	for _, args := range [][]string{
+		nil,
+		{"--no-react"},
+		{"--no-react", "--share", "--docker", "--no-tree-proxy"},
+	} {
+		if got := ParseFlags(args).Args(); strings.Join(got, " ") != strings.Join(args, " ") {
+			t.Errorf("Args(ParseFlags(%v)) = %v", args, got)
+		}
+	}
+}
+
+func TestPublicPortForDocker(t *testing.T) {
+	if got := PublicPortFor(9000, Flags{}); got != 9000 {
+		t.Errorf("plain = %d, want the config port", got)
+	}
+	if got := PublicPortFor(9000, Flags{Docker: true}); got != DockerPublicPort {
+		t.Errorf("docker = %d, want %d", got, DockerPublicPort)
+	}
+}

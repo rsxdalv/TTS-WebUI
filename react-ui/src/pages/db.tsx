@@ -1,6 +1,6 @@
 import { sql } from "../lib/sql";
 
-export default function DB({ generations }: { generations: any[] }) {
+export default function DB({ generations = [] }: { generations?: any[] }) {
   // generations = await sql`
   // SELECT (1, 2, 3)
   //   `;

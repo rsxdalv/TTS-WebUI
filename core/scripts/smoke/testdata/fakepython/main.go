@@ -1,7 +1,7 @@
 // fakepython is a stub Python binary used in the M1 smoke test.
 // It serves HTTP on 127.0.0.1:7770 (the hard-coded Gradio port that
 // Supervisor.AppLink() polls). If the port is already in use (e.g. a second
-// instance started for the extension manager), it exits 0 quietly.
+// instance), it exits 0 quietly.
 // It prints one log line to stdout so the SSE stream test can assert a log line.
 package main
 

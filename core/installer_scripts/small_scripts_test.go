@@ -2,6 +2,7 @@ package installer_scripts
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -45,12 +46,13 @@ func TestInitAppRunsNodeActivated(t *testing.T) {
 }
 
 func TestStartAppWindowsExitsZeroAfterPause(t *testing.T) {
-	s, r, lines := smallStep(map[string]int{"python": 9})
+	launcher := filepath.Join("x", "root", "tts-webui.exe")
+	s, r, lines := smallStep(map[string]int{launcher: 9})
 	code, err := startApp(context.Background(), s, "windows")
 	if code != 0 || err != nil {
 		t.Fatalf("code=%d err=%v (pause resets ERRORLEVEL, so python's 9 is not returned)", code, err)
 	}
-	if r.names() != "python server.py | cmd /k " || !r.cmds[0].Activated || !r.cmds[1].Activated {
+	if r.names() != launcher+" launch --start | cmd /k " || r.cmds[0].Activated || !r.cmds[1].Activated {
 		t.Fatalf("commands: %q", r.names())
 	}
 	want := `""|""|App exitted or crashed.|Starting command prompt for user to run commands in case of failure...|""|Press any key to continue . . . `
@@ -61,9 +63,10 @@ func TestStartAppWindowsExitsZeroAfterPause(t *testing.T) {
 
 func TestStartAppUnix(t *testing.T) {
 	t.Setenv("SHELL", "/bin/zsh")
+	launcher := filepath.Join("x", "root", "tts-webui")
 	s, r, lines := smallStep(map[string]int{"/bin/zsh": 5})
 	code, _ := startApp(context.Background(), s, "linux")
-	if code != 5 || r.names() != "python server.py | /bin/zsh " {
+	if code != 5 || r.names() != launcher+" launch --start | /bin/zsh " {
 		t.Fatalf("code=%d commands=%q", code, r.names())
 	}
 	if got := strings.Join(*lines, "|"); got != "||App exited or crashed.|Starting shell for user to run commands in case of failure...|" {
@@ -97,26 +100,6 @@ func TestOpenTerminal(t *testing.T) {
 	}
 }
 
-func TestRunExtensionManager(t *testing.T) {
-	s, r, lines := smallStep(map[string]int{"python": 6})
-	code, _ := runExtensionManager(context.Background(), s, "windows")
-	want := `conda --version | node --version | python --version | python .\installer_scripts\tools\extension_manager.py`
-	if code != 0 || r.names() != want {
-		t.Fatalf("code=%d commands=%q", code, r.names())
-	}
-	if got := strings.Join(*lines, "|"); got != "Node|Starting Extension Management UI...|Press any key to continue . . . " {
-		t.Fatalf("log: %q", got)
-	}
-	s, r, lines = smallStep(map[string]int{"python": 6})
-	code, _ = runExtensionManager(context.Background(), s, "linux")
-	if code != 6 || r.names() != "python ./installer_scripts/tools/extension_manager.py" {
-		t.Fatalf("unix code=%d commands=%q", code, r.names())
-	}
-	if got := strings.Join(*lines, "|"); got != "Starting Extension Management UI...|Activating conda environment...|Running Extension server..." {
-		t.Fatalf("unix log: %q", got)
-	}
-}
-
 func TestActivate(t *testing.T) {
 	s, r, _ := smallStep(nil)
 	if code, _ := activate(context.Background(), s, "windows"); code != 0 || !strings.Contains(r.cmds[0].Shell, `activate.bat .\installer_files\env`) {
@@ -125,5 +108,36 @@ func TestActivate(t *testing.T) {
 	s, r, _ = smallStep(map[string]int{"bash": 2})
 	if code, _ := activate(context.Background(), s, "linux"); code != 2 || !strings.Contains(r.cmds[0].Args[1], `$MICROMAMBA_EXE activate -p "$(pwd)/installer_files/env"`) {
 		t.Fatalf("unix: %+v", r.cmds)
+	}
+}
+
+func TestLauncherNamePicksTheBinaryForThisPlatform(t *testing.T) {
+	root := t.TempDir()
+	if got := launcherName(root, "windows", "amd64"); got != "tts-webui.exe" {
+		t.Errorf("windows: %q", got)
+	}
+	// Nothing there: the plain name, so the runner's error says what is missing.
+	if got := launcherName(root, "linux", "amd64"); got != "tts-webui" {
+		t.Errorf("empty root: %q", got)
+	}
+	touch := func(name string) {
+		if err := os.WriteFile(filepath.Join(root, name), nil, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	touch("tts-webui-linux-arm64")
+	touch("tts-webui-macos-arm64")
+	if got := launcherName(root, "linux", "arm64"); got != "tts-webui-linux-arm64" {
+		t.Errorf("linux/arm64: %q", got)
+	}
+	if got := launcherName(root, "darwin", "arm64"); got != "tts-webui-macos-arm64" {
+		t.Errorf("darwin/arm64: %q", got)
+	}
+	if got := launcherName(root, "linux", "amd64"); got != "tts-webui" {
+		t.Errorf("linux/amd64 has no shipped binary here: %q", got)
+	}
+	touch("tts-webui") // one the user built wins
+	if got := launcherName(root, "linux", "arm64"); got != "tts-webui" {
+		t.Errorf("a built tts-webui should win: %q", got)
 	}
 }

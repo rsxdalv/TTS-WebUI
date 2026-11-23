@@ -3,15 +3,18 @@ package installer_scripts
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"runtime"
 )
 
 // batchPausePrompt is what "pause" prints. The port prints it and does not wait.
 const batchPausePrompt = "Press any key to continue . . . "
 
-// StartApp ports installer_scripts/start_app.bat and start_app.sh: activate the
-// environment, run "python server.py", and when it exits (or crashes) say so and
-// open a shell for the user.
+// StartApp ports installer_scripts/start_app.bat and start_app.sh: run the Go
+// launcher (tts-webui[.exe] in the install root) with --start, which starts the
+// app, and when it exits (or crashes) say so and open a shell for the user. The
+// scripts check that the launcher exists and say where to get it; the port lets
+// the runner's error say so.
 //
 // The shell is started as the original starts it ("cmd /k" on Windows, "exec
 // $SHELL" elsewhere), with whatever stdin the runner gives it. With no
@@ -26,8 +29,35 @@ func StartApp(ctx context.Context, s *Step) (exitCode int, err error) {
 	return startApp(ctx, s, runtime.GOOS)
 }
 
+// launcherName is the launcher in the install root. Windows has tts-webui.exe.
+// Elsewhere a tts-webui the user built wins, else the one the release zip ships
+// for this OS and CPU (tts-webui-linux-amd64, tts-webui-macos-arm64, ...), as
+// start_app.sh picks it.
+func launcherName(root, goos, goarch string) string {
+	if goos == "windows" {
+		return "tts-webui.exe"
+	}
+	if _, err := os.Stat(filepath.Join(root, "tts-webui")); err == nil {
+		return "tts-webui"
+	}
+	osName := goos
+	if goos == "darwin" {
+		osName = "macos"
+	}
+	shipped := "tts-webui-" + osName + "-" + goarch
+	if _, err := os.Stat(filepath.Join(root, shipped)); err == nil {
+		return shipped
+	}
+	return "tts-webui"
+}
+
+// launcherCommand runs the Go launcher from the install root and starts the app.
+func launcherCommand(root, goos, goarch string) Command {
+	return Command{Name: filepath.Join(root, launcherName(root, goos, goarch)), Args: []string{"launch", "--start"}}
+}
+
 func startApp(ctx context.Context, s *Step, goos string) (int, error) {
-	if _, err := s.Run.Run(ctx, Command{Name: "python", Args: []string{"server.py"}, Activated: true}); err != nil {
+	if _, err := s.Run.Run(ctx, launcherCommand(s.Root, goos, runtime.GOARCH)); err != nil {
 		return 1, err
 	}
 	if goos == "windows" {

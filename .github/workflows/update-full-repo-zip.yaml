@@ -31,6 +31,30 @@ jobs:
           # Stop file mode changes from being included in the zip
           # git config core.fileMode false
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache-dependency-path: core/go.mod
+
+      - name: Build the launcher for every platform into the repository root
+        # start_app.bat/.sh and root.sh run these; the launcher page is embedded
+        # in the binary (core/internal/webui/assets is committed).
+        working-directory: core
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          LDFLAGS="-s -w             -X github.com/rsxdalv/TTS-WebUI/core/internal/version.Version=main             -X github.com/rsxdalv/TTS-WebUI/core/internal/version.Commit=${GITHUB_SHA}             -X github.com/rsxdalv/TTS-WebUI/core/internal/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          build() { # os arch output
+            GOOS=$1 GOARCH=$2 go build -trimpath -ldflags "$LDFLAGS" -o "../$3" ./cmd/tts-webui
+          }
+          build windows amd64 tts-webui.exe
+          build linux amd64 tts-webui-linux-amd64
+          build linux arm64 tts-webui-linux-arm64
+          build darwin arm64 tts-webui-macos-arm64
+          build darwin amd64 tts-webui-macos-amd64
+          ls -l ../tts-webui*
+
       - name: Create zip file with full git history
         run: |
           # Create a zip file containing the entire repository including .git folder

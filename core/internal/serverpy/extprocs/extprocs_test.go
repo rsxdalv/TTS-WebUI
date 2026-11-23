@@ -176,7 +176,6 @@ func TestStartReturnsBeforeReadyThenRegistersRoute(t *testing.T) {
 	res, err := m.Start(context.Background(), "tts_webui_extension.bark", StartRequest{
 		Port:            port,
 		OpenAIProxyHost: "http://localhost:7778",
-		Env:             map[string]string{"DELTA_MARK": "delta", "GRADIO_SERVER_PORT": "1"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -208,7 +207,6 @@ func TestStartReturnsBeforeReadyThenRegistersRoute(t *testing.T) {
 		"TTS_WEBUI_EXTENSION_PACKAGE": "tts_webui_extension.bark",
 		"OPENAI_PROXY_HOST":           "http://localhost:7778",
 		"BASE_MARK":                   "base",
-		"DELTA_MARK":                  "delta",
 	}
 	for k, v := range want {
 		if r.Env[k] != v {

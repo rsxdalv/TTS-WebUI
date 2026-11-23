@@ -1,8 +1,9 @@
 # extprocs: wiring (stage 4)
 
-Go runs the proxy-extension processes; `tts_webui/core_ext_bridge` makes
-`setup_proxy_extension.py` ask Go instead of spawning them itself. No
-existing file was edited.
+Go runs the proxy-extension processes; `setup_proxy_extension.py` asks Go
+through `bridge.extensions` (`tts_webui/core_bridge/extensions.py`) and no
+longer spawns anything (step 27; before, `tts_webui/core_ext_bridge` patched
+`subprocess` in that module at import, and the file kept the dead spawn code).
 
 ## Changes Rob must make in existing files
 
@@ -26,35 +27,35 @@ existing file was edited.
    mux.Handle("/api/extensions", mgr.Handler())
    mux.Handle("/api/extensions/", mgr.Handler())
    ```
-3. **Entry script**: run `server_core.py` (stage 3) instead of `server.py`; it calls
-   `tts_webui.core_ext_bridge.install()` (no-op without `TTS_CORE_URL`).
+3. **Entry script**: run `server_core.py` (stage 3) instead of `server.py`.
 
 ## Behaviour notes
 
 - API (loopback + `X-TTS-Core-Token`, POST needs `application/json`; else 403/415):
-  `POST /api/extensions/{pkg}/start` `{"port","openai_proxy_host","env"}` -> `{"port","pid"[,"already_running"]}`;
+  `POST /api/extensions/{pkg}/start` `{"port","openai_proxy_host"}` -> `{"port","pid"[,"already_running"]}`
+  (Python sends only `openai_proxy_host`; Go picks the port when none is asked for);
   `POST .../stop` (404 if never started); `GET /api/extensions`;
   extra: `GET /api/extensions/{pkg}/logs?tail=N` -> `{"lines":[...]}`.
-- Contract extension: optional `env` in the start body. Python sends only the
-  variables whose value changed since `install()` (e.g. `.env`/`.env.user`
-  values loaded by `dotenv_init.init()`, `GRADIO_TREE_*`), because extensions
-  inherited these from server.py's `os.environ` before. `TTS_CORE_TOKEN` and
+- No `env` in the start body (step 27): extension processes get `BaseEnv`
+  (the launcher's merged environment: launcher env, `.env`, `.env.user`) plus
+  `ExtraEnv`, so Python has no variables to hand over. `TTS_CORE_TOKEN` and
   `TTS_CORE_URL` are never passed to extension processes.
-- Go registers `/<pkg>` itself once the port accepts TCP (so a restart after
-  Stop gets its route back; Python's `add_route_once` is cached and only runs
-  once). Python's own `add_extension_route` call (stage 3) is then a harmless
-  idempotent re-add.
-- If Go has to use another port than Python asked for (requested port busy,
-  or package already running from a previous server.py run), the shim
-  translates `wait_for_server` and `add_extension_route` to Go's port; this
-  is the only other thing patched in that module.
+- `Options.ExtraEnv` (optional) returns `KEY=VALUE` variables Go computes for
+  each extension at start; they win over `BaseEnv`. The
+  launcher uses it for `TTS_WEBUI_DECORATORS` (the resolved decorators; see
+  extcatalog), because extension processes have no control token. If it fails,
+  the extension is not started.
+- Go registers `/<pkg>` itself once the port accepts TCP and only then reports
+  `ready` (a restart after Stop gets its route back). Python does not add the
+  route.
+- Python side (`bridge.extensions`): `start(package, openai_proxy_host)` returns
+  when the process is spawned; `wait_ready(package)` polls `GET /api/extensions`
+  until `ready` and raises `CoreBridgeError` with Go's reason on `failed` or
+  `exited` (or after 130 s); `stop(package)` treats 404 as already stopped. The
+  tab stops the process, shows the reason and re-enables Start when the start fails (the old code
+  built a `gr.Error` without raising it and showed the iframe anyway).
 - ReadyTimeout (default 120s): state becomes `failed` but the process keeps
   running and probing; if it comes up later it turns `ready` and is routed.
-- The bridge patches `setup_proxy_extension` through an import hook when it is
-  first imported, not by importing it in `install()`: importing it loads gradio
-  before `dotenv_init.init()`, which changes when gradio/huggingface_hub read `.env`.
-- Errors from Go surface as `gr.Error` with the reason (also on stderr as
-  `[tts-core] ...`); stop treats 404 as already stopped.
 
 ## Verified for real vs only in tests
 
@@ -66,13 +67,23 @@ Real:
   `python.exe`: reached `ready`, route registered, `GET /<pkg>/` returned 200, `Stop`
   removed the route. No `.venvs/<pkg>` extension is installed, so the venv-python path was
   only tested with the fake.
-- Python: `python -m unittest tts_webui.core_ext_bridge.test_core_ext_bridge` (18 tests)
-  incl. importing the real `setup_proxy_extension` in a child interpreter and
-  confirming `install()` patched it and Popen/terminate hit the stub API.
+- Python: `python -m unittest tts_webui.core_bridge.test_core_bridge`
+  (`ExtensionsBridgeTest`, `SetupProxyExtensionTest`: start, wait, stop, failure,
+  and that `setup_proxy_extension.py` holds no process code).
+
+Real, through the launcher (step 27, `launcher/real_serverpy_test.go`):
+- `TestRealExtensionProcessAppliesDecorators`: `startServerPy` with the real
+  `micromamba -p <env> run` prefix as `MainPython`, the real control API, and
+  `tts_webui_extension.mms` (it imports `decorator_extensions`) started with
+  `POST /api/extensions/<pkg>/start`. The process has no `TTS_CORE_URL`, and its
+  log shows `Loading decorator Save Ogg` / `Loaded: decorator_save_flac, ...
+  decorator_save_ogg_generator`, so `TTS_WEBUI_DECORATORS` (set by
+  `extcatalog.DecoratorEnv` through `ExtraEnv`) is what `decorator_extensions`
+  read; the route came up through the router (`GET /<pkg>/` 200) and went away
+  on stop. mms runs in the main env here: no `.venvs/<pkg>` exists, so the
+  venv-python path (a real native install) was not run.
 
 Only in tests / not verified:
-- Not run against the real launcher, router (stage 3) or `micromamba run` as `MainPython`
-  (prefix args are tested with a fake prefix only).
 - Linux/macOS builds are not exercised here (venv path `bin/python`, process groups).
 - `-race` not run (cgo unavailable).
 - Graceful stop on Windows relies on `procs` (CTRL_BREAK, then job kill after 5s).

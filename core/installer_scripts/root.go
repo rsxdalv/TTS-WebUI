@@ -282,7 +282,7 @@ func rootUnix(ctx context.Context, s *Step, goos, goarch string) (int, error) {
 		s.Log("Failed to init the app, exiting...")
 		return 1, nil
 	}
-	res, err = s.Run.Run(ctx, Command{Name: mamba, Args: []string{"run", "-p", "./installer_files/env", "python", "server.py"}, Env: env})
+	res, err = s.Run.Run(ctx, Command{Name: launcherCommand(s.Root, goos, goarch).Name, Args: []string{"launch", "--start"}, Env: env})
 	if err != nil {
 		return 1, err
 	}

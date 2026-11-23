@@ -1,7 +1,8 @@
 // Command tts-webui sets up and runs TTS WebUI. It serves a local setup page,
 // runs the install steps, then starts and stops the app.
 //
-//	tts-webui [launch] [--root DIR] [--port N] [--no-browser]
+//	tts-webui [launch] [--root DIR] [--port N] [--no-browser] [--share] [--docker]
+//	          [--start] [--system-python] [--no-react]
 //	tts-webui --version
 package main
 

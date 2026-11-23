@@ -1,144 +1,28 @@
-import json
-from typing import Any, Dict, List, Tuple
-
 import gradio as gr
 
-from tts_webui.utils.pip_install import pip_install_wrapper, venv_setup_wrapper
-
-EXTERNAL_EXTENSIONS_FILE = "extensions.external.json"
-
-def _load_external_extensions() -> Dict[str, Any]:
-    try:
-        with open(EXTERNAL_EXTENSIONS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {"tabs": [], "decorators": []}
-    except Exception as e:
-        gr.Warning(f"Failed to read {EXTERNAL_EXTENSIONS_FILE}: {e}")
-        return {"tabs": [], "decorators": []}
+from tts_webui.core_bridge import bridge
 
 
-def _save_external_extensions(data: Dict[str, Any]) -> Tuple[bool, str]:
-    try:
-        with open(EXTERNAL_EXTENSIONS_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
-        return True, "Saved"
-    except Exception as e:
-        return False, f"Failed to save: {e}"
+def _on_parse(text: str):
+    # Go validates and previews: entries, a Markdown preview, an info line.
+    res = bridge.extcatalog.parse(text)
+    return res["entries"], res["preview"], res["info"]
 
 
-REQUIRED_KEYS = {
-    "package_name": str,
-    "name": str,
-    "requirements": str,
-    "description": str,
-    "extension_type": str,
-    "extension_class": str,
-    "author": str,
-    "extension_author": str,
-    "license": str,
-    "website": str,
-    "extension_website": str,
-    "extension_platform_version": str,
-}
+def _add_to_external(entries):
+    # Go is the only writer of extensions.external.json.
+    res = bridge.extcatalog.add(entries)
+    return res["status"], res["json"]
 
 
-def _validate_entry(entry: Dict[str, Any]) -> Tuple[bool, str]:
-    missing = [k for k in REQUIRED_KEYS if k not in entry]
-    if missing:
-        return False, f"Missing keys: {', '.join(missing)}"
-    bad_types = [k for k, t in REQUIRED_KEYS.items() if not isinstance(entry.get(k), t)]
-    if bad_types:
-        return False, f"Wrong types for: {', '.join(bad_types)}"
-    return True, "OK"
-
-
-def _parse_json_input(text: str) -> Tuple[List[Dict[str, Any]], str]:
-    text = text.strip()
-    if not text:
-        return [], "No JSON provided"
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError as e:
-        return [], f"JSON parse error: {e}"
-
-    # Accept either a single object or a list of objects
-    entries: List[Dict[str, Any]]
-    if isinstance(data, dict):
-        entries = [data]
-    elif isinstance(data, list):
-        entries = [d for d in data if isinstance(d, dict)]
-    else:
-        return [], "Expected a JSON object or an array of objects"
-
-    # Validate entries
-    problems = []
-    valid_entries: List[Dict[str, Any]] = []
-    for i, e in enumerate(entries):
-        ok, msg = _validate_entry(e)
-        if ok:
-            valid_entries.append(e)
-        else:
-            problems.append(f"Entry {i}: {msg}")
-
-    info = "Parsed entries: " + str(len(valid_entries))
-    if problems:
-        info += " | Issues: " + " ; ".join(problems)
-    return valid_entries, info
-
-
-def _render_preview(entries: List[Dict[str, Any]]) -> str:
-    if not entries:
-        return "<i>No valid entries to preview.</i>"
-    header = "| Name | Package | Class | Type |\n|---|---|---|---|\n"
-    rows = []
-    for e in entries:
-        rows.append(
-            f"| {e['name']} | {e['package_name']} | {e['extension_class']} | {e['extension_type']} |"
-        )
-    return gr.Markdown(header + "\n".join(rows))
-
-
-def _add_to_external(entries: List[Dict[str, Any]]) -> Tuple[str, str]:
-    if not entries:
-        return "Nothing to add.", ""
-    data = _load_external_extensions()
-    tabs = data.get("tabs", [])
-
-    existing_packages = {t.get("package_name") for t in tabs}
-    added = []
-    skipped = []
-    for e in entries:
-        if e.get("package_name") in existing_packages:
-            skipped.append(e.get("package_name"))
-        else:
-            tabs.append(e)
-            added.append(e.get("package_name"))
-    data["tabs"] = tabs
-    ok, msg = _save_external_extensions(data)
-    status = (
-        ("Saved" if ok else msg)
-        + f" | Added: {', '.join(added) if added else 'none'} | Skipped (exists): {', '.join(skipped) if skipped else 'none'}"
-    )
-    return status, json.dumps(data, indent=2, ensure_ascii=False)
-
-
-def _install_selected(entries: List[Dict[str, Any]]):
+def _install_selected(entries):
     if not entries:
         yield "<i>Nothing selected to install.</i>"
         return
     for e in entries:
-        requirements = e.get("requirements")
-        name = e.get("name", e.get("package_name", "extension"))
-        proxy = e.get("proxy", None)
-        package_name = e.get("package_name", None)
-        if proxy == "native":
-            yield f"Setting up virtual environment and installing dependencies for {name}..."  # type: ignore
-            yield from venv_setup_wrapper(requirements, name, package_name)()
-        else:
-            yield from pip_install_wrapper(requirements, name)()
-    
-
+        # Go looks the package up (they were just added to the external list)
+        # and runs pip, or uv for proxy "native" entries, streaming the output.
+        yield from bridge.extcatalog.install(e["package_name"])
 
 
 def ui():
@@ -171,10 +55,6 @@ def ui():
 
     with gr.Accordion("Current extensions.external.json", open=False):
         current_json = gr.Code(language="json")
-
-    def _on_parse(text: str):
-        entries, info = _parse_json_input(text)
-        return entries, _render_preview(entries), info
 
     gr.Button("", elem_id="receive_extension_button").click(
         fn=None,

@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/server"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/supervise"
 )
 
 // StepStatus is the JSON shape returned by GET /api/steps/status.
@@ -37,16 +39,52 @@ type Launcher struct {
 	sup           appSupervisor          // C3.2: app process supervisor
 	updateOnce    sync.Once
 	updateChecked bool // true = already up to date (cached after first check)
+
+	systemPython bool      // no micromamba prefix (WithSystemPython)
+	extOnce      sync.Once // the Extensions page's stores, built on first use
+	ext          *extHost
+	extErr       error
 }
 
 // New creates a Launcher for the given install root.
 func New(root paths.Root, opts ...Option) *Launcher {
 	return &Launcher{
-		root:   root,
-		sprocs: make(map[string]*procs.Proc),
-		slogs:  make(map[string]*Log),
-		sup:    newAppSupervisor(root, opts...),
+		root:         root,
+		sprocs:       make(map[string]*procs.Proc),
+		slogs:        make(map[string]*Log),
+		sup:          newAppSupervisor(root, opts...),
+		systemPython: buildOptions(opts).systemPython,
 	}
+}
+
+// StartApp starts the app, as the Start button does. It returns once the
+// children are started, not when they are ready. With echo set (a headless
+// start: Docker logs, a Colab cell) the output of the Gradio and React children
+// is copied to it; the copy ends with the children, so a Restart is not echoed.
+func (l *Launcher) StartApp(ctx context.Context, echo io.Writer) error {
+	if err := l.sup.Start(ctx); err != nil {
+		return err
+	}
+	if echo == nil {
+		return nil
+	}
+	for _, name := range []string{supervise.NameGradio, supervise.NameReact} {
+		lines, cancel, ok := l.sup.SubscribeLogs(name)
+		if !ok {
+			continue
+		}
+		go func(name string) {
+			defer cancel()
+			for line := range lines {
+				if name == supervise.NameGradio {
+					fmt.Fprintln(echo, line)
+				} else {
+					fmt.Fprintf(echo, "[%s] %s\n", name, line)
+				}
+			}
+		}(name)
+	}
+	return nil
 }
 
 // Shutdown stops the app and any running install step, for a launcher that
@@ -114,6 +152,9 @@ func (l *Launcher) Register(srv *server.Server) {
 	srv.Handle("GET /api/app/status/stream", l.handleAppStatusStream())
 	srv.Handle("GET /api/app/link", l.handleAppLink())
 	srv.Handle("GET /api/app/lan", l.handleAppLAN())
+
+	// Extensions page: list, install, uninstall, enable and disable, with the app stopped.
+	l.registerExtensions(srv)
 
 	// Diagnostic: runs installer_scripts/tools/diagnostic.{bat,sh}.
 	srv.Handle("POST /api/app/diagnostic", l.handleAppDiagnostic())

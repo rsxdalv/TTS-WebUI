@@ -26,7 +26,7 @@ class TestCLI:
         """Test troubleshoot command."""
         # Create minimal requirements.txt
         (Path.cwd() / "requirements.txt").write_text("pytest\ngradio")
-        (Path.cwd() / "server.py").write_text("# Server file")
+        (Path.cwd() / "server_core.py").write_text("# Server file")
 
         result = runner.invoke(app, ["troubleshoot"])
 
@@ -70,10 +70,10 @@ class TestCLI:
         assert "extension2" in result.stdout
 
     @pytest.mark.integration
-    def test_serve_command_missing_server(self, change_to_temp_dir):
-        """Test serve command when server.py is missing."""
+    def test_serve_command_missing_launcher(self, change_to_temp_dir):
+        """Test serve command when the Go launcher is missing."""
         result = runner.invoke(app, ["serve"])
 
         # Should exit with error
         assert result.exit_code == 2
-        assert "server.py not found" in result.stdout
+        assert "launcher not found" in result.stdout

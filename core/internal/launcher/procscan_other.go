@@ -34,8 +34,8 @@ func groupMembers(root string, g groupRecord) []int {
 			continue
 		}
 		cmd := strings.Join(fields[2:], " ")
-		if strings.Contains(cmd, root) || strings.Contains(cmd, "server.py") ||
-			strings.Contains(cmd, "extension_manager.py") || strings.Contains(cmd, "micromamba") {
+		if strings.Contains(cmd, root) || strings.Contains(cmd, "server_core.py") ||
+			strings.Contains(cmd, "micromamba") {
 			pids = append(pids, pid)
 		}
 	}

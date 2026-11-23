@@ -75,9 +75,19 @@ Real:
   incl. importing the real `setup_proxy_extension` in a child interpreter and
   confirming `install()` patched it and Popen/terminate hit the stub API.
 
+Real, through the launcher (step 27, `launcher/real_serverpy_test.go`):
+- `TestRealExtensionProcessAppliesDecorators`: `startServerPy` with the real
+  `micromamba -p <env> run` prefix as `MainPython`, the real control API, and
+  `tts_webui_extension.mms` (it imports `decorator_extensions`) started with
+  `POST /api/extensions/<pkg>/start`. The process has no `TTS_CORE_URL`, and its
+  log shows `Loading decorator Save Ogg` / `Loaded: decorator_save_flac, ...
+  decorator_save_ogg_generator`, so `TTS_WEBUI_DECORATORS` (set by
+  `extcatalog.DecoratorEnv` through `ExtraEnv`) is what `decorator_extensions`
+  read; the route came up through the router (`GET /<pkg>/` 200) and went away
+  on stop. mms runs in the main env here: no `.venvs/<pkg>` exists, so the
+  venv-python path (a real native install) was not run.
+
 Only in tests / not verified:
-- Not run against the real launcher, router (stage 3) or `micromamba run` as `MainPython`
-  (prefix args are tested with a fake prefix only).
 - Linux/macOS builds are not exercised here (venv path `bin/python`, process groups).
 - `-race` not run (cgo unavailable).
 - Graceful stop on Windows relies on `procs` (CTRL_BREAK, then job kill after 5s).

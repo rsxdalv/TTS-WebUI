@@ -169,6 +169,17 @@ calls `resolve("decorator", cls)` for `outer` and `inner`.
   earlier in the same run is visible to a tab built later (the UI still asks
   for a restart; tabs are built once, at startup).
 
+### Verified for real (step 27)
+
+- `TestRealPipInstallThroughBridge` (opt-in, `launcher/real_serverpy_test.go`): the Python
+  bridge (`bridge.extcatalog.install`) against the launcher's control API; Go looked up an
+  entry of `extensions.external.json` and ran `micromamba -p <venv> run python -m pip install
+  pyfiglet gradio==5.49.1` in a throwaway venv (`python -m venv --system-site-packages`
+  from the main env, so the gradio pin was already met). The console ended `Successfully
+  installed Tiny Test dependencies`; `pyfiglet` is in the venv and not in the main env.
+- The native install (`.venvs/<package>` with `uv` and torch) was not run: it downloads
+  torch. Only the fake-uv tests cover it.
+
 ### Decorators in extension processes
 
 `decorator_extensions` is imported by extensions at import time

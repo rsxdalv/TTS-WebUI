@@ -70,6 +70,16 @@ the `share` value under `--share`. The launcher run (`TTS_GO_SERVERPY=1`, port
 `resolve`, 47 of them `[Disabled]` (the config disabled every non-builtin
 extension to avoid importing torch), the built-in ones live.
 
+Step 27 repeated the launcher run with real extensions: a copy of the repo with
+`installer_files` junctioned, `TTS_GO_SERVERPY=1`, port 17910, no browser, a fake
+`react-ui/out/_tts-export.json`, and only `tts_webui_extension.mms`, `.openai_tts_api`
+and `.vocos` enabled. `/config` listed 107 tabs, 44 of them `[Disabled]`; the three
+extensions' tabs were live (their modules imported). The one error tab,
+`Huggingface Cache Manager (!)`, is the built-in extension failing on
+`huggingface_hub.commands` missing from the installed env (it fails the same way
+when imported alone); it is not caused by the port. The app stopped cleanly through
+`POST /api/app/stop` (public port closed, no child left).
+
 ## Stays in Python
 
 `launch_kwargs` (auth pairs to tuples) and the call to `launch()` itself;

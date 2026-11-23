@@ -139,8 +139,14 @@ Also checked: the supervisor with a Gradio that cannot start, one that dies late
 a second `Start` after Gradio died (`supervise/gocore_test.go`); the launcher's real wiring on a temp install with no
 env (React front, real control API and services answering, Gradio reported as failed) and with a Gradio that exits with
 code 3 (control API still answering) (`launcher/gocore_test.go`); `tsc` on the launcher UI change.
-Not checked: a real `tts-webui` binary start on the default ports (a different app holds 3000 and 7770 on this machine,
-and the React port is fixed at 3000); a start with a real Python env after the change (the opt-in
-`LAUNCHER_REAL_ROOT` tests were not run); the launcher page rendered in a browser; a real MiniMax call; a real ffprobe
-run through the route (only a stub); the remixer with real audio in a browser; the GPU page rendered in a browser; the
-Gradio tabs next to the new pages; a no-env start when `react-ui/out` is missing (it needs npm to build it).
+Real run (sub session, built binary, empty scratch root with only `react-ui/out` and a `config.json`; no env, no
+`.gpu`): `tts-webui launch --start --no-browser` started. The launcher status showed gradio `failed` with `no Python
+environment: ...micromamba.exe was not found (the install has not been done)` and react-ui `ready`. :3000 served the
+UI (200); `pip-list` 409 `no_python`; `logs/files` 200 `[]`; `model-locations`, `server-settings` (no secrets) and
+`gpu-info` (the real GTX 1070) 200; `extensions/interface` 200 `[]` (no catalog file in the scratch root); the router on
+the public port answered 502 `upstream unavailable`. No warning shows without an env, because the GPU label is only
+checked when Gradio could start. The launcher wrote a default `.env` into the root.
+Not checked: a start with a real Python env after the change (the opt-in `LAUNCHER_REAL_ROOT` tests were not run); the
+launcher page and the new pages (other than pip list) rendered in a browser; a real MiniMax call; a real ffprobe run
+through the route (only a stub); the remixer with real audio; the Gradio tabs next to the new pages; a no-env start when
+`react-ui/out` is missing (it needs npm to build it).

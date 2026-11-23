@@ -9,11 +9,6 @@ from tts_webui.extensions_loader.list_tab import extension_list_ui
 from tts_webui.extensions_loader.LoadingIndicator import LoadingIndicator
 from tts_webui.extensions_loader.setup_proxy_extension import setup_proxy_extension
 from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
-from tts_webui.utils.pip_install import (
-    pip_install_wrapper,
-    pip_uninstall_wrapper,
-    venv_setup_wrapper,
-)
 
 
 def check_if_package_installed(package_name, proxy):
@@ -35,29 +30,23 @@ def _get_version(package_name, proxy):
             return "Built-in"
         if proxy == "native":
             return ""
-            import os
-            import subprocess
-
-            venv_python = (
-                f".venvs/{package_name}/Scripts/python.exe"
-                if os.name == "nt"
-                else f".venvs/{package_name}/bin/python"
-            )
-            result = subprocess.run(
-                [
-                    venv_python,
-                    "-c",
-                    f"import importlib.metadata; print(importlib.metadata.version('{package_name}'))",
-                ],
-                capture_output=True,
-                text=True,
-            )
-            return result.stdout.strip()  # "0.0.3"
-        else:
-            return f"v{version(package_name)}"
+        return f"v{version(package_name)}"
     except Exception as e:
         print(f"Error getting version for {package_name}: {e}")
         return "Unknown"
+
+
+def _stream(operation, package_name):
+    """A Gradio handler that streams one Go install operation for this extension.
+
+    Go installs, updates and checks by package name: it reads the requirements
+    and the proxy kind from the extension lists, and runs pip or uv itself.
+    """
+
+    def run():
+        yield from operation(package_name)
+
+    return run
 
 
 def _handle_package(ext):
@@ -80,21 +69,13 @@ def _handle_package(ext):
     if not is_installed and proxy != "native":
         with gr.Tab(f"[Available] {title_name}"):
             gr.Markdown(f"{title_name} Extension not installed")
-            install_btn = gr.Button(
-                f"Install {title_name} Extension {'uv venv' if proxy == 'native' else ''}"
-            )
+            install_btn = gr.Button(f"Install {title_name} Extension ")
             with gr.Accordion("Installation Console", open=True):
                 console_text = gr.HTML()
-            if proxy == "native":
-                install_btn.click(
-                    venv_setup_wrapper(requirements, title_name, package_name),
-                    outputs=[console_text],
-                )
-            else:
-                install_btn.click(
-                    pip_install_wrapper(requirements, title_name),
-                    outputs=[console_text],
-                )
+            install_btn.click(
+                _stream(bridge.extcatalog.install, package_name),
+                outputs=[console_text],
+            )
         return
 
     with LoadingIndicator(title_name):
@@ -107,7 +88,6 @@ def _handle_package(ext):
                     install_trigger = _extension_management_ui(
                         package_name,
                         title_name,
-                        requirements,
                         version=_get_version(package_name, proxy),
                         show=not is_installed,
                         proxy=proxy,
@@ -133,10 +113,18 @@ def _handle_package(ext):
                         main_tab()
                 except Exception as e:
                     generic_error_tab_advanced(
-                        e, name=title_name, requirements=requirements
+                        e,
+                        name=title_name,
+                        requirements=requirements,
+                        package_name=package_name,
                     )
         except Exception as e:
-            generic_error_tab_advanced(e, name=title_name, requirements=requirements)
+            generic_error_tab_advanced(
+                e,
+                name=title_name,
+                requirements=requirements,
+                package_name=package_name,
+            )
 
 
 def enable_extension(package_name):
@@ -190,14 +178,7 @@ def toggle_autostart(package_name):
 def get_latest_version(package_name):
     def _get_latest_version():
         print(f"Getting latest version of {package_name}")
-        for line in pip_install_wrapper(
-            f"--dry-run --no-deps {package_name}",
-            f"{package_name} (dry run, update check)",
-        )():
-            if "Would install" in line:
-                return line.split(" ")[-1]
-
-        return "Already up to date (sometimes incorrect)"
+        return bridge.extcatalog.latest_version(package_name)
 
     return _get_latest_version
 
@@ -205,7 +186,6 @@ def get_latest_version(package_name):
 def _extension_management_ui(
     package_name,
     title_name,
-    requirements,
     version,
     show=True,
     proxy=None,
@@ -225,7 +205,7 @@ def _extension_management_ui(
                     fn=lambda: gr.Button("Updating...", interactive=False),
                     outputs=[venv_install],
                 ).then(
-                    venv_setup_wrapper(requirements, title_name, package_name),
+                    _stream(bridge.extcatalog.install, package_name),
                     outputs=[output],
                 ).then(
                     fn=lambda: gr.Button("Update (uv venv)", interactive=True),
@@ -254,7 +234,7 @@ def _extension_management_ui(
                     fn=lambda: gr.Button("Updating...", interactive=False),
                     outputs=[attempt_update],
                 ).then(
-                    pip_install_wrapper(requirements, title_name),
+                    _stream(bridge.extcatalog.install, package_name),
                     outputs=[output],
                 ).then(
                     fn=lambda: gr.Button("Update", interactive=True),
@@ -266,7 +246,7 @@ def _extension_management_ui(
                     fn=lambda: gr.Button("Uninstalling...", interactive=False),
                     outputs=[uninstall_extension_btn],
                 ).then(
-                    pip_uninstall_wrapper(package_name, title_name),
+                    _stream(bridge.extcatalog.uninstall, package_name),
                     outputs=[output],
                 ).then(
                     fn=lambda: gr.Button("Uninstall", interactive=True),
@@ -289,7 +269,7 @@ def _extension_management_ui(
                     fn=lambda: gr.Button("Checking...", interactive=False),
                     outputs=[check_dependencies_btn],
                 ).then(
-                    pip_install_wrapper(f"--dry-run {requirements}", title_name),
+                    _stream(bridge.extcatalog.check_dependencies, package_name),
                     outputs=[output],
                 ).then(
                     fn=lambda: gr.Button("Check Dependencies", interactive=True),

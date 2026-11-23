@@ -66,7 +66,7 @@ func (s *Store) installEntry(ctx context.Context, entry *Obj, emit func(string))
 	if entry.Str("proxy") == "native" {
 		return s.venvSetupTokens(ctx, entry, toks, emit)
 	}
-	return s.pipInstallTokens(ctx, entry, toks, emit)
+	return s.pipInstallTokens(ctx, entry, toks, false, emit)
 }
 
 // reqSchemes are the URL schemes a requirement may use. Everything else is

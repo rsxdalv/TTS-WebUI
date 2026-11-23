@@ -56,6 +56,7 @@ ANSWERS = {
         "preview": M("Markdown", value="| Name |"),
         "info": "Parsed entries: 1",
     },
+    ("POST", "latest-version"): "1.2.3",
     ("POST", "add"): {"status": "Saved | Added: n.one | Skipped (exists): none", "json": "{}"},
     ("GET", "pip-list"): [{"name": "Alpha", "version": "1.0"}, {"name": "numpy", "version": "2.0"}],
     # logs
@@ -111,6 +112,7 @@ STREAMS = {
         {"done": True, "ok": True},
     ],
     "uninstall": [{"line": "Removed x"}, {"done": True, "ok": True}],
+    "check-dependencies": [{"line": "Would install y"}, {"done": True, "ok": True}],
 }
 
 
@@ -804,6 +806,97 @@ class ExtensionLoadingTest(unittest.TestCase):
 
             with self.assertRaises(CoreBridgeError):
                 ie.handle_extension_class("tools")
+
+
+class InstallCallersTest(unittest.TestCase):
+    """The extension tabs install, update, uninstall and check through Go."""
+
+    def setUp(self):
+        self.stub = Stub()
+        self.addCleanup(self.stub.close)
+        env = mock.patch.dict(
+            os.environ, {"TTS_CORE_URL": self.stub.url, "TTS_CORE_TOKEN": "tok"}
+        )
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_stream_handler_sends_only_the_package_name(self):
+        from tts_webui.extensions_loader import interface_extensions as ie
+
+        run = ie._stream(bridge.extcatalog.install, "a.one")
+        self.assertEqual(list(run()), ["Collecting x", "Collecting x<br />Installed x"])
+        self.assertEqual(list(ie._stream(bridge.extcatalog.uninstall, "a.one")()), ["Removed x"])
+        self.assertEqual(
+            list(ie._stream(bridge.extcatalog.check_dependencies, "a.one")()), ["Would install y"]
+        )
+        self.assertEqual(
+            [(r[1], r[3]) for r in self.stub.requests],
+            [
+                ("install", {"package_name": "a.one"}),
+                ("uninstall", {"package_name": "a.one"}),
+                ("check-dependencies", {"package_name": "a.one"}),
+            ],
+        )
+
+    def test_update_check(self):
+        from tts_webui.extensions_loader import interface_extensions as ie
+
+        self.assertEqual(ie.get_latest_version("a.one")(), "1.2.3")
+        self.assertEqual(self.stub.requests[0][1:4], ("latest-version", {}, {"package_name": "a.one"}))
+
+    def test_management_ui_builds_for_both_kinds(self):
+        from tts_webui.extensions_loader import interface_extensions as ie
+
+        def buttons(proxy):
+            with gr.Blocks() as demo:
+                ie._extension_management_ui("a.one", "A One", "v1", proxy=proxy, is_installed=True)
+            return [b.value for b in demo.blocks.values() if isinstance(b, gr.Button)]
+
+        self.assertEqual(
+            buttons(None),
+            ["Check for updates", "Update", "Uninstall", "Disable", "Check Dependencies"],
+        )
+        self.assertEqual(buttons("native"), ["Update (uv venv)", "Disable"])
+
+    def test_available_tab_and_error_tab_install_by_name(self):
+        from tts_webui.extensions_loader import interface_extensions as ie
+        from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
+
+        with mock.patch.object(ie, "check_if_package_installed", return_value=False), gr.Blocks() as demo, gr.Tabs():
+            ie._handle_package(
+                {
+                    "package_name": "a.one",
+                    "name": "A One",
+                    "requirements": "x",
+                    "proxy": "",
+                    "enabled": True,
+                    "autostart": False,
+                }
+            )
+        self.assertIn("[Available] A One", [b.label for b in demo.blocks.values() if isinstance(b, gr.Tab)])
+        with gr.Blocks() as demo:
+            generic_error_tab_advanced(ValueError("boom"), name="A One", requirements="x", package_name="a.one")
+        self.assertIn("Install A One", [b.value for b in demo.blocks.values() if isinstance(b, gr.Button)])
+        self.assertEqual(len(self.stub.requests), 0)  # nothing runs until a button is pressed
+
+    def test_no_install_logic_is_left_in_the_loader(self):
+        import tts_webui.extensions_loader.interface_extensions as ie
+        import tts_webui.utils.generic_error_tab_advanced as err
+
+        for mod in (ie, err):
+            with open(mod.__file__, encoding="utf-8") as f:
+                src = f.read()
+            for gone in ("pip_install", "venv_setup", "get_torch_command", "subprocess"):
+                self.assertNotIn(gone, src, mod.__name__)
+        self.assertFalse(os.path.exists(os.path.join("tts_webui", "utils", "get_torch_command.py")))
+
+    def test_core_off_raises(self):
+        env = {k: v for k, v in os.environ.items() if k != "TTS_CORE_URL"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            with self.assertRaises(CoreBridgeError):
+                list(bridge.extcatalog.check_dependencies("a.one"))
+            with self.assertRaises(CoreBridgeError):
+                bridge.extcatalog.latest_version("a.one")
 
 
 class PipTest(unittest.TestCase):

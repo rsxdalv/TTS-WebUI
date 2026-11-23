@@ -95,7 +95,8 @@ var ops = map[string]string{
 	"resolve": http.MethodGet,
 	"parse":   http.MethodPost, "add": http.MethodPost,
 	"install": http.MethodPost, "install-entry": http.MethodPost,
-	"uninstall": http.MethodPost,
+	"uninstall": http.MethodPost, "check-dependencies": http.MethodPost,
+	"latest-version": http.MethodPost,
 }
 
 func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
@@ -182,8 +183,10 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, 200, res)
-	case "install", "uninstall":
+	case "install", "uninstall", "check-dependencies":
 		s.serveInstall(w, r, op)
+	case "latest-version":
+		s.serveLatestVersion(w, r)
 	case "install-entry":
 		s.serveInstallEntry(w, r)
 	}

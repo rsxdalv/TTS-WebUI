@@ -24,6 +24,8 @@ install is running. POST bodies are `application/json`, unknown fields refused.
 | `POST /api/extcatalog/install` | `{"package_name"}` | NDJSON stream; the package is looked up in the catalog files |
 | `POST /api/extcatalog/install-entry` | `{"entry": {...}}` | NDJSON stream; the entry the caller gives is installed (its own requirements and proxy) |
 | `POST /api/extcatalog/uninstall` | `{"package_name"}` | NDJSON stream |
+| `POST /api/extcatalog/check-dependencies` | `{"package_name"}` | NDJSON stream of `pip install --dry-run <requirements> gradio==5.49.1`; 400 for a native extension (it has no check) |
+| `POST /api/extcatalog/latest-version` | `{"package_name"}` | a JSON string: the last word of pip's `Would install` line for `pip install --dry-run --no-deps <package> gradio==5.49.1`, or `Already up to date (sometimes incorrect)` |
 
 The Markdown and Dropdown markers are built into components by the bridge where
 they are called, so a handler placing them inside a `with gr.Column():` renders
@@ -52,6 +54,36 @@ not raise.
 - Logs: `installer_scripts/logs/{pip-install,pip-uninstall,uv-venv-install}-<name>.log`.
 - The main env is the launcher's `micromamba -p <env> run` prefix (`Options.Run`),
   the same one the extension-process manager uses; `uv` is run the same way.
+
+### One install implementation
+
+Every install of the app goes through this package; Python has none left.
+`interface_extensions.py` (the `[Available]` tab, Update, Uninstall, Check for
+updates, Check Dependencies, and the venv install/update of native extensions)
+and `generic_error_tab_advanced.py` (the Install button of a tab that failed to
+load) call `bridge.extcatalog.install / uninstall / check_dependencies /
+latest_version` with the package name; Go reads the requirements and the proxy
+kind from the lists, so a button no longer carries a requirements string.
+
+- `venv_setup_wrapper` and `get_torch_command.py` are deleted. The torch
+  decision (`torch.go`, from `installer_scripts/.gpu`) is used only here, by the
+  native install; no Python caller needs the command, so there is no op for it.
+  `get_torchcodec_command` had no caller.
+- `tts_webui/utils/pip_install.py` keeps `pip_install_wrapper` and
+  `pip_uninstall_wrapper` (and `write_log`) for
+  `installer_scripts/tools/extension_manager.py`, a separate CLI process without
+  the core, which this step leaves alone. It is the only user left.
+- The dry runs (`check-dependencies`, `latest-version`) take a package name from
+  the lists like `install`; `latest-version` also checks that the name is a plain
+  package name (`checkRequirement`) because it becomes a pip argument. Nothing
+  here widens the validation of `install-entry`.
+- A dependency check says what an install says (`Successfully installed ...`,
+  `Please restart the webui ...`) because the old check did; it no longer
+  overwrites `pip-install-<name>.log` (the old one did), and the update check
+  writes no log (the old one wrote `pip-install-<package> (dry run, update check).log`).
+- The `[Available]` and error-tab Install buttons run `install`, which uses the
+  venv path for native entries. The old error tab always ran pip in the main env,
+  also for a native extension.
 
 ### `install-entry`: the requirements are untrusted input
 

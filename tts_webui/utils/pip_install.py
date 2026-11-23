@@ -1,9 +1,14 @@
+"""pip installs for installer_scripts/tools/extension_manager.py.
+
+The app installs through the Go core (bridge.extcatalog: install, uninstall,
+check_dependencies); this module stays only because that CLI runs as its own
+process, without the core.
+"""
+
 import os
 import re
 import shlex
 import subprocess
-
-from tts_webui.utils.get_torch_command import get_torch_command
 
 
 def write_log(output, name, type):
@@ -29,45 +34,6 @@ def pip_install_wrapper(requirements, name, include_gradio=True):
         write_log(output, name, type="pip-install")
         return line
         # verify installation by importing the package or drying run install
-
-    return fn
-
-
-def venv_setup_wrapper(requirements, name, package_name):
-    def fn():
-        output = []
-        venv = f".venvs/{package_name}"
-        torch = get_torch_command()
-        torchcodec = (
-            "torchcodec --index-url=https://download.pytorch.org/whl/cpu"  # safe option
-        )
-        xformers = "xformers==0.0.35"  # no index-url needed
-        compatibility = '"gradio<=5.49.1" "gradio-goodtabs>=0.0.5" "gradio-goodtab>=0.0.5" "gradio-iconbutton>=0.0.1" "ffmpeg-python==0.2.0" "matplotlib"'
-        if os.name == "nt":
-            uv_install_cmd = f"uv pip install --python {venv}/Scripts/python.exe"
-        else:
-            uv_install_cmd = f"uv pip install --python {venv}/bin/python"
-        commands = [
-            f"uv venv {venv} --allow-existing",
-            f"{uv_install_cmd} {torch}",
-            f"{uv_install_cmd} {torchcodec}",
-            f"{uv_install_cmd} {xformers}",
-            f"{uv_install_cmd} {requirements} {compatibility}",
-        ]
-        for cmd in commands:
-            for line in _stream_shell_command(cmd):
-                output.append(str(line))
-                yield "<br />".join(output)
-
-        message = (
-            f"\nSuccessfully set up virtual environment for {name} with dependencies\n"
-        )
-        print(message)
-        yield message
-        output.append(message)
-
-        write_log(output, name, type="uv-venv-install")
-        return line
 
     return fn
 

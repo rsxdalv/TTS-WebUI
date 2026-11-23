@@ -14,9 +14,10 @@ import (
 	"strings"
 )
 
-// serveInstall streams an install or uninstall as NDJSON: {"line": "..."} per
-// output line, then {"done": true, "ok": bool}. Problems found before anything
-// runs (unknown package, another install running) are ordinary JSON errors.
+// serveInstall streams an install, an uninstall or a dependency check as
+// NDJSON: {"line": "..."} per output line, then {"done": true, "ok": bool}.
+// Problems found before anything runs (unknown package, a check of a native
+// extension, another install running) are ordinary JSON errors.
 func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) {
 	o, err := body(w, r)
 	if err == nil {
@@ -32,6 +33,11 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 		s.fail(w, err)
 		return
 	}
+	native := entry.Str("proxy") == "native"
+	if op == "check-dependencies" && native {
+		s.fail(w, invalidf("%s runs in its own venv: there is no dependency check for it", pkg))
+		return
+	}
 	if !s.install.TryLock() {
 		s.fail(w, fmt.Errorf("%w: another install is running", errBusy))
 		return
@@ -39,14 +45,59 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 	defer s.install.Unlock()
 
 	s.stream(w, r, func(ctx context.Context, emit func(string)) bool {
-		if op == "uninstall" {
+		switch {
+		case op == "uninstall":
 			return s.pipUninstall(ctx, pkg, emit)
-		}
-		if entry.Str("proxy") == "native" {
+		case op == "check-dependencies":
+			return s.pipInstall(ctx, entry, true, emit)
+		case native:
 			return s.venvSetup(ctx, entry, emit)
 		}
-		return s.pipInstall(ctx, entry, emit)
+		return s.pipInstall(ctx, entry, false, emit)
 	})
+}
+
+// noNewerVersion is what the update check says when pip names no new version.
+const noNewerVersion = "Already up to date (sometimes incorrect)"
+
+// serveLatestVersion answers {"package_name"} with the version a pip dry run
+// would install, as a JSON string. Only a package the lists offer is checked,
+// and its name must be a plain package name, because it becomes a pip argument.
+func (s *Store) serveLatestVersion(w http.ResponseWriter, r *http.Request) {
+	o, err := body(w, r)
+	if err == nil {
+		err = only(o, "package_name")
+	}
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	pkg := o.Str("package_name")
+	if _, err := s.find(pkg); err != nil {
+		s.fail(w, err)
+		return
+	}
+	if err := checkRequirement(pkg); err != nil {
+		s.fail(w, invalidf("%v", err))
+		return
+	}
+	writeJSON(w, http.StatusOK, s.latestVersion(r.Context(), pkg))
+}
+
+// latestVersion is get_latest_version: the last word of pip's "Would install"
+// line for `pip install --dry-run --no-deps <package> gradio==5.49.1`.
+func (s *Store) latestVersion(ctx context.Context, pkg string) string {
+	version := ""
+	args := []string{"python", "-m", "pip", "install", "--dry-run", "--no-deps", pkg, gradioPin}
+	_ = s.run(ctx, args, func(line string) {
+		if f := strings.Fields(line); version == "" && strings.Contains(line, "Would install") && len(f) > 0 {
+			version = f[len(f)-1]
+		}
+	})
+	if version == "" {
+		return noNewerVersion
+	}
+	return version
 }
 
 // stream writes the NDJSON answer of an install: one {"line": "..."} per
@@ -70,8 +121,8 @@ func (s *Store) stream(w http.ResponseWriter, r *http.Request, run func(context.
 const gradioPin = "gradio==5.49.1"
 
 // pipInstall is pip_install_wrapper: pip install <requirements> gradio==5.49.1
-// in the main env.
-func (s *Store) pipInstall(ctx context.Context, entry *Obj, emit func(string)) bool {
+// in the main env. With dryRun it is the dependency check (--dry-run).
+func (s *Store) pipInstall(ctx context.Context, entry *Obj, dryRun bool, emit func(string)) bool {
 	name := entry.Str("name")
 	if name == "" {
 		name = entry.Str("package_name")
@@ -86,18 +137,24 @@ func (s *Store) pipInstall(ctx context.Context, entry *Obj, emit func(string)) b
 		emit(fmt.Sprintf("Failed to install %s dependencies: bad requirements: %v", name, err))
 		return false
 	}
-	return s.pipInstallTokens(ctx, entry, toks, emit)
+	return s.pipInstallTokens(ctx, entry, toks, dryRun, emit)
 }
 
-// pipInstallTokens is pipInstall with the requirements already split.
-func (s *Store) pipInstallTokens(ctx context.Context, entry *Obj, toks []string, emit func(string)) bool {
+// pipInstallTokens is pipInstall with the requirements already split. A dry run
+// says the same words as an install (the old check did) but leaves the log of
+// the real install alone.
+func (s *Store) pipInstallTokens(ctx context.Context, entry *Obj, toks []string, dryRun bool, emit func(string)) bool {
 	name := entry.Str("name")
 	if name == "" {
 		name = entry.Str("package_name")
 	}
 	var log []string
 	rec := func(l string) { log = append(log, l); emit(l) }
-	args := append([]string{"python", "-m", "pip", "install"}, append(toks, gradioPin)...)
+	args := []string{"python", "-m", "pip", "install"}
+	if dryRun {
+		args = append(args, "--dry-run")
+	}
+	args = append(append(args, toks...), gradioPin)
 	ok := s.run(ctx, args, rec) == nil
 	if ok {
 		rec(fmt.Sprintf("Successfully installed %s dependencies", name))
@@ -105,7 +162,9 @@ func (s *Store) pipInstallTokens(ctx context.Context, entry *Obj, toks []string,
 	} else {
 		rec(fmt.Sprintf("Failed to install %s dependencies", name))
 	}
-	s.writeLog("pip-install", name, log)
+	if !dryRun {
+		s.writeLog("pip-install", name, log)
+	}
 	return ok
 }
 

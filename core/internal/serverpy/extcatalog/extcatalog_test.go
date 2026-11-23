@@ -333,6 +333,9 @@ func TestHelperProcess(t *testing.T) {
 	fmt.Println("out: " + strings.Join(args[:min(2, len(args))], " "))
 	fmt.Fprintln(os.Stderr, "err: progress\rmore")
 	for _, a := range args {
+		if a == "--dry-run" && os.Getenv("HELPER_WOULD_INSTALL") != "" {
+			fmt.Println("Would install " + os.Getenv("HELPER_WOULD_INSTALL"))
+		}
 		if a == "FAILME" {
 			os.Exit(3)
 		}
@@ -490,9 +493,6 @@ func TestNativeVenvSetup(t *testing.T) {
 	_, got, _ = stream(t, s, `install {"package_name":"ext.native"}`)
 	if got.ok || len(readLog(t, log)) != 5 { // fails at the last step; earlier four ran
 		t.Errorf("failing step: ok=%v commands=%d", got.ok, len(readLog(t, log)))
-	}
-	if !strings.Contains(strings.Join(got.lines, "\n"), "torch==2.11.0+cu128") && false {
-		t.Error("unreachable")
 	}
 	// a package name that would escape .venvs is refused
 	writeFile(t, root, "extensions.json", `{"tabs":[`+entry("../evil", "Evil", `"proxy":"native"`)+`]}`)

@@ -61,7 +61,10 @@ func TestDotfilesStayHiddenBehind83Names(t *testing.T) {
 		"/api/webui-generations/outputs/" + strings.ToLower(outputShort),
 	} {
 		resp := request(t, "GET", front.URL+p, nil, nil)
-		if got := body(t, resp); resp.StatusCode != 404 || strings.Contains(got, "SECRET") {
+		// A route of the app gets the entry page (200), never the file. An API
+		// path gets 404.
+		got := body(t, resp)
+		if strings.Contains(got, "SECRET") || (strings.HasPrefix(p, "/api/") && resp.StatusCode != 404) {
 			t.Errorf("%s: %d %q; a dotfile was served through its 8.3 name", p, resp.StatusCode, got)
 		}
 	}

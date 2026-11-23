@@ -13,8 +13,6 @@
     "start": "next start",
     "lint": "next lint",
     "dev-error": "tsc --noEmit --pretty --watch",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
     "test": "jest",
     "test:watch": "jest --watch"
   },

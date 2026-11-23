@@ -4,7 +4,6 @@ import { Button } from "../../components/ui/button";
 import {
   errorText,
   goGetJson,
-  goGetText,
   goSendJson,
 } from "../../functions/goData";
 
@@ -45,10 +44,10 @@ const LogViewerPage = () => {
       if (k === "all") {
         const names = await goGetJson<string[]>(`${BASE}/files`);
         setFiles(names.map((n) => ({ name: n, file: n })));
-        setStats(await goGetText(`${BASE}/stats`));
+        setStats(await goGetJson<string>(`${BASE}/stats`));
       } else {
         setFiles(await goGetJson<LogFile[]>(`${BASE}/pip-logs?${q({ kind: k })}`));
-        setStats(await goGetText(`${BASE}/summary?${q({ kind: k })}`));
+        setStats(await goGetJson<string>(`${BASE}/summary?${q({ kind: k })}`));
       }
       setSelected("");
       setInfo("");
@@ -63,7 +62,7 @@ const LogViewerPage = () => {
   const readFile = (file: string) =>
     run(async () => {
       setContent(
-        await goGetText(
+        await goGetJson<string>(
           `${BASE}/read?${q({ file, search, max_lines: maxLines })}`
         )
       );
@@ -76,11 +75,11 @@ const LogViewerPage = () => {
     setContent("");
     if (!file) return;
     run(async () => {
-      setInfo(await goGetText(`${BASE}/info?${q({ file })}`));
+      setInfo(await goGetJson<string>(`${BASE}/info?${q({ file })}`));
       if (kind === "all") {
         await readFile(file);
       } else {
-        setAnalysis(await goGetText(`${BASE}/analyze?${q({ file })}`));
+        setAnalysis(await goGetJson<string>(`${BASE}/analyze?${q({ file })}`));
       }
     });
   };

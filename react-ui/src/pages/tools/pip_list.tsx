@@ -18,7 +18,12 @@ const PipListPage = () => {
     try {
       setPackages(await goGetJson<Package[]>("/api/go-data/pip-list"));
     } catch (e) {
-      setError(errorText(e));
+      const message = errorText(e);
+      setError(
+        message.includes("no Python environment")
+          ? "There is no Python environment (not installed yet, or no Python on PATH). The package list needs one; everything else in the core works without it."
+          : message
+      );
     } finally {
       setLoading(false);
     }

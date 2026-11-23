@@ -173,6 +173,11 @@ export const routes: Route[] = [
         href: "/tools/api_config",
         text: "API Config",
       },
+      { href: "/tools/pip_list", text: "Installed Packages" },
+      { href: "/tools/log_viewer", text: "Log Viewer" },
+      { href: "/tools/model_location", text: "Model Location" },
+      { href: "/tools/server_settings", text: "Server Settings" },
+      { href: "/tools/youtube_tutorials", text: "YouTube Tutorials" },
     ],
   },
 ];

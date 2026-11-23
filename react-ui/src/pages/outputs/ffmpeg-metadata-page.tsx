@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import { LocalCacheFile } from "../../types/LocalCacheFile";
 import { BarkMetadataDisplay } from "../../components/BarkMetadataDisplay";
 
 const FFMPEGMetadataPage = () => {
@@ -15,13 +14,15 @@ const FFMPEGMetadataPage = () => {
   const [metadata, setMetadata] = useState<any>(null);
 
   const loadMetadata = async (x: string) => {
-    const filename: LocalCacheFile = { __type: "local_cache_file", path: x };
-    const response = await fetch("/api/gradio/load_ffmpeg_metadata", {
+    // x is /file-input-cache/<name>; the Go core reads that uploaded file.
+    const name = decodeURIComponent(x.split("/").pop() ?? "");
+    const response = await fetch("/api/go-data/ffmpeg-metadata", {
       method: "POST",
-      body: JSON.stringify({ filename }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
     });
     const data = await response.json();
-    setMetadata(data);
+    setMetadata(response.ok ? data : { error: data.error ?? response.statusText });
   };
 
   return (

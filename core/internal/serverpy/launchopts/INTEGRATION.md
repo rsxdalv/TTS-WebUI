@@ -95,5 +95,8 @@ when imported alone); it is not caused by the port. The app stopped cleanly thro
   `TTS_GRADIO_HOST`.
 - `core_server` no longer touches `os.environ` or `dotenv_manager.init`.
 
-`core/cmd/serverpy-demo` is a prototype wiring that predates the config API (it
-does not mount `/api/config` either) and was not updated.
+`core/cmd/serverpy-demo` is deleted (step 27): it wired the first four stages by hand,
+before the config, history, extcatalog and launch-options APIs, so `server_core.py`
+could no longer run under it. The launcher with `TTS_GO_SERVERPY=1` is the one
+wiring (`launcher/serverpy.go`); the opt-in tests in `launcher/real_serverpy_test.go`
+run it against a real install.

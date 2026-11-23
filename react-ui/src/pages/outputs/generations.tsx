@@ -4,10 +4,16 @@ import { CardEmpty, CardGeneration } from "../../components/CardBig";
 import { GenerationRaw } from "../../types/Generation";
 import { Template } from "../../components/Template";
 
+// The browser build has no props. The empty list must be the same array
+// every time, or an effect would run on every render.
+const NO_GENERATIONS: GenerationRaw[] = [];
+
 export default function Home({
-  generations,
+  generations = NO_GENERATIONS,
 }: {
-  generations: GenerationRaw[];
+  // The server build passes the data (getStaticProps); the browser build has
+  // no props.
+  generations?: GenerationRaw[];
 }) {
   return (
     <Template title="Favorites">

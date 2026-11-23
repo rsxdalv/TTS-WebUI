@@ -8,7 +8,9 @@
  * - User preferences
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_DB_API_URL || 'http://127.0.0.1:7774/api';
+import { databaseApiUrl } from "../data/env";
+
+const API_BASE = databaseApiUrl() || 'http://127.0.0.1:7774/api';
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';

@@ -52,7 +52,7 @@ longer spawns anything (step 27; before, `tts_webui/core_ext_bridge` patched
   when the process is spawned; `wait_ready(package)` polls `GET /api/extensions`
   until `ready` and raises `CoreBridgeError` with Go's reason on `failed` or
   `exited` (or after 130 s); `stop(package)` treats 404 as already stopped. The
-  tab shows the reason and re-enables Start when the start fails (the old code
+  tab stops the process, shows the reason and re-enables Start when the start fails (the old code
   built a `gr.Error` without raising it and showed the iframe anyway).
 - ReadyTimeout (default 120s): state becomes `failed` but the process keeps
   running and probing; if it comes up later it turns `ready` and is routed.

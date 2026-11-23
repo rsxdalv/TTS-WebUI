@@ -952,6 +952,14 @@ class SetupProxyExtensionTest(unittest.TestCase):
         self.assertEqual(len(steps), 2)
         self.assertIn("boom", steps[-1][0])
         self.assertNotIn("iframe", steps[-1][0])
+        # the process Go still holds is stopped, so Start can be pressed again
+        self.assertEqual(self.stub.requests[-1][:2], ("POST", "stop"))
+
+    def test_a_failed_stop_is_shown_not_swallowed(self):
+        self.stub.ext_stop = (500, {"error": "did not exit"})
+        with mock.patch.object(self.spe.gr, "Warning") as warn:
+            self.handlers["shutdown_extension"]()
+        self.assertIn("did not exit", warn.call_args.args[0])
 
     def test_shutdown_stops_the_extension_in_go(self):
         out = self.handlers["shutdown_extension"]()

@@ -248,3 +248,76 @@ func TestRealBridgeStartsAndStopsExtension(t *testing.T) {
 		}
 	}
 }
+
+// TestRealNativeExtensionInstallAndStart installs a native extension
+// (proxy: native) through bridge.extcatalog.install, which sets up
+// .venvs/<package> with uv, torch and the requirements, then starts it through
+// bridge.extensions: Go picks the venv's python, the process listens, the
+// router serves /<package>/, and stop removes the route. It downloads torch.
+//
+// Opt-in: EnvRealRoot (a throwaway copy: .venvs is created in it),
+// LAUNCHER_REAL_PYTHON and LAUNCHER_REAL_NATIVE_PKG, for example
+// tts_webui_extension.piper_tts. installer_scripts/.gpu must exist.
+func TestRealNativeExtensionInstallAndStart(t *testing.T) {
+	root := realRoot(t)
+	py, pkg := os.Getenv("LAUNCHER_REAL_PYTHON"), os.Getenv("LAUNCHER_REAL_NATIVE_PKG")
+	if py == "" || pkg == "" {
+		t.Skip("LAUNCHER_REAL_PYTHON or LAUNCHER_REAL_NATIVE_PKG not set")
+	}
+	baseEnv := append(os.Environ(), "MAMBA_ROOT_PREFIX="+filepath.Join(root.InstallerFiles(), "mamba"), "PYTHONIOENCODING=utf-8", "PYTHONUNBUFFERED=1")
+	sp, err := startServerPy(root, realPrefix(root), baseEnv, appenv.Flags{NoReact: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sp.Close()
+	env := envMap(sp.gradioEnv)
+	run := func(script string) string {
+		cmd := exec.Command(py, "-c", script, pkg)
+		cmd.Dir = root.Dir()
+		cmd.Env = append(append([]string(nil), sp.gradioEnv...), "PYTHONPATH="+root.Dir())
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("python: %v\n%s", err, out)
+		}
+		return string(out)
+	}
+
+	install := run("import sys\n" +
+		"from tts_webui.core_bridge import bridge\n" +
+		"last = ''\n" +
+		"for html in bridge.extcatalog.install(sys.argv[1]):\n" +
+		"    last = html\n" +
+		"print(last.replace('<br />', chr(10)))\n")
+	t.Logf("install tail:\n%s", tail(install, 40))
+	venvPython := filepath.Join(root.Dir(), ".venvs", pkg, "Scripts", "python.exe")
+	if _, err := os.Stat(venvPython); err != nil {
+		t.Fatalf("no venv python after the install: %v", err)
+	}
+	if !strings.Contains(install, "Successfully installed") {
+		t.Errorf("the install console has no \"Successfully installed\"")
+	}
+
+	started := run("import sys\n" +
+		"from tts_webui.core_bridge import bridge\n" +
+		"pkg = sys.argv[1]\n" +
+		"print('started', bridge.extensions.start(pkg))\n" +
+		"print('ready', bridge.extensions.wait_ready(pkg, 170))\n")
+	t.Logf("start:\n%s", started)
+	log := extensionLog(t, env["TTS_CORE_URL"], env["TTS_CORE_TOKEN"], pkg)
+	t.Logf("extension log (tail):\n%s", tail(log, 30))
+	if code, body := get(t, "http://"+sp.publicAddr+"/"+pkg+"/", ""); code != http.StatusOK {
+		t.Errorf("GET /%s/ through the router = %d %.200s", pkg, code, body)
+	}
+	if out := run("import sys\nfrom tts_webui.core_bridge import bridge\nbridge.extensions.stop(sys.argv[1])\nprint([s['state'] for s in bridge.extensions.status()])\n"); !strings.Contains(out, "exited") {
+		t.Errorf("after stop: %s", out)
+	}
+}
+
+// tail returns the last n lines of s.
+func tail(s string, n int) string {
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+	return strings.Join(lines, "\n")
+}

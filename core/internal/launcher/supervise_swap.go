@@ -168,7 +168,7 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		// The public port and inbrowser come from config.json, as in server.py.
 		inBrowser := false
 		if c, err := appenv.LoadConfig(root.Dir()); err == nil {
-			plan.PublicPort, inBrowser = c.Port, c.InBrowser
+			plan.PublicPort, inBrowser = appenv.PublicPortFor(c.Port, o.flags()), c.InBrowser
 		}
 		open := inBrowser && !o.noBrowser
 		plan.OpenBrowser = &open

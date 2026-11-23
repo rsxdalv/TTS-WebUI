@@ -10,6 +10,13 @@ def get_openai_api_host():
     return f"http://localhost:{port}"
 
 
+def _stop_quietly(package_name):
+    try:
+        bridge.extensions.stop(package_name)
+    except CoreBridgeError as e:
+        print(f"Could not stop {package_name}: {e}")
+
+
 def setup_proxy_extension(
     package_name,
     title_name,
@@ -44,7 +51,7 @@ def setup_proxy_extension(
                 gr.Button(interactive=False),
             )
         except Exception as e:
-            gr.Error(f"Error stopping extension: {e}")
+            gr.Warning(f"Error stopping extension: {e}")
             return gr.skip(), gr.skip(), gr.skip()
 
     page = gr.HTML(
@@ -68,6 +75,7 @@ def setup_proxy_extension(
             bridge.extensions.wait_ready(package_name)
         except CoreBridgeError as e:
             extension_ran = False
+            _stop_quietly(package_name)  # a process that never listened must not linger
             gr.Warning(f"Could not start {title_name}: {e}")
             yield (
                 gr.HTML(f"Could not start the extension: {e}"),

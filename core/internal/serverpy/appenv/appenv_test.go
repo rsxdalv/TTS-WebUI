@@ -432,3 +432,12 @@ func TestFlagsArgsRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestPublicPortForDocker(t *testing.T) {
+	if got := PublicPortFor(9000, Flags{}); got != 9000 {
+		t.Errorf("plain = %d, want the config port", got)
+	}
+	if got := PublicPortFor(9000, Flags{Docker: true}); got != DockerPublicPort {
+		t.Errorf("docker = %d, want %d", got, DockerPublicPort)
+	}
+}

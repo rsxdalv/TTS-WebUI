@@ -80,13 +80,17 @@ func (b badSup) Restart(context.Context) error { return b.err }
 // Option configures New.
 type Option func(*options)
 
-type options struct{ noBrowser, share, docker bool }
+type options struct{ noBrowser, share, docker, systemPython bool }
 
 // WithNoBrowser stops the supervisor from opening the app in a browser.
 func WithNoBrowser() Option { return func(o *options) { o.noBrowser = true } }
 
 // WithShare is server.py's --share: a public Gradio link.
 func WithShare() Option { return func(o *options) { o.share = true } }
+
+// WithSystemPython runs python, npm and uv from PATH instead of the installer's
+// micromamba env (Docker, Colab, an env the user manages). The GPU gate is off.
+func WithSystemPython() Option { return func(o *options) { o.systemPython = true } }
 
 // WithDocker is server.py's --docker: the router binds 0.0.0.0:7770.
 func WithDocker() Option { return func(o *options) { o.docker = true } }
@@ -129,6 +133,7 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 	cfg := supervise.Config{
 		Root:         root,
 		SkipReactTab: true,
+		SystemPython: o.systemPython,
 		GradioArgs:   o.flags().Args(),
 	}
 	cfg.Prepare = func(ctx context.Context) (supervise.Plan, error) {

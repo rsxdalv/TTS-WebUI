@@ -19,6 +19,8 @@ func runLaunch(ctx context.Context, args []string) error {
 	noBrowser := fs.Bool("no-browser", false, "do not open the browser automatically")
 	share := fs.Bool("share", false, "ask Gradio for a public share link (server.py --share)")
 	docker := fs.Bool("docker", false, "listen on 0.0.0.0:7770 for a container (server.py --docker)")
+	start := fs.Bool("start", false, "start the app as soon as the launcher is up (headless: Docker, Colab)")
+	systemPython := fs.Bool("system-python", false, "run python and npm from PATH, not the installer's micromamba env (Docker, Colab)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -52,6 +54,9 @@ func runLaunch(ctx context.Context, args []string) error {
 	if *docker {
 		opts = append(opts, launcher.WithDocker())
 	}
+	if *systemPython {
+		opts = append(opts, launcher.WithSystemPython())
+	}
 	l := launcher.New(root, opts...)
 	l.CleanupOrphans()
 	l.Register(srv)
@@ -70,6 +75,14 @@ func runLaunch(ctx context.Context, args []string) error {
 		if err := launcher.OpenBrowser(launchURL); err != nil {
 			slog.Warn("could not open browser", "err", err)
 		}
+	}
+
+	if *start {
+		go func() {
+			if err := l.StartApp(ctx); err != nil {
+				slog.Error("starting the app failed", "err", err)
+			}
+		}()
 	}
 
 	errCh := make(chan error, 1)

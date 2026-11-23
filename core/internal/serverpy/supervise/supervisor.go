@@ -354,8 +354,8 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		default:
 			r = s.newRunner()
 		}
-		args := append(append([]string(nil), prefix[1:]...), d.args...)
-		if err := r.Start(ctx, prefix[0], args, cwd, d.env); err != nil {
+		cmd, args := childCommand(prefix, d.args)
+		if err := r.Start(ctx, cmd, args, cwd, d.env); err != nil {
 			m.state, m.errMsg = StateFailed, err.Error()
 			m.markGone()
 			startErr = fmt.Errorf("starting %s: %w", d.name, err)
@@ -673,4 +673,13 @@ func readGPULabel(c Config) (string, error) {
 		return "", fmt.Errorf("invalid GPU label in .gpu file: %w", err)
 	}
 	return string(label), nil
+}
+
+// childCommand is the program and arguments of one child: the prefix, then the
+// child's own command line; with no prefix (SystemPython) the child's own.
+func childCommand(prefix, args []string) (string, []string) {
+	if len(prefix) == 0 {
+		return args[0], append([]string(nil), args[1:]...)
+	}
+	return prefix[0], append(append([]string(nil), prefix[1:]...), args...)
 }

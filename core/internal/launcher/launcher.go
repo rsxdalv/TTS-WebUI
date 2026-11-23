@@ -38,20 +38,26 @@ type Launcher struct {
 	updateOnce    sync.Once
 	updateChecked bool // true = already up to date (cached after first check)
 
-	extOnce sync.Once // the Extensions page's stores, built on first use
-	ext     *extHost
-	extErr  error
+	systemPython bool      // no micromamba prefix (WithSystemPython)
+	extOnce      sync.Once // the Extensions page's stores, built on first use
+	ext          *extHost
+	extErr       error
 }
 
 // New creates a Launcher for the given install root.
 func New(root paths.Root, opts ...Option) *Launcher {
 	return &Launcher{
-		root:   root,
-		sprocs: make(map[string]*procs.Proc),
-		slogs:  make(map[string]*Log),
-		sup:    newAppSupervisor(root, opts...),
+		root:         root,
+		sprocs:       make(map[string]*procs.Proc),
+		slogs:        make(map[string]*Log),
+		sup:          newAppSupervisor(root, opts...),
+		systemPython: buildOptions(opts).systemPython,
 	}
 }
+
+// StartApp starts the app, as the Start button does. It returns once the
+// children are started, not when they are ready.
+func (l *Launcher) StartApp(ctx context.Context) error { return l.sup.Start(ctx) }
 
 // Shutdown stops the app and any running install step, for a launcher that
 // is exiting (Ctrl+C, SIGTERM, SIGHUP). It returns when they are gone.

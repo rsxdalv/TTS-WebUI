@@ -43,13 +43,16 @@ type extHost struct {
 	pip   *piplist.Store
 }
 
-func newExtHost(root paths.Root) (*extHost, error) {
+func newExtHost(root paths.Root, systemPython bool) (*extHost, error) {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
 		return nil, fmt.Errorf("generating the extension token: %w", err)
 	}
 	token := hex.EncodeToString(b)
-	prefix := supervise.CommandPrefix(root)
+	var prefix []string // system python: run python and uv from PATH
+	if !systemPython {
+		prefix = supervise.CommandPrefix(root)
+	}
 	env := append(os.Environ(), supervise.MambaRootEnv(root))
 	logf := func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) }
 	cfg := appconfig.New(appconfig.Options{Root: root.Dir(), Token: token, Logf: logf})
@@ -69,7 +72,7 @@ func newExtHost(root paths.Root) (*extHost, error) {
 // extensions builds the stores on first use, so a launcher that never opens the
 // Extensions page never touches them.
 func (l *Launcher) extensions() (*extHost, error) {
-	l.extOnce.Do(func() { l.ext, l.extErr = newExtHost(l.root) })
+	l.extOnce.Do(func() { l.ext, l.extErr = newExtHost(l.root, l.systemPython) })
 	return l.ext, l.extErr
 }
 

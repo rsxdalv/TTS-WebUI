@@ -71,6 +71,11 @@ type Config struct {
 	// SkipGPUCheck disables the "installer_scripts/.gpu must exist and parse"
 	// gate that the legacy supervisor enforced before any start.
 	SkipGPUCheck bool
+	// SystemPython runs python, npm and uv straight from PATH, with no
+	// micromamba prefix: a container, Colab or any env the user manages. It
+	// implies SkipGPUCheck (there is no installer_scripts/.gpu without the
+	// installer) and CommandPrefix stays empty.
+	SystemPython bool
 
 	// SkipReactTab opens only the public URL, not the React one, when
 	// OpenBrowser is on. The launcher sets it: the React UI is not a separate
@@ -139,7 +144,9 @@ func (c Config) normalized() (Config, error) {
 	if c.ProbeInterval <= 0 {
 		c.ProbeInterval = DefaultProbeInterval
 	}
-	if len(c.CommandPrefix) == 0 {
+	if c.SystemPython {
+		c.CommandPrefix, c.SkipGPUCheck = nil, true
+	} else if len(c.CommandPrefix) == 0 {
 		c.CommandPrefix = micromambaPrefix(c.Root)
 	} else {
 		c.CommandPrefix = append([]string(nil), c.CommandPrefix...)

@@ -94,10 +94,8 @@ name). Reading creates the default file when it is missing, like `GET`.
 
 ### Stays in Python
 
-- `installer_scripts/tools/extension_manager.py` (a separate CLI process
-  without the core) still calls `_save_config` and writes the file itself.
 - `core_config_bridge` (whole-document GET/PUT) stays for loading the config at
-  startup and for any caller of `_save_config` left (only that CLI).
+  startup and for any caller of `_save_config` left.
 - `get_config_value` reads the in-memory dict.
 
 Dev server: `go run ./internal/serverpy/appconfig/cmd/configd -root <dir> -token dev`.
@@ -106,13 +104,15 @@ Dev server: `go run ./internal/serverpy/appconfig/cmd/configd -root <dir> -token
 
 - Python callers `save_config_gradio`, `set_config_value` and
   `interface_extensions` now use the operations above, not `_save_config`.
-- `installer_scripts/tools/extension_manager.py` is a separate CLI process that
-  calls `_save_config` without `TTS_CORE_URL`: it still writes the file itself.
+- The launcher's Extensions page (`core/internal/launcher/extensions.go`)
+  enables and disables extensions through its own `Store` on the same file, with
+  the app stopped (it replaced `extension_manager.py`, which wrote the file from
+  Python). While the app runs there are two Stores on the file, each under its
+  own lock.
 - React (`react-ui/src/pages/api`) does not write `config.json`.
 
 ## Known limit
 
 `core_router_bridge` rewrites `server_port`/`server_name`/`inbrowser` in the
 in-memory config (the private Gradio port). The operations above no longer send
-that dict back, so this leak is gone for the three ported call sites; only the
-`extension_manager.py` CLI (own process, own config) is unaffected.
+that dict back, so this leak is gone for the ported call sites.

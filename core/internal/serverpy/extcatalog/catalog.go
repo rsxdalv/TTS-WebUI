@@ -4,9 +4,8 @@
 // Python reaches it through tts_webui/core_bridge (bridge.extcatalog).
 //
 // It also decides which extensions Python loads, in which order and in which
-// state (resolve.go). The merge is the one extensions_data_loader.py did; that
-// file only keeps get_interface_extensions for installer_scripts/tools/
-// extension_manager.py, a CLI without the core, so keep the two merges in step.
+// state (resolve.go). The merge is the one extensions_data_loader.py did (the file is
+// gone; the launcher's Extensions page uses this package with the app stopped).
 package extcatalog
 
 import (

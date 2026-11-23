@@ -97,26 +97,6 @@ func TestOpenTerminal(t *testing.T) {
 	}
 }
 
-func TestRunExtensionManager(t *testing.T) {
-	s, r, lines := smallStep(map[string]int{"python": 6})
-	code, _ := runExtensionManager(context.Background(), s, "windows")
-	want := `conda --version | node --version | python --version | python .\installer_scripts\tools\extension_manager.py`
-	if code != 0 || r.names() != want {
-		t.Fatalf("code=%d commands=%q", code, r.names())
-	}
-	if got := strings.Join(*lines, "|"); got != "Node|Starting Extension Management UI...|Press any key to continue . . . " {
-		t.Fatalf("log: %q", got)
-	}
-	s, r, lines = smallStep(map[string]int{"python": 6})
-	code, _ = runExtensionManager(context.Background(), s, "linux")
-	if code != 6 || r.names() != "python ./installer_scripts/tools/extension_manager.py" {
-		t.Fatalf("unix code=%d commands=%q", code, r.names())
-	}
-	if got := strings.Join(*lines, "|"); got != "Starting Extension Management UI...|Activating conda environment...|Running Extension server..." {
-		t.Fatalf("unix log: %q", got)
-	}
-}
-
 func TestActivate(t *testing.T) {
 	s, r, _ := smallStep(nil)
 	if code, _ := activate(context.Background(), s, "windows"); code != 0 || !strings.Contains(r.cmds[0].Shell, `activate.bat .\installer_files\env`) {

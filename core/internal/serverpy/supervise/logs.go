@@ -1,7 +1,7 @@
 package supervise
 
 // SubscribeLogs streams the live output of the named child (NameGradio,
-// "react-ui", "extension-manager") from the current generation. It returns
+// "react-ui") from the current generation. It returns
 // ok=false when that child is not running or its runner cannot stream. The
 // cancel func must be called when done. A Restart starts new runners, so
 // subscribe again after one.

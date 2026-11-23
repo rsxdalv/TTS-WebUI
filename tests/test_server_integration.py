@@ -139,21 +139,3 @@ class TestServerGradioUI:
             # It's okay if this fails due to missing dependencies in test environment
             # The key is that the module structure is correct
             pass
-
-
-class TestExtensionsLoader:
-    """Tests for extensions loading functionality."""
-
-    @pytest.mark.integration
-    def test_interface_extensions_come_from_the_files(self, change_to_temp_dir):
-        """The CLI's reader (the app asks the Go core instead)."""
-        import json
-
-        from tts_webui.extensions_loader.extensions_data_loader import (
-            get_interface_extensions,
-        )
-
-        with open("extensions.json", "w") as f:
-            json.dump({"tabs": [{"package_name": "a"}], "decorators": []}, f)
-
-        assert get_interface_extensions() == [{"package_name": "a"}]

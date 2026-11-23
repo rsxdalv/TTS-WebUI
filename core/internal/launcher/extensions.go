@@ -1,7 +1,7 @@
 package launcher
 
 // Extension management that works with the app stopped. It replaces the
-// installer_scripts/tools/extension_manager.py process: the launcher mounts the
+// extension_manager.py process (removed in step 29): the launcher mounts the
 // same extcatalog (lists, pip/uv installs) and appconfig (enable/disable)
 // stores the app's control API uses, behind the launcher's own token guard.
 

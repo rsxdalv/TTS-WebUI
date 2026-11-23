@@ -1,13 +1,11 @@
-// fakechild stands in for `python server.py`, `npm start` and
-// `python extension_manager.py` in the supervise tests. The supervisor's
+// fakechild stands in for `python server.py` and `npm start` in the supervise tests. The supervisor's
 // command prefix points at this binary, so it receives e.g.
 // "python server.py --no-react" as its arguments.
 //
-// Role is derived from the arguments (npm -> react, a script named
-// extension_manager.py -> ext, otherwise gradio). Ports: react from "-p N",
-// ext from "--port N", gradio from env FAKE_GRADIO_PORT.
+// Role is derived from the arguments (npm -> react, otherwise gradio). Ports:
+// react from "-p N", gradio from env FAKE_GRADIO_PORT.
 //
-// Behaviour per role R (gradio, react, ext) via env:
+// Behaviour per role R (gradio, react) via env:
 //
 //	FAKE_<R>_NOLISTEN=1    never listen
 //	FAKE_<R>_DELAY=300ms   wait before listening
@@ -95,8 +93,6 @@ func detect(args []string) (role string, port int) {
 	switch {
 	case len(args) > 0 && args[0] == "npm":
 		return "react", flagVal("-p")
-	case len(args) > 1 && strings.HasSuffix(args[1], "extension_manager.py"):
-		return "ext", flagVal("--port")
 	}
 	n, _ := strconv.Atoi(os.Getenv("FAKE_GRADIO_PORT"))
 	return "gradio", n

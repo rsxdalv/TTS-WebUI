@@ -101,17 +101,16 @@ the browser tab and React's `GRADIO_BACKEND_AUTOMATIC` all use it.
 
 ## Behaviour summary
 
-- Children: `<prefix> python <entry> <args...>`, `<prefix> npm --prefix react-ui start -- -p <ReactPort>`,
-  `<prefix> python installer_scripts/tools/extension_manager.py --port <N>`;
+- Children: `<prefix> python <entry> <args...>`, `<prefix> npm --prefix react-ui start -- -p <ReactPort>`
+  (the extension manager process is gone: the launcher's Extensions page does its job);
   prefix defaults to `micromamba -p installer_files/env run`, cwd = root,
-  `MAMBA_ROOT_PREFIX` and `TTS_EXTENSION_MANAGER_PORT` set as before.
+  `MAMBA_ROOT_PREFIX` set as before.
 - React env: `REACT_UI_PORT`, `GRADIO_BACKEND_AUTOMATIC=http://127.0.0.1:<PublicPort>/`.
   Gradio also gets `REACT_UI_PORT` (unless NoReact). Default gradio args
   `--no-react` (React is the supervisor's job); `--share/--docker/--no-tree-proxy` are appended.
 - States: `stopped`, `starting`, `ready`, `stopping`, `exited`, `failed`,
   `disabled` (react with NoReact). `ready` = HTTP GET `/` < 500 on the public
-  port (the proxy tree answers 502 until Gradio is up), TCP connect for React
-  and the extension manager. `failed` = start error or no readiness within
+  port (the proxy tree answers 502 until Gradio is up), TCP connect for React. `failed` = start error or no readiness within
   `ReadyTimeout` (default 10 min); a timed-out child is left running, not killed.
   `exited` carries `exit_code` and the last 50 log lines. No auto-restart.
 - `Start` is refused only while some child is alive, so it works again after a

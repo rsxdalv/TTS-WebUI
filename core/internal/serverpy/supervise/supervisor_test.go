@@ -187,7 +187,7 @@ func TestReadyAndStatusShape(t *testing.T) {
 	if err := s.Start(ctx()); err != nil {
 		t.Fatal(err)
 	}
-	for _, n := range []string{NameGradio, NameReact, NameExtMgr} {
+	for _, n := range []string{NameGradio, NameReact} {
 		waitState(t, s, n, StateReady)
 	}
 
@@ -195,10 +195,10 @@ func TestReadyAndStatusShape(t *testing.T) {
 	if err := json.Unmarshal([]byte(mustJSON(s.Statuses())), &raw); err != nil {
 		t.Fatal(err)
 	}
-	if len(raw) != 3 {
-		t.Fatalf("want 3 entries, got %v", raw)
+	if len(raw) != 2 {
+		t.Fatalf("want 2 entries, got %v", raw)
 	}
-	wantNames := []string{"gradio", "react-ui", "extension-manager"}
+	wantNames := []string{"gradio", "react-ui"}
 	for i, m := range raw {
 		if m["name"] != wantNames[i] || m["running"] != true || m["state"] != "ready" {
 			t.Errorf("entry %d: %v", i, m)
@@ -213,9 +213,6 @@ func TestReadyAndStatusShape(t *testing.T) {
 	if int(raw[0]["port"].(float64)) != e.gradioPort || int(raw[1]["port"].(float64)) != e.reactPort {
 		t.Errorf("ports: %v", raw)
 	}
-	if raw[2]["port"].(float64) <= 0 {
-		t.Errorf("extension manager port not assigned: %v", raw[2])
-	}
 	if err := s.Start(ctx()); !errors.Is(err, ErrAlreadyRunning) {
 		t.Errorf("second Start = %v, want ErrAlreadyRunning", err)
 	}
@@ -229,13 +226,11 @@ func TestChildArgsAndEnv(t *testing.T) {
 		c.Share, c.Docker, c.NoTreeProxy = true, true, true
 		c.GradioEntry = "server_core.py"
 		c.GradioEnv = []string{"TTS_CORE_TOKEN=secret", "TTS_GRADIO_PORT=1234"}
-		c.ExtensionManagerPort = tmpPort(t)
 	}, "TEST_EXTRA=yes")
 	if err := s.Start(ctx()); err != nil {
 		t.Fatal(err)
 	}
-	extPort := s.Config().ExtensionManagerPort
-	g, r, x := readDump(t, e.dump, "gradio"), readDump(t, e.dump, "react"), readDump(t, e.dump, "ext")
+	g, r := readDump(t, e.dump, "gradio"), readDump(t, e.dump, "react")
 
 	if got, want := strings.Join(g.Args, " "), "python server_core.py --no-react --share --docker --no-tree-proxy"; got != want {
 		t.Errorf("gradio args = %q, want %q", got, want)
@@ -243,10 +238,6 @@ func TestChildArgsAndEnv(t *testing.T) {
 	wantReact := []string{"npm", "--prefix", filepath.Join(e.root.Dir(), "react-ui"), "start", "--", "-p", strconv.Itoa(e.reactPort)}
 	if strings.Join(r.Args, "\x00") != strings.Join(wantReact, "\x00") {
 		t.Errorf("react args = %v, want %v", r.Args, wantReact)
-	}
-	wantExt := []string{"python", filepath.Join(e.root.InstallerScripts(), "tools", "extension_manager.py"), "--port", strconv.Itoa(extPort)}
-	if strings.Join(x.Args, "\x00") != strings.Join(wantExt, "\x00") {
-		t.Errorf("ext args = %v, want %v", x.Args, wantExt)
 	}
 
 	wantBackend := fmt.Sprintf("http://127.0.0.1:%d/", e.gradioPort)
@@ -256,9 +247,9 @@ func TestChildArgsAndEnv(t *testing.T) {
 	if g.Env["REACT_UI_PORT"] != strconv.Itoa(e.reactPort) {
 		t.Errorf("gradio REACT_UI_PORT = %q", g.Env["REACT_UI_PORT"])
 	}
-	for name, d := range map[string]dumpT{"gradio": g, "react": r, "ext": x} {
-		if d.Env["TTS_EXTENSION_MANAGER_PORT"] != strconv.Itoa(extPort) {
-			t.Errorf("%s TTS_EXTENSION_MANAGER_PORT = %q", name, d.Env["TTS_EXTENSION_MANAGER_PORT"])
+	for name, d := range map[string]dumpT{"gradio": g, "react": r} {
+		if _, ok := d.Env["TTS_EXTENSION_MANAGER_PORT"]; ok {
+			t.Errorf("%s still gets TTS_EXTENSION_MANAGER_PORT", name)
 		}
 		if d.Env["TEST_EXTRA"] != "yes" {
 			t.Errorf("%s lost ExtraEnv", name)
@@ -270,13 +261,8 @@ func TestChildArgsAndEnv(t *testing.T) {
 	if g.Env["TTS_CORE_TOKEN"] != "secret" || g.Env["TTS_GRADIO_PORT"] != "1234" {
 		t.Errorf("gradio lacks GradioEnv: %v", g.Env["TTS_CORE_TOKEN"])
 	}
-	for _, d := range []dumpT{r, x} {
-		if _, ok := d.Env["TTS_CORE_TOKEN"]; ok {
-			t.Errorf("%s received the gradio-only secret", d.Role)
-		}
-	}
-	if x.Env["GRADIO_BACKEND_AUTOMATIC"] != "" && os.Getenv("GRADIO_BACKEND_AUTOMATIC") == "" {
-		t.Errorf("ext got React env")
+	if _, ok := r.Env["TTS_CORE_TOKEN"]; ok {
+		t.Errorf("react received the gradio-only secret")
 	}
 }
 
@@ -313,7 +299,6 @@ func TestConfigValidation(t *testing.T) {
 		{},
 		{Root: root, PublicPort: 70000},
 		{Root: root, PublicPort: 4000, ReactPort: 4000},
-		{Root: root, PublicPort: 4000, ReactPort: 4001, ExtensionManagerPort: 4000},
 	}
 	for i, c := range bad {
 		if _, err := New(c); err == nil {
@@ -357,7 +342,6 @@ func TestReadyTimeoutMarksFailedKeepsProcess(t *testing.T) {
 	if len(st.LogTail) == 0 || !strings.Contains(st.LogTail[0], "start") {
 		t.Errorf("failed status lacks log tail: %+v", st.LogTail)
 	}
-	waitState(t, s, NameExtMgr, StateReady) // others unaffected
 	s.Stop()
 	if st := status(s, NameGradio); st.Running || st.State != StateStopped {
 		t.Errorf("after Stop: %+v", st)
@@ -382,21 +366,14 @@ func TestExitReportedWithCodeAndTail(t *testing.T) {
 	if st := status(s, NameGradio); st.State != StateExited || st.Running {
 		t.Errorf("restarted? %+v", st)
 	}
-	waitState(t, s, NameExtMgr, StateReady)
-	// With gradio dead, Start is allowed once nothing is alive; here ext lives.
-	if err := s.Start(ctx()); !errors.Is(err, ErrAlreadyRunning) {
-		t.Errorf("Start with ext alive = %v", err)
-	}
 }
 
 func TestStartAfterAllExited(t *testing.T) {
-	s, _ := newSup(t, func(c *Config) { c.NoReact = true },
-		"FAKE_GRADIO_EXIT=1", "FAKE_EXT_EXIT=2")
+	s, _ := newSup(t, func(c *Config) { c.NoReact = true }, "FAKE_GRADIO_EXIT=1")
 	if err := s.Start(ctx()); err != nil {
 		t.Fatal(err)
 	}
 	waitState(t, s, NameGradio, StateExited)
-	waitState(t, s, NameExtMgr, StateExited)
 	if err := s.Start(ctx()); err != nil {
 		t.Errorf("Start after everything died: %v", err)
 	}
@@ -449,9 +426,6 @@ func TestPartialStartFailureStopsEverything(t *testing.T) {
 	}
 	if r := status(s, NameReact); r.State != StateFailed || r.Error != "boom" {
 		t.Errorf("react: %+v", r)
-	}
-	if x := status(s, NameExtMgr); x.Running || x.State != StateStopped {
-		t.Errorf("ext: %+v", x)
 	}
 }
 
@@ -567,16 +541,16 @@ func TestSubscribeStatus(t *testing.T) {
 		select {
 		case msg := <-ch:
 			var sts []ProcessStatus
-			if err := json.Unmarshal([]byte(msg), &sts); err != nil || len(sts) != 3 {
+			if err := json.Unmarshal([]byte(msg), &sts); err != nil || len(sts) != 2 {
 				t.Fatalf("bad message %q: %v", msg, err)
 			}
-			if sts[0].State == StateReady && sts[2].State == StateReady {
+			if sts[0].State == StateReady && sts[1].State == StateDisabled {
 				cancel()
 				cancel() // second cancel is a no-op
 				return
 			}
 		case <-deadline:
-			t.Fatal("never saw both ready in the stream")
+			t.Fatal("never saw gradio ready (react disabled) in the stream")
 		}
 	}
 }

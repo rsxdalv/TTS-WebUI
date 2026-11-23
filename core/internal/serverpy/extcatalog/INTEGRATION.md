@@ -69,10 +69,10 @@ kind from the lists, so a button no longer carries a requirements string.
   decision (`torch.go`, from `installer_scripts/.gpu`) is used only here, by the
   native install; no Python caller needs the command, so there is no op for it.
   `get_torchcodec_command` had no caller.
-- `tts_webui/utils/pip_install.py` keeps `pip_install_wrapper` and
-  `pip_uninstall_wrapper` (and `write_log`) for
-  `installer_scripts/tools/extension_manager.py`, a separate CLI process without
-  the core, which this step leaves alone. It is the only user left.
+- `tts_webui/utils/pip_install.py` is deleted with `installer_scripts/tools/
+  extension_manager.py` (step 29): the launcher serves the same operations with
+  the app stopped (`core/internal/launcher/extensions.go`, an Extensions page in
+  `core/ui`; see "Launcher-side use" below).
 - The dry runs (`check-dependencies`, `latest-version`) take a package name from
   the lists like `install`; `latest-version` also checks that the name is a plain
   package name (`checkRequirement`) because it becomes a pip argument. Nothing
@@ -217,10 +217,8 @@ catalog clone and a `config.json` with disabled, autostart and
 ## Frozen copies (change both or neither)
 
 - `torch.go` is `tts_webui/utils/get_torch_command.py` (torch 2.11.0, cu128).
-- The merge and the Markdown table follow
-  `tts_webui/extensions_loader/extensions_data_loader.py` (reduced to
-  `get_interface_extensions`, which `installer_scripts/tools/extension_manager.py`,
-  a CLI without the core, still uses) and the old tab code.
+- The merge and the Markdown table followed `extensions_data_loader.py` (deleted
+  in step 29, with its last user, `extension_manager.py`) and the old tab code.
   Checked on this repo: Go's `list` for both kinds equals Python's, key order
   included (66 interface entries, 1 decorator), and the table and picker choices
   are identical.
@@ -308,3 +306,27 @@ TTS_CORE_URL=http://127.0.0.1:18082 TTS_CORE_TOKEN=dev python <script that build
 `-python` is the interpreter pip installs into. Tests: `go test
 ./internal/serverpy/extcatalog/` (a fake python/uv stands in for the env) and
 `python -m unittest tts_webui.core_bridge.test_core_bridge`.
+
+## Launcher-side use (step 29)
+
+`installer_scripts/tools/extension_manager.py` (a third process, with its own
+Gradio UI on its own port) is deleted. `core/internal/launcher/extensions.go`
+mounts this package and `appconfig` on the launcher server at `/api/ext/*`
+behind the launcher's token guard (`X-TTS-Token`), so extensions can be
+installed, updated, uninstalled and enabled or disabled with the app stopped;
+`core/ui` has an Extensions page for it.
+
+| Path | What |
+|---|---|
+| `GET /api/ext/list` | interface and decorator entries with `installed`, `disabled`, `builtin`; `warning` when pip could not be read; `app_running` |
+| `POST /api/ext/enabled` | `{package_name, enabled}` writes `extensions.disabled` in `config.json` |
+| `POST /api/ext/op/{install,uninstall,check-dependencies,latest-version}` | passed to the handler above (NDJSON stream, or a JSON string for `latest-version`) |
+
+The adapter runs after the launcher's guard, adds the stores' own internal token
+and marks the request loopback; `parse`, `add` and `install-entry` (pasted text)
+are not mounted. Installed means what `check_if_package_installed` meant: a
+native entry has a `.venvs/<package>`, a built-in is always installed, anything
+else is a distribution `pip list` shows in the main env (names compared after
+pip's `-`/`.` → `_` normalisation, not by `find_spec`). The launcher's stores
+are separate from the app's (own install lock, own config mutex); an install
+while the app runs takes effect at the next start.

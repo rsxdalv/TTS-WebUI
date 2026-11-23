@@ -234,7 +234,7 @@ See the [2023 Changelog](./documentation/changelog-2023.md) for a detailed list 
 
 ## Extensions
 
-Extensions are available to install from the webui itself, or using React UI. They can also be installed using the extension manager or the External Extensions Installer (a built-in tool for adding custom extensions from JSON).
+Extensions are available to install from the webui itself, or using React UI. They can also be installed using the launcher's Extensions page (`tts-webui launch`, then Extensions) or the External Extensions Installer (a built-in tool for adding custom extensions from JSON).
 
 Internally, extensions are just python packages that are installed using pip. Multiple extensions can be installed at the same time, but there might be compatibility issues between them. After installing or updating an extension, you need to restart the app to load it.
 

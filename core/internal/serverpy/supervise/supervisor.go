@@ -1,5 +1,5 @@
-// Package supervise runs the TTS WebUI app process group (Gradio, React UI,
-// extension manager) under supervision.
+// Package supervise runs the TTS WebUI app process group (Gradio, React UI) under
+// supervision.
 //
 // It replaces internal/launcher's Supervisor and closes its gaps: per-process
 // readiness (starting, ready, exited, failed), exit code and log tail in the
@@ -30,7 +30,6 @@ import (
 const (
 	NameGradio   = "gradio"
 	NameReact    = "react-ui"
-	NameExtMgr   = "extension-manager"
 	logTailLines = 50
 )
 
@@ -173,10 +172,10 @@ type procDef struct {
 }
 
 // defs builds the child command lines for one run. c is the Config with the
-// Plan applied, extPort the extension manager port, nextPort the private port
+// Plan applied, nextPort the private port
 // Next listens on behind the Go front (ReactNextProxied only).
-func (s *Supervisor) defs(c Config, extPort, nextPort int, react ReactMode) []procDef {
-	base := c.baseEnv(extPort)
+func (s *Supervisor) defs(c Config, nextPort int, react ReactMode) []procDef {
+	base := c.baseEnv()
 	reactEnv := []string{
 		"REACT_UI_PORT=" + strconv.Itoa(c.ReactPort),
 		fmt.Sprintf("GRADIO_BACKEND_AUTOMATIC=http://127.0.0.1:%d/", c.PublicPort),
@@ -209,13 +208,6 @@ func (s *Supervisor) defs(c Config, extPort, nextPort int, react ReactMode) []pr
 		}
 		defs = append(defs, d)
 	}
-	defs = append(defs, procDef{
-		name: NameExtMgr, port: extPort, probe: tcpProbe,
-		args: []string{"python",
-			filepath.Join(c.Root.InstallerScripts(), "tools", "extension_manager.py"),
-			"--port", strconv.Itoa(extPort)},
-		env: base,
-	})
 	return defs
 }
 
@@ -272,14 +264,6 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		return fmt.Errorf("ReactPort and PublicPort are both %d", c.PublicPort)
 	}
 
-	extPort := c.ExtensionManagerPort
-	if extPort == 0 {
-		p, err := freePort()
-		if err != nil {
-			return fmt.Errorf("allocating extension manager port: %w", err)
-		}
-		extPort = p
-	}
 	react := ReactNextDirect
 	nextPort := 0
 	if !c.NoReact {
@@ -320,7 +304,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	var side *GradioSide
 	if s.cfg.StartGradioSide != nil {
 		var err error
-		side, err = s.cfg.StartGradioSide(c.CommandPrefix[:len(c.CommandPrefix):len(c.CommandPrefix)], c.baseEnv(extPort))
+		side, err = s.cfg.StartGradioSide(c.CommandPrefix[:len(c.CommandPrefix):len(c.CommandPrefix)], c.baseEnv())
 		if err != nil {
 			closeFront()
 			return fmt.Errorf("starting the Go side of gradio: %w", err)
@@ -354,7 +338,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	gen := make([]*managed, 0, 3)
 	s.cur = gen
 	var startErr error
-	for _, d := range s.defs(c, extPort, nextPort, react) {
+	for _, d := range s.defs(c, nextPort, react) {
 		m := newManaged(d.name, d.port, d.probe)
 		m.probePort = d.probePort
 		gen = append(gen, m)
@@ -577,8 +561,8 @@ func (s *Supervisor) statusesLocked() []ProcessStatus {
 	for _, m := range s.cur {
 		byName[m.name] = m
 	}
-	out := make([]ProcessStatus, 0, 3)
-	for _, name := range []string{NameGradio, NameReact, NameExtMgr} {
+	out := make([]ProcessStatus, 0, 2)
+	for _, name := range []string{NameGradio, NameReact} {
 		m := byName[name]
 		if m == nil {
 			st := ProcessStatus{Name: name, State: StateStopped}
@@ -590,8 +574,6 @@ func (s *Supervisor) statusesLocked() []ProcessStatus {
 				if s.cfg.NoReact {
 					st.State, st.Port = StateDisabled, 0
 				}
-			default:
-				st.Port = s.cfg.ExtensionManagerPort
 			}
 			out = append(out, st)
 			continue

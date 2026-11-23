@@ -37,9 +37,6 @@ type Config struct {
 	PublicPort int
 	// ReactPort is the port `next start` gets via -p. 0 = 3000.
 	ReactPort int
-	// ExtensionManagerPort is the extension manager's port. 0 = OS-assigned on
-	// every Start (the legacy 7771 collides with extension ports).
-	ExtensionManagerPort int
 
 	// GradioEntry is the Python script run for Gradio, relative to Root.
 	// "" = server.py. Integration switches this to server_core.py.
@@ -120,17 +117,13 @@ func (c Config) normalized() (Config, error) {
 	for _, p := range []struct {
 		name string
 		port int
-	}{{"PublicPort", c.PublicPort}, {"ReactPort", c.ReactPort}, {"ExtensionManagerPort", c.ExtensionManagerPort}} {
+	}{{"PublicPort", c.PublicPort}, {"ReactPort", c.ReactPort}} {
 		if p.port < 0 || p.port > 65535 {
 			return Config{}, fmt.Errorf("supervise: %s %d out of range", p.name, p.port)
 		}
 	}
 	if !c.NoReact && c.ReactPort == c.PublicPort {
 		return Config{}, fmt.Errorf("supervise: ReactPort and PublicPort are both %d", c.PublicPort)
-	}
-	if c.ExtensionManagerPort != 0 &&
-		(c.ExtensionManagerPort == c.PublicPort || (!c.NoReact && c.ExtensionManagerPort == c.ReactPort)) {
-		return Config{}, fmt.Errorf("supervise: ExtensionManagerPort %d collides with another port", c.ExtensionManagerPort)
 	}
 	if c.GradioEntry == "" {
 		c.GradioEntry = DefaultGradioEntry
@@ -207,10 +200,8 @@ func mambaRootEnv(root paths.Root) string {
 }
 
 // baseEnv is the environment shared by all children.
-func (c Config) baseEnv(extPort int) []string {
-	env := append(os.Environ(),
-		fmt.Sprintf("TTS_EXTENSION_MANAGER_PORT=%d", extPort),
-		mambaRootEnv(c.Root))
+func (c Config) baseEnv() []string {
+	env := append(os.Environ(), mambaRootEnv(c.Root))
 	return append(env, c.ExtraEnv...)
 }
 

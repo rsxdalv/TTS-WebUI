@@ -57,7 +57,7 @@ const serverPyEntry = "server_core.py"
 const gradioHost = "127.0.0.1"
 
 // serverPy is the Go side of one app run: the router on the public port (the
-// proxy tree's job), the extension manager, and the control API both of them
+// proxy tree's job), the extension processes, and the control API both of them
 // serve to the gradio child.
 type serverPy struct {
 	rt  *router.Router

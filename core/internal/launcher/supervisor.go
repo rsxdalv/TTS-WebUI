@@ -46,7 +46,7 @@ func reactUIArgs(envPath, rootDir string, port int, proxied bool) []string {
 	return args
 }
 
-// Supervisor manages the full app process group (Gradio, React UI, extension manager).
+// Supervisor manages the full app process group (Gradio, React UI).
 // It is separate from the step-by-step installer flow so C3.2 can be developed
 // and tested independently.
 type Supervisor struct {
@@ -76,7 +76,7 @@ func newSupervisor(root paths.Root, opts ...Option) *Supervisor {
 }
 
 // Start launches all app processes under supervision.
-// Gradio is started first; React UI and extension manager run in parallel.
+// Gradio is started first; React UI runs in parallel.
 // setupCtx is used only for setup work. Processes run under a
 // supervisor-owned context that is not tied to any HTTP request lifetime.
 func (s *Supervisor) Start(setupCtx context.Context) error {
@@ -120,13 +120,6 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		return fmt.Errorf("determining GPU: %w", err)
 	}
 
-	// Get an OS-assigned port for the extension manager to avoid the legacy
-	// port 7771 collision.
-	extPort, err := freePort()
-	if err != nil {
-		return fmt.Errorf("allocating extension manager port: %w", err)
-	}
-
 	// With the proxy on (the default, D18), Go takes port 3000 and either
 	// serves the static export or proxies Next on a private port.
 	plan, err := s.prepareReactUI(setupCtx, sw)
@@ -159,11 +152,10 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	}
 
 	cwd := s.root.Dir()
-	extMgrScript := filepath.Join(s.root.InstallerScripts(), "tools", "extension_manager.py")
 
-	// Base env: inherit + extension manager port + mamba root.
+	// Base env: inherit + mamba root.
 	mambaRoot := "MAMBA_ROOT_PREFIX=" + filepath.Join(s.root.InstallerFiles(), "mamba")
-	baseEnv := append(os.Environ(), fmt.Sprintf("TTS_EXTENSION_MANAGER_PORT=%d", extPort), mambaRoot)
+	baseEnv := append(os.Environ(), mambaRoot)
 
 	// Processes run via micromamba so they inherit the activated conda environment.
 	type procDef struct {
@@ -193,10 +185,9 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	defs := []procDef{
 		{name: "gradio", cmd: mamba, args: append([]string{"-p", envPath, "run", "python", gradioScript}, s.opts.flags().Args()...), env: gradioEnv},
 		{name: "react-ui", cmd: mamba, args: reactUIArgs(envPath, s.root.Dir(), nextPort, sw.Proxy), env: baseEnv},
-		{name: "extension-manager", cmd: mamba, args: []string{"-p", envPath, "run", "python", extMgrScript, "--port", fmt.Sprintf("%d", extPort)}, env: baseEnv},
 	}
 	if plan.mode == modeStatic {
-		defs = append(defs[:1], defs[2:]...) // no Next process: Go serves the UI
+		defs = defs[:1] // no Next process: Go serves the UI
 	}
 
 	s.mu.Lock()
@@ -303,7 +294,6 @@ func (s *Supervisor) statuses() []ProcessStatus {
 	out := []ProcessStatus{
 		{Name: "gradio", Running: false},
 		{Name: "react-ui", Running: false},
-		{Name: "extension-manager", Running: false},
 	}
 	for _, ap := range s.procs {
 		for i := range out {

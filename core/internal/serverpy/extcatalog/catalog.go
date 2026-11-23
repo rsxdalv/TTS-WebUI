@@ -36,7 +36,10 @@ type Options struct {
 	Env    []string // environment of the install commands; nil inherits
 	// Config supplies the disabled and autostart lists for Resolve (appconfig.Store).
 	Config ConfigSource
-	Logf   func(format string, args ...any)
+	// Pip lists the main env's distributions for Resolve's installed and
+	// version (piplist.Store). Nil means no distribution is known.
+	Pip  PackageSource
+	Logf func(format string, args ...any)
 }
 
 // Store serves the extcatalog API for one project root.

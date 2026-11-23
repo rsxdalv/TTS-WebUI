@@ -16,7 +16,7 @@ install is running. POST bodies are `application/json`, unknown fields refused.
 | Method and path | Body / query | Answer |
 |---|---|---|
 | `GET /api/extcatalog/list?kind=` | `interface` or `decorator` | the merged entries (external > catalog > base, de-duplicated by `package_name`, `tabs` + `tabsInGroups`) |
-| `GET /api/extcatalog/resolve?kind=&extension_class=` | `interface` or `decorator`; the class (`text-to-speech`, `outer`, ...) | `{"extensions": [{package_name, name, requirements, proxy, enabled, autostart}], "disabled_names": [...]}`: what Python loads, in order (see below) |
+| `GET /api/extcatalog/resolve?kind=&extension_class=` | `interface` or `decorator`; the class (`text-to-speech`, `outer`, ...) | `{"extensions": [{package_name, name, requirements, proxy, enabled, autostart, installed, version}], "disabled_names": [...]}`: what Python loads, in order (see below) |
 | `GET /api/extcatalog/table?kind=` | | Markdown marker: the `Title / Description` table of every entry |
 | `GET /api/extcatalog/picker?kind=&label=` | | Dropdown marker (`label`, `choices` = installable package names; interface sorted by name, decorators in file order) |
 | `POST /api/extcatalog/parse` | `{"text"}` | `{"entries": [...], "preview": <Markdown marker>, "info": "Parsed entries: N \| Issues: ..."}` |
@@ -213,6 +213,24 @@ catalog clone and a `config.json` with disabled, autostart and
   install equal the old `venv_setup_wrapper` (as argument lists; the old ones
   were shell strings). pip install, uninstall and the dependency check are the
   old commands run as `python -m pip` instead of `pip`.
+
+### `installed` and `version`
+
+Go answers what `check_if_package_installed` and `_get_version` answered in
+Python (both are deleted; the loader reads `ext["installed"]` and
+`ext["version"]`). A native extension is installed when `.venvs/<package>`
+exists, a built-in one (`builtin` in the name) always, any other when `pip list`
+in the main env shows the distribution; names are compared after pip's
+normalisation (case, runs of `-_.`), not with `find_spec`, so a module whose
+distribution has another name counts as not installed (`_get_version` already
+had that limit). `version` is that distribution's version, `""` for native and
+built-in ones. The pip list comes from `piplist.Store.Cached` (30 s, dropped
+after `install` and `uninstall`; a dry run keeps it), so the per-class
+`resolve` calls at startup run pip once. When pip cannot be read, a pip-based
+extension is reported installed: Python's import of the module is the real
+test and ends in the error tab if it fails. The launcher's Extensions page uses
+the same lookup (`Store.Installs`) and shows those as not installed with a
+warning instead.
 
 ## Frozen copies (change both or neither)
 

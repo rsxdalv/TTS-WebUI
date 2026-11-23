@@ -1,6 +1,4 @@
 import importlib
-import importlib.util
-from importlib.metadata import version
 
 import gradio as gr
 
@@ -11,29 +9,11 @@ from tts_webui.extensions_loader.setup_proxy_extension import setup_proxy_extens
 from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
 
 
-def check_if_package_installed(package_name, proxy):
-    if proxy == "native":
-        venv = f".venvs/{package_name}"
-        import os
-
-        if not os.path.exists(venv):
-            return False
-        return True
-    else:
-        spec = importlib.util.find_spec(package_name)
-        return spec is not None
-
-
-def _get_version(package_name, proxy):
-    try:
-        if "builtin" in package_name:
-            return "Built-in"
-        if proxy == "native":
-            return ""
-        return f"v{version(package_name)}"
-    except Exception as e:
-        print(f"Error getting version for {package_name}: {e}")
-        return "Unknown"
+def _version_label(ext):
+    """What the Manage accordion shows: Go reads the version from the main env."""
+    if ext["proxy"] == "native" or "builtin" in ext["package_name"]:
+        return ""
+    return f"v{ext['version']}" if ext.get("version") else "Unknown"
 
 
 def _stream(operation, package_name):
@@ -64,7 +44,7 @@ def _handle_package(ext):
                 )
         return
 
-    is_installed = check_if_package_installed(package_name, proxy)
+    is_installed = ext["installed"]
 
     if not is_installed and proxy != "native":
         with gr.Tab(f"[Available] {title_name}"):
@@ -88,7 +68,7 @@ def _handle_package(ext):
                     install_trigger = _extension_management_ui(
                         package_name,
                         title_name,
-                        version=_get_version(package_name, proxy),
+                        version=_version_label(ext),
                         show=not is_installed,
                         proxy=proxy,
                         autostart=autostart,

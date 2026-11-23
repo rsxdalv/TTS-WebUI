@@ -109,7 +109,15 @@ ANSWERS = {
 }
 
 
-def X(package_name, name, enabled=True, autostart=False, proxy=""):
+def X(
+    package_name,
+    name,
+    enabled=True,
+    autostart=False,
+    proxy="",
+    installed=True,
+    version="",
+):
     return {
         "package_name": package_name,
         "name": name,
@@ -117,6 +125,8 @@ def X(package_name, name, enabled=True, autostart=False, proxy=""):
         "proxy": proxy,
         "enabled": enabled,
         "autostart": autostart,
+        "installed": installed,
+        "version": version,
     }
 
 
@@ -502,23 +512,19 @@ class ExtCatalogTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             list(bridge.extcatalog.install())
 
-    def test_list_tab_builds(self):
+    def test_list_tab_is_an_iframe_of_the_go_page(self):
         from tts_webui.extensions_loader.list_tab import extension_list_ui
 
-        with gr.Blocks() as demo:
-            extension_list_ui("interface")
-        kinds = [type(b).__name__ for b in demo.blocks.values()]
-        self.assertEqual(kinds.count("Dropdown"), 2)
-        self.assertIn("HTML", kinds)
-        self.assertGreaterEqual(
-            kinds.count("Markdown"), 3
-        )  # intro, table, two headings
-        self.assertEqual(
-            sum(
-                1 for f in demo.fns.values() if f.api_name and "extension" in f.api_name
-            ),
-            2,
-        )
+        for kind in ("interface", "decorator"):
+            with gr.Blocks() as demo:
+                extension_list_ui(kind)
+            blocks = list(demo.blocks.values())
+            html = [b for b in blocks if isinstance(b, gr.HTML)]
+            self.assertEqual(len(html), 1)
+            self.assertIn(f'src="/_core/ext/list?kind={kind}"', html[0].value)
+            self.assertIn("<iframe", html[0].value)
+            self.assertEqual(len(demo.fns), 0)  # no handlers: Go runs the page
+        self.assertEqual(self.stub.requests, [])  # and Python asks Go nothing
 
     def test_custom_installer_handlers(self):
         import importlib
@@ -826,7 +832,6 @@ class ExtensionLoadingTest(unittest.TestCase):
         from tts_webui.extensions_loader import interface_extensions as ie
 
         with (
-            mock.patch.object(ie, "check_if_package_installed", return_value=True),
             mock.patch.object(ie.importlib, "import_module", import_module),
             gr.Blocks() as demo,
             gr.Tabs(),
@@ -865,6 +870,20 @@ class ExtensionLoadingTest(unittest.TestCase):
         self.assertEqual(
             labels, ["Alpha", "Alpha (!)", "[Disabled] Beta", "Gamma", "Gamma (!)"]
         )
+
+    def test_installed_and_version_come_from_go(self):
+        import inspect
+
+        from tts_webui.extensions_loader import interface_extensions as ie
+
+        label = ie._version_label
+        self.assertEqual(label(X("a.one", "A", version="1.2")), "v1.2")
+        self.assertEqual(label(X("a.one", "A")), "Unknown")
+        self.assertEqual(label(X("a.one", "A", proxy="native")), "")
+        self.assertEqual(label(X("x.builtin.a", "A")), "")
+        src = inspect.getsource(ie)
+        for gone in ("find_spec", "importlib.metadata", "os.path.exists", ".venvs"):
+            self.assertNotIn(gone, src)
 
     def test_the_loader_keeps_no_copy_of_the_config_lists(self):
         from tts_webui.extensions_loader import interface_extensions as ie
@@ -1182,7 +1201,6 @@ class InstallCallersTest(unittest.TestCase):
         )
 
         with (
-            mock.patch.object(ie, "check_if_package_installed", return_value=False),
             gr.Blocks() as demo,
             gr.Tabs(),
         ):
@@ -1194,6 +1212,8 @@ class InstallCallersTest(unittest.TestCase):
                     "proxy": "",
                     "enabled": True,
                     "autostart": False,
+                    "installed": False,
+                    "version": "",
                 }
             )
         self.assertIn(

@@ -9,8 +9,10 @@ class ExtCatalogBridge(SubBridge):
     - list(kind): the merged extension entries (external > catalog > base)
     - resolve(kind, extension_class): {"extensions": [...], "disabled_names": [...]},
       what to load for that kind and class, in order. Each extension has
-      package_name, name, requirements, proxy ("native" or ""), enabled and
-      autostart (interface only); disabled ones stay in the list. For
+      package_name, name, requirements, proxy ("native" or ""), enabled,
+      autostart (interface only), installed and version (the main env's
+      distribution version, "" for a native or built-in extension); disabled
+      ones stay in the list. For
       decorators, disabled_names is the whole disabled_decorators list: package
       names and decorator function names.
     - table(kind): the Markdown table of the list tabs, as a gr.Markdown

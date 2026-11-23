@@ -137,3 +137,30 @@ func TestHTTP(t *testing.T) {
 		t.Fatalf("fail: %d %s", c, body)
 	}
 }
+
+func TestCachedRemembersUntilInvalidated(t *testing.T) {
+	s := fake(t, "ok")
+	ctx := context.Background()
+	first, err := s.Cached(ctx)
+	if err != nil || len(first) != 4 {
+		t.Fatalf("first: %v %v", first, err)
+	}
+	// pip now fails, but the answer is remembered
+	t.Setenv("FAKE_PIP", "fail")
+	if again, err := s.Cached(ctx); err != nil || len(again) != 4 {
+		t.Fatalf("not cached: %v %v", again, err)
+	}
+	// List itself never caches
+	if _, err := s.List(ctx); err == nil {
+		t.Fatal("List must run pip every time")
+	}
+	s.Invalidate()
+	if _, err := s.Cached(ctx); err == nil {
+		t.Fatal("after Invalidate pip runs again")
+	}
+	// a failure is not remembered
+	t.Setenv("FAKE_PIP", "ok")
+	if got, err := s.Cached(ctx); err != nil || len(got) != 4 {
+		t.Fatalf("after the failure: %v %v", got, err)
+	}
+}

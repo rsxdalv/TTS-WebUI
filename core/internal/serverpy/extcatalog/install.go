@@ -44,6 +44,11 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 	}
 	defer s.install.Unlock()
 
+	if s.opts.Pip != nil && op != "check-dependencies" {
+		// The packages change whatever the outcome (a failed install may have
+		// done part of the work).
+		defer s.opts.Pip.Invalidate()
+	}
 	s.stream(w, r, func(ctx context.Context, emit func(string)) bool {
 		switch {
 		case op == "uninstall":

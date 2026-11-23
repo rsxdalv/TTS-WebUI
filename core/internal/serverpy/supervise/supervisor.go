@@ -237,6 +237,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		return fmt.Errorf("ReactPort and PublicPort are both %d", c.PublicPort)
 	}
 
+	core := &react_ui_backend.Core{}
 	var front *react_ui_backend.Server
 	if !c.NoReact {
 		var err error
@@ -246,6 +247,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 			Routes:       plan.Switches,
 			LAN:          plan.Switches.ProxyLAN,
 			AllowedHosts: plan.Switches.ProxyAllowedHosts,
+			Core:         core,
 		})
 		if err != nil {
 			return fmt.Errorf("starting the React UI server: %w", err)
@@ -275,6 +277,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		}
 	}
 	if side != nil {
+		core.Set(side.CoreURL, side.CoreToken)
 		c.GradioEnv = append(c.GradioEnv, side.Env...)
 	}
 

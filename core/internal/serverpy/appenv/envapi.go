@@ -77,6 +77,10 @@ func (a *API) serve(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusForbidden, "forbidden")
 		return
 	}
+	if strings.TrimPrefix(r.URL.Path, APIPrefix) == "model-locations" && r.Method == http.MethodGet {
+		a.getModelLocations(w)
+		return
+	}
 	if strings.TrimPrefix(r.URL.Path, APIPrefix) != "save-model-locations" {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
@@ -144,4 +148,27 @@ func parseModelLocations(body io.Reader) (ModelLocations, error) {
 		TorchHome:           values["torch_home"],
 		XDGCacheHome:        values["xdg_cache_home"],
 	}, nil
+}
+
+// getModelLocations answers GET /api/env/model-locations with the four values
+// as .env sets them (empty when the line is missing or commented out). The
+// process environment is not read: this is what the file says, which is what
+// the tab saves.
+func (a *API) getModelLocations(w http.ResponseWriter) {
+	env, err := LoadEnv(a.opts.Root, []string{})
+	if err != nil {
+		a.opts.Logf("env: model-locations: %v", err)
+		writeErr(w, http.StatusInternalServerError, "could not read .env")
+		return
+	}
+	get := func(name string) string {
+		v, _ := lookupEnv(env, name, false)
+		return v
+	}
+	writeJSON(w, http.StatusOK, map[string]string{
+		"huggingface_hub_cache": get("HUGGINGFACE_HUB_CACHE"),
+		"hf_home":               get("HF_HOME"),
+		"torch_home":            get("TORCH_HOME"),
+		"xdg_cache_home":        get("XDG_CACHE_HOME"),
+	})
 }

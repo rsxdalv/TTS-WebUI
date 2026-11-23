@@ -31,6 +31,8 @@ type Config struct {
 	LAN bool
 	// AllowedHosts are extra host names accepted in LAN mode.
 	AllowedHosts []string
+	// Core is filled in by the launcher once its control API is up. May be nil.
+	Core *Core
 }
 
 // handler is the front door for every request on the public port. Claimed
@@ -69,6 +71,7 @@ func NewHandler(cfg Config) (http.Handler, error) {
 	}
 
 	deps := newDeps(cfg.Root)
+	deps.Core = cfg.Core
 	var dataClaims []string
 	for _, c := range registeredClaims() {
 		if !cfg.Routes.Route(c.Switch) {

@@ -163,7 +163,7 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		if err != nil {
 			return nil, err
 		}
-		return &supervise.GradioSide{Env: py.gradioEnv, Close: py.Close}, nil
+		return &supervise.GradioSide{Env: py.gradioEnv, Close: py.Close, CoreURL: py.coreURL, CoreToken: py.coreToken}, nil
 	}
 	cfg.OnStarted = func(refs []supervise.ProcRef) {
 		procs := make([]appProc, len(refs))

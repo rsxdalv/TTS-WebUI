@@ -406,93 +406,73 @@ Port these as they are unless a rule below says otherwise. Record any you meet i
 
 ## 10. Static export (S1)
 
-`npm run build:static` in `react-ui` builds the UI as a static export, next to the server build. For S2 (Go serves it) and C2 (the install builds it).
+`npm run build:static` in `react-ui` builds the UI as a single-page app with Vite, into `react-ui/out`. Go serves it (S2). The Next server build is separate: `npm run build` and `npm start` are unchanged and still produce and run the server build in `react-ui/.next`.
 
 ### Build
 
-- `npm run build` and `npm start` are unchanged and still produce and run the server build in `react-ui/.next`.
-- `build-static.js` runs `generate-plugin-imports.js` (the `prebuild` step), then `next build` with `TTS_STATIC_EXPORT=1`, which makes `next.config.js` set `output: "export"`. The API routes (`pages/api/*`, `app/api/upload`) are left out by Next itself in export mode (it prints a warning); Go serves them.
-- Next 16 always compiles an export in `.next`, so the script sets the server build aside as `.next-server-saved` for the duration and puts it back at the end, also when the build fails.
-- **Nothing detects a running `next start`.** Renaming `.next` works while Next serves from it, and the running server then answers 500/400 until the build is back. The caller (C2's update step, S2's migration mode) must stop Next first.
-- **A killed export** (power loss, job-object kill; the `finally` does not run) leaves `.next-server-saved` (the real server build), the marker file `.next-export-scratch`, and in `.next` the export's scratch, which may or may not have a `BUILD_ID` and never works with `next start`. `node build-static.js --recover` puts the saved build back (it trusts the marker, not the contents of `.next`). `npm run build:static` does this first, and so does `npm run build` through its `prebuild` script, so a server build made after a kill starts from a restored tree and overwrites it. Rule for anyone deciding whether a usable server build exists (S2): if `.next-server-saved` exists, run `node build-static.js --recover` first, then check `.next`. "Usable" means `.next/BUILD_ID` **and** `.next/prerender-manifest.json` exist: an export killed on a first install (nothing to set aside, so no marker) leaves a `.next` with a `BUILD_ID` that `next start` cannot use. `.next-export-scratch` is git-ignored.
-- The export is built in `react-ui/.out-building` and renamed to `react-ui/out` only when it is complete, so a failed build leaves the previous `out/` untouched. `out/_tts-export.json` (`{"buildId": ..., "builtAt": ...}`) exists only in a complete export: its absence means there is no usable export. Both `.out-building` and `.next-server-saved` are git-ignored.
-- Needs `src/extensions/link.ts` like the server build (written by the prebuild step). An extension installed later needs a rebuild to be included, except for its page (see the shell below).
-- The server build is unchanged by this task: HTML and `_next/data` JSON of 16 pages and 9 data URLs are identical to the ones before it (script and chunk names aside), and so are the cache headers.
+- `npm run build:static` runs `build-static.js`. It runs `generate-plugin-imports.js` (writes `src/extensions/link.ts`), then `vite build` into `react-ui/.out-building`. The build is renamed to `react-ui/out` only when it is complete, so a failed or interrupted build leaves the previous `out/` as it was.
+- `out/_tts-export.json` (`{"builtAt": ..., "commit": ...}`) exists only in a complete export. Its absence means there is no usable export. `commit` is the git HEAD of the install the build comes from, or `null` outside a git checkout. Go reads `commit` to tell a stale build.
+- The export does not touch `react-ui/.next`. The server build's rules are unchanged: `.next-server-saved`, `.next-export-scratch`, `build-static.js --recover` and `--stamp-server`, and the usability rule (`.next/BUILD_ID` and `.next/prerender-manifest.json`). `npm run build` runs `--recover` first, as before.
+- `public/file-input-cache` is not copied into the export. Go serves `react-ui/public` live, so uploads are reachable at once.
+- Needs `src/extensions/link.ts`, written by `generate-plugin-imports.js` as before. An extension installed later needs a rebuild to be included.
 
 ### Who builds it (C2)
 
-- The Go install and update steps (`TTS_GO_STEPS` install, update) run `cd react-ui && npm run build:static` where the original runs `npm run build`. A tree whose `react-ui/package.json` has no `build:static` script (main, and so every fresh Download, until S1 reaches main) gets `npm run build` instead, after the log line "react-ui has no build:static script (this tree predates the static export), so building the server build". They build only when the original builds: on install, and on update when `git pull` brings a commit that differs from `.git_version`.
+- The Go install and update steps (`TTS_GO_STEPS` install, update) run `cd react-ui && npm run build:static`, as before. A tree whose `react-ui/package.json` has no `build:static` script gets `npm run build` instead, after the log line "react-ui has no build:static script (this tree predates the static export), so building the server build". They build only when the original builds: on install, and on update when `git pull` brings a commit that differs from `.git_version`.
 - The legacy JS installer (`init_app.js`) is unchanged and still builds the server build only.
-- Because the export sets `.next` aside, the launcher answers `POST /api/steps/install` and `POST /api/steps/update` with `409` and "stop the app before running <step>" while any app process runs, when that step runs its Go port. The script path has no such check.
+- The launcher answers `POST /api/steps/install` and `POST /api/steps/update` with `409` and "stop the app before running <step>" while any app process runs, when that step runs its Go port. That check was made for the old export, which moved `.next` aside. The export no longer does this, so the check is no longer needed for the export. It stays until it is removed in the launcher (a follow-up, not part of this section).
 
 ### Where things are
 
 | In `react-ui/out/` | Contents |
 |---|---|
-| `<page>.html`, `<dir>/<page>.html` | One file per page, e.g. `text-to-speech/kokoro.html`, `outputs/favorites.html`; `index.html` is `/` |
-| `404.html` | The page for an unknown URL |
-| `_next/static/**` | Hashed JS, CSS and fonts |
-| `_next/data/<BUILD_ID>/<page>.json` | `getStaticProps` data of the 9 SSG pages, `{"pageProps":...,"__N_SSG":true}` |
-| `_next/static/<BUILD_ID>/` | `_ssgManifest.js` and `_buildManifest.js` |
-| `_not-found.html`, `_not-found/*.txt`, `tools/_api_config.html` | App-router and extra pages; served by rule 4, nothing depends on them |
-| `favicon.ico` | From `public/` |
-| `extensions/_shell.html`, `_next/data/<BUILD_ID>/extensions/_shell.json` | The extension shell |
-
-`public/file-input-cache` is not copied into the export. Go serves everything in `react-ui/public` live (uploads land there), and the export has no copy of it.
+| `index.html` | The app. It serves every route of the app (see below) |
+| `assets/**` | Hashed JS, CSS and fonts |
+| `favicon.ico` and the other files of `public/` | Copied from `public/` |
+| `_tts-export.json` | The marker (see Build) |
 
 ### URL to file (what Go must do)
 
 For `GET`/`HEAD` of a decoded path `P`, in this order, first match wins:
 
 1. Refuse with `404` any path with a segment starting with `.`, a backslash or a NUL (as for `public/`).
-2. `P` under `/file-input-cache/` (and any other file in `react-ui/public` that the export lacks): the live file from `react-ui/public`.
-3. `P == "/"`: `index.html`.
-4. Otherwise strip trailing slashes from `P` (Next answers `/x/` with a `308` to `/x`; either that or serving the page is fine, and the page works under both) and try: the file `P` as is (`/_next/static/...`, `/_next/data/...`, `/favicon.ico`), then `P.html`, then `P/index.html`. `/tools` is `tools.html` while `/tools/gpu_info` is `tools/gpu_info.html`: both exist.
-5. `P` matches `/extensions/<one segment>` and nothing above matched: `extensions/_shell.html` with status `200`.
-6. `P` matches `/_next/data/<BUILD_ID>/extensions/<one segment>.json` and nothing above matched: that directory's `_shell.json`, status `200`. (Without this, client-side navigation to an extension that was not exported falls back to a full page load; with it, it stays in the page.)
-7. Anything else: `404.html` with status `404`.
+2. `P` under `/file-input-cache/`: the live file from `react-ui/public`.
+3. `P == "/"`: `index.html`, status `200`.
+4. `P` is a file of the export under its own name: serve it. `/assets/**` is immutable. A path ending in `.html` (such as `/index.html`) is the entry page.
+5. `P` is any other file of `react-ui/public`: serve it live.
+6. The last segment of `P` has a dot (a file that does not exist): `404`.
+7. Anything else is a route of the app: `index.html`, status `200`. The app renders its own not-found view for a route it does not know.
 
-Route claims (`/api/gradio/*`, `/api/gradio-file-proxy/*`, `/api/webui-generations/*`, `/api/upload`, `/api/go-data/*`) are matched before any of this. A request for `/api/...` that no claim handles is `404`, not a page.
+Trailing slashes get a `308` to the path without them (as before), `/api/...` paths that no claim answered get a plain `404` for any method (as before), and other methods than `GET`/`HEAD` get `405`.
 
-Only the extension shell needs a fallback. The other dynamic page, `/outputs/[name]`, is exported for `outputs` and `favorites` only (export mode uses `fallback: false`); `/outputs/<other name>` is `404`. The UI links only to those two.
+### Routes of the app
 
-### The extension shell
-
-`/extensions/[name]` is exported for `extension_xtts_simple` and `_shell`. The shell page reads the extension name from the URL in the browser (`router.asPath`) after hydration, so one file serves any name, including names of extensions installed after the build. The name is URL-decoded. A name that has no component in `src/extensions/link.ts` renders an empty page with the name as title, as the server build does. `/extensions/huggingface_cache_manager` is its own page and wins over the shell (rule 4).
+The routes are listed in `react-ui/src/routes.tsx`. All of them, including `/extensions/<any name>` and `/outputs/<any name>`, are served by `index.html`. The app reads the URL in the browser after load, so one file serves every route, and client-side navigation stays in the page.
 
 ### Data pages
 
-`/outputs/[name]` and `/text-to-speech/bark/voices` are exported with empty data, so no files of the build machine end up in the export. In an export build `useGoData` skips the cookie check and always asks `GET /api/go-data/outputs/{name}` and `GET /api/go-data/bark-voices`. So an export needs the claims `data-outputs` and `data-bark-voices` on: with either off, that page shows nothing and the extra request is answered `404`. No `tts-go-claims` cookie is needed for an export. `/`, `/db`, `/outputs/generations` and `/outputs/voice-drafts` have constant props.
+`/outputs/[name]` and `/text-to-speech/bark/voices` take their data from the Go endpoints. In an export build `useGoData` skips the cookie check and always asks `GET /api/go-data/outputs/{name}` and `GET /api/go-data/bark-voices`. So an export needs the claims `data-outputs` and `data-bark-voices` on: with either off, that page shows nothing and the extra request is answered `404`. No `tts-go-claims` cookie is needed for an export.
 
-### Headers (as Next 16 sends them for the same files)
+### Headers
 
 | Files | `Cache-Control` | Notes |
 |---|---|---|
-| `/_next/static/**` | `public, max-age=31536000, immutable` | Content type by extension (`application/javascript; charset=UTF-8`, `text/css; charset=UTF-8`); weak `ETag` and `Last-Modified` as for any static file |
-| HTML pages and `/_next/data/**` | `s-maxage=31536000` | HTML `text/html; charset=utf-8`, data `application/json; charset=utf-8`. Next adds a strong `ETag` and answers `If-None-Match` with `304` |
-| `404.html` served for an unknown URL | `private, no-cache, no-store, max-age=0, must-revalidate` | Status `404` |
-| Other files of `out/` (`favicon.ico`) and `public/` | `public, max-age=0` | Weak `ETag`, `Last-Modified`, `Accept-Ranges` as for `public/` today |
+| `/assets/**` | `public, max-age=31536000, immutable` | Content type by extension (`application/javascript; charset=UTF-8`, `text/css; charset=UTF-8`); weak `ETag` and `Last-Modified` as for any static file |
+| `index.html` (every route) | `s-maxage=31536000` | `text/html; charset=utf-8`. Strong `ETag`; `304` for a matching `If-None-Match` |
+| `404` responses | `private, no-cache, no-store, max-age=0, must-revalidate` | Status `404` |
+| Other files of `out/` and `public/` | `public, max-age=0` | Weak `ETag`, `Last-Modified`, `Accept-Ranges` as for `public/` |
 
-`s-maxage` is honoured only by shared caches, so a browser revalidates the HTML each load; keeping that header is optional but harmless.
+`s-maxage` is honoured only by shared caches, so a browser revalidates the entry page on each load. The `ETag` changes with each build, so a new build is picked up.
 
 ### How Go serves it (S2)
 
-`core/react_ui_backend/static_export.go` implements the rules above, behind the Host and Origin guards and the route
-claims (section 5), in this order:
-- An `/api/...` path no claim answered gets a plain `404` for any method, never a page.
+`core/react_ui_backend/static_export.go` implements the rules above, behind the Host and Origin guards and the route claims (section 5). `static_export_test.go` pins the rules. In order:
+- An `/api/...` path no claim answered gets a plain `404` for any method, never the entry page.
 - Other paths: only `GET` and `HEAD` get files; other methods get `405`.
-- Rule 1 also refuses empty segments and the encoded separators `%2f`, `%5c` and `%00`. On Windows it also refuses a
-  segment containing `:` or ending in a space or dot (the same hardening as B2).
-- On Windows a file that was found is refused when its real (long) name has a part starting with `.`, because NTFS
-  8.3 aliases such as `HIDDEN~1` for `.hidden` pass the URL check. B2's webui-generations claim applies the same check.
-- A trailing slash gets a `308` to the path without it. Because empty segments are refused, the target is always a
-  local path.
-- `/file-input-cache/*` comes from `react-ui/public` live. Then come export files, `P.html` and `P/index.html`, then any
-  other file in `react-ui/public`, then the extension shells, then `404.html`.
-- Pages and data JSON get Next's strong `ETag`, a `304` for a matching `If-None-Match`, and gzip or deflate from 1 KB
-  up. Other files are sent by B2's `send` port: weak `ETag`, `Last-Modified`, ranges. `/_next/static` files are marked
-  immutable.
+- Rule 1 also refuses empty segments and the encoded separators `%2f`, `%5c` and `%00`. On Windows it also refuses a segment containing `:` or ending in a space or dot.
+- On Windows a file that was found is refused when its real (long) name has a part starting with `.`, because NTFS 8.3 aliases such as `HIDDEN~1` for `.hidden` pass the URL check. A route that is not a file gets the entry page, never the file.
+- A trailing slash gets a `308` to the path without it. Because empty segments are refused, the target is always a local path.
 
 ### Checked
 
-`core/react_ui_backend/compare/browser/static-export-check.js` loads every page of an export in Edge through a Go proxy in front of `compare/browser/staticsrv.js` (a small reference implementation of the rules above), and follows links to check that client navigation does not reload the page. `staticsrv.js` is a test tool; the real server is S2's.
+`core/react_ui_backend/compare/browser/static-export-check.js <base url> <routes.tsx>` loads every literal route of the app in a real browser (Edge), through the Go proxy in front of `compare/browser/staticsrv.js`. It checks hydration, console errors, failed requests and client-side navigation. `staticsrv.js` is a reference implementation of the rules above and a test tool; the real server is S2's.

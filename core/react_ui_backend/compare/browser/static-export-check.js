@@ -1,30 +1,25 @@
 // Loads every page of a static export in a real browser (Edge), through the Go
 // proxy in front of staticsrv.js, and reports hydration, console errors, failed
 // requests and client-side navigation. `node static-export-check.js <base url>
-// <out dir> [<extension name>] [-gradio]`. Exit code 1 if anything is wrong.
+// <routes.tsx> [<extension name>] [-gradio]`. The pages are the literal routes
+// of the app in routes.tsx. Exit code 1 if anything is wrong.
 const { chromium } = require("playwright-core");
 const fs = require("fs");
-const path = require("path");
 
 const gradio = process.argv.includes("-gradio");
-const [base, out, extName] = [process.argv[2], process.argv[3], process.argv[4]];
+const [base, routesFile, extName] = [process.argv[2], process.argv[3], process.argv[4]];
 
-function pages(dir, prefix = "") {
-  let r = [];
-  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.isDirectory()) { if (!e.name.startsWith("_")) r = r.concat(pages(path.join(dir, e.name), prefix + "/" + e.name)); }
-    else if (e.name.endsWith(".html") && !["404.html", "_not-found.html"].includes(e.name)) {
-      const n = e.name.slice(0, -5);
-      r.push(n === "index" ? prefix || "/" : prefix + "/" + n);
-    }
-  }
-  return r;
+// Literal route paths of the app (no :param), from the routes table.
+function pages(file) {
+  const src = fs.readFileSync(file, "utf8");
+  const found = [...src.matchAll(/path=\s*"([^"]+)"/g)].map((m) => m[1]).filter((p) => !p.includes(":") && !p.includes("*"));
+  return ["/outputs/favorites", ...found];
 }
 
 const hydrated = () => [...document.querySelectorAll("*")].some((e) => Object.keys(e).some((k) => k.startsWith("__react")));
 
 (async () => {
-  const urls = [...new Set(pages(out))].sort();
+  const urls = [...new Set(pages(routesFile))].sort();
   if (extName) urls.push("/extensions/" + extName);
   const b = await chromium.launch({ channel: "msedge", headless: true });
   const ctx = await b.newContext();
@@ -53,6 +48,8 @@ const hydrated = () => [...document.querySelectorAll("*")].some((e) => Object.ke
   const p = await ctx.newPage();
   await p.goto(base + "/");
   for (let i = 0; i < 40 && !(await p.evaluate(hydrated)); i++) await p.waitForTimeout(250);
+  // The sidebar links render after the first lazy chunks load, so wait for them.
+  for (let i = 0; i < 40 && !(await p.evaluate(() => document.querySelector("a[href^='/']"))); i++) await p.waitForTimeout(250);
   await p.evaluate(() => { window.__marker = 1; });
   const hrefs = await p.evaluate(() => [...new Set([...document.querySelectorAll("a[href^='/']")].map((a) => a.getAttribute("href")))].filter((h) => h !== "/" && !h.startsWith("/api") && !h.startsWith("/_next")));
   let nav = 0;

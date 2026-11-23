@@ -29,17 +29,35 @@ func StartApp(ctx context.Context, s *Step) (exitCode int, err error) {
 	return startApp(ctx, s, runtime.GOOS)
 }
 
-// launcherCommand runs the Go launcher from the install root and starts the app.
-func launcherCommand(root, goos string) Command {
-	name := "tts-webui"
+// launcherName is the launcher in the install root. Windows has tts-webui.exe.
+// Elsewhere a tts-webui the user built wins, else the one the release zip ships
+// for this OS and CPU (tts-webui-linux-amd64, tts-webui-macos-arm64, ...), as
+// start_app.sh picks it.
+func launcherName(root, goos, goarch string) string {
 	if goos == "windows" {
-		name += ".exe"
+		return "tts-webui.exe"
 	}
-	return Command{Name: filepath.Join(root, name), Args: []string{"launch", "--start"}}
+	if _, err := os.Stat(filepath.Join(root, "tts-webui")); err == nil {
+		return "tts-webui"
+	}
+	osName := goos
+	if goos == "darwin" {
+		osName = "macos"
+	}
+	shipped := "tts-webui-" + osName + "-" + goarch
+	if _, err := os.Stat(filepath.Join(root, shipped)); err == nil {
+		return shipped
+	}
+	return "tts-webui"
+}
+
+// launcherCommand runs the Go launcher from the install root and starts the app.
+func launcherCommand(root, goos, goarch string) Command {
+	return Command{Name: filepath.Join(root, launcherName(root, goos, goarch)), Args: []string{"launch", "--start"}}
 }
 
 func startApp(ctx context.Context, s *Step, goos string) (int, error) {
-	if _, err := s.Run.Run(ctx, launcherCommand(s.Root, goos)); err != nil {
+	if _, err := s.Run.Run(ctx, launcherCommand(s.Root, goos, runtime.GOARCH)); err != nil {
 		return 1, err
 	}
 	if goos == "windows" {

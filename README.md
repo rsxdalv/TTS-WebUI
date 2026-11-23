@@ -135,7 +135,7 @@ Prerequisites:
     pip install -r requirements.txt
     ```
 
-3. Get the Go launcher, which runs the app (a release from the releases page, or build it with Go 1.27):
+3. Get the Go launcher, which runs the app (the installer zip ships `tts-webui.exe` and `tts-webui-<linux|macos>-<amd64|arm64>`; or build it with Go 1.27):
    ```bash
    cd core && go build -o ../tts-webui ./cmd/tts-webui && cd ..
    ```

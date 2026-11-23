@@ -1,3 +1,4 @@
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -8,6 +9,14 @@ import typer
 app = typer.Typer(help="tts-webui command line")
 ext_app = typer.Typer(help="Manage extensions")
 app.add_typer(ext_app, name="extension")
+
+
+def _os_name() -> str:
+    return "macos" if sys.platform == "darwin" else "linux"
+
+
+def _arch_name() -> str:
+    return "arm64" if platform.machine().lower() in ("arm64", "aarch64") else "amd64"
 
 
 def _run_process(cmd: List[str]) -> int:
@@ -34,6 +43,7 @@ def serve(
             for p in (
                 project_root / "tts-webui.exe",
                 project_root / "tts-webui",
+                project_root / f"tts-webui-{_os_name()}-{_arch_name()}",
                 project_root / "core" / "tts-webui",
             )
             if p.is_file()
@@ -42,8 +52,8 @@ def serve(
     )
     if launcher is None:
         typer.secho(
-            "Error: the Go launcher not found in the project root. Download tts-webui "
-            "from the releases page, or build it: cd core && go build -o ../tts-webui "
+            "Error: the Go launcher not found in the project root. The release zip "
+            "contains it; or build it: cd core && go build -o ../tts-webui "
             "./cmd/tts-webui",
             fg=typer.colors.RED,
         )

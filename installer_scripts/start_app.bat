@@ -3,7 +3,7 @@
 set "LAUNCHER=%~dp0..\tts-webui.exe"
 if not exist "%LAUNCHER%" (
     echo The launcher was not found: %LAUNCHER%
-    echo Download tts-webui.exe from the releases page into the TTS WebUI folder, then start again.
+    echo Download the TTS WebUI zip again (it contains tts-webui.exe) or build it: cd core ^&^& go build -o ..\tts-webui.exe .\cmd\tts-webui
     exit /b 1
 )
 

@@ -41,7 +41,6 @@ next-env.d.ts
 /public/file-input-cache/
 
 
-*storybook.log
 /.out-building/
 /.next-server-saved/
 /.next-export-scratch

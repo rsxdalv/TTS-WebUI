@@ -2,6 +2,7 @@ package installer_scripts
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -107,5 +108,36 @@ func TestActivate(t *testing.T) {
 	s, r, _ = smallStep(map[string]int{"bash": 2})
 	if code, _ := activate(context.Background(), s, "linux"); code != 2 || !strings.Contains(r.cmds[0].Args[1], `$MICROMAMBA_EXE activate -p "$(pwd)/installer_files/env"`) {
 		t.Fatalf("unix: %+v", r.cmds)
+	}
+}
+
+func TestLauncherNamePicksTheBinaryForThisPlatform(t *testing.T) {
+	root := t.TempDir()
+	if got := launcherName(root, "windows", "amd64"); got != "tts-webui.exe" {
+		t.Errorf("windows: %q", got)
+	}
+	// Nothing there: the plain name, so the runner's error says what is missing.
+	if got := launcherName(root, "linux", "amd64"); got != "tts-webui" {
+		t.Errorf("empty root: %q", got)
+	}
+	touch := func(name string) {
+		if err := os.WriteFile(filepath.Join(root, name), nil, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	touch("tts-webui-linux-arm64")
+	touch("tts-webui-macos-arm64")
+	if got := launcherName(root, "linux", "arm64"); got != "tts-webui-linux-arm64" {
+		t.Errorf("linux/arm64: %q", got)
+	}
+	if got := launcherName(root, "darwin", "arm64"); got != "tts-webui-macos-arm64" {
+		t.Errorf("darwin/arm64: %q", got)
+	}
+	if got := launcherName(root, "linux", "amd64"); got != "tts-webui" {
+		t.Errorf("linux/amd64 has no shipped binary here: %q", got)
+	}
+	touch("tts-webui") // one the user built wins
+	if got := launcherName(root, "linux", "arm64"); got != "tts-webui" {
+		t.Errorf("a built tts-webui should win: %q", got)
 	}
 }

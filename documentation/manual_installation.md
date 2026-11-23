@@ -122,7 +122,7 @@ node installer_scripts/js/applyDatabaseConfig.js
 
 ### 5. Start Server
 
-Get the Go launcher (a release from the releases page, or build it with Go 1.27) and run the server with the Python environment you installed into:
+Get the Go launcher (the installer zip ships it as `tts-webui.exe` and `tts-webui-<linux|macos>-<amd64|arm64>`; or build it with Go 1.27) and run the server with the Python environment you installed into:
 
 ```bash
 cd core && go build -o ../tts-webui ./cmd/tts-webui && cd ..

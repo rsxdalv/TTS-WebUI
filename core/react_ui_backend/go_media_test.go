@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -95,7 +96,7 @@ func TestMiniMaxTTS(t *testing.T) {
 }
 
 func TestSafeTextName(t *testing.T) {
-	for in, want := range map[string]string{"Hello, world!": "Hello_world", "!!!": "minimax_tts", "con": "minimax_tts", "a/b\\c": "abc"} {
+	for in, want := range map[string]string{"Hello, world!": "Hello_world", "!!!": "minimax_tts", "a/b\\c": "abc"} {
 		if got := safeTextName(in); got != want {
 			t.Errorf("%q -> %q, want %q", in, got, want)
 		}
@@ -136,5 +137,15 @@ func TestFFmpegMetadata(t *testing.T) {
 	ogg := `{"format":{"format_name":"ogg"},"streams":[{"tags":{"comment":"{\"a\":1}"}}]}`
 	if out, err := commentMetadata([]byte(ogg), "z.ogg"); err != nil || string(out) != `{"a":1}` {
 		t.Fatalf("ogg: %s %v", out, err)
+	}
+}
+
+// Reserved device names are a Windows rule; elsewhere "con" is a fine name.
+func TestSafeTextNameReservedOnWindows(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("windows only")
+	}
+	if got := safeTextName("con"); got != "minimax_tts" {
+		t.Errorf("con -> %q", got)
 	}
 }

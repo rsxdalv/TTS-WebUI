@@ -40,7 +40,9 @@ class Bridge:
 
     def __getattr__(self, name):
         if name.startswith("_") or name not in _SUBBRIDGES:
-            raise AttributeError(f"no core bridge named {name!r}; known: {sorted(_SUBBRIDGES)}")
+            raise AttributeError(
+                f"no core bridge named {name!r}; known: {sorted(_SUBBRIDGES)}"
+            )
         inst = self._instances.get(name)
         if inst is None:
             inst = self._instances[name] = _SUBBRIDGES[name]()

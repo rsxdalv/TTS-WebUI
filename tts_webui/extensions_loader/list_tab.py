@@ -15,7 +15,9 @@ def extension_list_ui(kind: str):
     with gr.Row():
         with gr.Column():
             gr.Markdown("Install/Uninstall Extensions")
-            install_dropdown = bridge.extcatalog.picker(kind, "Select Extension to Install")
+            install_dropdown = bridge.extcatalog.picker(
+                kind, "Select Extension to Install"
+            )
             install_button = gr.Button("Install extension")
             install_button.click(
                 fn=bridge.extcatalog.install,
@@ -26,7 +28,9 @@ def extension_list_ui(kind: str):
 
         with gr.Column():
             gr.Markdown("Uninstall Extensions")
-            uninstall_dropdown = bridge.extcatalog.picker(kind, "Select Extension to Uninstall")
+            uninstall_dropdown = bridge.extcatalog.picker(
+                kind, "Select Extension to Uninstall"
+            )
             uninstall_button = gr.Button("Uninstall extension")
             uninstall_button.click(
                 fn=bridge.extcatalog.uninstall,

@@ -26,7 +26,9 @@ def setup_proxy_extension(
     is_installed=False,
 ):
     extension_ran = False
-    iframe = f'<iframe src="/{package_name}/" style="width: 100%; height: 100vh;"></iframe>'
+    iframe = (
+        f'<iframe src="/{package_name}/" style="width: 100%; height: 100vh;"></iframe>'
+    )
 
     run_guard = gr.State(False)
     first_load_guard = gr.State(False)
@@ -70,7 +72,9 @@ def setup_proxy_extension(
         try:
             started = bridge.extensions.start(package_name, get_openai_api_host())
             extension_ran = True
-            print(f"{title_name} extension runs on port {started['port']}/{package_name}")
+            print(
+                f"{title_name} extension runs on port {started['port']}/{package_name}"
+            )
             bridge.extensions.wait_ready(package_name)
         except CoreBridgeError as e:
             extension_ran = False

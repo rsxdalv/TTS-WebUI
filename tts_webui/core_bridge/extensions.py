@@ -50,7 +50,11 @@ class ExtensionsBridge(SubBridge):
                 return state
             if state["state"] != "starting":
                 reason = state.get("error") or f"exit code {state.get('exit_code')}"
-                raise transport.CoreBridgeError(f"extension {package} {state['state']}: {reason}")
+                raise transport.CoreBridgeError(
+                    f"extension {package} {state['state']}: {reason}"
+                )
             if time.monotonic() >= deadline:
-                raise transport.CoreBridgeError(f"extension {package} did not start within {timeout} s")
+                raise transport.CoreBridgeError(
+                    f"extension {package} did not start within {timeout} s"
+                )
             time.sleep(POLL_SECONDS)

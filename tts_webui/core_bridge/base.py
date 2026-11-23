@@ -38,11 +38,15 @@ class SubBridge:
 
         def fields_of(args, kwargs):
             if len(args) > len(params):
-                raise TypeError(f"{op}() takes {len(params)} arguments ({len(args)} given)")
+                raise TypeError(
+                    f"{op}() takes {len(params)} arguments ({len(args)} given)"
+                )
             fields = dict(zip(params, args))
             for k, v in kwargs.items():
                 if k not in params or k in fields:
-                    raise TypeError(f"{op}() got an unexpected or repeated argument {k!r}")
+                    raise TypeError(
+                        f"{op}() got an unexpected or repeated argument {k!r}"
+                    )
                 fields[k] = v
             missing = [p for p in params if p not in fields]
             if missing:

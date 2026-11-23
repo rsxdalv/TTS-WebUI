@@ -57,6 +57,7 @@ ANSWERS = {
         "info": "Parsed entries: 1",
     },
     ("POST", "latest-version"): "1.2.3",
+    ("POST", "save-model-locations"): "saved",
     ("POST", "add"): {"status": "Saved | Added: n.one | Skipped (exists): none", "json": "{}"},
     ("GET", "pip-list"): [{"name": "Alpha", "version": "1.0"}, {"name": "numpy", "version": "2.0"}],
     # logs
@@ -897,6 +898,54 @@ class InstallCallersTest(unittest.TestCase):
                 list(bridge.extcatalog.check_dependencies("a.one"))
             with self.assertRaises(CoreBridgeError):
                 bridge.extcatalog.latest_version("a.one")
+
+
+class EnvTest(unittest.TestCase):
+    """.env is written by Go; the Model Location tab only sends the four values."""
+
+    def setUp(self):
+        self.stub = Stub()
+        self.addCleanup(self.stub.close)
+        env = mock.patch.dict(
+            os.environ, {"TTS_CORE_URL": self.stub.url, "TTS_CORE_TOKEN": "tok"}
+        )
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_save_model_locations_sends_named_fields(self):
+        self.assertEqual(bridge.env.save_model_locations("/hf", "", "/t", "/x"), "saved")
+        self.assertEqual(
+            self.stub.requests[0][1:4],
+            (
+                "save-model-locations",
+                {},
+                {"huggingface_hub_cache": "/hf", "hf_home": "", "torch_home": "/t", "xdg_cache_home": "/x"},
+            ),
+        )
+        with self.assertRaises(TypeError):
+            bridge.env.save_model_locations("/hf")
+
+    def test_tab_saves_through_go(self):
+        import importlib
+
+        m = importlib.import_module("extensions.builtin.extension_model_location.main")
+        with gr.Blocks() as demo:
+            m.model_location_settings()
+        save = next(f.fn for f in demo.fns.values() if f.fn.__name__ == "save_environment_variables2")
+        with mock.patch.dict(os.environ):
+            self.assertEqual(save("/hf", "", "/t", "/x"), "saved")
+            self.assertEqual(os.environ["HUGGINGFACE_HUB_CACHE"], "/hf")  # the running process keeps its own copy
+        self.assertEqual(self.stub.requests[0][3]["torch_home"], "/t")
+        with open(m.__file__, encoding="utf-8") as f:
+            src = f.read()
+        for gone in ("write_env", "generate_env", "dotenv_manager"):
+            self.assertNotIn(gone, src)
+
+    def test_core_off_raises(self):
+        env = {k: v for k, v in os.environ.items() if k != "TTS_CORE_URL"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            with self.assertRaises(CoreBridgeError):
+                bridge.env.save_model_locations("a", "b", "c", "d")
 
 
 class PipTest(unittest.TestCase):

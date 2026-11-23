@@ -1,8 +1,8 @@
 """Gradio-only server entry for the Go core (replaces server.py's start()).
 
 The Go core has already created outputs/ and favorites/, written .env when it
-was missing, loaded .env/.env.user, started the router, React and the
-extension processes. This module only does the work that must happen inside
+was missing, loaded .env/.env.user into this process's environment, started the
+router, React and the extension processes. This module only does the work that must happen inside
 the interpreter: patches, config, the Gradio app and its launch on
 TTS_GRADIO_HOST:TTS_GRADIO_PORT (applied to the config by core_router_bridge).
 
@@ -59,11 +59,9 @@ def launch_options(gr_options, overrides=None):
 def main():
     print("Starting TTS WebUI... ", end="")
 
-    import tts_webui.dotenv_manager.init as dotenv_init
     from tts_webui.utils.suppress_warnings import suppress_warnings
     from tts_webui.utils.torch_load_patch import apply_torch_load_patch
 
-    dotenv_init.init()
     apply_torch_load_patch()
     suppress_warnings()
 

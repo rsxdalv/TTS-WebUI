@@ -1,6 +1,8 @@
 import gradio as gr
 import os
 
+from tts_webui.core_bridge import bridge
+
 
 def model_location_settings():
     with gr.Row(equal_height=False):
@@ -90,17 +92,12 @@ def model_location_settings():
                 os.environ["HF_HOME"] = str(model_location_hf_env_var2)
                 os.environ["TORCH_HOME"] = str(model_location_th_home)
                 os.environ["XDG_CACHE_HOME"] = str(model_location_th_xdg)
-                from tts_webui.dotenv_manager.writer import generate_env, write_env
-
-                write_env(
-                    generate_env(
-                        model_location_hf_env_var=model_location_hf_env_var,
-                        model_location_hf_env_var2=model_location_hf_env_var2,
-                        model_location_th_home=model_location_th_home,
-                        model_location_th_xdg=model_location_th_xdg,
-                    )
+                return bridge.env.save_model_locations(
+                    str(model_location_hf_env_var),
+                    str(model_location_hf_env_var2),
+                    str(model_location_th_home),
+                    str(model_location_th_xdg),
                 )
-                return "saved"
 
             for i in inputs:
                 i.change(

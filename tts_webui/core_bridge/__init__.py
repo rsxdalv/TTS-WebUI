@@ -11,6 +11,7 @@ CoreBridgeError.
 
 from .base import SubBridge
 from .config import ConfigBridge
+from .env import EnvBridge
 from .extcatalog import ExtCatalogBridge
 from .history import HistoryBridge
 from .logs import LogsBridge
@@ -21,6 +22,7 @@ __all__ = ["bridge", "Bridge", "SubBridge", "CoreBridgeError", "enabled"]
 
 _SUBBRIDGES = {
     "config": ConfigBridge,
+    "env": EnvBridge,
     "extcatalog": ExtCatalogBridge,
     "history": HistoryBridge,
     "logs": LogsBridge,

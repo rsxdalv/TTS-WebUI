@@ -1,4 +1,10 @@
-import json
+"""The default .env text, for server.py's init() when .env is missing.
+
+The Go core creates and rewrites .env when it runs the app (core/internal/
+serverpy/appenv: EnsureEnv, SaveModelLocations, which the Model Location tab
+reaches through bridge.env); this module is the legacy server.py path's copy.
+"""
+
 import os
 
 
@@ -78,56 +84,3 @@ rmvpe_root=data/models/rvc/rmvpe # Root directory for RVC model RMVPE
 def write_env(text: str):
     with open(".env", "w") as outfile:
         outfile.write(text)
-
-
-JSON_ENV_FILE = "env_store.json"
-DOTENV_FILE = ".env"
-
-
-def load_env_store():
-    if os.path.exists(JSON_ENV_FILE):
-        with open(JSON_ENV_FILE, "r") as f:
-            return json.load(f)
-    return {}
-
-
-def save_env_store(data):
-    with open(JSON_ENV_FILE, "w") as f:
-        json.dump(data, f, indent=2)
-
-
-def generate_dotenv_text(env_store: dict) -> str:
-    text = (
-        "# This file gets updated automatically from the JSON store.\n"
-        "# Manual changes will be overwritten.\n\n"
-    )
-
-    for namespace, vars_dict in env_store.items():
-        text += f"# --- {namespace.upper()} ---\n"
-        for key, value in vars_dict.items():
-            comment = f"{namespace}.{key}"
-            text += env_entry(key, value, comment)
-        text += "\n"
-    return text
-
-
-def write_dotenv_from_json(env_store):
-    dotenv_text = generate_dotenv_text(env_store)
-    with open(DOTENV_FILE, "w") as f:
-        f.write(dotenv_text)
-
-
-def update_dotenv(namespace: str, values: dict):
-    env_store = load_env_store()
-    env_store.setdefault(namespace, {})
-    env_store[namespace].update(values)
-    save_env_store(env_store)
-    write_dotenv_from_json(env_store)
-
-
-def delete_namespace(namespace: str):
-    env_store = load_env_store()
-    if namespace in env_store:
-        del env_store[namespace]
-        save_env_store(env_store)
-        write_dotenv_from_json(env_store)

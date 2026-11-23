@@ -52,6 +52,38 @@ Then:
    types (`%v`, `%+v`, `%#v`, `String()`) redacts the password; read
    `.Password` explicitly only where it is needed. Never put it in env or logs.
 
+## Writing `.env` (`writeenv.go`, `envapi.go`)
+
+Go writes `.env`, through one function (`writeEnvFile`, one mutex): `EnsureEnv`
+creates it when missing (exclusive create, as before) and `SaveModelLocations`
+replaces it (temp file and rename). The only Python caller that rewrote it was
+the Model Location Settings tab (`write_env(generate_env(4 values))`); it now
+calls `bridge.env.save_model_locations(huggingface_hub_cache, hf_home,
+torch_home, xdg_cache_home)` -> `POST /api/env/save-model-locations`, and Go
+writes the same bytes (default text, CRLF on Windows, an empty value written as
+`# NAME=`; `TestSaveModelLocationsWritesWhatWriteEnvWrote` compares it with
+`EnsureEnv`'s generator, and the completion pass compared it with the real
+`write_env(generate_env(...))`). `os.environ` of the running process is still set
+by the tab; the restart the tab asks for applies the file.
+
+- **`.env.user` has no writer.** Nothing in Python or React writes it (it is the
+  file users edit by hand), so there are no set/many/remove operations for it;
+  see the decision card LAB-27 (the question is whether the tab should write
+  `.env.user` instead).
+- The file is replaced as a whole, as before: a hand edit of `.env` is lost
+  (the header says so; it belongs in `.env.user`).
+- Refused with 400: a body that is not one JSON object, unknown or missing
+  fields, non-string values, a value with a control character (a line break would
+  add a variable to the file every child loads; the old code wrote it as given)
+  or longer than 4096 bytes. Loopback + token only. Values are never logged.
+- Python's `dotenv_manager/writer.py` keeps `generate_env` and `write_env` only
+  for `init.py` on the legacy `server.py` path (it creates a missing `.env`;
+  the Go path has created it already). The unused `env_store.json` helpers
+  (`update_dotenv`, `delete_namespace`, ...) are deleted.
+- `core_server.main()` no longer calls `dotenv_manager.init.init()`: the gradio
+  child's environment is already the merged launcher env + `.env` + `.env.user`
+  (`gradioEnv`), so the two `load_dotenv` calls only repeated Go's work.
+
 ## Which `.env` is loaded
 
 `load_dotenv()` without a path calls `find_dotenv()`, which starts at the

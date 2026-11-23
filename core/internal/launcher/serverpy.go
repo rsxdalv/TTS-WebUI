@@ -165,6 +165,11 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}).Handler())
 	mux.Handle(extcatalog.Prefix, ext.Handler())
+	// .env is rewritten only here (the Model Location tab; see appenv).
+	mux.Handle(appenv.APIPrefix, appenv.NewAPI(appenv.APIOptions{
+		Root: root.Dir(), Token: token,
+		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+	}).Handler())
 	// Settings > Installed Packages: pip list in the main env (see piplist).
 	mux.Handle(piplist.Path, piplist.New(piplist.Options{
 		Root: root.Dir(), Token: token,

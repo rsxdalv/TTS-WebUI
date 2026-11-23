@@ -25,7 +25,7 @@ import (
 
 const noPyToken = "no-python-token"
 
-const newRouteNames = "core-pip,core-logs,core-model-locations,core-settings,core-extensions,go-gpu-info,go-ffmpeg-metadata,go-minimax-tts"
+const newRouteNames = "core-pip,core-logs,core-model-locations,core-settings,core-extensions,go-gpu-info,go-ffmpeg-metadata"
 
 // realCore starts the real loopback services of the launcher over root, with
 // a command prefix whose program and env do not exist.
@@ -85,7 +85,6 @@ func call(t *testing.T, method, url, body string) (int, string) {
 func TestRoutesWithoutPythonAndGradio(t *testing.T) {
 	root := exportFixture(t)
 	t.Setenv("PATH", t.TempDir()) // no ffprobe, no python
-	t.Setenv("MINIMAX_API_KEY", "")
 	core := realCore(t, root)
 	front := allNewRoutes(t, core, root)
 
@@ -123,9 +122,6 @@ func TestRoutesWithoutPythonAndGradio(t *testing.T) {
 	_ = os.MkdirAll(cache, 0o755)
 	_ = os.WriteFile(filepath.Join(cache, "x.flac"), []byte("x"), 0o644)
 	expect("POST", "/api/go-data/ffmpeg-metadata", `{"name":"x.flac"}`, 503, "ffprobe was not found")
-	// MiniMax: a clear error without a key, nothing leaves the machine.
-	expect("POST", "/api/go-data/minimax-tts", `{"text":"hi","model":"m","voice_id":"v"}`, 400, "API key is required")
-	// Extensions: the lists come from the Go catalog.
 	if code, got := call(t, "GET", front+"/api/go-data/extensions/interface", ""); code != 200 || !strings.HasPrefix(strings.TrimSpace(got), "[") {
 		t.Errorf("extensions: %d %q", code, got)
 	}
@@ -138,7 +134,6 @@ func TestRoutesWithoutPythonAndGradio(t *testing.T) {
 func TestRoutesWithoutAnyCore(t *testing.T) {
 	root := exportFixture(t)
 	t.Setenv("PATH", t.TempDir())
-	t.Setenv("MINIMAX_API_KEY", "")
 	// The control API is gone (the Gradio side closed it): routes that need it
 	// say so; routes that do not need it still work.
 	front := allNewRoutes(t, &Core{}, root)
@@ -149,8 +144,5 @@ func TestRoutesWithoutAnyCore(t *testing.T) {
 	}
 	if code, got := call(t, "GET", front+"/api/go-data/gpu-info", ""); code != 200 || !strings.HasPrefix(got, "[") {
 		t.Errorf("gpu-info: %d %q", code, got)
-	}
-	if code, _ := call(t, "POST", front+"/api/go-data/minimax-tts", `{"text":"hi","model":"m","voice_id":"v"}`); code != 400 {
-		t.Errorf("minimax: %d", code)
 	}
 }

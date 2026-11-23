@@ -60,7 +60,7 @@ launcher's real supervisor wiring (`launcher/gocore_test.go`) or the supervisor 
 | youtube_tutorials | `/tools/youtube_tutorials` | none (static) | none | Yes (needs the internet for the videos) |
 | gpu_info | existing `/tools/gpu_info` and the Bark settings widget, now on Go | `GET /api/go-data/gpu-info` (`go-gpu-info`) | nvidia-smi | Yes; `[]` and a "No NVIDIA GPU found" message without nvidia-smi |
 | ffmpeg_metadata | existing `/outputs/ffmpeg-metadata-page`, now on Go | `POST /api/go-data/ffmpeg-metadata` (`go-ffmpeg-metadata`) | ffprobe | Yes if ffprobe exists, else 503 `ffprobe was not found ...` |
-| minimax_cloud_tts | existing `/text-to-speech/minimax-tts`, now on Go | `POST /api/go-data/minimax-tts` (`go-minimax-tts`) | MiniMax API | Yes (400 without a key) |
+| minimax_cloud_tts | existing `/text-to-speech/minimax-tts`, unchanged (Gradio) | none | Python extension | No (not core; see decisions) |
 | simple_remixer | `/tools/simple_remixer` | none | Web Audio in the browser | Yes |
 
 All pages are in the Tools menu (Header.tsx).
@@ -115,9 +115,8 @@ All pages are in the Tools menu (Header.tsx).
 9. **ffmpeg_metadata.** `{name}` of a file in `react-ui/public/file-input-cache` (what `/api/upload` fills), never a
    path. Same tag rules as the extension; tag names matched without case; a file with no usable comment tag returns
    the whole ffprobe document instead of an error.
-10. **minimax.** Same API request and files as the extension (`outputs/<timestamp>_<text>/<text>.mp3` and `.json`).
-    Key: request, else `MINIMAX_API_KEY`; never logged, written or returned, and masked in error texts. A name clash
-    gets a `_2` suffix instead of overwriting.
+10. **minimax: not converted.** A Go handler was written and then dropped (Rob: MiniMax is not part of the core). The
+    Python extension and the React page that calls it through Gradio are as they were; it works only while Gradio runs.
 11. **simple_remixer.** Same rule as the extension (mix each column, join the columns), mono; the rate is the browser
     AudioContext's (the extension used the highest rate of its slots). Output is 16-bit WAV.
 12. **youtube_tutorials** uses `youtube-nocookie.com`. No CSP is set by the Go server (nothing in front of it checked).
@@ -147,6 +146,6 @@ UI (200); `pip-list` 409 `no_python`; `logs/files` 200 `[]`; `model-locations`, 
 the public port answered 502 `upstream unavailable`. No warning shows without an env, because the GPU label is only
 checked when Gradio could start. The launcher wrote a default `.env` into the root.
 Not checked: a start with a real Python env after the change (the opt-in `LAUNCHER_REAL_ROOT` tests were not run); the
-launcher page and the new pages (other than pip list) rendered in a browser; a real MiniMax call; a real ffprobe run
+launcher page and the new pages (other than pip list) rendered in a browser; a real ffprobe run
 through the route (only a stub); the remixer with real audio; the Gradio tabs next to the new pages; a no-env start when
 `react-ui/out` is missing (it needs npm to build it).

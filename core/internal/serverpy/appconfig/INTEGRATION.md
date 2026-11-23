@@ -73,17 +73,24 @@ Python: `bridge.config.<op>` (`tts_webui/core_bridge/config.py`). Call sites:
 
 ### Stale in-memory state (decision)
 
-After a change the process's own `config`, `disabled_extensions` and
-`autostart_extensions` keep the startup values; the UI already asks for a
-restart. Every reader of them runs at build/import time (`_handle_package`,
-`autostart` flag, `decorator_extensions`, which never saved), so nothing visible
-changes. Two places would have shown the difference and are handled:
+After a change the process's own `config` keeps the startup values; the UI
+already asks for a restart. The extension lists are no longer held in Python at
+all: `disabled_extensions`, `autostart_extensions`, `extension_list_json` and the
+`config["extensions"]` defaults were removed, and the loader asks Go
+(`extcatalog` `resolve`, which reads them through `Store.ExtensionLists`).
+Two places would have shown the difference and are handled:
 - `toggle_extension_state` used to decide from the in-memory list; it now asks
   Go to toggle, so Disable/Enable alternate correctly on repeated clicks and
   the button label comes from Go's answer.
 - `set_config_value` / `save_config_gradio` mirror the written value into the
   in-memory `config` after Go succeeded, so `get_config_value` stays coherent.
 The extension lists are not mirrored.
+
+`Store.ExtensionLists()` (`lists.go`) is the read side for the loader: the
+`disabled`, `autostart` and `disabled_decorators` lists, read under the same
+mutex as every write. A missing section or key is an empty list; a value of
+another type is an error; non-string entries are dropped (they match no package
+name). Reading creates the default file when it is missing, like `GET`.
 
 ### Stays in Python
 

@@ -1,15 +1,16 @@
 """
-Extensions data loader module.
+The interface extensions list, read straight from the extension files.
 
-This module provides functions to load extensions data from various sources.
-It abstracts the data loading process to enable more complex data sources in the future,
-such as multiple JSON file merges or fetching from external sources.
+The app no longer uses this: the Go core merges the files and decides what to
+load (core/internal/serverpy/extcatalog, bridge.extcatalog.resolve). It stays
+for installer_scripts/tools/extension_manager.py, a separate CLI process that
+runs without the core. Keep its merge in step with extcatalog/catalog.go.
 """
 
 import json
 import os
 from itertools import chain
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List
 
 # Default paths for extensions files
 DEFAULT_EXTENSIONS_FILE = "extensions.json"
@@ -60,99 +61,6 @@ def load_catalog_extensions_json() -> Dict[str, Any]:
         if data:
             return data
     return {}
-
-
-def merge_extensions_data(
-    base_data: Dict[str, Any], additional_data: Dict[str, Any]
-) -> Dict[str, Any]:
-    """
-    Merge two extension data dictionaries.
-
-    Args:
-        base_data (Dict[str, Any]): Base extensions data.
-        additional_data (Dict[str, Any]): Additional extensions data to merge.
-
-    Returns:
-        Dict[str, Any]: Merged extensions data.
-    """
-    result = base_data.copy()
-
-    for key, value in additional_data.items():
-        # Do not merge 'tabs' here; handled by get_interface_extensions
-        if key == "tabs":
-            continue
-
-        # Only concatenate decorators; for all other keys, prefer base unless missing
-        if (
-            key == "decorators"
-            and key in result
-            and isinstance(value, list)
-            and isinstance(result[key], list)
-        ):
-            # Concatenate and de-duplicate by package_name preserving order
-            result[key] = _dedupe_by_package_name([*result[key], *value])
-        elif key not in result:
-            result[key] = value
-        else:
-            # For all other keys (including dicts like tabsInGroups), do not deep-merge; keep base
-            pass
-
-    return result
-
-
-def load_merged_extensions_data() -> Dict[str, Any]:
-    """
-    Load and merge extensions data from multiple sources.
-
-    Precedence for decorators and similar list-like data: external > latest > base.
-    Tabs are handled separately in get_interface_extensions().
-
-    Returns:
-        Dict[str, Any]: Merged extensions data from all sources.
-    """
-    base = load_extensions_json()
-    catalog = load_catalog_extensions_json()
-    external = (
-        load_json_file(EXTERNAL_EXTENSIONS_FILE)
-        if os.path.exists(EXTERNAL_EXTENSIONS_FILE)
-        else {}
-    )
-
-    # Start from base metadata
-    result: Dict[str, Any] = base.copy() if isinstance(base, dict) else {}
-
-    # Merge decorators with precedence: external > latest > base (keep-first by package_name)
-    base_decor = base.get("decorators", []) if isinstance(base, dict) else []
-    catalog_decor = catalog.get("decorators", []) if isinstance(catalog, dict) else []
-    external_decor = (
-        external.get("decorators", []) if isinstance(external, dict) else []
-    )
-    result["decorators"] = _dedupe_by_package_name(
-        [*external_decor, *catalog_decor, *base_decor]
-    )
-
-    # For any other non-tab keys missing in base, fill from latest, then external
-    for src in (catalog, external):
-        if not isinstance(src, dict):
-            continue
-        for k, v in src.items():
-            if k in ("tabs", "tabsInGroups", "decorators"):
-                continue
-            if k not in result:
-                result[k] = v
-
-    return result
-
-
-def get_decorator_extensions() -> List[Dict[str, Any]]:
-    """
-    Get the list of decorator extensions.
-
-    Returns:
-        List[Dict[str, Any]]: List of decorator extensions.
-    """
-    extensions_data = load_merged_extensions_data()
-    return extensions_data.get("decorators", [])
 
 
 def _dedupe_by_package_name(items: Iterable[Any]) -> List[Dict[str, Any]]:
@@ -212,95 +120,3 @@ def get_interface_extensions() -> List[Dict[str, Any]]:
 
     combined = _dedupe_by_package_name([*external_tabs, *catalog_tabs, *base_tabs])
     return combined
-
-
-def filter_extensions_by_type_and_class(
-    extensions: List[Dict[str, Any]],
-    extension_type: str,
-    extension_class: Optional[str] = None,
-) -> List[Dict[str, Any]]:
-    """
-    Filter extensions by type and class.
-
-    Args:
-        extensions (List[Dict[str, Any]]): List of extensions to filter.
-        extension_type (str): Extension type to filter by.
-        extension_class (Optional[str], optional): Extension class to filter by.
-            If None, only filters by type. Defaults to None.
-
-    Returns:
-        List[Dict[str, Any]]: Filtered list of extensions.
-    """
-    if extension_class is None:
-        return [x for x in extensions if x.get("extension_type") == extension_type]
-
-    return [
-        x
-        for x in extensions
-        if x.get("extension_type") == extension_type
-        and x.get("extension_class") == extension_class
-    ]
-
-
-def get_decorator_extensions_by_class(class_name: str) -> List[Dict[str, Any]]:
-    """
-    Get decorator extensions filtered by class.
-
-    Args:
-        class_name (str): Class name to filter by (e.g., "outer", "inner").
-
-    Returns:
-        List[Dict[str, Any]]: Filtered list of decorator extensions.
-    """
-    decorators = get_decorator_extensions()
-    return filter_extensions_by_type_and_class(decorators, "decorator", class_name)
-
-
-def get_interface_extensions_by_class(class_name: str) -> List[Dict[str, Any]]:
-    """
-    Get interface extensions filtered by class.
-
-    Args:
-        class_name (str): Class name to filter by.
-
-    Returns:
-        List[Dict[str, Any]]: Filtered list of interface extensions.
-    """
-    interfaces = get_interface_extensions()
-    return filter_extensions_by_type_and_class(interfaces, "interface", class_name)
-
-
-def get_extension_example() -> Dict[str, Any]:
-    """
-    Get the example extension template.
-
-    Returns:
-        Dict[str, Any]: Example extension template.
-    """
-    extensions_data = load_merged_extensions_data()
-    return extensions_data.get("example_extension", {})
-
-
-def create_empty_external_extensions_file() -> bool:
-    """
-    Create an empty external extensions file if it doesn't exist.
-
-    Returns:
-        bool: True if the file was created, False otherwise.
-    """
-    if not os.path.exists(EXTERNAL_EXTENSIONS_FILE):
-        try:
-            with open(EXTERNAL_EXTENSIONS_FILE, "w") as f:
-                json.dump(
-                    {"tabs": [], "tabsInGroups": {}, "decorators": []}, f, indent=4
-                )
-            print(f"Created empty {EXTERNAL_EXTENSIONS_FILE}")
-            return True
-        except Exception as e:
-            print(f"Failed to create {EXTERNAL_EXTENSIONS_FILE}: {e}")
-            return False
-    return False
-
-
-# Alias for backwards compatibility
-extensions_data_loader = load_merged_extensions_data

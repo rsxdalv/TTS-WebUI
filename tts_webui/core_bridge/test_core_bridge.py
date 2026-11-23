@@ -76,6 +76,32 @@ ANSWERS = {
     ("POST", "replace-section"): {"changed": True},
 }
 
+def X(package_name, name, enabled=True, autostart=False, proxy=""):
+    return {
+        "package_name": package_name,
+        "name": name,
+        "requirements": "git+https://example.com/" + package_name,
+        "proxy": proxy,
+        "enabled": enabled,
+        "autostart": autostart,
+    }
+
+
+# extcatalog resolve: (kind, extension_class) -> what Go lists to load
+RESOLVED = {
+    ("interface", "text-to-speech"): {
+        "extensions": [
+            X("x.builtin.alpha", "Alpha"),
+            X("x.builtin.beta", "Beta", enabled=False),
+            X("x.builtin.gamma", "Gamma"),
+        ]
+    },
+    ("decorator", "outer"): {
+        "extensions": [X("deco.one", "One"), X("deco.off", "Off", enabled=False)],
+        "disabled_names": ["deco.off", "decorator_skipped"],
+    },
+}
+
 # POST ops that answer with NDJSON lines
 STREAMS = {
     "install": [{"line": "Collecting x"}, {"line": "Installed x"}, {"done": True, "ok": True}],
@@ -110,6 +136,11 @@ class Stub:
                     code, out = 403, {"error": "forbidden"}
                 elif op == "delete" and body["directory"] == "gone":
                     code, out = 404, {"error": "not found: gone"}
+                elif op == "resolve":
+                    code, out = 200, RESOLVED.get(
+                        (query["kind"], query["extension_class"]),
+                        {"extensions": []},
+                    )
                 elif op == "install" and body["package_name"] == "missing":
                     code, out = 404, {"error": 'not found: no installable extension "missing"'}
                 elif self.command == "POST" and op in STREAMS:
@@ -662,6 +693,117 @@ class ConfigTest(unittest.TestCase):
         with mock.patch.dict(os.environ, {"TTS_CORE_TOKEN": "bad"}):
             with self.assertRaises(CoreBridgeError):
                 bridge.config.extension_enable("ext.a")
+
+
+class ExtensionLoadingTest(unittest.TestCase):
+    """Go lists what to load (bridge.extcatalog.resolve); Python imports and
+    registers exactly that."""
+
+    def setUp(self):
+        self.stub = Stub()
+        self.addCleanup(self.stub.close)
+        env = mock.patch.dict(
+            os.environ, {"TTS_CORE_URL": self.stub.url, "TTS_CORE_TOKEN": "tok"}
+        )
+        env.start()
+        self.addCleanup(env.stop)
+
+    def _tab_labels(self, import_module):
+        from tts_webui.extensions_loader import interface_extensions as ie
+
+        with mock.patch.object(ie, "check_if_package_installed", return_value=True), \
+                mock.patch.object(ie.importlib, "import_module", import_module), \
+                gr.Blocks() as demo, gr.Tabs():
+            ie.handle_extension_class("text-to-speech")
+        return [b.label for b in demo.blocks.values() if isinstance(b, gr.Tab)]
+
+    def test_tabs_follow_go_order_and_state(self):
+        ran = []
+        fake = mock.Mock(extension__tts_generation_webui=lambda: ran.append(1))
+        import_module = mock.Mock(return_value=fake)
+        labels = self._tab_labels(import_module)
+        self.assertEqual(labels, ["Alpha", "[Disabled] Beta", "Gamma"])
+        self.assertEqual(
+            [c.args[0] for c in import_module.call_args_list],
+            ["x.builtin.alpha.main", "x.builtin.gamma.main"],  # a disabled one is never imported
+        )
+        self.assertEqual(len(ran), 2)
+        self.assertEqual(
+            self.stub.requests[0][:3],
+            ("GET", "resolve", {"kind": "interface", "extension_class": "text-to-speech"}),
+        )
+
+    def test_a_failing_import_leaves_an_error_tab(self):
+        def boom(name):
+            raise ImportError("no module " + name)
+
+        labels = self._tab_labels(boom)
+        self.assertEqual(labels, ["Alpha", "Alpha (!)", "[Disabled] Beta", "Gamma", "Gamma (!)"])
+
+    def test_the_loader_keeps_no_copy_of_the_config_lists(self):
+        from tts_webui.extensions_loader import interface_extensions as ie
+
+        for gone in ("disabled_extensions", "autostart_extensions", "extension_list_json"):
+            self.assertFalse(hasattr(ie, gone), gone)
+
+    def _decorators(self):
+        import importlib
+
+        return importlib.import_module("tts_webui.extensions_loader.decorator_extensions")
+
+    def test_decorators_load_what_go_lists(self):
+        de = self._decorators()
+        module = mock.Mock(spec=[])
+        module.decorator_plain = lambda fn: fn
+        module.decorator_gen_generator = lambda fn: fn
+        module.decorator_skipped = lambda fn: fn  # named in disabled_decorators
+        module.helper = lambda: None
+        with mock.patch.object(de.importlib, "import_module", return_value=module) as imp:
+            wrappers, gen_wrappers = de._load_decorators("outer")
+        self.assertEqual([c.args[0] for c in imp.call_args_list], ["deco.one.main"])
+        self.assertEqual(wrappers, [module.decorator_plain])
+        self.assertEqual(gen_wrappers, [module.decorator_gen_generator])
+
+    def test_decorator_output_and_failed_import(self):
+        import contextlib
+        import io
+
+        de = self._decorators()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), mock.patch.object(
+            de.importlib, "import_module", side_effect=ImportError("nope")
+        ):
+            self.assertEqual(de._load_decorators("outer"), ([], []))
+        text = out.getvalue()
+        self.assertIn("Skipping disabled decorator extension Off", text)
+        self.assertIn("Failed to load: nope", text)
+        self.assertNotIn("Failed to load: cannot unpack", text)  # the old loader's message for a disabled one
+
+    def test_extension_processes_get_the_list_from_go_through_the_environment(self):
+        de = self._decorators()
+        handed = {"outer": {"extensions": [X("deco.env", "Env")]}, "inner": {"extensions": []}}
+        env = {k: v for k, v in os.environ.items() if k != "TTS_CORE_URL"}  # no control API there
+        env[de.DECORATORS_ENV] = json.dumps(handed)
+        module = mock.Mock(spec=[])
+        module.decorator_env = lambda fn: fn
+        asked = len(self.stub.requests)
+        with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(
+            de.importlib, "import_module", return_value=module
+        ) as imp:
+            wrappers, _ = de._load_decorators("outer")
+        self.assertEqual(wrappers, [module.decorator_env])
+        self.assertEqual(imp.call_args.args[0], "deco.env.main")
+        self.assertEqual(len(self.stub.requests), asked)  # no call to Go
+
+    def test_core_off_raises(self):
+        env = {k: v for k, v in os.environ.items() if k != "TTS_CORE_URL"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            with self.assertRaises(CoreBridgeError):
+                bridge.extcatalog.resolve("interface", "tools")
+            from tts_webui.extensions_loader import interface_extensions as ie
+
+            with self.assertRaises(CoreBridgeError):
+                ie.handle_extension_class("tools")
 
 
 class PipTest(unittest.TestCase):

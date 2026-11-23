@@ -92,7 +92,8 @@ func only(o *Obj, keys ...string) error {
 
 var ops = map[string]string{
 	"list": http.MethodGet, "table": http.MethodGet, "picker": http.MethodGet,
-	"parse": http.MethodPost, "add": http.MethodPost,
+	"resolve": http.MethodGet,
+	"parse":   http.MethodPost, "add": http.MethodPost,
 	"install": http.MethodPost, "install-entry": http.MethodPost,
 	"uninstall": http.MethodPost,
 }
@@ -126,6 +127,13 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 			out[i] = e
 		}
 		writeJSON(w, 200, out)
+	case "resolve":
+		res, err := s.Resolve(q.Get("kind"), q.Get("extension_class"))
+		if err != nil {
+			s.fail(w, err)
+			return
+		}
+		writeJSON(w, 200, res)
 	case "table":
 		t, err := s.Table(q.Get("kind"))
 		if err != nil {

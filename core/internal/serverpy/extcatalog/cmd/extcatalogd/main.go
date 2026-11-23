@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appconfig"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extcatalog"
 )
 
@@ -24,6 +25,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle(extcatalog.Prefix, extcatalog.New(extcatalog.Options{
 		Root: *root, Token: *token, Python: *python, Logf: log.Printf,
+		Config: appconfig.New(appconfig.Options{Root: *root, Token: *token, Logf: log.Printf}),
 	}).Handler())
 	srv := &http.Server{Addr: *addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	log.Printf("extcatalogd: %s on %s", *root, *addr)

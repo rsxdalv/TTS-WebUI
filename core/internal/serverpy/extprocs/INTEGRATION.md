@@ -40,6 +40,11 @@ existing file was edited.
   values loaded by `dotenv_init.init()`, `GRADIO_TREE_*`), because extensions
   inherited these from server.py's `os.environ` before. `TTS_CORE_TOKEN` and
   `TTS_CORE_URL` are never passed to extension processes.
+- `Options.ExtraEnv` (optional) returns `KEY=VALUE` variables Go computes for
+  each extension at start; they win over `BaseEnv` and the request's `env`. The
+  launcher uses it for `TTS_WEBUI_DECORATORS` (the resolved decorators; see
+  extcatalog), because extension processes have no control token. If it fails,
+  the extension is not started.
 - Go registers `/<pkg>` itself once the port accepts TCP (so a restart after
   Stop gets its route back; Python's `add_route_once` is cached and only runs
   once). Python's own `add_extension_route` call (stage 3) is then a harmless

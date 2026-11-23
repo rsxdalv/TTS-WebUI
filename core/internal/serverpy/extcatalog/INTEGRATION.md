@@ -16,6 +16,7 @@ install is running. POST bodies are `application/json`, unknown fields refused.
 | Method and path | Body / query | Answer |
 |---|---|---|
 | `GET /api/extcatalog/list?kind=` | `interface` or `decorator` | the merged entries (external > catalog > base, de-duplicated by `package_name`, `tabs` + `tabsInGroups`) |
+| `GET /api/extcatalog/resolve?kind=&extension_class=` | `interface` or `decorator`; the class (`text-to-speech`, `outer`, ...) | `{"extensions": [{package_name, name, requirements, proxy, enabled, autostart}], "disabled_names": [...]}`: what Python loads, in order (see below) |
 | `GET /api/extcatalog/table?kind=` | | Markdown marker: the `Title / Description` table of every entry |
 | `GET /api/extcatalog/picker?kind=&label=` | | Dropdown marker (`label`, `choices` = installable package names; interface sorted by name, decorators in file order) |
 | `POST /api/extcatalog/parse` | `{"text"}` | `{"entries": [...], "preview": <Markdown marker>, "info": "Parsed entries: N \| Issues: ..."}` |
@@ -101,11 +102,61 @@ either way: Go does not trust it and re-validates every entry it is sent
 text is parsed once (in Go), and the entries are what the add and the install
 need.
 
+## Which extensions load (`resolve`, `resolve.go`)
+
+Python used to read `extensions.json`, the external file and the catalog clone,
+merge them, apply `config["extensions"]` and order the result. Now Go answers
+and Python imports and registers what it is told. `interface_extensions.
+handle_extension_class(cls)` calls `resolve("interface", cls)` for each of the
+ten tab classes of `all_tabs`; `decorator_extensions._load_decorators(cls)`
+calls `resolve("decorator", cls)` for `outer` and `inner`.
+
+- The list is the merged list (external > catalog > base) reduced to the
+  entries whose `extension_type` is the kind and whose `extension_class` is the
+  class, in merged order. Entries without a `package_name` cannot be imported
+  and are not listed (logged); a missing `name` falls back to the
+  `package_name`, a missing `requirements` is `""`.
+- `enabled` is "not in `extensions.disabled`" (interface) or "not in
+  `extensions.disabled_decorators`" (decorators); `autostart` is "in
+  `extensions.autostart`" (interface only). Disabled entries stay in the list:
+  the interface shows its `[Disabled] <name>` tab with the Enable button, the
+  decorator loader prints that it skips it. `proxy` is `"native"` or `""`.
+- `disabled_names` (decorators): the whole `disabled_decorators` list. It holds
+  package names (already in `enabled`) and decorator function names
+  (`decorator_save_ogg`), which only the importing side can match after the
+  import; Python applies those.
+- The lists come from `appconfig.Store.ExtensionLists` (`Options.Config`), read
+  under the config mutex on every call, so what Go answers is what is in
+  `config.json` now. A value of the wrong type is refused (500), never read as
+  "nothing disabled".
+- Python no longer holds `extension_list_json`, `disabled_extensions`,
+  `autostart_extensions` or a `config["extensions"]` default for them. Every
+  reader ran at build or import time (`_handle_package`, the `autostart` flag,
+  the decorator module); they now take the answer of the call. That answer
+  reflects `config.json` at the moment the tabs are built, so a toggle made
+  earlier in the same run is visible to a tab built later (the UI still asks
+  for a restart; tabs are built once, at startup).
+
+### Decorators in extension processes
+
+`decorator_extensions` is imported by extensions at import time
+(`from tts_webui.extensions_loader.decorator_extensions import decorator_extension_outer`),
+including those that run in their own process (native extensions). Those
+processes get no `TTS_CORE_URL`/`TTS_CORE_TOKEN` (extprocs strips them: third-party
+code must not hold the token). Go therefore puts the resolved decorators of both
+classes into `TTS_WEBUI_DECORATORS` (`{"outer": ..., "inner": ...}`, computed by
+`Store.DecoratorEnv` at each start through `extprocs.Options.ExtraEnv`, which wins
+over the request's `env`). `_resolve` in `decorator_extensions.py` reads that
+variable when it is set and asks Go otherwise. This keeps what those processes
+load as it was; whether they should apply decorators at all is Rob's call.
+
 ## Frozen copies (change both or neither)
 
 - `torch.go` is `tts_webui/utils/get_torch_command.py` (torch 2.11.0, cu128).
 - The merge and the Markdown table follow
-  `tts_webui/extensions_loader/extensions_data_loader.py` and the old tab code.
+  `tts_webui/extensions_loader/extensions_data_loader.py` (reduced to
+  `get_interface_extensions`, which `installer_scripts/tools/extension_manager.py`,
+  a CLI without the core, still uses) and the old tab code.
   Checked on this repo: Go's `list` for both kinds equals Python's, key order
   included (66 interface entries, 1 decorator), and the table and picker choices
   are identical.
@@ -142,12 +193,33 @@ need.
 - pip runs as `python -m pip` in the main env instead of `pip` from `PATH`.
 - The install of a native entry writes its log under the entry's `name`; the
   old Python tab wrote it under the same name.
+- Loading (`resolve`): an interface or decorator entry without `package_name` is
+  skipped with a log line (the old loader raised `KeyError` while building the
+  UI); a missing `name`/`requirements` no longer raises either.
+- A disabled decorator package used to print `Loading decorator X....Skipping
+  disabled decorator extension X` followed by `Failed to load: cannot unpack
+  non-iterable NoneType object` (the skip returned `None`). It now prints only
+  the skip line.
+- The legacy `server.py` path without the core can no longer build the extension
+  tabs or load decorators (every call raises `CoreBridgeError`), as for every
+  other ported tab.
+
+### `setup_proxy_extension.py` (not changed in this step)
+
+What is left there is the Gradio side of a native extension (buttons, iframe,
+state) plus process code that `core_ext_bridge` replaces at import (`subprocess`
+is swapped for a shim that calls Go's `extprocs`): the venv python lookup, the
+environment and `wait_for_server`. It also imports `gradio_proxy_tree`, which
+`core_router_bridge` patches. Rewriting it to call Go directly belongs with the
+removal of `server.py` and the proxy tree, so the dead spawn code goes in one
+change with them.
 
 ## Stays in Python
 
-The extension loader (`interface_extensions.py`, `decorator_extensions.py`,
-`extensions_data_loader.py`: tab building, importing extensions, per-extension
-management accordion, `setup_proxy_extension`), the JS "receive extension"
+The extension loader's interpreter work (`interface_extensions.py`,
+`decorator_extensions.py`: building the tabs, importing extension modules,
+matching decorator function names, the per-extension management accordion,
+`setup_proxy_extension`), the JS "receive extension"
 button of the installer, and in the Extension Catalog tab the iframe, the
 `gr.Timer` with `messaging_js`, the hidden `receive_extension_button` and the
 Gradio wiring.

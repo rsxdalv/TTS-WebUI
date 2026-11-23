@@ -4,12 +4,7 @@ from importlib.metadata import version
 
 import gradio as gr
 
-from tts_webui.config.config import config
 from tts_webui.core_bridge import bridge
-from tts_webui.extensions_loader.extensions_data_loader import (
-    filter_extensions_by_type_and_class,
-    get_interface_extensions,
-)
 from tts_webui.extensions_loader.list_tab import extension_list_ui
 from tts_webui.extensions_loader.LoadingIndicator import LoadingIndicator
 from tts_webui.extensions_loader.setup_proxy_extension import setup_proxy_extension
@@ -65,8 +60,11 @@ def _get_version(package_name, proxy):
         return "Unknown"
 
 
-def _handle_package(package_name, title_name, requirements, proxy=None):
-    if package_name in disabled_extensions:
+def _handle_package(ext):
+    """Builds the tab of one extension from Go's entry (see bridge.extcatalog.resolve)."""
+    package_name, title_name = ext["package_name"], ext["name"]
+    requirements, proxy = ext["requirements"], ext["proxy"]
+    if not ext["enabled"]:
         with LoadingIndicator(title_name, skipped=True):
             with gr.Tab(f"[Disabled] {title_name}"):
                 gr.Markdown(f"## {title_name} Extension is disabled")
@@ -102,7 +100,7 @@ def _handle_package(package_name, title_name, requirements, proxy=None):
     with LoadingIndicator(title_name):
         try:
             with gr.Tab(title_name) as tab:
-                autostart = package_name in autostart_extensions
+                autostart = ext["autostart"]
                 if "builtin" in package_name:
                     pass
                 else:
@@ -302,31 +300,11 @@ def _extension_management_ui(
             return install_trigger
 
 
-# Get the interface extensions list from the data loader
-extension_list_json = get_interface_extensions()
-disabled_extensions: list[str] = config.get("extensions", {}).get("disabled", [])
-autostart_extensions: list[str] = config.get("extensions", {}).get("autostart", [])
-config.setdefault("extensions", {}).setdefault("disabled", disabled_extensions)
-config.setdefault("extensions", {}).setdefault("autostart", autostart_extensions)
-
-
-def handle_extension_class(extension_class, config):
-    # Get interface extensions filtered by class from the data loader
-    filtered_extensions = filter_extensions_by_type_and_class(
-        extension_list_json, "interface", extension_class
-    )
-    for x in filtered_extensions:
-        _handle_package(x["package_name"], x["name"], x["requirements"], x.get("proxy"))
+def handle_extension_class(extension_class):
+    """Go lists the extensions of the class in tab order, with their state."""
+    for ext in bridge.extcatalog.resolve("interface", extension_class)["extensions"]:
+        _handle_package(ext)
 
 
 def extension_list_tab():
     extension_list_ui("interface")
-
-
-if __name__ == "__main__":
-    with gr.Blocks() as demo:
-        handle_extension_class("audio-music-generation")
-        handle_extension_class("audio-conversion")
-        handle_extension_class("text-to-speech")
-
-        demo.launch()

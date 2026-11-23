@@ -1,28 +1,19 @@
 import functools
 import importlib
-import importlib.util
+import json
+import os
 import time
-from types import ModuleType
 from typing import Literal
 
 import gradio as gr
 
-from tts_webui.config.config import config
+from tts_webui.core_bridge import bridge
 from tts_webui.extensions_loader.list_tab import extension_list_ui
-from tts_webui.extensions_loader.extensions_data_loader import (
-    get_decorator_extensions,
-    get_decorator_extensions_by_class,
-)
 
-# A list of disabled extensions and decorators
-# disabled_extensions = ["decorator_disabled"]
-disabled_extensions: list[str] = config.get("extensions", {}).get(
-    "disabled_decorators", []
-)
-
-
-# Get the decorator extensions list from the data loader
-extension_list_json = get_decorator_extensions()
+# Set by the Go core for extension processes, which have no control API (and no
+# token): the resolved decorators of both classes, {"outer": ..., "inner": ...}.
+# Same name as extcatalog.DecoratorsEnv.
+DECORATORS_ENV = "TTS_WEBUI_DECORATORS"
 
 
 def extension_decorator_list_tab():
@@ -34,6 +25,14 @@ def _get_pretty_time(elapsed):
     seconds = f"{elapsed:.2f}"
     seconds = seconds.replace("0.", " .")
     return f"{seconds.rjust(6, ' ')} seconds."
+
+
+def _resolve(class_name: str):
+    """Go's answer for the decorators of one class (see bridge.extcatalog.resolve)."""
+    handed_over = os.environ.get(DECORATORS_ENV)
+    if handed_over:
+        return json.loads(handed_over)[class_name]
+    return bridge.extcatalog.resolve("decorator", class_name)
 
 
 def _load_decorators(class_name: Literal["outer", "inner"]):
@@ -55,6 +54,10 @@ def _load_decorators(class_name: Literal["outer", "inner"]):
             yield from fn(*args, **kwargs)
         return wrapper
 
+    Go decides which extensions are listed, in which order and which are
+    disabled; the decorator functions a module defines are only known here, so
+    the disabled function names (from the same list) are applied here.
+
     Args:
         class_name (str): "outer" or "inner"
 
@@ -64,36 +67,26 @@ def _load_decorators(class_name: Literal["outer", "inner"]):
     """
     wrappers = []
     gen_wrappers = []
-
-    def _parse_module(module: ModuleType, name: str):
-        if name in disabled_extensions:
-            return
-
-        wrapper = getattr(module, name)
-        if name.endswith("_generator"):
-            gen_wrappers.append(wrapper)
-        else:
-            wrappers.append(wrapper)
+    resolved = _resolve(class_name)
+    disabled_names = set(resolved.get("disabled_names", []))
 
     def _load(x: dict):
-        if x["package_name"] in disabled_extensions:
-            print(f"Skipping disabled decorator extension {x['name']}")
-            return
         module = importlib.import_module(f"{x['package_name']}.main")
-        names = dir(module)
-        extensions = [n for n in names if n.startswith("decorator_")]
-        for name in extensions:
-            _parse_module(module, name)
-
-        skipped = [name for name in extensions if name in disabled_extensions]
-        loaded = [name for name in extensions if name not in disabled_extensions]
-
+        names = [n for n in dir(module) if n.startswith("decorator_")]
+        loaded = [n for n in names if n not in disabled_names]
+        skipped = [n for n in names if n in disabled_names]
+        for name in loaded:
+            wrapper = getattr(module, name)
+            if name.endswith("_generator"):
+                gen_wrappers.append(wrapper)
+            else:
+                wrappers.append(wrapper)
         return loaded, skipped
 
-    # Get decorator extensions filtered by class from the data loader
-    filtered_extensions = get_decorator_extensions_by_class(class_name)
-
-    for x in filtered_extensions:
+    for x in resolved["extensions"]:
+        if not x["enabled"]:
+            print(f"Skipping disabled decorator extension {x['name']}")
+            continue
         print(f"Loading decorator {x['name'].ljust(30, '.')}...", end="")
         start_time = time.time()
         try:
@@ -149,6 +142,3 @@ decorator_extension_outer = _create_decorator(OUTER_WRAPPERS)
 decorator_extension_inner = _create_decorator(INNER_WRAPPERS)
 decorator_extension_outer_generator = _create_decorator_generator(OUTER_WRAPPERS_GEN)
 decorator_extension_inner_generator = _create_decorator_generator(INNER_WRAPPERS_GEN)
-
-if __name__ == "__main__":
-    pass

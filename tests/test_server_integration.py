@@ -145,33 +145,15 @@ class TestExtensionsLoader:
     """Tests for extensions loading functionality."""
 
     @pytest.mark.integration
-    def test_extensions_loader_imports(self):
-        """Test that extensions loader module can be imported."""
-        try:
-            from tts_webui.extensions_loader.extensions_data_loader import (
-                extensions_data_loader,
-            )
-
-            assert extensions_data_loader is not None
-        except Exception as e:
-            pytest.fail(f"Failed to import extensions_loader: {e}")
-
-    @pytest.mark.integration
-    def test_load_merged_extensions_data(self, change_to_temp_dir):
-        """Test loading extensions data."""
+    def test_interface_extensions_come_from_the_files(self, change_to_temp_dir):
+        """The CLI's reader (the app asks the Go core instead)."""
         import json
 
         from tts_webui.extensions_loader.extensions_data_loader import (
-            load_merged_extensions_data,
+            get_interface_extensions,
         )
 
-        # Create a mock extensions.json
-        extensions_data = {"tabs": [], "decorators": [], "example_extension": {}}
         with open("extensions.json", "w") as f:
-            json.dump(extensions_data, f)
+            json.dump({"tabs": [{"package_name": "a"}], "decorators": []}, f)
 
-        result = load_merged_extensions_data()
-
-        assert result is not None
-        assert "tabs" in result
-        assert "decorators" in result
+        assert get_interface_extensions() == [{"package_name": "a"}]

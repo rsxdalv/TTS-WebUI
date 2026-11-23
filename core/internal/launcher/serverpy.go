@@ -129,17 +129,6 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 		return nil, fmt.Errorf("control API: %w", err)
 	}
 
-	mgr := extprocs.New(extprocs.Options{
-		Root:       root,
-		MainPython: append(append([]string(nil), prefix...), "python"),
-		BaseEnv:    append([]string(nil), baseEnv...),
-		Routes:     rt,
-		Token:      token,
-		Logf:       func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
-	})
-
-	mux := http.NewServeMux()
-	mux.Handle("/api/routes", rt.ControlHandler())
 	// Go is the only reader and writer of config.json (see appconfig).
 	// One Store serves the document and the single-setting operations, so every
 	// change to the file goes through the same mutex.
@@ -147,6 +136,27 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 		Root: root.Dir(), Token: token,
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	})
+	// Extension lists, which extensions load, pip/uv installs (see extcatalog).
+	ext := extcatalog.New(extcatalog.Options{
+		Root: root.Dir(), Token: token, Config: cfg,
+		Run: append([]string(nil), prefix...), Env: append([]string(nil), baseEnv...),
+		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+	})
+
+	mgr := extprocs.New(extprocs.Options{
+		Root:       root,
+		MainPython: append(append([]string(nil), prefix...), "python"),
+		BaseEnv:    append([]string(nil), baseEnv...),
+		// Extension processes get no control token, so they receive the
+		// resolved decorators instead of asking for them.
+		ExtraEnv: ext.DecoratorEnv,
+		Routes:   rt,
+		Token:    token,
+		Logf:     func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+	})
+
+	mux := http.NewServeMux()
+	mux.Handle("/api/routes", rt.ControlHandler())
 	mux.Handle(appconfig.Path, cfg.Handler())
 	mux.Handle(appconfig.OpsPrefix, cfg.OpsHandler())
 	// Gallery History tab: Go does the filesystem work (see history).
@@ -154,12 +164,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 		Root: root.Dir(), Token: token,
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}).Handler())
-	// Extension lists, Custom Extensions Installer, pip/uv installs (see extcatalog).
-	mux.Handle(extcatalog.Prefix, extcatalog.New(extcatalog.Options{
-		Root: root.Dir(), Token: token,
-		Run: append([]string(nil), prefix...), Env: append([]string(nil), baseEnv...),
-		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
-	}).Handler())
+	mux.Handle(extcatalog.Prefix, ext.Handler())
 	// Settings > Installed Packages: pip list in the main env (see piplist).
 	mux.Handle(piplist.Path, piplist.New(piplist.Options{
 		Root: root.Dir(), Token: token,

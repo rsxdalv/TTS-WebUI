@@ -66,6 +66,10 @@ type Options struct {
 	MainPython []string
 	// BaseEnv is the environment of the children. nil inherits os.Environ().
 	BaseEnv []string
+	// ExtraEnv, when set, is asked at each start for KEY=VALUE variables that
+	// Go computes for the extension (the resolved decorators). They win over
+	// BaseEnv and the request's Env, so Python cannot override them.
+	ExtraEnv func() ([]string, error)
 	// Routes receives AddRoute/RemoveRoute calls. May be nil.
 	Routes RouteRegistrar
 	// Token is the shared secret for the control API. Empty rejects all calls.
@@ -208,7 +212,10 @@ func (m *Manager) Start(ctx context.Context, pkg string, req StartRequest) (Star
 		}
 	}
 
-	env := m.buildEnv(pkg, port, req)
+	env, err := m.buildEnv(pkg, port, req)
+	if err != nil {
+		return StartResult{}, fmt.Errorf("environment of %s: %w", pkg, err)
+	}
 	cctx, cancel := context.WithCancel(context.Background())
 	e := &entry{pkg: pkg, port: port, state: StateStarting, cancel: cancel, proc: &procs.Proc{}, exited: make(chan struct{})}
 	args := append(append([]string{}, py[1:]...), harnessArgs...)
@@ -259,7 +266,7 @@ func setEnv(env []string, k, v string) []string {
 	return append(dropEnv(env, k), k+"="+v)
 }
 
-func (m *Manager) buildEnv(pkg string, port int, req StartRequest) []string {
+func (m *Manager) buildEnv(pkg string, port int, req StartRequest) ([]string, error) {
 	base := m.opts.BaseEnv
 	if base == nil {
 		base = os.Environ()
@@ -267,6 +274,16 @@ func (m *Manager) buildEnv(pkg string, port int, req StartRequest) []string {
 	env := append([]string{}, base...)
 	for k, v := range req.Env {
 		env = setEnv(env, k, v)
+	}
+	if m.opts.ExtraEnv != nil {
+		extra, err := m.opts.ExtraEnv()
+		if err != nil {
+			return nil, err
+		}
+		for _, kv := range extra {
+			k, v, _ := strings.Cut(kv, "=")
+			env = setEnv(env, k, v)
+		}
 	}
 	// The control token must never reach third-party extension code.
 	env = dropEnv(env, "TTS_CORE_TOKEN")
@@ -277,7 +294,7 @@ func (m *Manager) buildEnv(pkg string, port int, req StartRequest) []string {
 	if req.OpenAIProxyHost != "" {
 		env = setEnv(env, "OPENAI_PROXY_HOST", req.OpenAIProxyHost)
 	}
-	return env
+	return env, nil
 }
 
 // removeRoute must be called with m.mu held.

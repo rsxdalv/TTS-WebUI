@@ -3,8 +3,10 @@
 // records new entries, and runs the pip / uv installs, streaming their output.
 // Python reaches it through tts_webui/core_bridge (bridge.extcatalog).
 //
-// The merge follows tts_webui/extensions_loader/extensions_data_loader.py,
-// which stays in Python until the loader moves too; keep them in step.
+// It also decides which extensions Python loads, in which order and in which
+// state (resolve.go). The merge is the one extensions_data_loader.py did; that
+// file only keeps get_interface_extensions for installer_scripts/tools/
+// extension_manager.py, a CLI without the core, so keep the two merges in step.
 package extcatalog
 
 import (
@@ -33,6 +35,8 @@ type Options struct {
 	// (for trying the API outside the launcher).
 	Python string
 	Env    []string // environment of the install commands; nil inherits
+	// Config supplies the disabled and autostart lists for Resolve (appconfig.Store).
+	Config ConfigSource
 	Logf   func(format string, args ...any)
 }
 

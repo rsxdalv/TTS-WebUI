@@ -37,6 +37,10 @@ type Launcher struct {
 	sup           appSupervisor          // C3.2: app process supervisor
 	updateOnce    sync.Once
 	updateChecked bool // true = already up to date (cached after first check)
+
+	extOnce sync.Once // the Extensions page's stores, built on first use
+	ext     *extHost
+	extErr  error
 }
 
 // New creates a Launcher for the given install root.
@@ -114,6 +118,9 @@ func (l *Launcher) Register(srv *server.Server) {
 	srv.Handle("GET /api/app/status/stream", l.handleAppStatusStream())
 	srv.Handle("GET /api/app/link", l.handleAppLink())
 	srv.Handle("GET /api/app/lan", l.handleAppLAN())
+
+	// Extensions page: list, install, uninstall, enable and disable, with the app stopped.
+	l.registerExtensions(srv)
 
 	// Diagnostic: runs installer_scripts/tools/diagnostic.{bat,sh}.
 	srv.Handle("POST /api/app/diagnostic", l.handleAppDiagnostic())

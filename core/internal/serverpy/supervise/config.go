@@ -213,3 +213,12 @@ func (c Config) baseEnv(extPort int) []string {
 		mambaRootEnv(c.Root))
 	return append(env, c.ExtraEnv...)
 }
+
+// CommandPrefix is the command that runs a program in the main env
+// (`micromamba -p <root>/installer_files/env run`), for callers that run
+// pip or uv while the app is stopped.
+func CommandPrefix(root paths.Root) []string { return micromambaPrefix(root) }
+
+// MambaRootEnv is MAMBA_ROOT_PREFIX=<root>/installer_files/mamba, which
+// micromamba needs to find its own state.
+func MambaRootEnv(root paths.Root) string { return mambaRootEnv(root) }

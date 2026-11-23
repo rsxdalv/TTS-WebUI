@@ -190,6 +190,12 @@ type invalidError struct{ msg string }
 
 func (e *invalidError) Error() string { return e.msg }
 
+// IsInvalid reports whether err is a refusal of bad input (as opposed to an I/O failure).
+func IsInvalid(err error) bool {
+	var inv *invalidError
+	return errors.As(err, &inv)
+}
+
 func (s *Store) writeLocked(data []byte) error {
 	tmp, err := os.CreateTemp(s.opts.Root, ".config.json.*.tmp")
 	if err != nil {

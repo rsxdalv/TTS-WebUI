@@ -293,8 +293,8 @@ func TestRealNativeExtensionInstallAndStart(t *testing.T) {
 	if _, err := os.Stat(venvPython); err != nil {
 		t.Fatalf("no venv python after the install: %v", err)
 	}
-	if !strings.Contains(install, "Successfully installed") {
-		t.Errorf("the install console has no \"Successfully installed\"")
+	if !strings.Contains(install, "Successfully set up virtual environment") {
+		t.Errorf("the install console does not end with the venv success line")
 	}
 
 	started := run("import sys\n" +

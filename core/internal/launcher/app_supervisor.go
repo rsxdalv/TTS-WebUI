@@ -160,7 +160,9 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		open := inBrowser && !o.noBrowser
 		plan.OpenBrowser = &open
 		// The launcher opens the tab; Gradio must not open a second one.
-		plan.GradioEnv = []string{"BROWSER=" + noopBrowser}
+		// Unbuffered, so the output a headless start copies to stdout (Docker
+		// logs, a Colab cell) and the status log tail arrive as it is printed.
+		plan.GradioEnv = []string{"BROWSER=" + noopBrowser, "PYTHONUNBUFFERED=1"}
 		return plan, nil
 	}
 	cfg.StartGradioSide = func(prefix, baseEnv []string) (*supervise.GradioSide, error) {

@@ -53,6 +53,21 @@ printed the first 17 characters of it.) The server logs nothing from the
 options, only the error text of a refused config, which names keys. The legacy
 `print_gradio_options.py` (used by `server.py` only) got the same mask.
 
+## Checked against the old Python (completion pass)
+
+Real handlers, the real bridge, `core_server.launch_kwargs`, against the old
+`core_server.launch_options` + `gradio_overrides` + `print_gradio_options` (git
+a33efc2), for six configs (plain, auth as a string, auth as a pair, ssl secrets,
+legacy keys, auth + ssl + message) with no flags, `--share` and `--docker`: the
+options are equal as Gradio sees them (the old single tuple is a one-element
+list now); `--share` is the only addition (the old Go path ignored it), and
+`--docker` is identical to plain. The printed lines are equal except
+`ssl_keyfile_password` (`"sslsecretpassword..."` before, `"******"` now) and
+the `share` value under `--share`. The launcher run (`TTS_GO_SERVERPY=1`, port
+17900, no browser) reached the Gradio UI: 102 tabs listed through
+`resolve`, 47 of them `[Disabled]` (the config disabled every non-builtin
+extension to avoid importing torch), the built-in ones live.
+
 ## Stays in Python
 
 `launch_kwargs` (auth pairs to tuples) and the call to `launch()` itself;

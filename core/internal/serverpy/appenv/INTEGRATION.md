@@ -70,6 +70,13 @@ by the tab; the restart the tab asks for applies the file.
   file users edit by hand), so there are no set/many/remove operations for it;
   see the decision card LAB-27 (the question is whether the tab should write
   `.env.user` instead).
+- Encoding: Go writes UTF-8. The old `write_env` used the locale encoding: a
+  value with a character outside cp1252 raised `UnicodeEncodeError` (the save
+  failed), and `é` was written as one cp1252 byte, which the UTF-8 reader of
+  `LoadEnv` rejects. Checked against the real `write_env(generate_env(...))`
+  for five ASCII cases (all four set, all empty, two set, `#` `=` and spaces,
+  a 300-character path): identical bytes (CRLF on Windows), and `.env.user` is
+  not touched.
 - The file is replaced as a whole, as before: a hand edit of `.env` is lost
   (the header says so; it belongs in `.env.user`).
 - Refused with 400: a body that is not one JSON object, unknown or missing

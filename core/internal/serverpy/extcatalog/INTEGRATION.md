@@ -182,6 +182,27 @@ over the request's `env`). `_resolve` in `decorator_extensions.py` reads that
 variable when it is set and asks Go otherwise. This keeps what those processes
 load as it was; whether they should apply decorators at all is Rob's call.
 
+### Checked against the old Python (completion pass)
+
+Real handlers over HTTP, the real bridge, a temp root with the repo's
+`extensions.json` (72 interface entries in 11 classes) plus an external file, a
+catalog clone and a `config.json` with disabled, autostart and
+`disabled_decorators`:
+
+- `resolve` equals the old selection (`get_interface_extensions`, the class
+  filter and the config lists) for every class, and for both decorator classes.
+- The old and the new `decorator_extensions` (same fake packages) produce the
+  same four wrapper lists; the console output differs only in the line for a
+  disabled package (see the differences above).
+- The old and the new `handle_extension_class` build the same tab labels
+  (`[Disabled]`, `[Available]`, `(!)` error tabs), import the same modules and
+  call `setup_proxy_extension` with the same arguments for all 11 classes.
+- With a fake python/uv: the torch arguments for each of the six GPU choices
+  equal the old `get_torch_command()`, and the five commands of a native
+  install equal the old `venv_setup_wrapper` (as argument lists; the old ones
+  were shell strings). pip install, uninstall and the dependency check are the
+  old commands run as `python -m pip` instead of `pip`.
+
 ## Frozen copies (change both or neither)
 
 - `torch.go` is `tts_webui/utils/get_torch_command.py` (torch 2.11.0, cu128).

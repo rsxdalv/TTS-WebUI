@@ -24,7 +24,7 @@ import (
 // rmdir before deleting the copy.
 //
 // The full launcher run is done by hand on the same copy: with
-// TTS_GO_SERVERPY=1 run `tts-webui launch --root <copy> --port 179xx
+// run `tts-webui launch --root <copy> --port 179xx
 // --no-browser`, POST /api/app/start with the X-TTS-Token from GET /, and read
 // the tabs from the app's /config. Extensions are enabled by leaving them out
 // of config.json's extensions.disabled.

@@ -1,3 +1,9 @@
+# The Go launcher: it runs the app (router, Gradio, React) and replaces `python server.py`.
+FROM golang:1.27 AS launcher
+WORKDIR /src
+COPY core/ ./core/
+RUN cd core && CGO_ENABLED=0 go build -trimpath -o /out/tts-webui ./cmd/tts-webui
+
 # Python 3.10 w/ Nvidia Cuda
 FROM nvidia/cuda:12.8.0-devel-ubuntu22.04 AS env_base
 
@@ -47,5 +53,8 @@ RUN pip install "tts-webui-extension.styletts2>=0.1.0" --extra-index-url https:/
 # Build the React UI
 RUN cd react-ui && npm install && npm run build
 
+# The launcher starts the app on 0.0.0.0:7770 with the image's own Python and Node
+COPY --from=launcher /out/tts-webui /usr/local/bin/tts-webui
+
 # Run the server
-CMD python3 server.py --docker
+CMD ["tts-webui", "launch", "--root", "/app/tts-webui", "--docker", "--start", "--system-python", "--no-browser"]

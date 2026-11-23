@@ -1,8 +1,13 @@
 @echo off
 
-call %~dp0activate.bat
+set "LAUNCHER=%~dp0..\tts-webui.exe"
+if not exist "%LAUNCHER%" (
+    echo The launcher was not found: %LAUNCHER%
+    echo Download tts-webui.exe from the releases page into the TTS WebUI folder, then start again.
+    exit /b 1
+)
 
-call python server.py
+"%LAUNCHER%" launch --start
 @REM call node %~dp0js\server.js
 
 @REM start command prompt for user to run commands in case of failure

@@ -173,10 +173,13 @@ installer_files\env\python.exe core\internal\serverpy\appenv\testdata\gen_golden
 ```
 (it writes only to a temp dir and the output path).
 
-## Wired in (LAB-13.2, `TTS_GO_SERVERPY=1`)
+## Wired in (LAB-13.2)
 
-From step 28 this is the default: `TTS_GO_SERVERPY` unset or `1` runs the Go path, `0`
-runs the legacy `server.py` (rollback for one release; it cannot build extension tabs).
+Since step 29 this is the only path: `server.py`, its Python proxy tree and the
+`TTS_GO_SERVERPY=0` rollback are deleted. `testdata/gen_golden.py` read the real
+`server.py`, `dotenv_manager`, `print_gradio_options.py` and `gradio_proxy_tree`,
+so `golden.json` can no longer be regenerated; it stays as the record of what
+those files did, and the tests keep checking the Go port against it.
 
 `launcher/serverpy.go` `startServerPy` now does, before any child starts:
 `EnsureFolders` -> `EnsureEnv(root, baseEnv)` (logs when it creates `.env`) ->

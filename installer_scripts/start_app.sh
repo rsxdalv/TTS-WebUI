@@ -3,11 +3,15 @@
 # Get the directory where the script is located
 SCRIPT_DIR="$(dirname "$0")"
 
-# Source the activate script to set up the environment
-source "$SCRIPT_DIR/activate.sh"
+LAUNCHER="$SCRIPT_DIR/../tts-webui"
+if [ ! -x "$LAUNCHER" ]; then
+    echo "The launcher was not found: $LAUNCHER"
+    echo "Download tts-webui for your system from the releases page into the TTS WebUI folder, then start again."
+    exit 1
+fi
 
-# Run the Python server
-python server.py
+# Run the launcher, which starts the app
+"$LAUNCHER" launch --start
 # node "$SCRIPT_DIR/js/server.js"
 
 # If the app crashes, provide a shell for debugging

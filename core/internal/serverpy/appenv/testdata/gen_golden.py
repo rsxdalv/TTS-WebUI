@@ -1,5 +1,10 @@
 """Regenerates golden.json by running the REAL python code the Go package ports.
 
+NO LONGER RUNNABLE (step 29): the real files it copies (server.py,
+tts_webui/dotenv_manager, print_gradio_options.py, gradio_proxy_tree) were deleted
+with the legacy Python server. golden.json is kept as the record of what they did;
+check out the commit before step 29 to regenerate it.
+
     python gen_golden.py <repo-root> <out-golden.json>
 
 Run it with the project's own interpreter (it needs python-dotenv). Nothing is

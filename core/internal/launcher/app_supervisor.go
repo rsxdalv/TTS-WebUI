@@ -33,6 +33,8 @@ type appSupervisor interface {
 	SubscribeStatus() (<-chan string, func())
 	AppLink() string
 	Running() bool // any app process is running
+	// SubscribeLogs streams a child's live output; ok is false when it is not running.
+	SubscribeLogs(name string) (lines <-chan string, cancel func(), ok bool)
 }
 
 // superviseSup adapts supervise.Supervisor.
@@ -57,6 +59,9 @@ func (b badSup) Stop()                         {}
 func (b badSup) Statuses() any                 { return []supervise.ProcessStatus{} }
 func (b badSup) AppLink() string               { return "" }
 func (b badSup) Running() bool                 { return false }
+func (b badSup) SubscribeLogs(string) (<-chan string, func(), bool) {
+	return nil, nil, false
+}
 func (b badSup) SubscribeStatus() (<-chan string, func()) {
 	ch := make(chan string)
 	close(ch)

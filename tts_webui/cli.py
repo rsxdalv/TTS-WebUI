@@ -22,15 +22,42 @@ def _run_process(cmd: List[str]) -> int:
 def serve(
     extra_args: Optional[List[str]] = typer.Argument(None),
 ) -> int:  # pragma: no cover - manual run
-    """Start the web UI server by delegating to `server.py` in the project root."""
+    """Start the web UI through the Go launcher (tts-webui[.exe] in the project root).
+
+    The launcher runs this Python environment as is (--system-python) and starts
+    the app right away (--start); extra arguments go to the launcher.
+    """
     project_root = Path.cwd()
-    server = project_root / "server.py"
-    if not server.exists():
-        typer.secho("Error: server.py not found in project root.", fg=typer.colors.RED)
+    launcher = next(
+        (
+            p
+            for p in (
+                project_root / "tts-webui.exe",
+                project_root / "tts-webui",
+                project_root / "core" / "tts-webui",
+            )
+            if p.is_file()
+        ),
+        None,
+    )
+    if launcher is None:
+        typer.secho(
+            "Error: the Go launcher not found in the project root. Download tts-webui "
+            "from the releases page, or build it: cd core && go build -o ../tts-webui "
+            "./cmd/tts-webui",
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(code=2)
 
-    cmd = [sys.executable, str(server)] + (extra_args or [])
-    typer.secho("Starting server with: " + " ".join(cmd))
+    cmd = [
+        str(launcher),
+        "launch",
+        "--root",
+        str(project_root),
+        "--system-python",
+        "--start",
+    ] + (extra_args or [])
+    typer.secho("Starting the launcher with: " + " ".join(cmd))
     raise typer.Exit(code=_run_process(cmd))
 
 
@@ -60,11 +87,11 @@ def troubleshoot() -> None:
         typer.echo("Warning: requirements.txt not found in project root.")
         errors += 1
 
-    server = project_root / "server.py"
+    server = project_root / "server_core.py"
     if server.exists():
-        typer.echo("Found server.py")
+        typer.echo("Found server_core.py")
     else:
-        typer.echo("Warning: server.py not found. 'serve' may not work.")
+        typer.echo("Warning: server_core.py not found. The app may not start.")
         errors += 1
 
     try:

@@ -48,8 +48,7 @@ start_tts_webui.sh
       │     ├── initializeApp()
       │     ├── setupReactUI()
       │     └── repairTorch()
-      └── $MICROMAMBA_EXE run -p ... python server.py
-                                                ★ Python app server on :7770
+      └── ./tts-webui launch --start      ★ Go launcher: router on :7770, Gradio, React
 ```
 
 ---
@@ -63,9 +62,9 @@ start_tts_webui.sh
 | `installer_scripts/init_mamba.bat` / `.sh` | Micromamba bootstrap |
 | `installer_scripts/activate.bat` / `.sh` | Conda env activation |
 | `installer_scripts/init_app.bat` / `.js` | App initialization & JS log server |
-| `installer_scripts/start_app.bat` / `.sh` | Final Python server launch |
+| `installer_scripts/start_app.bat` / `.sh` | Runs the Go launcher (`tts-webui launch --start`) |
 | `installer_scripts/js/server.js` | JS log streaming HTTP server (port 7771) |
-| `server.py` | Python Flask/app server (port 7770) |
+| `server_core.py` | Gradio entry the launcher runs behind its router (port 7770) |
 
 ---
 
@@ -83,7 +82,7 @@ start_tts_webui.sh
        │                                  │
        ▼                                  ▼
 [User's Browser]              ┌──────────────────────────┐
-  :7770 (TTS WebUI)           │  python server.py        │
+  :7770 (TTS WebUI)           │  tts-webui launch        │
   :3000 (React UI)            │  (Flask, port 7770)     │
                                └──────────────────────────┘
 ```
@@ -105,5 +104,5 @@ start_tts_webui.sh
 1. **Two-server architecture** — The JS log server and Python app server are independent processes
 2. **Conda env activation is script-bound** — Currently only accessible via `activate.bat/sh` wrappers
 3. **Platform divergence** — PowerShell (Windows) vs Bash (Linux/Mac) scripts have grown apart
-4. **Double server launch (Windows)** — `init_app.js` spawns the JS server; `start_app.bat` separately spawns `python server.py`
+4. **Double server launch (Windows)** — `init_app.js` spawns the JS server; `start_app.bat` separately runs the Go launcher, which starts the app
 5. **No direct JS→Python bridge** — The JS layer doesn't directly manage the Python process; it only monitors its stdout

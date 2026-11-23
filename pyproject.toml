@@ -110,7 +110,6 @@ exclude = [
     "temp",
     "react-ui",
     "react-ui-vite",
-    "server.py",
 ]
 
 [tool.ruff.lint]

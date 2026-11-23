@@ -69,7 +69,7 @@ type Config struct {
 	ReadyTimeout time.Duration
 
 	// SkipGPUCheck disables the "installer_scripts/.gpu must exist and parse"
-	// gate that the legacy supervisor enforced before any start.
+	// gate that the launcher enforces before any start.
 	SkipGPUCheck bool
 	// SystemPython runs python, npm and uv straight from PATH, with no
 	// micromamba prefix: a container, Colab or any env the user manages. It

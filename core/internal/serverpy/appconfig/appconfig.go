@@ -1,5 +1,5 @@
 // Package appconfig makes Go the only reader and writer of config.json when
-// the server.py port is on (TTS_GO_SERVERPY=1). Python loads and saves the
+// the launcher runs the app. Python loads and saves the
 // config through the control API served by [Store.Handler].
 package appconfig
 

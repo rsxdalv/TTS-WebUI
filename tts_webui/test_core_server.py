@@ -72,17 +72,16 @@ class MainTest(unittest.TestCase):
 
 
 class ServerCoreTest(unittest.TestCase):
-    def test_server_core_runs_thin_entry_not_server_py(self):
+    def test_server_core_installs_the_config_bridge_and_runs_the_thin_entry(self):
         import server_core
 
         with (
-            mock.patch("tts_webui.core_router_bridge.install"),
+            mock.patch("tts_webui.core_config_bridge.install") as install_config,
             mock.patch("tts_webui.core_server.main") as run,
-            mock.patch("runpy.run_path") as runpy_run,
         ):
             server_core.main()
+        install_config.assert_called_once()
         run.assert_called_once()
-        runpy_run.assert_not_called()
 
 
 if __name__ == "__main__":

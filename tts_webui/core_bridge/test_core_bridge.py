@@ -937,7 +937,7 @@ class SetupProxyExtensionTest(unittest.TestCase):
         self.stub.ext_polls = [STARTING, READY]
         steps = self._run()
         self.assertEqual(steps[0][0], "Starting extension, please wait...")
-        self.assertIn(f'src="{self.spe.GRADIO_TREE_URL}/ext.one/"', steps[-1][0])
+        self.assertIn('src="/ext.one/"', steps[-1][0])
         self.assertEqual(
             [r[1] for r in self.stub.requests], ["start", "extensions", "extensions"]
         )

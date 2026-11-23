@@ -168,8 +168,8 @@ calls) went through `shutil.rmtree` on any path the caller supplied. It is now
 
 ## Switch off
 
-There is no Python fallback. Without `TTS_CORE_URL` (the launcher sets it only
-when `TTS_GO_SERVERPY=1`) every bridge call raises `CoreBridgeError` ("the Go
+There is no Python fallback. Without `TTS_CORE_URL` (only the launcher sets it)
+every bridge call raises `CoreBridgeError` ("the Go
 core is not running"). That includes `get_collections()`, which runs when
 `collections_directories_atom` is imported, so the Gallery History and History
 extensions need the core to load. With the core set but unreachable the calls

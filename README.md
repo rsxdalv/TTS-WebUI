@@ -135,18 +135,23 @@ Prerequisites:
     pip install -r requirements.txt
     ```
 
-3. Run the server:
+3. Get the Go launcher, which runs the app (a release from the releases page, or build it with Go 1.27):
    ```bash
-   python server.py --no-react
+   cd core && go build -o ../tts-webui ./cmd/tts-webui && cd ..
    ```
 
-4. For React UI:
+4. Run the server with the Python environment you installed into:
+   ```bash
+   ./tts-webui launch --system-python --start --no-react
+   ```
+
+5. For React UI, build it and leave out `--no-react`:
    ```bash
    cd react-ui
    npm install
    npm run build
    cd ..
-   python server.py
+   ./tts-webui launch --system-python --start
    ```
 
 For detailed manual installation instructions, please refer to the [Manual Installation Guide](./documentation/manual_installation.md).

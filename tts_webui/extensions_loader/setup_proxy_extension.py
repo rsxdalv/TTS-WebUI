@@ -2,7 +2,6 @@ import gradio as gr
 
 from tts_webui.config.config_utils import get_config_value
 from tts_webui.core_bridge import CoreBridgeError, bridge
-from tts_webui.gradio_proxy_tree.main import GRADIO_TREE_URL
 
 
 def get_openai_api_host():
@@ -27,7 +26,7 @@ def setup_proxy_extension(
     is_installed=False,
 ):
     extension_ran = False
-    iframe = f'<iframe src="{GRADIO_TREE_URL}/{package_name}/" style="width: 100%; height: 100vh;"></iframe>'
+    iframe = f'<iframe src="/{package_name}/" style="width: 100%; height: 100vh;"></iframe>'
 
     run_guard = gr.State(False)
     first_load_guard = gr.State(False)

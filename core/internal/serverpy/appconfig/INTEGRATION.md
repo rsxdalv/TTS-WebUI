@@ -1,8 +1,8 @@
 # appconfig: integration
 
-Package `core/internal/serverpy/appconfig`. With `TTS_GO_SERVERPY=1` Go is the
-only process that reads or writes `config.json`; Python goes through
-`tts_webui/core_config_bridge`. Switch off: nothing changes.
+Package `core/internal/serverpy/appconfig`. Go is the only process that reads or
+writes `config.json`; Python goes through `tts_webui/core_config_bridge`. (The
+`TTS_GO_SERVERPY=0` rollback to `server.py` is gone since step 29.)
 
 ## API (loopback, header `X-TTS-Core-Token`, otherwise 403)
 

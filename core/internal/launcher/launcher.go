@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/server"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/supervise"
 )
 
 // StepStatus is the JSON shape returned by GET /api/steps/status.
@@ -56,8 +58,34 @@ func New(root paths.Root, opts ...Option) *Launcher {
 }
 
 // StartApp starts the app, as the Start button does. It returns once the
-// children are started, not when they are ready.
-func (l *Launcher) StartApp(ctx context.Context) error { return l.sup.Start(ctx) }
+// children are started, not when they are ready. With echo set (a headless
+// start: Docker logs, a Colab cell) the output of the Gradio and React children
+// is copied to it; the copy ends with the children, so a Restart is not echoed.
+func (l *Launcher) StartApp(ctx context.Context, echo io.Writer) error {
+	if err := l.sup.Start(ctx); err != nil {
+		return err
+	}
+	if echo == nil {
+		return nil
+	}
+	for _, name := range []string{supervise.NameGradio, supervise.NameReact} {
+		lines, cancel, ok := l.sup.SubscribeLogs(name)
+		if !ok {
+			continue
+		}
+		go func(name string) {
+			defer cancel()
+			for line := range lines {
+				if name == supervise.NameGradio {
+					fmt.Fprintln(echo, line)
+				} else {
+					fmt.Fprintf(echo, "[%s] %s\n", name, line)
+				}
+			}
+		}(name)
+	}
+	return nil
+}
 
 // Shutdown stops the app and any running install step, for a launcher that
 // is exiting (Ctrl+C, SIGTERM, SIGHUP). It returns when they are gone.

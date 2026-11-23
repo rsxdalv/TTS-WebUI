@@ -3,15 +3,18 @@ package installer_scripts
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"runtime"
 )
 
 // batchPausePrompt is what "pause" prints. The port prints it and does not wait.
 const batchPausePrompt = "Press any key to continue . . . "
 
-// StartApp ports installer_scripts/start_app.bat and start_app.sh: activate the
-// environment, run "python server.py", and when it exits (or crashes) say so and
-// open a shell for the user.
+// StartApp ports installer_scripts/start_app.bat and start_app.sh: run the Go
+// launcher (tts-webui[.exe] in the install root) with --start, which starts the
+// app, and when it exits (or crashes) say so and open a shell for the user. The
+// scripts check that the launcher exists and say where to get it; the port lets
+// the runner's error say so.
 //
 // The shell is started as the original starts it ("cmd /k" on Windows, "exec
 // $SHELL" elsewhere), with whatever stdin the runner gives it. With no
@@ -26,8 +29,17 @@ func StartApp(ctx context.Context, s *Step) (exitCode int, err error) {
 	return startApp(ctx, s, runtime.GOOS)
 }
 
+// launcherCommand runs the Go launcher from the install root and starts the app.
+func launcherCommand(root, goos string) Command {
+	name := "tts-webui"
+	if goos == "windows" {
+		name += ".exe"
+	}
+	return Command{Name: filepath.Join(root, name), Args: []string{"launch", "--start"}}
+}
+
 func startApp(ctx context.Context, s *Step, goos string) (int, error) {
-	if _, err := s.Run.Run(ctx, Command{Name: "python", Args: []string{"server.py"}, Activated: true}); err != nil {
+	if _, err := s.Run.Run(ctx, launcherCommand(s.Root, goos)); err != nil {
 		return 1, err
 	}
 	if goos == "windows" {

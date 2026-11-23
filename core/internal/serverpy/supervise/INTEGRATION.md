@@ -4,14 +4,15 @@ New package `core/internal/serverpy/supervise`, written as a drop-in replacement
 for `launcher.Supervisor` as it was at the rings commit (52f85f7 = 9b6d3b5).
 Nothing existing was modified. The steps below are for Rob.
 
-## Status: swapped in (LAB-12)
+## Status: the only supervisor (step 29)
 
-The launcher now supervises the app with `supervise`. `launcher.Supervisor`
-(supervisor.go) is still there for one release as a rollback:
-**`TTS_GO_SUPERVISOR=legacy`** selects it; unset, `""` or `supervise` selects
-this package; any other value makes Start fail with an error. The wiring is
-`core/internal/launcher/supervise_swap.go`; `launcher.New(root, opts...)` takes
-`launcher.WithNoBrowser()` (from `--no-browser`).
+The launcher supervises the app with `supervise`. The old `launcher.Supervisor`,
+`TTS_GO_SUPERVISOR=legacy` and the extension-manager child are gone; the
+wiring is `core/internal/launcher/app_supervisor.go` (`launcher.New(root, opts...)`
+takes `WithNoBrowser`, `WithShare`, `WithDocker`, `WithSystemPython`, `WithNoReact`).
+`Config.SystemPython` runs python, npm and uv from PATH with no micromamba prefix
+and no `.gpu` gate (Docker, Colab); `tts-webui launch --start` starts the app
+without a click and copies the Gradio and React output to stdout.
 
 What PR 741 added to the old Supervisor now lives here, through hooks in
 `Config` so that `supervise` does not import `launcher`:
@@ -24,11 +25,11 @@ What PR 741 added to the old Supervisor now lives here, through hooks in
   come from `Plan.Switches`. The front closes when Next exits or on Stop.
 - **`Config.Prepare`** runs after the GPU check, before anything starts; the
   launcher's version does `switches.FromEnv` + `CheckRoutes`/`CheckSteps`, the
-  `TTS_GO_SERVERPY` value check, `sweepOrphans`, `prepareReactUI` (recover and
+  `sweepOrphans`, `prepareReactUI` (recover and
   build) and reads config.json for the public port and `inbrowser`. It returns
   a `Plan` (React mode, `PublicPort`, `GradioEntry`, `GradioEnv`, `OpenBrowser`).
 - **`Config.StartGradioSide`** is where `startServerPy(root, prefix, baseEnv)`
-  plugs in (`TTS_GO_SERVERPY=1`): its `Env` goes to gradio only and its `Close`
+  plugs in: its `Env` goes to gradio only and its `Close`
   runs when gradio exits, on Stop, or when gradio fails to start.
 - **`Config.OnStarted(refs)` / `OnStopped()`** write and clear the orphan record
   (`recordGroups` / `clearRecordFor`; Unix only, a no-op on Windows).
@@ -36,9 +37,9 @@ What PR 741 added to the old Supervisor now lives here, through hooks in
 
 Browser: `Plan.OpenBrowser` is `inbrowser` from config.json and not
 `--no-browser`; `Config.SkipReactTab` (set by the launcher) opens only the
-public URL. server.py would also open a tab by itself, so the launcher gives
+public URL. Gradio would also open a tab by itself, so the launcher gives
 the gradio child `BROWSER=tts-go-noop-browser`, which makes Python's
-`webbrowser.open` fail quietly. (The legacy path leaves Python's tab alone.)
+`webbrowser.open` fail quietly.
 
 Changed outside this package: `launcher.go` (field is now the `appSupervisor`
 interface), `go_steps.go` (`appRunning` asks `Running()`),
@@ -46,8 +47,7 @@ interface), `go_steps.go` (`appRunning` asks `Running()`),
 `cmd_launch.go` (`WithNoBrowser`), and one test, `go_steps_internal_test.go`,
 which poked `l.sup.procs` and now uses a fake supervisor.
 
-The "Changes in existing files" text below is the original plan; the launcher
-differs from it in that the old Supervisor stays and the interface adapts both.
+The "Changes in existing files" text below is the original plan, kept as history.
 `--public-port`, `--react-port` and the other flags were not added: the public
 port comes from config.json.
 

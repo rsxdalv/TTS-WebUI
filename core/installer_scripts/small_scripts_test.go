@@ -45,12 +45,13 @@ func TestInitAppRunsNodeActivated(t *testing.T) {
 }
 
 func TestStartAppWindowsExitsZeroAfterPause(t *testing.T) {
-	s, r, lines := smallStep(map[string]int{"python": 9})
+	launcher := filepath.Join("x", "root", "tts-webui.exe")
+	s, r, lines := smallStep(map[string]int{launcher: 9})
 	code, err := startApp(context.Background(), s, "windows")
 	if code != 0 || err != nil {
 		t.Fatalf("code=%d err=%v (pause resets ERRORLEVEL, so python's 9 is not returned)", code, err)
 	}
-	if r.names() != "python server.py | cmd /k " || !r.cmds[0].Activated || !r.cmds[1].Activated {
+	if r.names() != launcher+" launch --start | cmd /k " || r.cmds[0].Activated || !r.cmds[1].Activated {
 		t.Fatalf("commands: %q", r.names())
 	}
 	want := `""|""|App exitted or crashed.|Starting command prompt for user to run commands in case of failure...|""|Press any key to continue . . . `
@@ -61,9 +62,10 @@ func TestStartAppWindowsExitsZeroAfterPause(t *testing.T) {
 
 func TestStartAppUnix(t *testing.T) {
 	t.Setenv("SHELL", "/bin/zsh")
+	launcher := filepath.Join("x", "root", "tts-webui")
 	s, r, lines := smallStep(map[string]int{"/bin/zsh": 5})
 	code, _ := startApp(context.Background(), s, "linux")
-	if code != 5 || r.names() != "python server.py | /bin/zsh " {
+	if code != 5 || r.names() != launcher+" launch --start | /bin/zsh " {
 		t.Fatalf("code=%d commands=%q", code, r.names())
 	}
 	if got := strings.Join(*lines, "|"); got != "||App exited or crashed.|Starting shell for user to run commands in case of failure...|" {

@@ -50,7 +50,7 @@ def _open(method, path, query, body, timeout):
     if not enabled():
         raise CoreBridgeError(
             "the Go core is not running (TTS_CORE_URL is not set); start the app "
-            "through the launcher with TTS_GO_SERVERPY=1"
+            "through the launcher (tts-webui launch)"
         )
     url = os.environ["TTS_CORE_URL"].rstrip("/") + path
     if query:

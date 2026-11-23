@@ -37,7 +37,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-$MICROMAMBA_EXE run -p ./installer_files/env python server.py
+LAUNCHER="./tts-webui"
+if [ ! -x "$LAUNCHER" ]; then
+    echo "The launcher was not found: $LAUNCHER"
+    echo "Download tts-webui for your system from the releases page into this folder, then start again."
+    exit 1
+fi
+"$LAUNCHER" launch --start
 if [ $? -ne 0 ]; then
     echo "Failed to start the app, exiting..."
     exit 1

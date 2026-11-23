@@ -65,7 +65,7 @@ options are equal as Gradio sees them (the old single tuple is a one-element
 list now); `--share` is the only addition (the old Go path ignored it), and
 `--docker` is identical to plain. The printed lines are equal except
 `ssl_keyfile_password` (`"sslsecretpassword..."` before, `"******"` now) and
-the `share` value under `--share`. The launcher run (`TTS_GO_SERVERPY=1`, port
+the `share` value under `--share`. The launcher run (port
 17900, no browser) reached the Gradio UI: 102 tabs listed through
 `resolve`, 47 of them `[Disabled]` (the config disabled every non-builtin
 extension to avoid importing torch), the built-in ones live.
@@ -97,6 +97,6 @@ when imported alone); it is not caused by the port. The app stopped cleanly thro
 
 `core/cmd/serverpy-demo` is deleted (step 27): it wired the first four stages by hand,
 before the config, history, extcatalog and launch-options APIs, so `server_core.py`
-could no longer run under it. The launcher with `TTS_GO_SERVERPY=1` is the one
+could no longer run under it. The launcher is the one
 wiring (`launcher/serverpy.go`); the opt-in tests in `launcher/real_serverpy_test.go`
 run it against a real install.

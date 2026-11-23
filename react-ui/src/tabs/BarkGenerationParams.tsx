@@ -2,7 +2,7 @@ import useLocalStorage, {
   readLocalStorage,
   updateLocalStorageWithFunction,
 } from "../hooks/useLocalStorage";
-import router from "next/router";
+import router from "@/shims/router";
 import { parseFormChange } from "../data/parseFormChange";
 import { generateWithBark } from "../functions/generateWithBark";
 import { useHistory } from "../hooks/useHistory";

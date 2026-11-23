@@ -177,11 +177,7 @@ func (s *stubGradio) lastJoin() string {
 // gradioFront serves the route with the gradio claim on, rooted at root.
 func gradioFront(t *testing.T, root string) string {
 	t.Helper()
-	next := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Answered-By", "next")
-	}))
-	t.Cleanup(next.Close)
-	h, err := NewHandler(Config{Root: root, Port: testPort, NextAddr: strings.TrimPrefix(next.URL, "http://"), Routes: routes(t, "gradio")})
+	h, err := NewHandler(Config{Root: root, Port: testPort, Routes: routes(t, "gradio")})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/shims/navigation";
 import { Command, CommandDialog } from "@/components/ui/command";
 import {
   CommandInput,

@@ -44,7 +44,7 @@ func exportFixture(t *testing.T) string {
 
 func staticFront(t *testing.T, root string) string {
 	t.Helper()
-	h, err := NewHandler(Config{Root: root, Port: testPort, Static: true, Routes: routes(t, "")})
+	h, err := NewHandler(Config{Root: root, Port: testPort, Routes: routes(t, "")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestStaticExportETagAndCompression(t *testing.T) {
 
 func TestStaticModeKeepsClaimsAndGuards(t *testing.T) {
 	root := exportFixture(t)
-	h, err := NewHandler(Config{Root: root, Port: testPort, Static: true, Routes: routes(t, "test-files")})
+	h, err := NewHandler(Config{Root: root, Port: testPort, Routes: routes(t, "test-files")})
 	if err != nil {
 		t.Fatal(err)
 	}

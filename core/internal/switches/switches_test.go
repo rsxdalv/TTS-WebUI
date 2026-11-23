@@ -15,8 +15,8 @@ func TestDefaultsAfterCutover(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !s.Proxy || !s.Route("upload") || !s.Route("data-outputs") || !s.Route("anything") {
-			t.Fatalf("%v: want the proxy and every claim on, got %+v", e, s)
+		if !s.Route("upload") || !s.Route("data-outputs") || !s.Route("anything") {
+			t.Fatalf("%v: want every claim on, got %+v", e, s)
 		}
 		if s.ProxyLAN {
 			t.Fatalf("%v: LAN mode must stay opt-in", e)
@@ -25,17 +25,12 @@ func TestDefaultsAfterCutover(t *testing.T) {
 }
 
 func TestOptOuts(t *testing.T) {
-	s, err := Parse(env(map[string]string{EnvProxy: "0"}))
-	if err != nil || s.Proxy || s.Route("upload") {
-		t.Fatalf("proxy off: %+v %v", s, err)
+	if _, err := Parse(env(map[string]string{EnvProxy: "0"})); err == nil || !strings.Contains(err.Error(), "Next.js was removed") {
+		t.Fatalf("TTS_GO_PROXY=0 must be a clear error, got %v", err)
 	}
-	s, err = Parse(env(map[string]string{EnvRoutes: "none"}))
-	if err != nil || !s.Proxy || s.Route("upload") || s.Route("gradio") {
+	s, err := Parse(env(map[string]string{EnvRoutes: "none"}))
+	if err != nil || s.Route("upload") || s.Route("gradio") {
 		t.Fatalf("routes none: %+v %v", s, err)
-	}
-	s, err = Parse(env(map[string]string{EnvProxy: "0", EnvRoutes: "none"}))
-	if err != nil || s.Proxy || s.Route("upload") {
-		t.Fatalf("proxy off and routes none: %+v %v", s, err)
 	}
 	s, err = Parse(env(map[string]string{EnvRoutes: "upload"}))
 	if err != nil || !s.Route("upload") || s.Route("gradio") {
@@ -52,7 +47,7 @@ func TestEnabledNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !s.Proxy || !s.Route("upload") || !s.Route("gradio") || s.Route("data-outputs") {
+	if !s.Route("upload") || !s.Route("gradio") || s.Route("data-outputs") {
 		t.Fatalf("routes wrong: %+v", s)
 	}
 	if !s.Step("mamba") || s.Step("install") {
@@ -77,8 +72,7 @@ func TestRejected(t *testing.T) {
 		want string
 	}{
 		{"proxy typo", map[string]string{EnvProxy: "true"}, EnvProxy},
-		{"routes with proxy off", map[string]string{EnvProxy: "0", EnvRoutes: "upload"}, "needs the proxy"},
-		{"all routes with proxy off", map[string]string{EnvProxy: "0", EnvRoutes: "all"}, "needs the proxy"},
+		{"proxy off", map[string]string{EnvProxy: "0", EnvRoutes: "upload"}, "no longer supported"},
 		{"none mixed with names", map[string]string{EnvRoutes: "none,upload"}, "invalid name"},
 		{"bad route name", map[string]string{EnvProxy: "1", EnvRoutes: "Up_load"}, "invalid name"},
 		{"empty list item", map[string]string{EnvSteps: "mamba,,install"}, "invalid name"},
@@ -119,7 +113,7 @@ func TestStepsDefaultOn(t *testing.T) {
 		if !s.Step("mamba") || !s.Step("install") || !s.Step("update") || !s.Step("diagnostic") {
 			t.Fatalf("%v: steps must be on by default: %+v", e, s)
 		}
-		if !s.Proxy || !s.Route("upload") { // D18: the proxy and claims are on too
+		if !s.Route("upload") { // D18: the claims are on too
 			t.Fatalf("%v: proxy and routes must be on by default", e)
 		}
 		if err := s.CheckSteps([]string{"mamba"}); err != nil {
@@ -183,7 +177,7 @@ func TestProxyListenRejected(t *testing.T) {
 		want string
 	}{
 		{"unknown listen value", map[string]string{EnvProxy: "1", EnvProxyListen: "all"}, "loopback or lan"},
-		{"lan with proxy off", map[string]string{EnvProxy: "0", EnvProxyListen: "lan"}, "needs the proxy"},
+		{"lan with proxy off", map[string]string{EnvProxy: "0", EnvProxyListen: "lan"}, "no longer supported"},
 		{"hosts without lan", map[string]string{EnvProxy: "1", EnvProxyAllowedHosts: "mypc"}, "needs TTS_GO_PROXY_LISTEN=lan"},
 		{"host with port", map[string]string{EnvProxy: "1", EnvProxyListen: "lan", EnvProxyAllowedHosts: "mypc:3000"}, "invalid host"},
 		{"wildcard", map[string]string{EnvProxy: "1", EnvProxyListen: "lan", EnvProxyAllowedHosts: "*"}, "invalid host"},

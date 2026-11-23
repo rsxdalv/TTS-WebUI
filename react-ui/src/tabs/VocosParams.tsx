@@ -2,7 +2,7 @@ import useLocalStorage, {
   readLocalStorage,
   updateLocalStorageWithFunction,
 } from "../hooks/useLocalStorage";
-import router from "next/router";
+import router from "@/shims/router";
 import { GradioFile } from "../types/GradioFile";
 import { LocalCacheFile, toLocalCacheFile } from "../types/LocalCacheFile";
 

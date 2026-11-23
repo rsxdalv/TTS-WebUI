@@ -6,10 +6,10 @@ import react from "@vitejs/plugin-react";
 const src = path.resolve(__dirname, "src");
 
 /**
- * Next imports an `.svg` file as an asset object (`{ src, width, height }`).
- * Vite imports it as the URL string, so the icon components would lose their
- * dimensions. This plugin gives the same object shape, with the width and
- * the height read from the SVG itself.
+ * The icon components read `{ src, width, height }` from an imported `.svg`
+ * file. Vite imports it as the URL string, so the icon components would lose
+ * their dimensions. This plugin gives the object, with the width and the
+ * height read from the SVG itself.
  */
 function svgAsAsset(): Plugin {
   return {
@@ -33,27 +33,6 @@ function svgAsAsset(): Plugin {
   };
 }
 
-/**
- * Swaps a module for another one in the Vite build.
- *
- * The shared sources are written for Next, which inlines `process.env` and
- * reads the voice data from the file system. The browser needs the
- * environment variables from `import.meta.env` and the voice data from the
- * API, so those modules have a browser version.
- *
- * The pattern matches the whole import specifier, so a relative import
- * (`../../data/env`) and an absolute one (`@/data/env`) are both replaced by
- * the absolute path of the browser module.
- */
-const swappedModules = {
-  // The environment variables (see src/data/env.ts).
-  "data/env": "data/env.vite.ts",
-  // The filesystem-backed voice data (see src/data/getVoicesData.tsx).
-  "data/getVoicesData": "data/getVoicesData.browser.tsx",
-  // The database client needs Node's TCP stack.
-  "lib/sql": "lib/sql.browser.tsx",
-};
-
 /** An absolute path with forward slashes, for the alias replacement. */
 const absolute = (...parts: string[]) =>
   path.resolve(src, ...parts).split(path.sep).join("/");
@@ -62,60 +41,32 @@ export default defineConfig({
   plugins: [svgAsAsset(), react()],
   resolve: {
     alias: [
-      // The Next APIs the shared sources still use. The shims keep the call
-      // sites unchanged (see src/shims/).
-      { find: /^next\/router$/, replacement: absolute("shims/next-router.tsx") },
-      { find: /^next\/navigation$/, replacement: absolute("shims/next-navigation.tsx") },
-      { find: /^next\/link$/, replacement: absolute("shims/next-link.tsx") },
-      { find: /^next\/head$/, replacement: absolute("shims/next-head.tsx") },
-      { find: /^next\/dynamic$/, replacement: absolute("shims/next-dynamic.tsx") },
-      { find: /^next\/font\/google$/, replacement: absolute("shims/next-font-google.tsx") },
-      // Next ships a browser build of `path`; Vite does not.
+      // The shared sources import `path`; Vite has no browser build of it.
       { find: /^path$/, replacement: "path-browserify" },
-      // The modules with a browser version.
-      ...Object.entries(swappedModules).map(([from, to]) => ({
-        find: new RegExp(`^.*/${from}$`),
-        replacement: absolute(to),
-      })),
       { find: /^@\//, replacement: absolute("").replace(/\/$/, "") + "/" },
     ],
-  },
-  // The environment variables the shared sources read through process.env.
-  // Vite inlines them at build time, so the browser bundle has no `process`.
-  define: {
-    "process.env.TTS_STATIC_EXPORT": JSON.stringify(
-      process.env.TTS_STATIC_EXPORT ?? ""
-    ),
-    "process.env.NEXT_PUBLIC_DB_API_URL": JSON.stringify(
-      process.env.NEXT_PUBLIC_DB_API_URL ?? ""
-    ),
-    // Server-only values: the browser never reads them.
-    "process.env.GRADIO_BACKEND": "undefined",
-    "process.env.GRADIO_BACKEND_AUTOMATIC": "undefined",
-    "process.env.GRADIO_AUTH": "undefined",
   },
   server: {
     port: 3002,
     strictPort: true,
-    // Listen on the loopback address only, like the Go proxy and Next do.
+    // Listen on the loopback address only, like the Go server does.
     host: "127.0.0.1",
     proxy: {
-      // The API routes belong to the server. The Next dev server (port 3001)
-      // answers them. Set VITE_API_PROXY to another server to use that one
-      // instead: the Go proxy in front of Next answers the /api/go-data/*
-      // routes as well, so both apps show the same data.
+      // The API routes belong to the Go server. Start the app with the
+      // launcher (it listens on port 3000), or set VITE_API_PROXY to another
+      // address.
       "/api": {
-        target: process.env.VITE_API_PROXY || "http://127.0.0.1:3001",
+        target: process.env.VITE_API_PROXY || "http://127.0.0.1:3000",
         changeOrigin: true,
         configure: (proxy) => {
           proxy.on("proxyReq", (proxyReq) => {
-            // The Go proxy checks the Origin of a request against its own
+            // The Go server checks the Origin of a request against its own
             // port (CONTRACTS.md section 5). The browser sends the Origin of
             // the Vite page, so it is rewritten to the target's origin.
             const origin = proxyReq.getHeader("origin");
             if (origin) {
               const target = new URL(
-                process.env.VITE_API_PROXY || "http://127.0.0.1:3001"
+                process.env.VITE_API_PROXY || "http://127.0.0.1:3000"
               );
               proxyReq.setHeader("origin", target.origin);
             }
@@ -123,7 +74,8 @@ export default defineConfig({
         },
       },
     },
-  },  build: {
+  },
+  build: {
     outDir: "dist",
     emptyOutDir: true,
   },

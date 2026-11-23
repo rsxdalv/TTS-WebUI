@@ -1,9 +1,9 @@
 /**
- * A `next/link` compatible shim on top of react-router's `Link`.
+ * A `Link` on top of react-router's `Link`.
  *
  * The two call sites (src/components/Header.tsx, src/components/ProjectCard.tsx)
  * use `href`, `className` and `target`, so the props are passed straight
- * through. External links (an absolute URL) are plain anchors, like in Next.
+ * through. External links (an absolute URL) are plain anchors.
  */
 import React from "react";
 import { Link as RouterLink, type LinkProps } from "react-router-dom";

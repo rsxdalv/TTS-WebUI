@@ -139,17 +139,10 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		// and macOS; stop it before ports collide.
 		sweepOrphans(root)
 
-		plan := supervise.Plan{Switches: sw, React: supervise.ReactNextDirect}
+		plan := supervise.Plan{Switches: sw}
 		if !o.noReact {
-			rp, err := newReactPrep(root, o.systemPython).prepareReactUI(ctx, sw)
-			if err != nil {
+			if err := newReactPrep(root, o.systemPython).prepareReactUI(ctx, sw); err != nil {
 				return supervise.Plan{}, err
-			}
-			if sw.Proxy {
-				plan.React = supervise.ReactNextProxied
-				if rp.mode == modeStatic {
-					plan.React = supervise.ReactStatic
-				}
 			}
 		}
 		// The public port and inbrowser come from config.json.

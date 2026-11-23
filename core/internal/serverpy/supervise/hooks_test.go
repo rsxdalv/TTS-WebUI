@@ -36,7 +36,7 @@ func TestHooksSideAndRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitFor(t, "gradio ready", func() bool { return status(s, NameGradio).State == StateReady })
-	if started.Load() != 1 || len(refs) != 2 {
+	if started.Load() != 1 || len(refs) != 1 {
 		t.Fatalf("OnStarted calls=%d refs=%v", started.Load(), refs)
 	}
 	for _, r := range refs {

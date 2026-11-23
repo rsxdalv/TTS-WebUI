@@ -4,13 +4,11 @@ import { Route, Routes } from "react-router-dom";
 /**
  * The routes of the app.
  *
- * The paths are the ones of the Next pages (src/pages), so the URLs of the
- * two builds are the same. The page components are the same files: Next
- * reads them from the file system, this table lists them.
+ * The page components are in src/pages; this table lists them with their
+ * paths.
  *
- * The API routes (src/pages/api, src/app/api/upload) are not here: they
- * belong to the server. The Vite dev server proxies /api to the Next dev
- * server, and the Go port answers them in the installed app.
+ * The API routes are not here: they belong to the Go server. The Vite dev
+ * server proxies /api to it.
  */
 
 /** The home page: the model list. */
@@ -93,7 +91,7 @@ const TestGradioProxy = lazy(() => import("./pages/test-gradio-proxy"));
  */
 const OutputsByName = lazy(() => import("./pages/outputs/[name]"));
 
-/** The loading state of a page, like the Next one. */
+/** The loading state of a page, while a page loads. */
 const Loading = () => (
   <div className="flex min-h-screen w-full items-center justify-start">
     <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />

@@ -1,10 +1,8 @@
 /*
- * The class the next/font/google shim returns.
+ * The class the Inter font helper returns.
  *
- * Next downloads the font at build time and gives back a class name that
- * applies it. The Vite build uses the font files of the @fontsource package
- * instead (see src/shims/next-font-google.tsx), so the class has to set the
- * family itself.
+ * The font files come from the @fontsource package (see
+ * src/shims/font.tsx), so the class sets the family itself.
  */
 .font-inter {
   font-family: "Inter", sans-serif;

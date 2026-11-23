@@ -13,47 +13,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Detect package manager
-        id: detect-package-manager
-        working-directory: react-ui
-        run: |
-          if [ -f "${{ github.workspace }}/react-ui/yarn.lock" ]; then
-            echo "manager=yarn" >> $GITHUB_OUTPUT
-            echo "command=install" >> $GITHUB_OUTPUT
-            echo "runner=yarn" >> $GITHUB_OUTPUT
-            exit 0
-          elif [ -f "${{ github.workspace }}/react-ui/package.json" ]; then
-            echo "manager=npm" >> $GITHUB_OUTPUT
-            echo "command=ci" >> $GITHUB_OUTPUT
-            echo "runner=npx --no-install" >> $GITHUB_OUTPUT
-            exit 0
-          else
-            echo "Unable to determine package manager"
-            exit 1
-          fi
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          # working-directory: react-ui
-          cache-dependency-path: "react-ui"
           node-version: "22"
-          cache: ${{ steps.detect-package-manager.outputs.manager }}
-      - name: Restore cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            .next/cache
-          # Generate a new cache whenever packages or source files change.
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
-          # If source files changed but packages didn't, rebuild from a prior cache.
-          restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-
+          cache: npm
+          cache-dependency-path: react-ui/package-lock.json
       - name: Install dependencies
         working-directory: react-ui
-        run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
-      - name: Build with Next.js
+        run: npm ci
+      - name: Type check
         working-directory: react-ui
-        run: ${{ steps.detect-package-manager.outputs.runner }} npm run build
-      # - name: Static HTML export with Next.js
-      #   working-directory: react-ui
-      #   run: ${{ steps.detect-package-manager.outputs.runner }} next export
+        run: npx tsc --noEmit
+      - name: Build the static export
+        working-directory: react-ui
+        run: npm run build:static

@@ -3,7 +3,7 @@
  * link in the sidebar changes the page without a reload of the document.
  *
  * The static export check of the Go port does the same for the export
- * (core/react_ui_backend/compare/browser/static-export-check.js).
+ * (core/react_ui_backend/browser/static-export-check.js).
  *
  * Usage: node scripts/check-vite-navigation.js [base url]
  */

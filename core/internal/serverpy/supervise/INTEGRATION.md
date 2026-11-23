@@ -17,17 +17,16 @@ without a click and copies the Gradio and React output to stdout.
 What PR 741 added to the old Supervisor now lives here, through hooks in
 `Config` so that `supervise` does not import `launcher`:
 
-- **React front** (`react_ui_backend` on `ReactPort`): `Plan.React` is
-  `ReactStatic` (Go serves `react-ui/out`, no Next; the react-ui child is a
-  stand-in that lives until Stop), `ReactNextProxied` (Next on a private
-  loopback port with `-H 127.0.0.1`, readiness checked on that port, status
-  reports the public one) or `ReactNextDirect` (Next owns the port). Switches
-  come from `Plan.Switches`. The front closes when Next exits or on Stop.
+- **React front** (`react_ui_backend` on `ReactPort`): Go serves `react-ui/out`
+  (the Vite static export) and answers the API routes; there is no Node
+  process. The react-ui child in the status is a stand-in that lives until
+  Stop, and the front closes then (or when a failed start unwinds). Switches
+  come from `Plan.Switches`.
 - **`Config.Prepare`** runs after the GPU check, before anything starts; the
   launcher's version does `switches.FromEnv` + `CheckRoutes`/`CheckSteps`, the
-  `sweepOrphans`, `prepareReactUI` (recover and
-  build) and reads config.json for the public port and `inbrowser`. It returns
-  a `Plan` (React mode, `PublicPort`, `GradioEntry`, `GradioEnv`, `OpenBrowser`).
+  `sweepOrphans`, `prepareReactUI` (builds the export
+  when it is missing or from another commit) and reads config.json for the public port and `inbrowser`. It returns
+  a `Plan` (`Switches`, `PublicPort`, `GradioEntry`, `GradioEnv`, `OpenBrowser`).
 - **`Config.StartGradioSide`** is where `startServerPy(root, prefix, baseEnv)`
   plugs in: its `Env` goes to gradio only and its `Close`
   runs when gradio exits, on Stop, or when gradio fails to start.

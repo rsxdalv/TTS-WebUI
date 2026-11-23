@@ -1,5 +1,5 @@
 /**
- * A `next/navigation` compatible shim on top of react-router.
+ * `useRouter().push` and friends on top of react-router.
  *
  * Only `useRouter().push` is used (src/components/RouteCommands.tsx).
  */

@@ -1,6 +1,6 @@
 import React from "react";
-import Link from "next/link";
-import { useRouter } from "next/router";
+import Link from "@/shims/link";
+import { useRouter } from "@/shims/router";
 import { ExternalLinkIcon } from "lucide-react";
 import { RouteCommands } from "./RouteCommands";
 import { cn } from "../lib/utils";

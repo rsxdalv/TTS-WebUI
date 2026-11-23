@@ -1,5 +1,5 @@
 import { updateLocalStorageWithFunction } from "../hooks/useLocalStorage";
-import router from "next/router";
+import router from "@/shims/router";
 
 export const barkSettingsId = "barkSettingsParams.v4";
 

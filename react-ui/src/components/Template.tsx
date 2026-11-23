@@ -1,6 +1,6 @@
-import { Inter } from "next/font/google";
+import { Inter } from "@/shims/font";
 import React from "react";
-import Head from "next/head";
+import Head from "@/shims/head";
 import { FavoritesProvider } from "./FavoritesProvider";
 import { LocalVotesProvider, VotesProvider } from "@/components/VotesProvider";
 import { Header } from "./Header";

@@ -1,27 +1,15 @@
-import { Inter } from "next/font/google";
+import { Inter } from "@/shims/font";
 import React from "react";
 
 import { CardEmpty, CardGeneration, SectionVoice } from "../../components/CardBig";
-import { getNpzData, getOggData } from "../../data/getVoicesData";
 import { GenerationRaw } from "../../types/Generation";
 import { Template } from "../../components/Template";
 
 export const inter = Inter({ subsets: ["latin"] });
 
-// The browser build has no props. The empty lists must be the same arrays
-// every time, or an effect would run on every render.
-const NO_GENERATIONS: GenerationRaw[] = [];
-const NO_NPZ: any[] = [];
-
-export default function Home({
-  generations = NO_GENERATIONS,
-  npzData = NO_NPZ,
-}: {
-  // The server build passes the data (getStaticProps); the browser build has
-  // no props.
-  generations?: GenerationRaw[];
-  npzData?: any[];
-}) {
+export default function Home() {
+  const generations: GenerationRaw[] = [];
+  const npzData: any[] = [];
   return (
     <Template title="Voice Drafts">
       {/* <div className="grid gap-4 grid-cols-1 w-full"> */}
@@ -54,16 +42,3 @@ export default function Home({
     </Template>
   );
 }
-
-export const getStaticProps = async () => {
-  // const generations: GenerationRaw[] = await getOggData();
-  const generations: GenerationRaw[] = [];
-  // const npzData = await getNpzData();
-  const npzData = [];
-  return {
-    props: {
-      generations: generations,
-      npzData: npzData,
-    },
-  };
-};

@@ -13,7 +13,7 @@ import (
 )
 
 // With the Go steps on, install and update refuse to start while the app runs,
-// because the export build sets the running Next's .next aside.
+// because the export build replaces the export the running app serves.
 func TestGoInstallAndUpdateRefuseWhileTheAppRuns(t *testing.T) {
 	t.Setenv("TTS_GO_STEPS", "install,update")
 	dir := t.TempDir()

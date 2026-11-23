@@ -1,8 +1,8 @@
-import { Inter } from "next/font/google";
+import { Inter } from "@/shims/font";
 import React from "react";
 
 import { Template } from "../components/Template";
-import Head from "next/head";
+import Head from "@/shims/head";
 import { ProjectCard } from "../components/ProjectCard";
 import { TextToSpeechModelList } from "./text-to-speech";
 import { AudioMusicGenerationModelList } from "./audio-music-generation";
@@ -33,9 +33,3 @@ export default function Home() {
     </Template>
   );
 }
-
-export const getStaticProps = async () => {
-  return {
-    props: {},
-  };
-};

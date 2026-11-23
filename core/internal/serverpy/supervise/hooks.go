@@ -7,27 +7,11 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/switches"
 )
 
-// ReactMode says how the React UI runs.
-type ReactMode int
-
-const (
-	// ReactNextDirect: `next start` owns the React port (TTS_GO_PROXY=0).
-	ReactNextDirect ReactMode = iota
-	// ReactNextProxied: Next runs on a private loopback port and the Go
-	// react_ui_backend serves the React port in front of it.
-	ReactNextProxied
-	// ReactStatic: the Go react_ui_backend serves the static export on the
-	// React port. There is no Next process.
-	ReactStatic
-)
-
 // Plan is what Config.Prepare decides for one Start. Zero fields keep the
 // Config values.
 type Plan struct {
 	// Switches are the TTS_GO_* switches; they feed the React front.
 	Switches switches.Set
-	// React is how the React UI runs.
-	React ReactMode
 	// PublicPort overrides Config.PublicPort for this run (the port from
 	// config.json, which the Go router or the proxy tree binds).
 	PublicPort int
@@ -121,8 +105,8 @@ func (c *closingRunner) Pid() int {
 	return 0
 }
 
-// frontRunner stands in for the React child when Go serves the static export:
-// nothing runs, so it is alive until stopped, and stopping closes the front.
+// frontRunner stands in for the React child: Go serves the static export, so no
+// process runs. It is alive until stopped, and stopping closes the front.
 type frontRunner struct {
 	closeFront func()
 	once       sync.Once

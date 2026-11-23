@@ -1,40 +1,29 @@
 package react_ui_backend
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"log/slog"
 	"net"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"path"
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/switches"
 )
 
-// PublicPort is the port the browser uses, the same one Next uses today.
+// PublicPort is the port the browser uses for the React UI.
 const PublicPort = 3000
 
 // claimsCookie tells pages which data claims are on (CONTRACTS.md section 7).
 const claimsCookie = "tts-go-claims"
 
-// Config describes one proxy.
+// Config describes one React UI server.
 type Config struct {
 	// Root is the absolute install root.
 	Root string
 	// Port is the public port.
 	Port int
-	// NextAddr is the host:port where Next listens. Unused when Static is set.
-	NextAddr string
-	// Static serves the export in react-ui/out instead of proxying Next, so no
-	// Next process runs (CONTRACTS.md section 10).
-	Static bool
 	// Routes says which claims are on.
 	Routes switches.Set
 	// LAN listens on every interface instead of loopback only, and accepts
@@ -44,31 +33,24 @@ type Config struct {
 	AllowedHosts []string
 }
 
-// handler is the front door for every request on the public port.
+// handler is the front door for every request on the public port. Claimed
+// routes answer here; everything else is the static export.
 type handler struct {
 	port     string
 	origins  map[string]bool
-	next     http.Handler
+	static   http.Handler
 	mux      *http.ServeMux
 	prefixes map[string]bool
 	cookie   string
 	lan      *lanHosts // nil unless LAN mode is on
 }
 
-// NewHandler returns the proxy's HTTP handler.
+// NewHandler returns the server's HTTP handler.
 func NewHandler(cfg Config) (http.Handler, error) {
 	if err := cfg.Routes.CheckRoutes(claimNames()); err != nil {
 		return nil, err
 	}
-	var next http.Handler
-	if cfg.Static {
-		next = newStaticExport(cfg.Root)
-	} else {
-		var err error
-		if next, err = newNextProxy(cfg); err != nil {
-			return nil, err
-		}
-	}
+	static := newStaticExport(cfg.Root)
 
 	port := strconv.Itoa(cfg.Port)
 	h := &handler{
@@ -78,7 +60,7 @@ func NewHandler(cfg Config) (http.Handler, error) {
 			"http://localhost:" + port: true,
 			"http://[::1]:" + port:     true,
 		},
-		next:     next,
+		static:   static,
 		mux:      http.NewServeMux(),
 		prefixes: map[string]bool{},
 	}
@@ -86,7 +68,7 @@ func NewHandler(cfg Config) (http.Handler, error) {
 		h.lan = newLANHosts(cfg.AllowedHosts)
 	}
 
-	deps := newDeps(cfg.Root, next)
+	deps := newDeps(cfg.Root)
 	var dataClaims []string
 	for _, c := range registeredClaims() {
 		if !cfg.Routes.Route(c.Switch) {
@@ -129,7 +111,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	h.next.ServeHTTP(w, r)
+	h.static.ServeHTTP(w, r)
 }
 
 // validHost is the DNS-rebinding guard.
@@ -149,8 +131,8 @@ func originChecked(r *http.Request) bool {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		return true
 	}
-	// Next resolves dot segments and repeated slashes before routing, so check
-	// the path it will route, not the one sent.
+	// Clean the path first, so a dot segment or a repeated slash cannot hide an
+	// /api path from the check.
 	p := path.Clean("/" + r.URL.Path)
 	return p == "/api" || strings.HasPrefix(p, "/api/")
 }
@@ -166,7 +148,7 @@ func (h *handler) validOrigin(origin string, r *http.Request) bool {
 }
 
 // goAnswers reports whether a claim may answer this path. Anything else goes to
-// Next, so Go's mux never produces a redirect of its own.
+// the static export, so Go's mux never produces a redirect of its own.
 func (h *handler) goAnswers(r *http.Request) bool {
 	raw := r.URL.EscapedPath()
 	decoded := r.URL.Path
@@ -213,43 +195,7 @@ func (h *handler) setClaimsCookie(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// newNextProxy builds the reverse proxy to Next. Nothing here limits how long a
-// request runs or how large its body is: a generation can take many minutes.
-func newNextProxy(cfg Config) (http.Handler, error) {
-	target, err := url.Parse("http://" + cfg.NextAddr)
-	if err != nil {
-		return nil, fmt.Errorf("next address %q: %w", cfg.NextAddr, err)
-	}
-	port := strconv.Itoa(cfg.Port)
-	return &httputil.ReverseProxy{
-		Rewrite: func(pr *httputil.ProxyRequest) {
-			pr.SetURL(target)
-			// Keep what the browser sent: SetURL replaces Host, and the proxy
-			// drops query strings it cannot parse.
-			pr.Out.Host = pr.In.Host
-			pr.Out.URL.RawQuery = pr.In.URL.RawQuery
-			pr.SetXForwarded()
-			pr.Out.Header.Set("X-Forwarded-Port", port)
-		},
-		Transport: &http.Transport{
-			DialContext:         (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
-			DisableCompression:  true,
-			MaxIdleConns:        64,
-			MaxIdleConnsPerHost: 64,
-			IdleConnTimeout:     90 * time.Second,
-		},
-		FlushInterval: -1,
-		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			if errors.Is(err, context.Canceled) {
-				return // the browser went away
-			}
-			slog.Warn("react-ui proxy", "path", r.URL.Path, "err", err)
-			http.Error(w, "React UI is not reachable", http.StatusBadGateway)
-		},
-	}, nil
-}
-
-// Server is a running proxy.
+// Server is a running React UI server.
 type Server struct {
 	srv       *http.Server
 	listeners []net.Listener

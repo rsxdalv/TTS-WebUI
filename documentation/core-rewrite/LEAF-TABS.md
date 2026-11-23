@@ -4,27 +4,42 @@ Branch `claude/leaf-tabs-convert`. Analysis: `.claude/reports/leaf-tabs.md` (LAB
 runs by itself; nothing needed to boot may need Python. The Python extensions and Gradio tabs are unchanged; the new
 pages sit beside them. Removing the old tabs is a later step.
 
-## Baseline: what the core does today with no Python env and no Gradio child
+## Baseline (before) and what changed: the core with no Python env and no Gradio child
 
-Read from the code on origin/main b476228; the first point was run for real.
+**Before (origin/main b476228).**
 
-1. **Verified (real run, empty root with only `react-ui/out`, `tts-webui launch --start --no-browser`).** The launcher
-   page on 7700 comes up. The app does **not** start: `determining GPU: GPU label not set: complete the GPU step first`
-   (`installer_scripts/.gpu` is missing). `--system-python` skips that gate. Nothing on :3000 was started by this run
-   (a different app was already listening on 3000 and 7770 on the test machine, so I did not go further with a real
-   start there).
-2. **Unverified (from `supervise/supervisor.go` and `launcher/serverpy.go`).** Once past the gate:
-   - The Gradio child is the first process of `Start` (`defs`), and a failure to start it fails the whole `Start`:
-     the React front is closed again and :3000 is never served. A micromamba or env that is missing makes that start
-     fail.
-   - The Go side (router, control API on a random loopback port, config/env/logs/pip/extcatalog services) is started
-     by `startServerPy` and does not itself need Python.
-   - The control API is closed together with the Gradio child (`closingRunner`). If Gradio starts and dies (no
-     Python in the env), :3000 stays up but the control API is gone, so every route that needs it answers 503.
-   - The React front serves the static export and is already independent of Python.
-3. **So the blocker for "boots with no Python" is the supervisor, not these routes:** the Gradio child is mandatory,
-   and the control API lives and dies with it. That is the launcher's part (`supervise`, `launcher/serverpy.go`); I did
-   not change it. These routes are written so that they work once it is fixed (see "Without Python", below).
+1. Verified by a real run (empty root with only `react-ui/out`, `tts-webui launch --start --no-browser`): the launcher
+   page comes up, the app does not start: `determining GPU: GPU label not set: complete the GPU step first`
+   (`installer_scripts/.gpu` missing). `--system-python` skipped that gate.
+2. Verified by the tests that were on origin/main (`TestStartErrorMarksFailed`, `TestStartFailureClosesTheReactFront`):
+   a Gradio child that could not start made `Start` fail with `starting gradio: ...` and closed the React front, so
+   :3000 was never served.
+3. From the code only (not run before the change): the control API and services were closed together with the Gradio
+   child (`closingRunner` closers), so a Gradio that died left :3000 up with every core route at 503.
+
+**After (this branch, commit "Go core boots without Gradio").** All of this is verified by tests that run the
+launcher's real supervisor wiring (`launcher/gocore_test.go`) or the supervisor with a fake side
+(`supervise/gocore_test.go`); see "Checked and not checked" for what was not run.
+
+- The Go side (router, control API, config/env/logs/pip/extcatalog services) and the React front start first. The Go
+  side is held by its own runner (`NameCore`, not in the status) until `Stop` or the next `Start`; it is not closed when
+  Gradio exits or fails to start. A `Start` after Gradio died with nothing else alive closes the old Go side first
+  (`releaseCore`), so the ports can be bound again.
+- Gradio is optional. `pythonAvailable` checks the command prefix: the program (`micromamba`) must exist and the
+  `-p <env>` directory must exist (system Python: `python` on PATH). If not, Gradio is not started and its status is
+  `failed` with `no Python environment: ... (the install has not been done)`. If it cannot start for another reason, or
+  exits later, it is `failed` / `exited` with the exit code and log tail. None of these fails `Start`. A failure of the
+  Go side itself still does.
+- The launcher page now shows each process's state and error, not only running/stopped (`LaunchStep.tsx`).
+- The browser: Gradio's own tab opens only when Gradio becomes ready; the React tab opens either way.
+- **GPU gate decision.** The label picks the torch build, so it belongs to the Python install. It is now checked only when
+  Gradio could start (a Python env exists): an install with an env but no `.gpu` is half done and `Start` still stops
+  (`TestGPUGate`). With no env the gate is skipped, because there is nothing for it to decide. This is the smallest
+  change; it does not make the label optional for a Python install.
+- Still needed to boot: the static export in `react-ui/out` (or npm to build it, which today comes from the env), and
+  `config.json` (a missing one means defaults). Not changed.
+- On the public port (default 7770) the Go router answers 502 for `/` while Gradio is down; the React UI on :3000 is
+  the app in that case.
 
 ## What exists now
 
@@ -105,7 +120,7 @@ All pages are in the Tools menu (Header.tsx).
 
 - `conda_storage_optimizer`: undecided (likely does nothing on a micromamba install). Not converted.
 - `model_downloader`, `huggingface_cache_manager`, `demucs`, `vocos`: class C, native extensions stay.
-- The launcher/supervisor: see the baseline. Not changed.
+- The launcher and supervisor were changed for the Go core to boot without Gradio (see the baseline section).
 
 ## Checked and not checked
 
@@ -113,7 +128,12 @@ Checked: `go vet ./...` and `go test ./...` in `core`; `node build-static.js`; `
 real pip list through `gosrv` and a real `pipd` in the browser pane; `/api/go-data/gpu-info` against the real
 `nvidia-smi` of this machine (GTX 1070); the real services behind the routes in `no_python_test.go`; the remixer
 mixing code with node; the baseline GPU-gate failure with a real launcher run.
-Not checked: a launcher start past the GPU gate (a different app holds ports 3000 and 7770 here), so the supervisor
-behaviour in point 2 of the baseline is from code only; a real MiniMax call; a real ffprobe run through the route
-(only a stub); the remixer with real audio in a browser; the GPU page rendered in a browser; the Gradio tabs next to
-the new pages.
+Also checked: the supervisor with a Gradio that cannot start, one that dies later, no Python env with no GPU label, and
+a second `Start` after Gradio died (`supervise/gocore_test.go`); the launcher's real wiring on a temp install with no
+env (React front, real control API and services answering, Gradio reported as failed) and with a Gradio that exits with
+code 3 (control API still answering) (`launcher/gocore_test.go`); `tsc` on the launcher UI change.
+Not checked: a real `tts-webui` binary start on the default ports (a different app holds 3000 and 7770 on this machine,
+and the React port is fixed at 3000); a start with a real Python env after the change (the opt-in
+`LAUNCHER_REAL_ROOT` tests were not run); the launcher page rendered in a browser; a real MiniMax call; a real ffprobe
+run through the route (only a stub); the remixer with real audio in a browser; the GPU page rendered in a browser; the
+Gradio tabs next to the new pages; a no-env start when `react-ui/out` is missing (it needs npm to build it).

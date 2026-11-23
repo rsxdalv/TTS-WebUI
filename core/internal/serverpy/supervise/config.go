@@ -16,7 +16,7 @@ import (
 const (
 	DefaultPublicPort    = 7770
 	DefaultReactPort     = 3000
-	DefaultGradioEntry   = "server.py"
+	DefaultGradioEntry   = "server_core.py"
 	DefaultReadyTimeout  = 10 * time.Minute
 	DefaultProbeInterval = 250 * time.Millisecond
 )
@@ -39,7 +39,7 @@ type Config struct {
 	ReactPort int
 
 	// GradioEntry is the Python script run for Gradio, relative to Root.
-	// "" = server.py. Integration switches this to server_core.py.
+	// "" = server_core.py.
 	GradioEntry string
 	// GradioArgs are the arguments after the entry script. nil = --no-react,
 	// an empty non-nil slice = no arguments. Used verbatim.

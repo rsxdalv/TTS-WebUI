@@ -17,10 +17,11 @@ func runLaunch(ctx context.Context, args []string) error {
 	rootDir := fs.String("root", "", "install root directory (default: parent of binary)")
 	port := fs.Int("port", 7700, "port to listen on")
 	noBrowser := fs.Bool("no-browser", false, "do not open the browser automatically")
-	share := fs.Bool("share", false, "ask Gradio for a public share link (server.py --share)")
-	docker := fs.Bool("docker", false, "listen on 0.0.0.0:7770 for a container (server.py --docker)")
+	share := fs.Bool("share", false, "ask Gradio for a public share link (Gradio share)")
+	docker := fs.Bool("docker", false, "listen on 0.0.0.0:7770 for a container (router on 0.0.0.0:7770)")
 	start := fs.Bool("start", false, "start the app as soon as the launcher is up (headless: Docker, Colab)")
 	systemPython := fs.Bool("system-python", false, "run python and npm from PATH, not the installer's micromamba env (Docker, Colab)")
+	noReact := fs.Bool("no-react", false, "leave the React UI out (no build, no front on port 3000)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -53,6 +54,9 @@ func runLaunch(ctx context.Context, args []string) error {
 	}
 	if *docker {
 		opts = append(opts, launcher.WithDocker())
+	}
+	if *noReact {
+		opts = append(opts, launcher.WithNoReact())
 	}
 	if *systemPython {
 		opts = append(opts, launcher.WithSystemPython())

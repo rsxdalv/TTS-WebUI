@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -26,30 +25,8 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/router"
 )
 
-// EnvServerPy switches the Go side of the server.py port
-// (core/internal/serverpy): by default (unset, "" or "1") the app runs
-// server_core.py behind the Go router, and Go runs the proxy extensions. "0"
-// runs server.py with its Python proxy tree as before, as a rollback for one
-// release: that path cannot load extension tabs (they come from the Go core).
-const EnvServerPy = "TTS_GO_SERVERPY"
-
-// serverPyEnabled reads EnvServerPy. Any other value is an error, so a typo
-// never silently runs the other code path.
-func serverPyEnabled(lookup func(string) (string, bool)) (bool, error) {
-	v, _ := lookup(EnvServerPy)
-	switch strings.TrimSpace(v) {
-	case "0":
-		return false, nil
-	case "", "1":
-		return true, nil
-	default:
-		return false, fmt.Errorf("%s must be 0 or 1, got %q", EnvServerPy, v)
-	}
-}
-
-// serverPyEntry is the Gradio entry script when the port is on. It installs
-// the Python bridges (routes and extension processes go to Go), then runs
-// server.py unchanged.
+// serverPyEntry is the Gradio entry script. It installs the Python config
+// bridge, then runs the thin Gradio entry (tts_webui.core_server).
 const serverPyEntry = "server_core.py"
 
 // gradioHost is where Gradio itself binds: loopback, behind the router, which
@@ -240,4 +217,17 @@ func newCoreToken() (string, error) {
 		return "", fmt.Errorf("generating the core token: %w", err)
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// freePort asks the OS for a free TCP port.
+func freePort() (int, error) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	_ = l.Close()
+	// Brief pause so the OS can reclaim the ephemeral port before the child claims it.
+	time.Sleep(10 * time.Millisecond)
+	return port, nil
 }

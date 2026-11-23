@@ -95,7 +95,7 @@ func TestStaleExportIsRebuiltOrRefused(t *testing.T) {
 	withHead(t, "new")
 
 	t.Run("failed export build starts nothing", func(t *testing.T) {
-		s := newSupervisor(commitFixture(t, "old", "new"))
+		s := newReactPrep(commitFixture(t, "old", "new"), false)
 		s.runTool = func(_ context.Context, name string, args ...string) error {
 			if strings.Join(args, " ") != "run build:static" {
 				t.Fatalf("ran %s %v", name, args)
@@ -108,7 +108,7 @@ func TestStaleExportIsRebuiltOrRefused(t *testing.T) {
 	})
 
 	t.Run("export build that leaves it stale is refused", func(t *testing.T) {
-		s := newSupervisor(commitFixture(t, "old", "new"))
+		s := newReactPrep(commitFixture(t, "old", "new"), false)
 		s.runTool = func(context.Context, string, ...string) error { return nil }
 		if _, err := s.prepareReactUI(context.Background(), sw); err == nil || !strings.Contains(err.Error(), "still missing or stale") {
 			t.Fatalf("err = %v", err)
@@ -117,7 +117,7 @@ func TestStaleExportIsRebuiltOrRefused(t *testing.T) {
 
 	t.Run("successful export build", func(t *testing.T) {
 		root := commitFixture(t, "old", "new")
-		s := newSupervisor(root)
+		s := newReactPrep(root, false)
 		s.runTool = func(context.Context, string, ...string) error {
 			return os.WriteFile(filepath.Join(root.Dir(), "react-ui", "out", "_tts-export.json"), []byte(`{"commit":"new"}`), 0o644)
 		}
@@ -147,12 +147,11 @@ func TestBuildStaticScriptDetection(t *testing.T) {
 
 func TestBadRoutesFailBeforeAnyBuild(t *testing.T) {
 	t.Setenv(switches.EnvRoutes, "uplod")
-	s := newSupervisor(staleFixture(t, 2*time.Hour, time.Hour))
-	s.runTool = func(context.Context, string, ...string) error {
-		t.Fatal("a build ran before the routes value was checked")
-		return nil
-	}
-	err := s.Start(context.Background())
+	// The stale fixture would build the React UI with the real tools (which
+	// fail here with another error), so an error naming the value proves the
+	// check ran first.
+	cfg := superviseConfig(staleFixture(t, 2*time.Hour, time.Hour), options{})
+	_, err := cfg.Prepare(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "uplod") {
 		t.Fatalf("err = %v", err)
 	}

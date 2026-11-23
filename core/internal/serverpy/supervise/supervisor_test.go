@@ -273,7 +273,7 @@ func TestDefaultsAndForwardedFlagsDedup(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := s.Config()
-	if c.PublicPort != 7770 || c.ReactPort != 3000 || c.GradioEntry != "server.py" ||
+	if c.PublicPort != 7770 || c.ReactPort != 3000 || c.GradioEntry != "server_core.py" ||
 		strings.Join(c.GradioArgs, " ") != "--no-react" || c.ReadyTimeout != DefaultReadyTimeout {
 		t.Errorf("defaults: %+v", c)
 	}

@@ -1,7 +1,6 @@
 package launcher
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,34 +16,6 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appenv"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/launchopts"
 )
-
-func TestServerPyEnabled(t *testing.T) {
-	for _, tc := range []struct {
-		val     string
-		set     bool
-		want    bool
-		wantErr bool
-	}{
-		{set: false, want: true},
-		{val: "", set: true, want: true},
-		{val: "0", set: true, want: false},
-		{val: "1", set: true, want: true},
-		{val: " 1 ", set: true, want: true},
-		{val: "yes", set: true, wantErr: true},
-		{val: "true", set: true, wantErr: true},
-	} {
-		lookup := func(k string) (string, bool) {
-			if k == EnvServerPy && tc.set {
-				return tc.val, true
-			}
-			return "", false
-		}
-		got, err := serverPyEnabled(lookup)
-		if (err != nil) != tc.wantErr || got != tc.want {
-			t.Errorf("%s=%q (set=%v): got %v, %v; want %v, err=%v", EnvServerPy, tc.val, tc.set, got, err, tc.want, tc.wantErr)
-		}
-	}
-}
 
 // envMap turns KEY=VALUE pairs into a map.
 func envMap(env []string) map[string]string {
@@ -177,16 +148,6 @@ func TestServerPyUsesConfigPort(t *testing.T) {
 	defer sp.Close()
 	if want := "127.0.0.1:" + strconv.Itoa(port); sp.publicAddr != want {
 		t.Fatalf("router on %s, want %s (config.json server_port)", sp.publicAddr, want)
-	}
-}
-
-func TestSupervisorRejectsBadServerPySwitch(t *testing.T) {
-	t.Setenv(EnvServerPy, "yes")
-	sup := newSupervisor(makeRoot(t))
-	defer sup.Stop()
-	err := sup.Start(context.Background())
-	if err == nil || !strings.Contains(err.Error(), EnvServerPy) {
-		t.Fatalf("got %v, want an error naming %s", err, EnvServerPy)
 	}
 }
 

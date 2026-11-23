@@ -186,7 +186,7 @@ func TestPrepareRebuildsOrRefuses(t *testing.T) {
 	sw := modeSwitches(t, map[string]string{switches.EnvProxy: "0"})
 
 	t.Run("failed rebuild starts nothing", func(t *testing.T) {
-		s := newSupervisor(staleFixture(t, 2*time.Hour, time.Hour))
+		s := newReactPrep(staleFixture(t, 2*time.Hour, time.Hour), false)
 		var ran []string
 		s.runTool = func(_ context.Context, name string, args ...string) error {
 			ran = append(ran, name+" "+strings.Join(args, " "))
@@ -202,7 +202,7 @@ func TestPrepareRebuildsOrRefuses(t *testing.T) {
 	})
 
 	t.Run("rebuild that leaves the build old is refused", func(t *testing.T) {
-		s := newSupervisor(staleFixture(t, 2*time.Hour, time.Hour))
+		s := newReactPrep(staleFixture(t, 2*time.Hour, time.Hour), false)
 		s.runTool = func(context.Context, string, ...string) error { return nil }
 		if _, err := s.prepareReactUI(context.Background(), sw); err == nil || !strings.Contains(err.Error(), "still older") {
 			t.Fatalf("err = %v", err)
@@ -211,7 +211,7 @@ func TestPrepareRebuildsOrRefuses(t *testing.T) {
 
 	t.Run("successful rebuild", func(t *testing.T) {
 		root := staleFixture(t, 2*time.Hour, time.Hour)
-		s := newSupervisor(root)
+		s := newReactPrep(root, false)
 		s.runTool = func(context.Context, string, ...string) error {
 			now := time.Now()
 			return os.Chtimes(filepath.Join(root.Dir(), "react-ui", ".next", "BUILD_ID"), now, now)
@@ -226,7 +226,7 @@ func TestPrepareRebuildsOrRefuses(t *testing.T) {
 	})
 
 	t.Run("fresh build is not rebuilt", func(t *testing.T) {
-		s := newSupervisor(staleFixture(t, time.Hour, 2*time.Hour))
+		s := newReactPrep(staleFixture(t, time.Hour, 2*time.Hour), false)
 		s.runTool = func(context.Context, string, ...string) error {
 			t.Fatal("a fresh server build was rebuilt")
 			return nil

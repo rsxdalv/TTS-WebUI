@@ -3,6 +3,8 @@
 Every task in the Go port obeys this file. The originals are the spec for behaviour. This file is the spec for how the
 Go pieces fit together. Line references are to commit `52f85f7`.
 
+> **Next.js was removed on 2026-11-24 (D21).** Everything below that describes Next (the server build, `next start`, the proxy to Next, the side-by-side compare harness in section 8, `TTS_GO_PROXY=0`) is history. The static export (section 10) is the only UI build and Go serves it.
+
 Two rules apply everywhere:
 
 - **Off by default.** With no switch set, the app runs the old scripts and Next routes exactly as it does today.
@@ -475,4 +477,4 @@ The routes are listed in `react-ui/src/routes.tsx`. All of them, including `/ext
 
 ### Checked
 
-`core/react_ui_backend/compare/browser/static-export-check.js <base url> <routes.tsx>` loads every literal route of the app in a real browser (Edge), through the Go proxy in front of `compare/browser/staticsrv.js`. It checks hydration, console errors, failed requests and client-side navigation. `staticsrv.js` is a reference implementation of the rules above and a test tool; the real server is S2's.
+`core/react_ui_backend/browser/static-export-check.js <base url> <routes.tsx>` loads every literal route of the app in a real browser (Edge), through the Go proxy in front of `compare/browser/staticsrv.js`. It checks hydration, console errors, failed requests and client-side navigation. `staticsrv.js` is a reference implementation of the rules above and a test tool; the real server is S2's.

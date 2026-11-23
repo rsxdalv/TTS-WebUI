@@ -230,39 +230,29 @@ func TestChildArgsAndEnv(t *testing.T) {
 	if err := s.Start(ctx()); err != nil {
 		t.Fatal(err)
 	}
-	g, r := readDump(t, e.dump, "gradio"), readDump(t, e.dump, "react")
+	g := readDump(t, e.dump, "gradio")
 
 	if got, want := strings.Join(g.Args, " "), "python server_core.py --no-react --share --docker --no-tree-proxy"; got != want {
 		t.Errorf("gradio args = %q, want %q", got, want)
 	}
-	wantReact := []string{"npm", "--prefix", filepath.Join(e.root.Dir(), "react-ui"), "start", "--", "-p", strconv.Itoa(e.reactPort)}
-	if strings.Join(r.Args, "\x00") != strings.Join(wantReact, "\x00") {
-		t.Errorf("react args = %v, want %v", r.Args, wantReact)
-	}
-
-	wantBackend := fmt.Sprintf("http://127.0.0.1:%d/", e.gradioPort)
-	if r.Env["REACT_UI_PORT"] != strconv.Itoa(e.reactPort) || r.Env["GRADIO_BACKEND_AUTOMATIC"] != wantBackend {
-		t.Errorf("react env: REACT_UI_PORT=%q GRADIO_BACKEND_AUTOMATIC=%q", r.Env["REACT_UI_PORT"], r.Env["GRADIO_BACKEND_AUTOMATIC"])
+	// The React UI is served in-process by the Go front: no child runs for it.
+	if _, err := os.Stat(filepath.Join(e.dump, "react.json")); err == nil {
+		t.Errorf("a React child process ran")
 	}
 	if g.Env["REACT_UI_PORT"] != strconv.Itoa(e.reactPort) {
 		t.Errorf("gradio REACT_UI_PORT = %q", g.Env["REACT_UI_PORT"])
 	}
-	for name, d := range map[string]dumpT{"gradio": g, "react": r} {
-		if _, ok := d.Env["TTS_EXTENSION_MANAGER_PORT"]; ok {
-			t.Errorf("%s still gets TTS_EXTENSION_MANAGER_PORT", name)
-		}
-		if d.Env["TEST_EXTRA"] != "yes" {
-			t.Errorf("%s lost ExtraEnv", name)
-		}
-		if want := filepath.Join(e.root.InstallerFiles(), "mamba"); d.Env["MAMBA_ROOT_PREFIX"] != want {
-			t.Errorf("%s MAMBA_ROOT_PREFIX = %q, want %q", name, d.Env["MAMBA_ROOT_PREFIX"], want)
-		}
+	if _, ok := g.Env["TTS_EXTENSION_MANAGER_PORT"]; ok {
+		t.Errorf("gradio still gets TTS_EXTENSION_MANAGER_PORT")
+	}
+	if g.Env["TEST_EXTRA"] != "yes" {
+		t.Errorf("gradio lost ExtraEnv")
+	}
+	if want := filepath.Join(e.root.InstallerFiles(), "mamba"); g.Env["MAMBA_ROOT_PREFIX"] != want {
+		t.Errorf("gradio MAMBA_ROOT_PREFIX = %q, want %q", g.Env["MAMBA_ROOT_PREFIX"], want)
 	}
 	if g.Env["TTS_CORE_TOKEN"] != "secret" || g.Env["TTS_GRADIO_PORT"] != "1234" {
 		t.Errorf("gradio lacks GradioEnv: %v", g.Env["TTS_CORE_TOKEN"])
-	}
-	if _, ok := r.Env["TTS_CORE_TOKEN"]; ok {
-		t.Errorf("react received the gradio-only secret")
 	}
 }
 
@@ -402,30 +392,53 @@ func (failRunner) Start(context.Context, string, []string, string, []string) err
 	return errors.New("boom")
 }
 
-func TestPartialStartFailureStopsEverything(t *testing.T) {
-	s, _ := newSup(t, nil)
+func TestStartFailureClosesTheReactFront(t *testing.T) {
+	s, e := newSup(t, nil)
 	n := 0
 	s.newRunner = func() runner {
 		n++
-		switch n {
-		case 1:
-			return pidProc{&procs.Proc{}}
-		case 2:
+		if n == 1 {
 			return failRunner{}
 		}
-		t.Error("third child must not be started")
+		t.Error("a second child must not be started")
 		return &procs.Proc{}
 	}
 	err := s.Start(ctx())
-	if err == nil || !strings.Contains(err.Error(), "starting react-ui") {
+	if err == nil || !strings.Contains(err.Error(), "starting gradio") {
 		t.Fatalf("Start error = %v", err)
 	}
-	g := status(s, NameGradio)
-	if g.Running || g.State != StateStopped {
-		t.Errorf("gradio after partial failure: %+v", g)
+	if g := status(s, NameGradio); g.State != StateFailed || g.Error != "boom" {
+		t.Errorf("gradio: %+v", g)
 	}
-	if r := status(s, NameReact); r.State != StateFailed || r.Error != "boom" {
-		t.Errorf("react: %+v", r)
+	// The Go front was started before the children; a failed start closes it.
+	addr := fmt.Sprintf("127.0.0.1:%d", e.reactPort)
+	waitFor(t, "react port closed", func() bool {
+		c, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+		if err != nil {
+			return true
+		}
+		_ = c.Close()
+		return false
+	})
+}
+
+func TestReactIsServedByTheGoFront(t *testing.T) {
+	s, e := newSup(t, nil)
+	if err := s.Start(ctx()); err != nil {
+		t.Fatal(err)
+	}
+	waitState(t, s, NameReact, StateReady)
+	if st := status(s, NameReact); !st.Running || st.PID != 0 {
+		t.Errorf("react status %+v: want running with no process id", st)
+	}
+	s.Stop()
+	if st := status(s, NameReact); st.Running {
+		t.Errorf("react still running after Stop: %+v", st)
+	}
+	addr := fmt.Sprintf("127.0.0.1:%d", e.reactPort)
+	if c, err := net.DialTimeout("tcp", addr, 200*time.Millisecond); err == nil {
+		_ = c.Close()
+		t.Error("the React port still accepts connections after Stop")
 	}
 }
 

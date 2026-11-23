@@ -16,9 +16,7 @@ import (
 // guardFront starts a proxy handler with fake interface addresses.
 func guardFront(t *testing.T, lan bool, allowed []string, ips ...string) (string, *handler) {
 	t.Helper()
-	next := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-	t.Cleanup(next.Close)
-	hh, err := NewHandler(Config{Root: t.TempDir(), Port: testPort, NextAddr: strings.TrimPrefix(next.URL, "http://"),
+	hh, err := NewHandler(Config{Root: exportFixture(t), Port: testPort,
 		Routes: routes(t, ""), LAN: lan, AllowedHosts: allowed})
 	if err != nil {
 		t.Fatal(err)
@@ -36,6 +34,13 @@ func guardFront(t *testing.T, lan bool, allowed []string, ips ...string) (string
 	front := httptest.NewServer(h)
 	t.Cleanup(front.Close)
 	return front.URL, h
+}
+
+// guardStatus reports whether got is the status a guard test wants. A request
+// that passes the guards on an /api path no claim answers reaches the static
+// export, which answers 404 there, so 404 stands for "passed" (200).
+func guardStatus(got, want int, path string) bool {
+	return got == want || (want == 200 && got == 404 && strings.HasPrefix(path, "/api/"))
 }
 
 var lanIPs = []string{"127.0.0.1", "::1", "192.168.1.66", "fe80::1c2d", "2001:db8::5"}
@@ -119,7 +124,7 @@ func TestOriginGuardLANMode(t *testing.T) {
 	}
 	for _, c := range cases {
 		headers := map[string]string{"Host": lanHost["Host"], "Origin": c.origin}
-		if got := request(t, c.method, front+c.path, nil, headers).StatusCode; got != c.want {
+		if got := request(t, c.method, front+c.path, nil, headers).StatusCode; !guardStatus(got, c.want, c.path) {
 			t.Errorf("%s %s Origin %q: %d, want %d", c.method, c.path, c.origin, got, c.want)
 		}
 	}
@@ -163,10 +168,8 @@ func TestLANAddressesAreReread(t *testing.T) {
 }
 
 func TestLANServerListensOnAllInterfaces(t *testing.T) {
-	next := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = io.WriteString(w, "ok") }))
-	defer next.Close()
 	port := freeTestPort(t)
-	s, err := Start(Config{Root: t.TempDir(), Port: port, NextAddr: strings.TrimPrefix(next.URL, "http://"), Routes: routes(t, ""), LAN: true})
+	s, err := Start(Config{Root: exportFixture(t), Port: port, Routes: routes(t, ""), LAN: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +186,7 @@ func TestLANServerListensOnAllInterfaces(t *testing.T) {
 	}
 	body, _ := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
-	if string(body) != "ok" {
+	if string(body) != exportIndex {
 		t.Fatalf("body %q", body)
 	}
 	s.Close()

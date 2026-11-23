@@ -1,9 +1,5 @@
-import { sql } from "../lib/sql";
-
-export default function DB({ generations = [] }: { generations?: any[] }) {
-  // generations = await sql`
-  // SELECT (1, 2, 3)
-  //   `;
+export default function DB() {
+  const generations: any[] = [];
 
   return (
     <div>
@@ -13,38 +9,3 @@ export default function DB({ generations = [] }: { generations?: any[] }) {
     </div>
   );
 }
-
-export const getStaticProps = async () => {
-  //   const generations = [];
-  // SELECT * FROM generations
-  return {
-    props: {
-      generations: [],
-    },
-  };
-  try {
-    const generations = await sql`
-    SELECT * FROM generations
-      `;
-    return {
-      props: {
-        generations: generations,
-      },
-    };
-  } catch (error) {
-    console.error(error);
-    return {
-      props: {
-        generations: [],
-      },
-    };
-  }
-  const generations = await sql`
-  SELECT (1, 2, 3)
-    `;
-  return {
-    props: {
-      generations: generations,
-    },
-  };
-};

@@ -51,7 +51,7 @@ RUN pip install "tts-webui-extension.styletts2>=0.1.0" --extra-index-url https:/
 
 # SQLite is included with Python, no additional setup needed
 # Build the React UI
-RUN cd react-ui && npm install && npm run build
+RUN cd react-ui && npm install && npm run build:static
 
 # The launcher starts the app on 0.0.0.0:7770 with the image's own Python and Node
 COPY --from=launcher /out/tts-webui /usr/local/bin/tts-webui

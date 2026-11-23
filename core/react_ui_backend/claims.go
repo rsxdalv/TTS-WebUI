@@ -1,6 +1,7 @@
-// Package react_ui_backend is the Go server in front of Next.js on port 3000.
-// It forwards everything to Next except the routes claimed by the files in this
-// package. See documentation/core-rewrite/CONTRACTS.md, sections 4 to 7.
+// Package react_ui_backend is the Go server for the React UI on port 3000. It
+// serves the static export (react-ui/out, built by Vite) and answers the API
+// routes claimed by the files in this package. See
+// documentation/core-rewrite/CONTRACTS.md, sections 4 to 7 and 10.
 package react_ui_backend
 
 import (
@@ -18,15 +19,14 @@ import (
 type Deps struct {
 	// Root is the absolute install root.
 	Root string
-	// GradioBackend is the Gradio address, resolved the way Next resolves it.
+	// GradioBackend is the Gradio address: the process environment, then the
+	// react-ui env files.
 	GradioBackend string
 	// GradioAuth is user:password for Gradio, or empty.
 	GradioAuth string
-	// Next forwards a request to Next.js.
-	Next http.Handler
 }
 
-// Claim is a route answered by Go instead of Next.
+// Claim is an API route answered by Go.
 type Claim struct {
 	// Switch is the name used in TTS_GO_ROUTES.
 	Switch string
@@ -79,13 +79,12 @@ func claimNames() []string {
 }
 
 // newDeps resolves the settings claimed routes share.
-func newDeps(root string, next http.Handler) Deps {
-	lookup := nextEnvLookup(root)
+func newDeps(root string) Deps {
+	lookup := envLookup(root)
 	return Deps{
 		Root:          root,
 		GradioBackend: gradioBackend(lookup),
 		GradioAuth:    lookup("GRADIO_AUTH"),
-		Next:          next,
 	}
 }
 
@@ -99,9 +98,10 @@ func gradioBackend(lookup func(string) string) string {
 	return "http://127.0.0.1:7770/"
 }
 
-// nextEnvLookup reads variables the way `next start` does: the process
-// environment wins, then the react-ui env files in Next's production order.
-func nextEnvLookup(root string) func(string) string {
+// envLookup reads a setting from the process environment first, then from the
+// react-ui env files (an install from the Next.js days may still have them), in
+// this order: .env.production.local, .env.local, .env.production, .env.
+func envLookup(root string) func(string) string {
 	files := []string{".env.production.local", ".env.local", ".env.production", ".env"}
 	values := map[string]string{}
 	for _, name := range files {

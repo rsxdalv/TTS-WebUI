@@ -3,7 +3,7 @@ import useLocalStorage, {
   readLocalStorage,
   updateLocalStorageWithFunction,
 } from "../hooks/useLocalStorage";
-import router from "next/router";
+import router from "@/shims/router";
 import { RVCResult } from "./RVCResult";
 import { applyRVC } from "../functions/applyRVC";
 import { parseFormChange } from "../data/parseFormChange";

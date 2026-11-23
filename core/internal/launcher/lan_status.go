@@ -24,7 +24,7 @@ type lanStatus struct {
 func (l *Launcher) handleAppLAN() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var st lanStatus
-		if sw, err := switches.Parse(os.LookupEnv); err == nil && sw.Proxy && sw.ProxyLAN {
+		if sw, err := switches.Parse(os.LookupEnv); err == nil && sw.ProxyLAN {
 			st = lanStatus{
 				LAN:     true,
 				Warning: react_ui_backend.LANWarning(react_ui_backend.PublicPort),

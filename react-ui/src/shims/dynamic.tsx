@@ -1,5 +1,5 @@
 /**
- * A `next/dynamic` compatible shim on top of `React.lazy`.
+ * A `dynamic` loader on top of `React.lazy`.
  *
  * The only call site (src/pages/extensions/[name].tsx) loads an extension
  * component by name with `ssr: false`. React.lazy does the same: the

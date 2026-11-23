@@ -6,7 +6,7 @@ import { favorite } from "../functions/favorite";
 import { Seeded } from "../types/Seeded";
 import { GradioFile } from "../types/GradioFile";
 import { LocalCacheFile } from "../types/LocalCacheFile";
-import router from "next/router";
+import router from "@/shims/router";
 import { MetadataHeaders } from "../types/MetadataHeaders";
 import { generateWithChatterbox } from "../functions/generateWithChatterbox";
 

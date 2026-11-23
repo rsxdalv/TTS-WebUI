@@ -10,11 +10,7 @@ import { AppRoutes } from "./routes";
 import { NavigatorRegistration } from "./shims/NavigatorRegistration";
 
 /**
- * The Vite entry point.
- *
- * The pages are the same files Next uses (src/pages), so the two builds show
- * the same UI. Next keeps its own entry (_app.tsx / _document.tsx); this
- * file replaces them for the Vite build.
+ * The entry point: the router around the pages listed in src/routes.tsx.
  */
 const App = () => (
   <CacheProvider value={cache}>
@@ -28,14 +24,13 @@ const App = () => (
   </CacheProvider>
 );
 
-const container = document.getElementById("__next");
+const container = document.getElementById("root");
 if (!container) {
-  throw new Error("The #__next element is missing from index.html");
+  throw new Error("The #root element is missing from index.html");
 }
 
-// The title of the page comes from its <Head> (see src/shims/next-head.tsx).
-// A page without one has no title, like in Next, so the title of index.html
-// is cleared here.
+// The title of the page comes from its <Head> (see src/shims/head.tsx).
+// A page without one has no title, so the title of index.html is cleared here.
 document.title = "";
 
 ReactDOM.createRoot(container).render(

@@ -1,5 +1,5 @@
-// Loads every page of a static export in a real browser (Edge), through the Go
-// proxy in front of staticsrv.js, and reports hydration, console errors, failed
+// Loads every page of a static export in a real browser (Edge), served by the
+// Go server (cmd/gosrv, or the app itself), and reports hydration, console errors, failed
 // requests and client-side navigation. `node static-export-check.js <base url>
 // <routes.tsx> [<extension name>] [-gradio]`. The pages are the literal routes
 // of the app in routes.tsx. Exit code 1 if anything is wrong.
@@ -51,7 +51,7 @@ const hydrated = () => [...document.querySelectorAll("*")].some((e) => Object.ke
   // The sidebar links render after the first lazy chunks load, so wait for them.
   for (let i = 0; i < 40 && !(await p.evaluate(() => document.querySelector("a[href^='/']"))); i++) await p.waitForTimeout(250);
   await p.evaluate(() => { window.__marker = 1; });
-  const hrefs = await p.evaluate(() => [...new Set([...document.querySelectorAll("a[href^='/']")].map((a) => a.getAttribute("href")))].filter((h) => h !== "/" && !h.startsWith("/api") && !h.startsWith("/_next")));
+  const hrefs = await p.evaluate(() => [...new Set([...document.querySelectorAll("a[href^='/']")].map((a) => a.getAttribute("href")))].filter((h) => h !== "/" && !h.startsWith("/api")));
   let nav = 0;
   for (const h of hrefs.slice(0, 12)) {
     await p.evaluate((h) => { const a = [...document.querySelectorAll("a")].find((x) => x.getAttribute("href") === h); a && a.click(); }, h);

@@ -109,7 +109,7 @@ pip install -r requirements.txt
 Build the React app:
 
 ```bash
-cd react-ui && npm install && npm run build
+cd react-ui && npm install && npm run build:static
 ```
 
 ### 4. (Optional) Database Setup
@@ -166,7 +166,7 @@ To update the installation, navigate to the project directory and run:
 ```bash
 git pull
 pip install -r requirements.txt
-cd react-ui && npm install && npm run build
+cd react-ui && npm install && npm run build:static
 ```
 
 # Development Setup
@@ -184,10 +184,10 @@ If you want to work on the React UI:
    npm install
    ```
 
-3. For development, run React in development mode:
+3. For development, run the Vite dev server (port 3002). It sends `/api` requests to the app on port 3000, so start the app with the launcher first (step 4):
 
    ```bash
-   npm start
+   npm run dev
    ```
 
 4. In a separate terminal, run the app through the launcher:

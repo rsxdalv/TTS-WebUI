@@ -1,12 +1,12 @@
 /**
- * A `next/head` compatible shim.
+ * A `Head` component that sets the page title and meta tags.
  *
- * Next collects the `<title>` and `<meta>` of every `<Head>` on the page and
+ * The `<title>` and `<meta>` of every `<Head>` on the page and
  * puts them in the document head. This shim does the same: the children are
  * read for a title and for meta elements, and they are applied to
  * `document.head` while the component is mounted.
  *
- * Next keeps the title of the page that is on screen, so the title of a page
+ * The title of the page that is on screen, so the title of a page
  * that is left is replaced by the title of the page that comes, and a page
  * without a title has none.
  */

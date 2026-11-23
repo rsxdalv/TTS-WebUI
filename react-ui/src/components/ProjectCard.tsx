@@ -1,5 +1,5 @@
 import React from "react";
-import Link from "next/link";
+import Link from "@/shims/link";
 import { ExternalLinkIcon, SendHorizonalIcon } from "lucide-react";
 
 export const ProjectCard = ({

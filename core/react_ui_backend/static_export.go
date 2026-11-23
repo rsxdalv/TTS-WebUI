@@ -70,7 +70,7 @@ func (s *staticExport) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Rule 4's trailing slash: redirect as Next does. The path is clean, so
+	// Rule 4's trailing slash: redirect. The path is clean, so
 	// the target is always a local path.
 	if len(p) > 1 && strings.HasSuffix(p, "/") {
 		target := strings.TrimRight(p, "/")
@@ -187,8 +187,8 @@ func (s *staticExport) notFound(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
-// page sends the app's HTML page as `next start` did: a strong ETag, 304 for a
-// matching If-None-Match, and compression from 1 KB up.
+// page sends the app's HTML page with a strong ETag, 304 for a matching
+// If-None-Match, and compression from 1 KB up.
 func (s *staticExport) page(w http.ResponseWriter, r *http.Request, file string, status int) {
 	data, err := os.ReadFile(file)
 	if err != nil {

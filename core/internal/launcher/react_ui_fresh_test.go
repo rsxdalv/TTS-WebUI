@@ -7,24 +7,24 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/switches"
 )
 
-// commitFixture writes an export and a server build that record commits.
-func commitFixture(t *testing.T, exportCommit, serverCommit string) paths.Root {
+// commitFixture writes an export that records the commit it was built from.
+func commitFixture(t *testing.T, exportCommit string) paths.Root {
 	t.Helper()
 	dir := t.TempDir()
-	touch(t, dir, "out/index.html", ".next/BUILD_ID", ".next/prerender-manifest.json")
-	write := func(name, content string) {
-		if err := os.WriteFile(filepath.Join(dir, "react-ui", filepath.FromSlash(name)), []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
+	touch(t, dir, "out/index.html")
+	buildable(t, dir)
+	body := `{"buildId":"x"}`
+	if exportCommit != "" {
+		body = `{"buildId":"x","commit":"` + exportCommit + `"}`
 	}
-	write("out/_tts-export.json", `{"buildId":"x","commit":"`+exportCommit+`"}`)
-	write(".next/tts-build.json", `{"commit":"`+serverCommit+`"}`)
+	if err := os.WriteFile(filepath.Join(dir, "react-ui", "out", "_tts-export.json"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	root, err := paths.New(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -41,116 +41,89 @@ func withHead(t *testing.T, head string) {
 
 func TestFreshnessByCommit(t *testing.T) {
 	cases := []struct {
-		name                     string
-		export, server, head     string
-		exportStale, serverStale bool
+		name          string
+		export, head  string
+		exportIsStale bool
 	}{
-		{"both from HEAD", "aaa", "aaa", "aaa", false, false},
-		{"script Update rebuilt only the server build", "old", "aaa", "aaa", true, false},
-		{"Go Update rebuilt only the export", "aaa", "old", "aaa", false, true},
-		// Without HEAD the commits cannot be compared, so the file times decide:
-		// the fixture's export marker is newer than BUILD_ID.
-		{"HEAD unknown: file times decide", "old", "aaa", "", false, true},
+		{"built from HEAD", "aaa", "aaa", false},
+		{"built from another commit", "old", "aaa", true},
+		{"HEAD unknown: cannot tell", "old", "", false},
+		{"export recorded no commit: cannot tell", "", "aaa", false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			withHead(t, c.head)
-			root := commitFixture(t, c.export, c.server)
-			if got := exportStale(root); got != c.exportStale {
-				t.Errorf("exportStale = %v, want %v", got, c.exportStale)
-			}
-			if got := serverBuildStale(root); got != c.serverStale {
-				t.Errorf("serverBuildStale = %v, want %v", got, c.serverStale)
+			if got := exportStale(commitFixture(t, c.export)); got != c.exportIsStale {
+				t.Errorf("exportStale = %v, want %v", got, c.exportIsStale)
 			}
 		})
 	}
 }
 
-func TestRebuildingOneBuildKeepsTheOtherFresh(t *testing.T) {
+func TestNoExportIsNotStale(t *testing.T) {
 	withHead(t, "aaa")
-	root := commitFixture(t, "aaa", "aaa")
-	// Make the server build much newer than the export, as a later rebuild
-	// of it would: with commits recorded, the export must stay fresh.
-	now := time.Now()
-	_ = os.Chtimes(filepath.Join(root.Dir(), "react-ui", ".next", "BUILD_ID"), now, now)
-	if exportStale(root) || serverBuildStale(root) {
-		t.Fatal("a newer build of the same commit made the other one stale")
+	root, _ := paths.New(t.TempDir())
+	if exportStale(root) {
+		t.Fatal("a missing export counts as stale")
 	}
 }
 
-func TestStaleExportWithoutRecordIsOlderThanServerBuild(t *testing.T) {
-	withHead(t, "")
-	root := staleFixture(t, time.Hour, 2*time.Hour) // export older
-	if !exportStale(root) {
-		t.Fatal("an export older than the server build, with no commit, must count as stale")
+func TestStaleExportIsPlannedForRebuild(t *testing.T) {
+	withHead(t, "new")
+	plan, err := planReactUI(commitFixture(t, "old"), modeSwitches(t, nil))
+	if err != nil || !plan.rebuildExport || plan.buildExport {
+		t.Fatalf("plan %+v, err %v", plan, err)
 	}
-	plan, err := planReactUI(root, modeSwitches(t, map[string]string{}))
-	if err != nil || plan.mode != modeStatic || !plan.rebuildExport {
+	plan, err = planReactUI(commitFixture(t, "new"), modeSwitches(t, nil))
+	if err != nil || plan != (reactUIPlan{}) {
 		t.Fatalf("plan %+v, err %v", plan, err)
 	}
 }
 
 func TestStaleExportIsRebuiltOrRefused(t *testing.T) {
-	sw := modeSwitches(t, map[string]string{})
+	sw := modeSwitches(t, nil)
 	withHead(t, "new")
 
 	t.Run("failed export build starts nothing", func(t *testing.T) {
-		s := newReactPrep(commitFixture(t, "old", "new"), false)
+		s := newReactPrep(commitFixture(t, "old"), false)
 		s.runTool = func(_ context.Context, name string, args ...string) error {
 			if strings.Join(args, " ") != "run build:static" {
 				t.Fatalf("ran %s %v", name, args)
 			}
 			return errors.New("exit code 1")
 		}
-		if _, err := s.prepareReactUI(context.Background(), sw); err == nil || !strings.Contains(err.Error(), "not started") {
+		if err := s.prepareReactUI(context.Background(), sw); err == nil || !strings.Contains(err.Error(), "not started") {
 			t.Fatalf("err = %v", err)
 		}
 	})
 
 	t.Run("export build that leaves it stale is refused", func(t *testing.T) {
-		s := newReactPrep(commitFixture(t, "old", "new"), false)
+		s := newReactPrep(commitFixture(t, "old"), false)
 		s.runTool = func(context.Context, string, ...string) error { return nil }
-		if _, err := s.prepareReactUI(context.Background(), sw); err == nil || !strings.Contains(err.Error(), "still missing or stale") {
+		if err := s.prepareReactUI(context.Background(), sw); err == nil || !strings.Contains(err.Error(), "still missing or stale") {
 			t.Fatalf("err = %v", err)
 		}
 	})
 
 	t.Run("successful export build", func(t *testing.T) {
-		root := commitFixture(t, "old", "new")
+		root := commitFixture(t, "old")
 		s := newReactPrep(root, false)
 		s.runTool = func(context.Context, string, ...string) error {
 			return os.WriteFile(filepath.Join(root.Dir(), "react-ui", "out", "_tts-export.json"), []byte(`{"commit":"new"}`), 0o644)
 		}
-		plan, err := s.prepareReactUI(context.Background(), sw)
-		if err != nil || plan.mode != modeStatic {
-			t.Fatalf("plan %+v, err %v", plan, err)
+		if err := s.prepareReactUI(context.Background(), sw); err != nil {
+			t.Fatal(err)
 		}
 	})
 }
 
-func TestBuildStaticScriptDetection(t *testing.T) {
-	dir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(dir, "react-ui"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	root, _ := paths.New(dir)
-	pkg := filepath.Join(dir, "react-ui", "package.json")
-	_ = os.WriteFile(pkg, []byte(`{"scripts":{"build":"next build"}}`), 0o644)
-	if hasBuildStaticScript(root) {
-		t.Fatal("a tree without build:static reported one")
-	}
-	_ = os.WriteFile(pkg, []byte(`{"scripts":{"build":"next build","build:static":"node build-static.js"}}`), 0o644)
-	if !hasBuildStaticScript(root) {
-		t.Fatal("build:static not found")
-	}
-}
-
 func TestBadRoutesFailBeforeAnyBuild(t *testing.T) {
 	t.Setenv(switches.EnvRoutes, "uplod")
-	// The stale fixture would build the React UI with the real tools (which
-	// fail here with another error), so an error naming the value proves the
-	// check ran first.
-	cfg := superviseConfig(staleFixture(t, 2*time.Hour, time.Hour), options{})
+	// A stale export would build the React UI with the real tools (which fail
+	// here with another error), so an error naming the value proves the check
+	// ran first.
+	withHead(t, "new")
+	cfg := superviseConfig(commitFixture(t, "old"), options{})
 	_, err := cfg.Prepare(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "uplod") {
 		t.Fatalf("err = %v", err)

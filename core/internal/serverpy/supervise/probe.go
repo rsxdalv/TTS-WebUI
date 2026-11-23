@@ -51,18 +51,5 @@ func httpProbe(ctx context.Context, port int) bool {
 	return resp.StatusCode < 500
 }
 
-// freePort asks the OS for a free TCP port.
-func freePort() (int, error) {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return 0, err
-	}
-	port := l.Addr().(*net.TCPAddr).Port
-	_ = l.Close()
-	// Brief pause so the OS can reclaim the port before the child claims it.
-	time.Sleep(10 * time.Millisecond)
-	return port, nil
-}
-
 // publicURL is the URL of the user-facing Gradio entry.
 func publicURL(port int) string { return fmt.Sprintf("http://127.0.0.1:%d", port) }

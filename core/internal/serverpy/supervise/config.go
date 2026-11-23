@@ -35,7 +35,7 @@ type Config struct {
 	// tree's port today). It is used for readiness, AppLink, the browser URL
 	// and the GRADIO_BACKEND_AUTOMATIC value handed to React. 0 = 7770.
 	PublicPort int
-	// ReactPort is the port `next start` gets via -p. 0 = 3000.
+	// ReactPort is the port the Go front serves the React UI on. 0 = 3000.
 	ReactPort int
 
 	// GradioEntry is the Python script run for Gradio, relative to Root.

@@ -4,7 +4,7 @@ import { setNavigator } from "./navigation-bridge";
 
 /**
  * Registers the navigate function of react-router in the bridge, so the
- * modules that navigate outside a component (the `next/router` default
+ * modules that navigate outside a component (the default export of src/shims/router.tsx
  * export) use the same router as the components do.
  */
 export const NavigatorRegistration = () => {

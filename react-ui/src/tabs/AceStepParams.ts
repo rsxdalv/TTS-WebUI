@@ -5,7 +5,7 @@ import { useSeedHelper } from "../functions/results/useSeedHelper";
 import { favorite } from "../functions/favorite";
 import { Seeded } from "../types/Seeded";
 import { GradioFile } from "../types/GradioFile";
-import router from "next/router";
+import router from "@/shims/router";
 
 export const aceStepId = "aceStepParams.v1";
 

@@ -149,7 +149,7 @@ Prerequisites:
    ```bash
    cd react-ui
    npm install
-   npm run build
+   npm run build:static
    cd ..
    ./tts-webui launch --system-python --start
    ```

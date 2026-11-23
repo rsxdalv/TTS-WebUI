@@ -1,8 +1,9 @@
 // Package switches reads the environment variables that turn on the Go ports.
 //
-// After the cutover the proxy and every route claim (D18) and the Go installer
-// steps (D19) are on by default. TTS_GO_PROXY=0, TTS_GO_ROUTES=none and
-// TTS_GO_STEPS=none turn them off. See
+// Every route claim (D18) and the Go installer steps (D19) are on by default.
+// TTS_GO_ROUTES=none and TTS_GO_STEPS=none turn them off. The Go front on the
+// React port is always on: TTS_GO_PROXY=0 used to hand the port to Next.js, which
+// was removed, so it is now an error. See
 // documentation/core-rewrite/CONTRACTS.md, section "Switches".
 package switches
 
@@ -33,10 +34,8 @@ var nameRE = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
 // Set is one parsed reading of the switches.
 type Set struct {
-	// Proxy is true when Go listens on port 3000 in front of Next.
-	Proxy bool
-	// ProxyLAN is true when the proxy listens on every interface, not only
-	// loopback. Next and Gradio stay on loopback either way.
+	// ProxyLAN is true when the Go front listens on every interface, not only
+	// loopback. Gradio stays on loopback either way.
 	ProxyLAN bool
 	// ProxyAllowedHosts are extra host names (lower case, no port) the proxy
 	// accepts in LAN mode, such as a machine name or a DNS name.
@@ -54,15 +53,15 @@ func FromEnv() (Set, error) { return Parse(os.LookupEnv) }
 // Parse parses the switches using lookup. Unknown values are errors: a mistyped
 // switch must not silently run the other code path.
 func Parse(lookup func(string) (string, bool)) (Set, error) {
-	s := Set{Proxy: true} // D18: the proxy is on unless TTS_GO_PROXY=0
+	var s Set
 
 	if v, ok := lookup(EnvProxy); ok {
 		switch strings.TrimSpace(v) {
 		case "", "1":
 		case "0":
-			s.Proxy = false
+			return Set{}, fmt.Errorf("%s=0 is no longer supported: Next.js was removed, so the Go front always serves the React port; unset %s", EnvProxy, EnvProxy)
 		default:
-			return Set{}, fmt.Errorf("%s must be 0 or 1, got %q", EnvProxy, v)
+			return Set{}, fmt.Errorf("%s must be 1 (or unset), got %q", EnvProxy, v)
 		}
 	}
 
@@ -72,14 +71,12 @@ func Parse(lookup func(string) (string, bool)) (Set, error) {
 		routesGiven = true
 	}
 	if v, _ := lookup(EnvRoutes); strings.TrimSpace(v) == none {
-		// An explicit "none": no claim is on. Allowed with the proxy off.
+		// An explicit "none": no claim is on.
 	} else if s.routes, s.allRoutes, err = parseList(lookup, EnvRoutes); err != nil {
 		return Set{}, err
 	} else if s.routes[none] {
 		return Set{}, fmt.Errorf("%s: invalid name %q: none cannot be combined with other names", EnvRoutes, none)
-	} else if routesGiven && !s.Proxy {
-		return Set{}, fmt.Errorf("%s needs the proxy: unset %s or set it to 1", EnvRoutes, EnvProxy)
-	} else if !routesGiven && s.Proxy {
+	} else if !routesGiven {
 		s.allRoutes = true // D18: every claim is on unless TTS_GO_ROUTES says otherwise
 	}
 	if s.steps, s.allSteps, err = parseSteps(lookup); err != nil {
@@ -110,10 +107,6 @@ func Parse(lookup func(string) (string, bool)) (Set, error) {
 			return Set{}, fmt.Errorf("%s needs %s=lan", EnvProxyAllowedHosts, EnvProxyListen)
 		}
 	}
-	if s.ProxyLAN && !s.Proxy {
-		return Set{}, fmt.Errorf("%s=lan needs the proxy (unset %s or set it to 1): only the proxy can listen on the network", EnvProxyListen, EnvProxy)
-	}
-
 	return s, nil
 }
 

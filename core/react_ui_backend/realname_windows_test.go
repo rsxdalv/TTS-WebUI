@@ -47,7 +47,7 @@ func TestDotfilesStayHiddenBehind83Names(t *testing.T) {
 		t.Skip("this volume keeps no 8.3 names")
 	}
 
-	h, err := NewHandler(Config{Root: root, Port: testPort, Static: true, Routes: routes(t, "webui-generations")})
+	h, err := NewHandler(Config{Root: root, Port: testPort, Routes: routes(t, "webui-generations")})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -117,7 +117,7 @@ func newFlow(t *testing.T) (*Step, *flowRunner, *flowLog) {
 	}
 	writeFile(t, root, "installer_scripts/versions.json", `{"version":"1.0.0","pip_packages":"1.2.0","npm_packages":4,"react_ui":4}`)
 	writeFile(t, root, "installer_scripts/.gpu", "NVIDIA GPU")
-	writeFile(t, root, "react-ui/package.json", `{"scripts":{"build":"next build","build:static":"node build-static.js","start":"next start"}}`)
+	writeFile(t, root, "react-ui/package.json", `{"scripts":{"build:static":"node build-static.js","dev":"vite"}}`)
 	r := &flowRunner{root: root, handlers: map[string]func(context.Context, Command) (Result, error){}}
 	log := &flowLog{}
 	return &Step{Root: root, Run: r, Log: log.add}, r, log
@@ -609,7 +609,7 @@ func TestJSString(t *testing.T) {
 	}
 }
 
-// The Go steps build the static export, never the Next server build, and only
+// The Go steps build the static export (the only react-ui build), and only
 // when the original would build: on install and on an update with a new commit,
 // not when .git_version already matches.
 func TestInitAppJSBuildsTheStaticExportOnlyWhenTheOriginalBuilds(t *testing.T) {
@@ -620,7 +620,7 @@ func TestInitAppJSBuildsTheStaticExportOnlyWhenTheOriginalBuilds(t *testing.T) {
 	if code := run(t, s); code != 0 {
 		t.Fatalf("exit %d", code)
 	}
-	if !r.ran("cd react-ui && npm run build:static") || r.ran("cd react-ui && npm run build") {
+	if !r.ran("cd react-ui && npm run build:static") {
 		t.Fatalf("update with a new commit: commands %q", r.foreground())
 	}
 
@@ -632,35 +632,6 @@ func TestInitAppJSBuildsTheStaticExportOnlyWhenTheOriginalBuilds(t *testing.T) {
 	for _, c := range r.foreground() {
 		if strings.Contains(c, "npm") {
 			t.Fatalf("no update, but %q ran", c)
-		}
-	}
-}
-
-// A tree from before S1 (main's react-ui/package.json has no build:static, and
-// the launcher's Download installs main) gets the server build, with one line
-// saying why. Without this a fresh Go install failed at the react-ui build.
-func TestInitAppJSTreeWithoutStaticExportBuildsTheServerBuild(t *testing.T) {
-	for name, pkg := range map[string]string{
-		"main package.json": `{"scripts":{"build":"next build","start":"next start"}}`,
-		"no package.json":   "",
-	} {
-		s, r, log := newFlow(t)
-		path := filepath.Join(s.Root, "react-ui", "package.json")
-		if pkg == "" {
-			if err := os.Remove(path); err != nil {
-				t.Fatal(err)
-			}
-		} else {
-			writeFile(t, s.Root, "react-ui/package.json", pkg)
-		}
-		if code := run(t, s); code != 0 {
-			t.Fatalf("%s: exit %d", name, code)
-		}
-		if !r.ran("cd react-ui && npm run build") || r.ran("cd react-ui && npm run build:static") {
-			t.Errorf("%s: commands %q", name, r.foreground())
-		}
-		if !log.has("react-ui has no build:static script (this tree predates the static export), so building the server build") {
-			t.Errorf("%s: log %q", name, log.lines)
 		}
 	}
 }

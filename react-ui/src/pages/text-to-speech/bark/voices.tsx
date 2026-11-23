@@ -1,7 +1,6 @@
-import { Inter } from "next/font/google";
+import { Inter } from "@/shims/font";
 import React from "react";
 
-import { getNpzDataSimpleVoices } from "../../../data/getVoicesData";
 import { Template } from "../../../components/Template";
 import { CardVoiceNpz } from "../../../components/CardBig";
 import { NPZ } from "../../../types/NPZ";
@@ -9,24 +8,16 @@ import { useGoData } from "../../../data/useGoData";
 
 export const inter = Inter({ subsets: ["latin"] });
 
-interface Props {
-  // The server build passes the data (getStaticProps); the browser build gets
-  // it from the API, so the props are optional.
-  outputs?: NPZ[];
-}
-
-// The browser build has no props: the data comes from the API. The empty
-// list must be the same array every time, or the effect of useGoData would
-// run on every render.
+// The empty list must be the same array every time, or the effect of
+// useGoData would run on every render.
 const NO_OUTPUTS: NPZ[] = [];
 
-export default function Voices({ outputs: staticOutputs = NO_OUTPUTS }: Props) {
-  // With the Go proxy's data-bark-voices claim on, the list comes from Go;
-  // otherwise (and if the request fails) the getStaticProps value is shown.
+export default function Voices() {
+  // The list comes from the Go data endpoint; the empty list shows until it
+  // answers (and if the request fails).
   const outputs = useGoData<NPZ[]>(
-    "data-bark-voices",
     "/api/go-data/bark-voices",
-    staticOutputs
+    NO_OUTPUTS
   );
   return (
     <Template title="Voices">
@@ -38,14 +29,3 @@ export default function Voices({ outputs: staticOutputs = NO_OUTPUTS }: Props) {
     </Template>
   );
 }
-
-export const getStaticProps = async ({}): Promise<{ props: Props }> => {
-  // The static export gets its data from the Go endpoint (see useGoData).
-  const outputs: NPZ[] =
-    process.env.TTS_STATIC_EXPORT === "1" ? [] : await getNpzDataSimpleVoices();
-  return {
-    props: {
-      outputs,
-    },
-  };
-};

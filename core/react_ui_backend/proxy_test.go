@@ -1,8 +1,6 @@
 package react_ui_backend
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"net"
@@ -54,18 +52,11 @@ func routes(t *testing.T, names string) switches.Set {
 	return set
 }
 
-// frontOf starts the proxy in front of upstream and returns its URL. Requests
-// carry the public Host the proxy expects.
-func frontOf(t *testing.T, upstream http.Handler, names string) string {
+// frontOf starts the server on a small export and returns its URL. Requests
+// carry the public Host the server expects.
+func frontOf(t *testing.T, names string) string {
 	t.Helper()
-	next := httptest.NewServer(upstream)
-	t.Cleanup(next.Close)
-	h, err := NewHandler(Config{
-		Root:     t.TempDir(),
-		Port:     testPort,
-		NextAddr: strings.TrimPrefix(next.URL, "http://"),
-		Routes:   routes(t, names),
-	})
+	h, err := NewHandler(Config{Root: exportFixture(t), Port: testPort, Routes: routes(t, names)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,130 +88,8 @@ func request(t *testing.T, method, url string, body io.Reader, headers map[strin
 	return resp
 }
 
-func TestForwardsTheRequestUnchanged(t *testing.T) {
-	var got *http.Request
-	var gotBody []byte
-	front := frontOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got = r.Clone(r.Context())
-		gotBody, _ = io.ReadAll(r.Body)
-		w.Header().Set("X-From-Next", "yes")
-		w.WriteHeader(http.StatusTeapot)
-		_, _ = io.WriteString(w, "from next")
-	}), "")
-
-	resp := request(t, "POST", front+"/_next/data/abc/page.json?a=1;b=%zz&c=d%20e", strings.NewReader("payload"), map[string]string{
-		"Origin":           "http://localhost:" + strconv.Itoa(testPort),
-		"Host":             "localhost:" + strconv.Itoa(testPort),
-		"X-Forwarded-Host": "spoofed.example",
-		"X-Forwarded-Port": "1",
-		"X-Forwarded-For":  "203.0.113.9",
-	})
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusTeapot || string(body) != "from next" || resp.Header.Get("X-From-Next") != "yes" {
-		t.Fatalf("response changed: %d %q %v", resp.StatusCode, body, resp.Header)
-	}
-	if got.Method != "POST" || got.URL.Path != "/_next/data/abc/page.json" || string(gotBody) != "payload" {
-		t.Fatalf("request changed: %s %s %q", got.Method, got.URL.Path, gotBody)
-	}
-	if got.URL.RawQuery != "a=1;b=%zz&c=d%20e" {
-		t.Fatalf("query changed: %q", got.URL.RawQuery)
-	}
-	wantHost := "localhost:" + strconv.Itoa(testPort)
-	if got.Host != wantHost {
-		t.Fatalf("Host = %q, want %q", got.Host, wantHost)
-	}
-	if got.Header.Get("Origin") != "http://"+wantHost {
-		t.Fatalf("Origin = %q", got.Header.Get("Origin"))
-	}
-	if h := got.Header.Get("X-Forwarded-Host"); h != wantHost {
-		t.Fatalf("X-Forwarded-Host = %q", h)
-	}
-	if p := got.Header.Get("X-Forwarded-Port"); p != strconv.Itoa(testPort) {
-		t.Fatalf("X-Forwarded-Port = %q", p)
-	}
-	if p := got.Header.Get("X-Forwarded-Proto"); p != "http" {
-		t.Fatalf("X-Forwarded-Proto = %q", p)
-	}
-	if f := got.Header.Get("X-Forwarded-For"); f != "127.0.0.1" {
-		t.Fatalf("X-Forwarded-For = %q, the client's value must be replaced", f)
-	}
-}
-
-func TestEncodedPathReachesNextAsSent(t *testing.T) {
-	var raw string
-	front := frontOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		raw = r.URL.EscapedPath()
-	}), "")
-	request(t, "GET", front+"/outputs/a%2Fb%20c", nil, nil)
-	if raw != "/outputs/a%2Fb%20c" {
-		t.Fatalf("path reached Next as %q", raw)
-	}
-}
-
-func TestStreamsBeforeTheUpstreamFinishes(t *testing.T) {
-	release := make(chan struct{})
-	front := frontOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = io.WriteString(w, "data: first\n\n")
-		w.(http.Flusher).Flush()
-		<-release
-		_, _ = io.WriteString(w, "data: second\n\n")
-	}), "")
-
-	resp := request(t, "GET", front+"/stream", nil, nil)
-	first := make(chan string, 1)
-	go func() {
-		buf := make([]byte, 64)
-		n, _ := resp.Body.Read(buf)
-		first <- string(buf[:n])
-	}()
-	select {
-	case got := <-first:
-		if got != "data: first\n\n" {
-			t.Fatalf("first chunk = %q", got)
-		}
-	case <-time.After(5 * time.Second):
-		close(release)
-		t.Fatal("the first chunk was held back until the upstream finished")
-	}
-	close(release)
-	rest, _ := io.ReadAll(resp.Body)
-	if string(rest) != "data: second\n\n" {
-		t.Fatalf("rest = %q", rest)
-	}
-}
-
-func TestLargeUploadArrivesIntact(t *testing.T) {
-	const size = 300 << 20
-	var gotSum [32]byte
-	var gotLen int64
-	front := frontOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h := sha256.New()
-		gotLen, _ = io.Copy(h, r.Body)
-		h.Sum(gotSum[:0])
-	}), "")
-
-	block := bytes.Repeat([]byte("0123456789abcdef"), 64*1024)
-	want := sha256.New()
-	body := io.TeeReader(io.LimitReader(repeatReader{block}, size), want)
-	resp := request(t, "POST", front+"/upload-target", body, nil)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status %d", resp.StatusCode)
-	}
-	if gotLen != size {
-		t.Fatalf("received %d bytes, want %d", gotLen, size)
-	}
-	if !bytes.Equal(gotSum[:], want.Sum(nil)) {
-		t.Fatal("the upload was changed on the way")
-	}
-}
-
-type repeatReader struct{ block []byte }
-
-func (r repeatReader) Read(p []byte) (int, error) { return copy(p, r.block), nil }
-
 func TestHostCheck(t *testing.T) {
-	front := frontOf(t, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), "")
+	front := frontOf(t, "")
 	port := strconv.Itoa(testPort)
 	cases := map[string]int{
 		"127.0.0.1:" + port:        200,
@@ -240,14 +109,14 @@ func TestHostCheck(t *testing.T) {
 }
 
 func TestOriginCheck(t *testing.T) {
-	front := frontOf(t, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), "")
+	front := frontOf(t, "")
 	good := "http://localhost:" + strconv.Itoa(testPort)
 	cases := []struct {
 		method, path, origin string
 		want                 int
 	}{
 		{"GET", "/", "http://evil.example", 200}, // a page load is not checked
-		{"GET", "/_next/static/a.js", "http://evil.example", 200},
+		{"GET", "/assets/a.js", "http://evil.example", 200},
 		{"GET", "/api/gradio/x", "http://evil.example", 403},
 		{"GET", "/%61pi/gradio/x", "http://evil.example", 403},
 		{"GET", "/x/../api/gradio/x", "http://evil.example", 403},
@@ -269,16 +138,14 @@ func TestOriginCheck(t *testing.T) {
 		if c.origin != "" {
 			headers["Origin"] = c.origin
 		}
-		if got := request(t, c.method, front+c.path, nil, headers).StatusCode; got != c.want {
+		if got := request(t, c.method, front+c.path, nil, headers).StatusCode; !guardStatus(got, c.want, c.path) {
 			t.Errorf("%s %s Origin %q: status %d, want %d", c.method, c.path, c.origin, got, c.want)
 		}
 	}
 }
 
 func TestDispatch(t *testing.T) {
-	front := frontOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Answered-By", "next")
-	}), "test-files,test-post")
+	front := frontOf(t, "test-files,test-post")
 
 	cases := []struct {
 		method, path, want string
@@ -287,28 +154,27 @@ func TestDispatch(t *testing.T) {
 		{"HEAD", "/api/test-files/a.ogg", "test-files"},
 		{"POST", "/api/test-post", "test-post"},
 
-		{"POST", "/api/test-files/a.ogg", "next"}, // other method
-		{"GET", "/api/test-post", "next"},
-		{"GET", "/api/test-files", "next"},  // {path...} prefix without its slash
-		{"GET", "/api/test-files/", "next"}, // trailing slash
-		{"GET", "/api/test-files/a/", "next"},
-		{"POST", "/api/test-post/", "next"},
-		{"GET", "/api/test-files//a", "next"},
-		{"GET", "/api/test-files/./a", "next"},
-		{"GET", "/api/test-files/../a", "next"},
-		{"GET", "/api/test-files/%2e%2e/a", "next"},
-		{"GET", "/api/test-files/%2E%2e/a", "next"},
-		{"GET", "/api/test-files/.%2e/a", "next"},
-		{"GET", "/api/test-files/a%2fb", "next"},
-		{"GET", "/api/test-files/a%2Fb", "next"},
-		{"GET", "/api/test-files/a%5cb", "next"},
-		{"GET", "/api/test-files/a%5Cb", "next"},
-		{"GET", "/api/test-files/a%00b", "next"},
-		{"GET", "/", "next"},
-		{"GET", "/_next/static/a.js", "next"},
-		{"GET", "/_next/data/abc/page.json", "next"},
-		{"GET", "/api/gradio/anything", "next"},
-		{"GET", "/api/go-data/test", "next"}, // registered, but its switch is off
+		{"POST", "/api/test-files/a.ogg", ""}, // other method: the export answers
+		{"GET", "/api/test-post", ""},
+		{"GET", "/api/test-files", ""},  // {path...} prefix without its slash
+		{"GET", "/api/test-files/", ""}, // trailing slash
+		{"GET", "/api/test-files/a/", ""},
+		{"POST", "/api/test-post/", ""},
+		{"GET", "/api/test-files//a", ""},
+		{"GET", "/api/test-files/./a", ""},
+		{"GET", "/api/test-files/../a", ""},
+		{"GET", "/api/test-files/%2e%2e/a", ""},
+		{"GET", "/api/test-files/%2E%2e/a", ""},
+		{"GET", "/api/test-files/.%2e/a", ""},
+		{"GET", "/api/test-files/a%2fb", ""},
+		{"GET", "/api/test-files/a%2Fb", ""},
+		{"GET", "/api/test-files/a%5cb", ""},
+		{"GET", "/api/test-files/a%5Cb", ""},
+		{"GET", "/api/test-files/a%00b", ""},
+		{"GET", "/", ""},
+		{"GET", "/assets/a.js", ""},
+		{"GET", "/api/gradio/anything", ""},
+		{"GET", "/api/go-data/test", ""}, // registered, but its switch is off
 	}
 	for _, c := range cases {
 		resp := request(t, c.method, front+c.path, nil, nil)
@@ -319,39 +185,34 @@ func TestDispatch(t *testing.T) {
 }
 
 func TestNoClaimRunsWithRoutesOff(t *testing.T) {
-	front := frontOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Answered-By", "next")
-	}), "")
+	front := frontOf(t, "")
 	for _, path := range []string{"/api/test-files/a.ogg", "/api/go-data/test"} {
-		if got := request(t, "GET", front+path, nil, nil).Header.Get("X-Answered-By"); got != "next" {
+		if got := request(t, "GET", front+path, nil, nil).Header.Get("X-Answered-By"); got != "" {
 			t.Errorf("%s answered by %q", path, got)
 		}
 	}
 }
 
 func TestUnknownRouteNameIsRefused(t *testing.T) {
-	_, err := NewHandler(Config{Root: t.TempDir(), Port: testPort, NextAddr: "127.0.0.1:1", Routes: routes(t, "no-such-route")})
+	_, err := NewHandler(Config{Root: t.TempDir(), Port: testPort, Routes: routes(t, "no-such-route")})
 	if err == nil || !strings.Contains(err.Error(), "no-such-route") {
 		t.Fatalf("err = %v", err)
 	}
 }
 
 func TestClaimsCookie(t *testing.T) {
-	upstream := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.SetCookie(w, &http.Cookie{Name: "from-next", Value: "1"})
-	})
 	document := map[string]string{"Sec-Fetch-Dest": "document"}
 
-	on := frontOf(t, upstream, "data-test,test-post")
+	on := frontOf(t, "data-test,test-post")
 	cookies := request(t, "GET", on+"/outputs/outputs", nil, document).Header.Values("Set-Cookie")
-	if len(cookies) != 2 || !strings.HasPrefix(cookies[0], "tts-go-claims=data-test;") || !strings.Contains(cookies[0], "SameSite=Strict") {
+	if len(cookies) != 1 || !strings.HasPrefix(cookies[0], "tts-go-claims=data-test;") || !strings.Contains(cookies[0], "SameSite=Strict") {
 		t.Fatalf("cookies = %q", cookies)
 	}
-	if c := request(t, "GET", on+"/_next/static/a.js", nil, map[string]string{"Accept": "*/*"}).Header.Values("Set-Cookie"); len(cookies) == 0 || strings.Contains(strings.Join(c, ";"), claimsCookie) {
+	if c := request(t, "GET", on+"/assets/a.js", nil, map[string]string{"Accept": "*/*"}).Header.Values("Set-Cookie"); len(cookies) == 0 || strings.Contains(strings.Join(c, ";"), claimsCookie) {
 		t.Fatalf("cookie set on a non-document request: %q", c)
 	}
 
-	off := frontOf(t, upstream, "test-post")
+	off := frontOf(t, "test-post")
 	if c := strings.Join(request(t, "GET", off+"/", nil, document).Header.Values("Set-Cookie"), ";"); strings.Contains(c, claimsCookie) {
 		t.Fatalf("cookie set with no data claim on: %q", c)
 	}
@@ -361,32 +222,9 @@ func TestClaimsCookie(t *testing.T) {
 	}
 }
 
-func TestNextDownIsABadGateway(t *testing.T) {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	addr := l.Addr().String()
-	_ = l.Close()
-	h, err := NewHandler(Config{Root: t.TempDir(), Port: testPort, NextAddr: addr, Routes: routes(t, "")})
-	if err != nil {
-		t.Fatal(err)
-	}
-	front := httptest.NewServer(h)
-	defer front.Close()
-	if got := request(t, "GET", front.URL+"/", nil, nil).StatusCode; got != http.StatusBadGateway {
-		t.Fatalf("status %d, want 502", got)
-	}
-}
-
 func TestServerBindsLoopbackOnlyAndCloses(t *testing.T) {
-	next := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.WriteString(w, "ok")
-	}))
-	defer next.Close()
-
 	port := freeTestPort(t)
-	s, err := Start(Config{Root: t.TempDir(), Port: port, NextAddr: strings.TrimPrefix(next.URL, "http://"), Routes: routes(t, "")})
+	s, err := Start(Config{Root: exportFixture(t), Port: port, Routes: routes(t, "")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +246,7 @@ func TestServerBindsLoopbackOnlyAndCloses(t *testing.T) {
 	}
 	body, _ := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
-	if string(body) != "ok" {
+	if string(body) != exportIndex {
 		t.Fatalf("body = %q", body)
 	}
 
@@ -427,7 +265,7 @@ func TestStartFailsWhenThePortIsTaken(t *testing.T) {
 	}
 	defer l.Close()
 	port := l.Addr().(*net.TCPAddr).Port
-	if _, err := Start(Config{Root: t.TempDir(), Port: port, NextAddr: "127.0.0.1:1", Routes: routes(t, "")}); err == nil {
+	if _, err := Start(Config{Root: t.TempDir(), Port: port, Routes: routes(t, "")}); err == nil {
 		t.Fatal("Start succeeded on a taken port")
 	}
 }
@@ -442,7 +280,7 @@ func freeTestPort(t *testing.T) int {
 	return l.Addr().(*net.TCPAddr).Port
 }
 
-func TestGradioSettingsFollowNextsOrder(t *testing.T) {
+func TestGradioSettingsOrder(t *testing.T) {
 	root := t.TempDir()
 	ui := filepath.Join(root, "react-ui")
 	if err := os.MkdirAll(ui, 0o755); err != nil {
@@ -463,32 +301,32 @@ func TestGradioSettingsFollowNextsOrder(t *testing.T) {
 		}
 	}
 
-	if got := newDeps(root, nil).GradioBackend; got != "http://127.0.0.1:7770/" {
+	if got := newDeps(root).GradioBackend; got != "http://127.0.0.1:7770/" {
 		t.Fatalf("default = %q", got)
 	}
 
 	write(".env", "# comment\nGRADIO_BACKEND=http://from-env/\nGRADIO_AUTH=\"user:pass\"\n")
 	write(".env.production", "export GRADIO_BACKEND=http://from-production/ # note\n")
-	deps := newDeps(root, nil)
+	deps := newDeps(root)
 	if deps.GradioBackend != "http://from-production/" || deps.GradioAuth != "user:pass" {
 		t.Fatalf("deps = %+v", deps)
 	}
 
 	write(".env.local", "GRADIO_BACKEND=http://from-local/\n")
-	if got := newDeps(root, nil).GradioBackend; got != "http://from-local/" {
+	if got := newDeps(root).GradioBackend; got != "http://from-local/" {
 		t.Fatalf(".env.local ignored: %q", got)
 	}
 
 	t.Setenv("GRADIO_BACKEND_AUTOMATIC", "http://automatic/")
-	if got := newDeps(root, nil).GradioBackend; got != "http://from-local/" {
+	if got := newDeps(root).GradioBackend; got != "http://from-local/" {
 		t.Fatalf("GRADIO_BACKEND must win over the automatic value: %q", got)
 	}
 	t.Setenv("GRADIO_BACKEND", "")
-	if got := newDeps(root, nil).GradioBackend; got != "http://automatic/" {
+	if got := newDeps(root).GradioBackend; got != "http://automatic/" {
 		t.Fatalf("an empty GRADIO_BACKEND must fall through: %q", got)
 	}
 	t.Setenv("GRADIO_BACKEND", "http://process/")
-	if got := newDeps(root, nil).GradioBackend; got != "http://process/" {
+	if got := newDeps(root).GradioBackend; got != "http://process/" {
 		t.Fatalf("the process environment must win: %q", got)
 	}
 }

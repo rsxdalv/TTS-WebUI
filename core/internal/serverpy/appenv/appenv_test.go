@@ -279,8 +279,10 @@ func TestPlanGolden(t *testing.T) {
 			eq("Browser", append([]string(nil), p.BrowserURLs...), append([]string(nil), r.Browser...))
 			eq("react started", !p.NoReact, r.Popen != nil)
 			if r.Popen != nil {
+				// The golden also records the `npm start` command the deleted
+				// Python server ran. Go serves the React UI itself and never
+				// runs it, so only the backend address is compared.
 				eq("ReactBackend", p.ReactBackend, r.Popen.Backend)
-				eq("react cmd", fmt.Sprintf("npm start --prefix react-ui -- -p %d", p.ReactPort), r.Popen.Cmd)
 			}
 			// Env python sees for the tree.
 			envm := envToMap(p.Env(), false)

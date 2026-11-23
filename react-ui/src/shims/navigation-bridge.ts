@@ -1,6 +1,6 @@
 /**
  * The bridge between react-router and the modules that need to navigate
- * outside a component (the `next/router` default export).
+ * outside a component (the default export of src/shims/router.tsx).
  *
  * The router in src/main.tsx registers the navigate function here, so
  * `router.push("/somewhere")` from a helper module goes through react-router

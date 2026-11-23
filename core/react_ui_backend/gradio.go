@@ -179,9 +179,9 @@ func unescapeQuery(s string) string {
 	return strings.ReplaceAll(s, "+", " ")
 }
 
-// writeNextJSON is res.status(code).json(v) as `next start` sends it: with
-// Next's ETag (and 304 when the browser already has it), and compressed by
-// Next's compression middleware from 1 KB up.
+// writeNextJSON is res.status(code).json(v) as the original Next route sent it:
+// with its ETag (and 304 when the browser already has it), compressed from
+// 1 KB up.
 func writeNextJSON(w http.ResponseWriter, r *http.Request, code int, v any) {
 	h := w.Header()
 	h.Set("Content-Type", "application/json; charset=utf-8")

@@ -351,7 +351,7 @@ exports.setupReactUI = async () => {
     await $sh("cd react-ui && npm install");
     displayMessage("Successfully installed node_modules");
     displayMessage("Building react-ui...");
-    await $sh("cd react-ui && npm run build");
+    await $sh("cd react-ui && npm run build:static");
     displayMessage("Successfully built react-ui");
   } catch (error) {
     displayMessage("Failed to install node_modules or build react-ui");

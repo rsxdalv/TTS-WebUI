@@ -16,7 +16,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
@@ -79,9 +78,6 @@ type managed struct {
 	port  int // the port reported in the status
 	probe probeFunc
 	r     runner
-	// probePort is the port readiness checks; 0 = port. It differs when Go
-	// serves the React port in front of Next on a private one.
-	probePort int
 
 	state    State
 	errMsg   string
@@ -102,12 +98,7 @@ func newManaged(name string, port int, probe probeFunc) *managed {
 	}
 }
 
-func (m *managed) probeAt() int {
-	if m.probePort != 0 {
-		return m.probePort
-	}
-	return m.port
-}
+func (m *managed) probeAt() int { return m.port }
 
 func (m *managed) markReady() { // mu held
 	select {
@@ -161,25 +152,19 @@ func New(cfg Config) (*Supervisor, error) {
 func (s *Supervisor) Config() Config { return s.cfg }
 
 type procDef struct {
-	name      string
-	port      int
-	probePort int
-	probe     probeFunc
-	args      []string
-	env       []string
-	// static: no process, the Go front is the child (ReactStatic).
+	name  string
+	port  int
+	probe probeFunc
+	args  []string
+	env   []string
+	// static: no process, the Go front is the child.
 	static bool
 }
 
 // defs builds the child command lines for one run. c is the Config with the
-// Plan applied, nextPort the private port
-// Next listens on behind the Go front (ReactNextProxied only).
-func (s *Supervisor) defs(c Config, nextPort int, react ReactMode) []procDef {
+// Plan applied.
+func (s *Supervisor) defs(c Config) []procDef {
 	base := c.baseEnv()
-	reactEnv := []string{
-		"REACT_UI_PORT=" + strconv.Itoa(c.ReactPort),
-		fmt.Sprintf("GRADIO_BACKEND_AUTOMATIC=http://127.0.0.1:%d/", c.PublicPort),
-	}
 
 	gEnv := append([]string(nil), base...)
 	if !c.NoReact {
@@ -193,20 +178,8 @@ func (s *Supervisor) defs(c Config, nextPort int, react ReactMode) []procDef {
 		env:  gEnv,
 	}}
 	if !c.NoReact {
-		d := procDef{
-			name: NameReact, port: c.ReactPort, probe: tcpProbe,
-			args: []string{"npm", "--prefix", filepath.Join(c.Root.Dir(), "react-ui"),
-				"start", "--", "-p", strconv.Itoa(c.ReactPort)},
-			env: append(append([]string(nil), base...), reactEnv...),
-		}
-		switch react {
-		case ReactNextProxied:
-			d.probePort = nextPort
-			d.args = append(d.args[:len(d.args)-1], strconv.Itoa(nextPort), "-H", "127.0.0.1")
-		case ReactStatic:
-			d.static = true
-		}
-		defs = append(defs, d)
+		// The Go front serves the static export; there is no process to run.
+		defs = append(defs, procDef{name: NameReact, port: c.ReactPort, probe: tcpProbe, static: true})
 	}
 	return defs
 }
@@ -264,32 +237,18 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		return fmt.Errorf("ReactPort and PublicPort are both %d", c.PublicPort)
 	}
 
-	react := ReactNextDirect
-	nextPort := 0
-	if !c.NoReact {
-		react = plan.React
-	}
 	var front *react_ui_backend.Server
-	if react != ReactNextDirect {
-		if react == ReactNextProxied {
-			p, err := freePort()
-			if err != nil {
-				return fmt.Errorf("allocating React UI port: %w", err)
-			}
-			nextPort = p
-		}
+	if !c.NoReact {
 		var err error
 		front, err = react_ui_backend.Start(react_ui_backend.Config{
 			Root:         c.Root.Dir(),
 			Port:         c.ReactPort,
-			NextAddr:     fmt.Sprintf("127.0.0.1:%d", nextPort),
-			Static:       react == ReactStatic,
 			Routes:       plan.Switches,
 			LAN:          plan.Switches.ProxyLAN,
 			AllowedHosts: plan.Switches.ProxyAllowedHosts,
 		})
 		if err != nil {
-			return fmt.Errorf("starting the React UI proxy: %w", err)
+			return fmt.Errorf("starting the React UI server: %w", err)
 		}
 		if plan.Switches.ProxyLAN {
 			slog.Warn(react_ui_backend.LANWarning(c.ReactPort))
@@ -338,9 +297,8 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	gen := make([]*managed, 0, 3)
 	s.cur = gen
 	var startErr error
-	for _, d := range s.defs(c, nextPort, react) {
+	for _, d := range s.defs(c) {
 		m := newManaged(d.name, d.port, d.probe)
-		m.probePort = d.probePort
 		gen = append(gen, m)
 		s.cur = gen
 		var r runner
@@ -349,8 +307,6 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 			r = newFrontRunner(closeFront)
 		case d.name == NameGradio:
 			r = &closingRunner{runner: s.newRunner(), closers: []func(){closeSide}}
-		case d.name == NameReact && front != nil:
-			r = &closingRunner{runner: s.newRunner(), closers: []func(){closeFront}}
 		default:
 			r = s.newRunner()
 		}

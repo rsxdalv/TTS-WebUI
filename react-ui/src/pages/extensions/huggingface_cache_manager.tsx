@@ -1,6 +1,6 @@
 import React from "react";
 import { Template } from "../../components/Template";
-import Head from "next/head";
+import Head from "@/shims/head";
 import { ExtensionHuggingFaceCacheManager } from "../../components/ExtensionHuggingFaceCacheManager";
 
 const GPUInfoPage = () => {

@@ -174,6 +174,7 @@ export const routes: Route[] = [
         text: "API Config",
       },
       { href: "/tools/pip_list", text: "Installed Packages" },
+      { href: "/tools/simple_remixer", text: "Simple Remixer" },
       { href: "/tools/log_viewer", text: "Log Viewer" },
       { href: "/tools/model_location", text: "Model Location" },
       { href: "/tools/server_settings", text: "Server Settings" },

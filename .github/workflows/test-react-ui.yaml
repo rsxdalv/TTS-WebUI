@@ -22,6 +22,9 @@ jobs:
       - name: Install dependencies
         working-directory: react-ui
         run: npm ci
+      - name: Generate the extension imports
+        working-directory: react-ui
+        run: node generate-plugin-imports.js
       - name: Type check
         working-directory: react-ui
         run: npx tsc --noEmit

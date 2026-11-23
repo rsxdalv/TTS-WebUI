@@ -609,11 +609,41 @@ func TestAppLinkUsesConfiguredPort(t *testing.T) {
 	}
 }
 
-func TestGPUGate(t *testing.T) {
+// The GPU label is a warning, not a gate (Rob's decision): a missing or invalid
+// .gpu does not stop Start, and the status carries the warning. StrictGPULabel
+// brings the old hard errors back.
+func TestGPULabelIsAWarning(t *testing.T) {
 	s, e := newSup(t, func(c *Config) { c.SkipGPUCheck = false; c.NoReact = true })
-	err := s.Start(ctx())
-	if err == nil || !strings.Contains(err.Error(), "GPU label not set") {
-		t.Fatalf("missing .gpu: %v", err)
+	warned := func(want string) {
+		t.Helper()
+		if err := s.Start(ctx()); err != nil {
+			t.Fatalf("Start must not stop on the label: %v", err)
+		}
+		waitState(t, s, NameGradio, StateReady)
+		w := status(s, NameGradio).Warning
+		if want == "" && w != "" || want != "" && !strings.Contains(w, want) {
+			t.Fatalf("warning %q, want %q", w, want)
+		}
+		s.Stop()
+	}
+	warned("GPU label not set")
+	if err := os.MkdirAll(e.root.InstallerScripts(), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(e.root.MarkerFile(".gpu"), []byte("bogus\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	warned("invalid GPU label")
+	if err := os.WriteFile(e.root.MarkerFile(".gpu"), []byte("CPU\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	warned("")
+}
+
+func TestStrictGPULabelStopsStart(t *testing.T) {
+	s, e := newSup(t, func(c *Config) { c.SkipGPUCheck = false; c.StrictGPULabel = true; c.NoReact = true })
+	if err := s.Start(ctx()); err == nil || !strings.Contains(err.Error(), "GPU label not set") {
+		t.Fatalf("strict, missing .gpu: %v", err)
 	}
 	if err := os.MkdirAll(e.root.InstallerScripts(), 0o755); err != nil {
 		t.Fatal(err)
@@ -622,13 +652,13 @@ func TestGPUGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := s.Start(ctx()); err == nil || !strings.Contains(err.Error(), "invalid GPU label") {
-		t.Fatalf("bad .gpu: %v", err)
+		t.Fatalf("strict, bad .gpu: %v", err)
 	}
 	if err := os.WriteFile(e.root.MarkerFile(".gpu"), []byte("CPU\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Start(ctx()); err != nil {
-		t.Fatalf("valid .gpu: %v", err)
+		t.Fatalf("strict, valid .gpu: %v", err)
 	}
 	waitState(t, s, NameGradio, StateReady)
 }

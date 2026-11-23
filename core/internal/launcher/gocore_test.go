@@ -176,3 +176,22 @@ func TestControlAPIStaysUpWhenGradioDies(t *testing.T) {
 		t.Fatalf("settings: %d %q", code, body)
 	}
 }
+
+// No .gpu marker with a Python that can start: Start goes on, the status says so.
+func TestMissingGPULabelIsOnlyAWarning(t *testing.T) {
+	root, _, reactPort := coreInstall(t) // no installer_scripts/.gpu
+	sup := startCore(t, root, reactPort, func(c *supervise.Config) {
+		c.CommandPrefix = []string{os.Args[0], "-test.run=^TestGradioExitsAtOnce$", "--"}
+		c.ExtraEnv = append(c.ExtraEnv, "LAUNCHER_FAKE_GRADIO=1")
+	})
+	if err := sup.Start(context.Background()); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	if g := gradioState(t, sup); !strings.Contains(g.Warning, "GPU label not set") {
+		t.Fatalf("gradio status: %+v", g)
+	}
+	base := fmt.Sprintf("http://127.0.0.1:%d", reactPort)
+	if code, _ := httpGet(t, base+"/api/go-data/logs/files"); code != 200 {
+		t.Fatalf("core route: %d", code)
+	}
+}

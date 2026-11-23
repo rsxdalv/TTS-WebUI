@@ -64,6 +64,9 @@ type ProcessStatus struct {
 	ExitCode *int     `json:"exit_code,omitempty"`
 	Error    string   `json:"error,omitempty"`
 	LogTail  []string `json:"log_tail,omitempty"`
+	// Warning is something the run carries on despite (for example a missing
+	// GPU label). Set on the gradio entry.
+	Warning string `json:"warning,omitempty"`
 }
 
 // runner is the part of *procs.Proc the supervisor uses. A runner that also
@@ -127,9 +130,10 @@ type Supervisor struct {
 	cfg       Config
 	newRunner func() runner
 
-	mu  sync.Mutex
-	cur []*managed // current generation, in start order; nil before first Start
-	pub int        // public port of the current run; 0 = cfg.PublicPort
+	mu   sync.Mutex
+	cur  []*managed // current generation, in start order; nil before first Start
+	pub  int        // public port of the current run; 0 = cfg.PublicPort
+	warn string     // warning of the current run, shown on the gradio status
 
 	// supCtx/supCancel is supervisor-owned; it is never an HTTP request
 	// context, which would kill the app when the handler returned.
@@ -214,16 +218,21 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	s.releaseCore()
 
 	// Gradio is optional. Without a Python environment it is not started and
-	// the Go core (front, control API, services) runs alone. The GPU label
-	// belongs to the Python install (it picks torch), so the gate applies only
-	// when Gradio could start: a half-installed env still stops here.
+	// the Go core (front, control API, services) runs alone.
 	pyOK, pyMsg := pythonAvailable(s.cfg)
-	if pyOK && !s.cfg.SkipGPUCheck {
-		if _, err := readGPULabel(s.cfg); err != nil {
-			return fmt.Errorf("determining GPU: %w", err)
-		}
+	// The GPU label is checked here and nowhere else in Start. A missing or
+	// invalid one is a warning, not a stop (Config.StrictGPULabel makes it
+	// one again).
+	warn, err := s.checkGPULabel(pyOK)
+	if err != nil {
+		return err
 	}
-
+	s.mu.Lock()
+	s.warn = warn
+	s.mu.Unlock()
+	if warn != "" {
+		slog.Warn(warn)
+	}
 	var plan Plan
 	if s.cfg.Prepare != nil {
 		var err error
@@ -585,6 +594,11 @@ func (s *Supervisor) statusesLocked() []ProcessStatus {
 		}
 		out = append(out, st)
 	}
+	for i := range out {
+		if out[i].Name == NameGradio {
+			out[i].Warning = s.warn
+		}
+	}
 	return out
 }
 
@@ -720,4 +734,24 @@ func pythonAvailable(c Config) (bool, string) {
 		}
 	}
 	return true, ""
+}
+
+// checkGPULabel is the one place the GPU label is checked. Nothing started by
+// Start needs the label (Gradio, the Go side and the native extension
+// processes do not read it); only installing a native extension's torch does,
+// and that says so itself. So a missing or invalid label is a warning that the
+// status shows, and the run goes on without a label. With StrictGPULabel it is
+// an error as it was. Not checked when the check is skipped or Gradio cannot
+// start (nothing then depends on the label).
+func (s *Supervisor) checkGPULabel(pythonOK bool) (warning string, err error) {
+	if s.cfg.SkipGPUCheck || !pythonOK {
+		return "", nil
+	}
+	if _, rerr := readGPULabel(s.cfg); rerr != nil {
+		if s.cfg.StrictGPULabel {
+			return "", fmt.Errorf("determining GPU: %w", rerr)
+		}
+		return fmt.Sprintf("%v. Carrying on without a GPU label: Gradio and the Go core do not use it; installing a native extension's torch needs it and will say so", rerr), nil
+	}
+	return "", nil
 }

@@ -32,10 +32,17 @@ launcher's real supervisor wiring (`launcher/gocore_test.go`) or the supervisor 
   Go side itself still does.
 - The launcher page now shows each process's state and error, not only running/stopped (`LaunchStep.tsx`).
 - The browser: Gradio's own tab opens only when Gradio becomes ready; the React tab opens either way.
-- **GPU gate decision.** The label picks the torch build, so it belongs to the Python install. It is now checked only when
-  Gradio could start (a Python env exists): an install with an env but no `.gpu` is half done and `Start` still stops
-  (`TestGPUGate`). With no env the gate is skipped, because there is nothing for it to decide. This is the smallest
-  change; it does not make the label optional for a Python install.
+- **GPU label decision (Rob): not required for now.** A missing or invalid `installer_scripts/.gpu` never stops `Start`.
+  It is a warning: a log line and `warning` on the gradio status, which the launcher page shows, for example
+  `GPU label not set: ... Carrying on without a GPU label: Gradio and the Go core do not use it; installing a native
+  extension's torch needs it and will say so`. The check lives in one function, `Supervisor.checkGPULabel`; it is skipped
+  when `SkipGPUCheck` is set (system Python) or Gradio cannot start. What nothing started by `Start` reads the label:
+  Gradio, the Go side and the native extension processes do not. The only consumer is the install of a native
+  extension's torch (`extcatalog/torch.go`), which keeps failing with its own clear message ("GPU choice file not
+  found ... run the installer") instead of silently installing CPU torch; that is the label-dependent part that is
+  skipped. Tests: `TestGPULabelIsAWarning`, `launcher/TestMissingGPULabelIsOnlyAWarning`.
+  **Revisit:** set `Config.StrictGPULabel` (not wired to any flag yet) to make it a hard stop again
+  (`TestStrictGPULabelStopsStart`); decide then whether native installs should fall back to CPU torch.
 - Still needed to boot: the static export in `react-ui/out` (or npm to build it, which today comes from the env), and
   `config.json` (a missing one means defaults). Not changed.
 - On the public port (default 7770) the Go router answers 502 for `/` while Gradio is down; the React UI on :3000 is

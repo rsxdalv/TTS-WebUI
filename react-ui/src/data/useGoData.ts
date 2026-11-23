@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { dataComesFromApi } from "./env";
 
 // True when the Go proxy says it answers this data claim. The proxy sets the
 // cookie on page loads; with the proxy off nothing sets it (CONTRACTS.md section 7).
 // A static export (npm run build:static) has no Next route to fall back to, so
 // there the endpoint is always asked.
 const claimIsOn = (claim: string) =>
-  process.env.TTS_STATIC_EXPORT === "1" ||
+  dataComesFromApi() ||
   (document.cookie
     .split("; ")
     .find((c) => c.startsWith("tts-go-claims="))

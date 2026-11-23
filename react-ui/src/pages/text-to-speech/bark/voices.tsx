@@ -10,10 +10,17 @@ import { useGoData } from "../../../data/useGoData";
 export const inter = Inter({ subsets: ["latin"] });
 
 interface Props {
-  outputs: NPZ[];
+  // The server build passes the data (getStaticProps); the browser build gets
+  // it from the API, so the props are optional.
+  outputs?: NPZ[];
 }
 
-export default function Voices({ outputs: staticOutputs }: Props) {
+// The browser build has no props: the data comes from the API. The empty
+// list must be the same array every time, or the effect of useGoData would
+// run on every render.
+const NO_OUTPUTS: NPZ[] = [];
+
+export default function Voices({ outputs: staticOutputs = NO_OUTPUTS }: Props) {
   // With the Go proxy's data-bark-voices claim on, the list comes from Go;
   // otherwise (and if the request fails) the getStaticProps value is shown.
   const outputs = useGoData<NPZ[]>(

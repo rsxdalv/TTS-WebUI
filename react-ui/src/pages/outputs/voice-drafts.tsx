@@ -8,12 +8,19 @@ import { Template } from "../../components/Template";
 
 export const inter = Inter({ subsets: ["latin"] });
 
+// The browser build has no props. The empty lists must be the same arrays
+// every time, or an effect would run on every render.
+const NO_GENERATIONS: GenerationRaw[] = [];
+const NO_NPZ: any[] = [];
+
 export default function Home({
-  generations,
-  npzData,
+  generations = NO_GENERATIONS,
+  npzData = NO_NPZ,
 }: {
-  generations: GenerationRaw[];
-  npzData: any[];
+  // The server build passes the data (getStaticProps); the browser build has
+  // no props.
+  generations?: GenerationRaw[];
+  npzData?: any[];
 }) {
   return (
     <Template title="Voice Drafts">

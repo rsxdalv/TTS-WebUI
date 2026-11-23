@@ -49,10 +49,18 @@ type Package struct {
 	Version string `json:"version"`
 }
 
+// cacheTTL is how long Cached keeps a pip answer. Installs through extcatalog
+// call Invalidate, so this only bounds changes made outside the app.
+const cacheTTL = 30 * time.Second
+
 // Store serves the API for one project root.
 type Store struct {
 	opts Options
 	mu   sync.Mutex // one pip at a time
+
+	cacheMu sync.Mutex
+	cache   []Package
+	cacheAt time.Time
 }
 
 func New(o Options) *Store {
@@ -100,6 +108,31 @@ func (s *Store) List(ctx context.Context) ([]Package, error) {
 		return nil, errors.New("pip list: output too large")
 	}
 	return parse(stdout.Bytes())
+}
+
+// Cached is List with a short memory, for callers that ask many times in a row
+// (the extension lists ask once per extension class at startup, and a pip list
+// takes seconds). The slice is shared: callers must not change it. Invalidate
+// drops it, and a failed List is never remembered.
+func (s *Store) Cached(ctx context.Context) ([]Package, error) {
+	s.cacheMu.Lock()
+	defer s.cacheMu.Unlock()
+	if s.cache != nil && time.Since(s.cacheAt) < cacheTTL {
+		return s.cache, nil
+	}
+	pkgs, err := s.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.cache, s.cacheAt = pkgs, time.Now()
+	return pkgs, nil
+}
+
+// Invalidate forgets the cached list, after something installed or removed a package.
+func (s *Store) Invalidate() {
+	s.cacheMu.Lock()
+	s.cache = nil
+	s.cacheMu.Unlock()
 }
 
 // parse reads pip's JSON (`[{"name": ..., "version": ...}, ...]`).

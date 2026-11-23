@@ -120,8 +120,13 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	})
 	// Extension lists, which extensions load, pip/uv installs (see extcatalog).
+	pip := piplist.New(piplist.Options{
+		Root: root.Dir(), Token: token,
+		Run: append([]string(nil), prefix...), Env: append([]string(nil), baseEnv...),
+		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+	})
 	ext := extcatalog.New(extcatalog.Options{
-		Root: root.Dir(), Token: token, Config: cfg,
+		Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
 		Run: append([]string(nil), prefix...), Env: append([]string(nil), baseEnv...),
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	})
@@ -159,11 +164,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}).Handler())
 	// Settings > Installed Packages: pip list in the main env (see piplist).
-	mux.Handle(piplist.Path, piplist.New(piplist.Options{
-		Root: root.Dir(), Token: token,
-		Run: append([]string(nil), prefix...), Env: append([]string(nil), baseEnv...),
-		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
-	}).Handler())
+	mux.Handle(piplist.Path, pip.Handler())
 	// Log Viewer: list, read, search and delete installer_scripts/logs (see logview).
 	mux.Handle(logview.Prefix, logview.New(logview.Options{
 		Root: root.Dir(), Token: token,

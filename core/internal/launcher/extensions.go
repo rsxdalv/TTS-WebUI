@@ -14,7 +14,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -56,16 +55,17 @@ func newExtHost(root paths.Root, systemPython bool) (*extHost, error) {
 	env := append(os.Environ(), supervise.MambaRootEnv(root))
 	logf := func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) }
 	cfg := appconfig.New(appconfig.Options{Root: root.Dir(), Token: token, Logf: logf})
+	pip := piplist.New(piplist.Options{
+		Root: root.Dir(), Token: token,
+		Run: append([]string(nil), prefix...), Env: append([]string(nil), env...), Logf: logf,
+	})
 	return &extHost{
 		root: root, token: token, cfg: cfg,
 		cat: extcatalog.New(extcatalog.Options{
-			Root: root.Dir(), Token: token, Config: cfg,
+			Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
 			Run: append([]string(nil), prefix...), Env: append([]string(nil), env...), Logf: logf,
 		}),
-		pip: piplist.New(piplist.Options{
-			Root: root.Dir(), Token: token,
-			Run: append([]string(nil), prefix...), Env: append([]string(nil), env...), Logf: logf,
-		}),
+		pip: pip,
 	}, nil
 }
 
@@ -97,44 +97,6 @@ type extListAnswer struct {
 	Warning    string    `json:"warning,omitempty"`
 }
 
-// normalizeDist is pip's name normalisation, enough to compare a distribution
-// with a package name from the lists.
-func normalizeDist(s string) string {
-	s = strings.ToLower(s)
-	for _, c := range []string{"-", "."} {
-		s = strings.ReplaceAll(s, c, "_")
-	}
-	return s
-}
-
-// installedDists maps the normalised names pip lists in the main env.
-func (h *extHost) installedDists(ctx context.Context) (map[string]bool, error) {
-	pkgs, err := h.pip.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := make(map[string]bool, len(pkgs))
-	for _, p := range pkgs {
-		out[normalizeDist(p.Name)] = true
-	}
-	return out, nil
-}
-
-// isInstalled follows interface_extensions.check_if_package_installed: a native
-// extension is installed when its venv exists, a built-in one always is, any
-// other when the main env has the distribution.
-func (h *extHost) isInstalled(pkg, proxy string, dists map[string]bool) bool {
-	switch {
-	case proxy == "native":
-		_, err := os.Stat(filepath.Join(h.root.Dir(), ".venvs", pkg))
-		return err == nil
-	case strings.Contains(pkg, "builtin"):
-		return true
-	default:
-		return dists[normalizeDist(pkg)]
-	}
-}
-
 // list answers the Extensions page: interface and decorator extensions with
 // their installed and disabled state.
 func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, error) {
@@ -143,12 +105,11 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 	if err != nil {
 		return ans, err
 	}
-	dists, err := h.installedDists(ctx)
-	if err != nil {
+	installs := h.cat.Installs(ctx)
+	if installs.Err != nil {
 		// Without pip's answer, say so and show everything as not installed
 		// except what needs no pip.
-		ans.Warning = "Could not read the installed packages: " + err.Error()
-		dists = map[string]bool{}
+		ans.Warning = "Could not read the installed packages: " + installs.Err.Error()
 	}
 	disabled := map[string]bool{}
 	for _, n := range lists.Disabled {
@@ -165,12 +126,13 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 				continue
 			}
 			proxy := e.Str("proxy")
+			installed, _ := installs.Of(pkg, proxy)
 			ans.Extensions = append(ans.Extensions, extItem{
 				PackageName: pkg, Name: nonEmpty(e.Str("name"), pkg),
 				Description: e.Str("description"), Website: e.Str("website"),
 				Class: e.Str("extension_class"), Kind: kind, Proxy: proxy,
 				Builtin:       strings.Contains(pkg, "builtin"),
-				Installed:     h.isInstalled(pkg, proxy, dists),
+				Installed:     installed,
 				Disabled:      kind == "interface" && disabled[pkg],
 				CanBeDisabled: kind == "interface",
 			})

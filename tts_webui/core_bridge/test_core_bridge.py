@@ -109,7 +109,15 @@ ANSWERS = {
 }
 
 
-def X(package_name, name, enabled=True, autostart=False, proxy=""):
+def X(
+    package_name,
+    name,
+    enabled=True,
+    autostart=False,
+    proxy="",
+    installed=True,
+    version="",
+):
     return {
         "package_name": package_name,
         "name": name,
@@ -117,6 +125,8 @@ def X(package_name, name, enabled=True, autostart=False, proxy=""):
         "proxy": proxy,
         "enabled": enabled,
         "autostart": autostart,
+        "installed": installed,
+        "version": version,
     }
 
 
@@ -826,7 +836,6 @@ class ExtensionLoadingTest(unittest.TestCase):
         from tts_webui.extensions_loader import interface_extensions as ie
 
         with (
-            mock.patch.object(ie, "check_if_package_installed", return_value=True),
             mock.patch.object(ie.importlib, "import_module", import_module),
             gr.Blocks() as demo,
             gr.Tabs(),
@@ -865,6 +874,20 @@ class ExtensionLoadingTest(unittest.TestCase):
         self.assertEqual(
             labels, ["Alpha", "Alpha (!)", "[Disabled] Beta", "Gamma", "Gamma (!)"]
         )
+
+    def test_installed_and_version_come_from_go(self):
+        import inspect
+
+        from tts_webui.extensions_loader import interface_extensions as ie
+
+        label = ie._version_label
+        self.assertEqual(label(X("a.one", "A", version="1.2")), "v1.2")
+        self.assertEqual(label(X("a.one", "A")), "Unknown")
+        self.assertEqual(label(X("a.one", "A", proxy="native")), "")
+        self.assertEqual(label(X("x.builtin.a", "A")), "")
+        src = inspect.getsource(ie)
+        for gone in ("find_spec", "importlib.metadata", "os.path.exists", ".venvs"):
+            self.assertNotIn(gone, src)
 
     def test_the_loader_keeps_no_copy_of_the_config_lists(self):
         from tts_webui.extensions_loader import interface_extensions as ie
@@ -1182,7 +1205,6 @@ class InstallCallersTest(unittest.TestCase):
         )
 
         with (
-            mock.patch.object(ie, "check_if_package_installed", return_value=False),
             gr.Blocks() as demo,
             gr.Tabs(),
         ):
@@ -1194,6 +1216,8 @@ class InstallCallersTest(unittest.TestCase):
                     "proxy": "",
                     "enabled": True,
                     "autostart": False,
+                    "installed": False,
+                    "version": "",
                 }
             )
         self.assertIn(

@@ -1,6 +1,7 @@
 package extcatalog
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -27,6 +28,14 @@ type Loadable struct {
 	Proxy        string `json:"proxy"` // "native" runs in its own venv; "" imports in this process
 	Enabled      bool   `json:"enabled"`
 	Autostart    bool   `json:"autostart"`
+	// Installed is check_if_package_installed: the venv of a native extension
+	// exists, a built-in one, or the main env has the distribution. When pip
+	// cannot be read it is true for an extension that needs pip, because
+	// Python's import of the module is the real test and shows its own error.
+	Installed bool `json:"installed"`
+	// Version is the distribution's version in the main env, "" for a native or
+	// built-in extension or when it is not installed.
+	Version string `json:"version"`
 }
 
 // Resolved is the answer of Resolve.
@@ -64,6 +73,10 @@ func (s *Store) Resolve(kind, class string) (Resolved, error) {
 		disabled = lists.DisabledDecorators
 	}
 	out := Resolved{Extensions: []Loadable{}}
+	installs := s.Installs(context.Background())
+	if installs.Err != nil {
+		s.opts.Logf("extcatalog: cannot read the installed packages, assuming they are installed: %v", installs.Err)
+	}
 	for _, x := range list {
 		// The "extension_type" of an entry is the kind of the list it belongs to.
 		if x.Str("extension_type") != kind || x.Str("extension_class") != class {
@@ -84,6 +97,10 @@ func (s *Store) Resolve(kind, class string) (Resolved, error) {
 			Requirements: x.Str("requirements"),
 			Proxy:        x.Str("proxy"),
 			Enabled:      !slices.Contains(disabled, pkg),
+		}
+		l.Installed, l.Version = installs.Of(pkg, l.Proxy)
+		if installs.Err != nil && NeedsPip(pkg, l.Proxy) {
+			l.Installed = true
 		}
 		if kind == "interface" {
 			l.Autostart = slices.Contains(lists.Autostart, pkg)

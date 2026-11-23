@@ -17,6 +17,8 @@ func runLaunch(ctx context.Context, args []string) error {
 	rootDir := fs.String("root", "", "install root directory (default: parent of binary)")
 	port := fs.Int("port", 7700, "port to listen on")
 	noBrowser := fs.Bool("no-browser", false, "do not open the browser automatically")
+	share := fs.Bool("share", false, "ask Gradio for a public share link (server.py --share)")
+	docker := fs.Bool("docker", false, "listen on 0.0.0.0:7770 for a container (server.py --docker)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -43,6 +45,12 @@ func runLaunch(ctx context.Context, args []string) error {
 	var opts []launcher.Option
 	if *noBrowser {
 		opts = append(opts, launcher.WithNoBrowser())
+	}
+	if *share {
+		opts = append(opts, launcher.WithShare())
+	}
+	if *docker {
+		opts = append(opts, launcher.WithDocker())
 	}
 	l := launcher.New(root, opts...)
 	l.CleanupOrphans()

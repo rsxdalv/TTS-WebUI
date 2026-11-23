@@ -80,27 +80,44 @@ func (b badSup) Restart(context.Context) error { return b.err }
 // Option configures New.
 type Option func(*options)
 
-type options struct{ noBrowser bool }
+type options struct{ noBrowser, share, docker bool }
 
 // WithNoBrowser stops the supervisor from opening the app in a browser.
 func WithNoBrowser() Option { return func(o *options) { o.noBrowser = true } }
 
-func newAppSupervisor(root paths.Root, opts ...Option) appSupervisor {
+// WithShare is server.py's --share: a public Gradio link.
+func WithShare() Option { return func(o *options) { o.share = true } }
+
+// WithDocker is server.py's --docker: the router binds 0.0.0.0:7770.
+func WithDocker() Option { return func(o *options) { o.docker = true } }
+
+func buildOptions(opts []Option) options {
 	var o options
 	for _, f := range opts {
 		f(&o)
 	}
+	return o
+}
+
+// flags are the server.py switches the launcher passes on: it runs React
+// itself (--no-react), and --share and --docker are the user's.
+func (o options) flags() appenv.Flags {
+	return appenv.Flags{NoReact: true, Share: o.share, Docker: o.docker}
+}
+
+func newAppSupervisor(root paths.Root, opts ...Option) appSupervisor {
+	o := buildOptions(opts)
 	v, _ := os.LookupEnv(EnvSupervisor)
 	switch strings.TrimSpace(v) {
 	case "legacy":
-		return legacySup{newSupervisor(root)}
+		return legacySup{newSupervisor(root, opts...)}
 	case "", "supervise":
 	default:
-		return badSup{legacySup{newSupervisor(root)}, fmt.Errorf("%s must be unset, supervise or legacy, got %q", EnvSupervisor, v)}
+		return badSup{legacySup{newSupervisor(root, opts...)}, fmt.Errorf("%s must be unset, supervise or legacy, got %q", EnvSupervisor, v)}
 	}
 	sup, err := supervise.New(superviseConfig(root, o))
 	if err != nil {
-		return badSup{legacySup{newSupervisor(root)}, err}
+		return badSup{legacySup{newSupervisor(root, opts...)}, err}
 	}
 	return superviseSup{sup}
 }
@@ -112,6 +129,7 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 	cfg := supervise.Config{
 		Root:         root,
 		SkipReactTab: true,
+		GradioArgs:   o.flags().Args(),
 	}
 	cfg.Prepare = func(ctx context.Context) (supervise.Plan, error) {
 		// Every switch is checked before anything runs, so a typo never starts
@@ -162,7 +180,7 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		if !pyOn {
 			return nil, nil
 		}
-		py, err := startServerPy(root, prefix, baseEnv)
+		py, err := startServerPy(root, prefix, baseEnv, o.flags())
 		if err != nil {
 			return nil, fmt.Errorf("%s=1: %w", EnvServerPy, err)
 		}

@@ -420,3 +420,15 @@ func (p *portVal) UnmarshalJSON(b []byte) error {
 	*p = portVal(n)
 	return err
 }
+
+func TestFlagsArgsRoundTrip(t *testing.T) {
+	for _, args := range [][]string{
+		nil,
+		{"--no-react"},
+		{"--no-react", "--share", "--docker", "--no-tree-proxy"},
+	} {
+		if got := ParseFlags(args).Args(); strings.Join(got, " ") != strings.Join(args, " ") {
+			t.Errorf("Args(ParseFlags(%v)) = %v", args, got)
+		}
+	}
+}

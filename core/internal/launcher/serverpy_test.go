@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appenv"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/launchopts"
 )
 
@@ -74,7 +75,7 @@ func get(t *testing.T, url, token string) (int, string) {
 }
 
 func TestServerPyRoutesToGradioAndServesControlAPI(t *testing.T) {
-	sp, err := startServerPyOn(makeRoot(t), "127.0.0.1", 0, []string{"no-such-micromamba", "run"}, nil)
+	sp, err := startServerPyOn(makeRoot(t), "127.0.0.1", 0, []string{"no-such-micromamba", "run"}, nil, appenv.Flags{NoReact: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +154,7 @@ func TestServerPyPublicPortInUse(t *testing.T) {
 	}
 	defer busy.Close()
 	port := busy.Addr().(*net.TCPAddr).Port
-	_, err = startServerPyOn(makeRoot(t), "127.0.0.1", port, nil, nil)
+	_, err = startServerPyOn(makeRoot(t), "127.0.0.1", port, nil, nil, appenv.Flags{NoReact: true})
 	if err == nil || !strings.Contains(err.Error(), "in use") {
 		t.Fatalf("got %v, want a port-in-use error", err)
 	}
@@ -169,7 +170,7 @@ func TestServerPyUsesConfigPort(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root.Dir(), "config.json"), []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	sp, err := startServerPy(root, nil, nil)
+	sp, err := startServerPy(root, nil, nil, appenv.Flags{NoReact: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +203,7 @@ func TestServerPyPrepsFoldersEnvAndPassesItToChildren(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root.Dir(), ".env.user"), []byte("TTS_PREP_USER=user\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	sp, err := startServerPy(root, nil, []string{"TTS_PREP_BASE=base"})
+	sp, err := startServerPy(root, nil, []string{"TTS_PREP_BASE=base"}, appenv.Flags{NoReact: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,5 +223,62 @@ func TestServerPyPrepsFoldersEnvAndPassesItToChildren(t *testing.T) {
 	}
 	if env["TTS_CORE_URL"] == "" {
 		t.Error("gradio env lacks TTS_CORE_URL")
+	}
+}
+
+// --share reaches Gradio's launch options through the launcher's flags.
+func TestServerPyShareFlagReachesLaunchOptions(t *testing.T) {
+	root := makeRoot(t)
+	port, err := freePort()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := `{"gradio_interface_options": {"auth": null, "server_name": "127.0.0.1", "server_port": ` + strconv.Itoa(port) + `}}`
+	if err := os.WriteFile(filepath.Join(root.Dir(), "config.json"), []byte(cfg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, share := range []bool{false, true} {
+		sp, err := startServerPy(root, nil, nil, options{share: share}.flags())
+		if err != nil {
+			t.Fatal(err)
+		}
+		env := envMap(sp.gradioEnv)
+		code, body := get(t, env["TTS_CORE_URL"]+launchopts.Path, env["TTS_CORE_TOKEN"])
+		sp.Close()
+		var launch launchopts.Result
+		if code != 200 || json.Unmarshal([]byte(body), &launch) != nil {
+			t.Fatalf("GET %s = %d %s", launchopts.Path, code, body)
+		}
+		if got := launch.Options["share"] == true; got != share {
+			t.Errorf("share=%v: options.share = %v", share, launch.Options["share"])
+		}
+	}
+}
+
+// The launcher's --share and --docker go to the gradio child's arguments, so
+// server.py (the legacy path) sees them too; --no-react is always there.
+func TestSuperviseConfigPassesShareAndDocker(t *testing.T) {
+	for _, tc := range []struct {
+		opts options
+		want []string
+	}{
+		{options{}, []string{"--no-react"}},
+		{options{share: true}, []string{"--no-react", "--share"}},
+		{options{share: true, docker: true}, []string{"--no-react", "--share", "--docker"}},
+	} {
+		got := superviseConfig(makeRoot(t), tc.opts).GradioArgs
+		if strings.Join(got, " ") != strings.Join(tc.want, " ") {
+			t.Errorf("%+v: gradio args %v, want %v", tc.opts, got, tc.want)
+		}
+	}
+}
+
+func TestOptionsFlags(t *testing.T) {
+	o := buildOptions([]Option{WithNoBrowser(), WithShare(), WithDocker()})
+	if want := (appenv.Flags{NoReact: true, Share: true, Docker: true}); o.flags() != want {
+		t.Errorf("flags = %+v, want %+v", o.flags(), want)
+	}
+	if o := buildOptions(nil); o.flags() != (appenv.Flags{NoReact: true}) {
+		t.Errorf("default flags = %+v, want only NoReact", o.flags())
 	}
 }

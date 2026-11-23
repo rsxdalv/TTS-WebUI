@@ -51,6 +51,7 @@ func reactUIArgs(envPath, rootDir string, port int, proxied bool) []string {
 // and tested independently.
 type Supervisor struct {
 	root  paths.Root
+	opts  options // the --share and --docker switches
 	mu    sync.Mutex
 	procs []*appProcess
 
@@ -70,8 +71,8 @@ type Supervisor struct {
 }
 
 // newSupervisor creates a Supervisor for root.
-func newSupervisor(root paths.Root) *Supervisor {
-	return &Supervisor{root: root}
+func newSupervisor(root paths.Root, opts ...Option) *Supervisor {
+	return &Supervisor{root: root, opts: buildOptions(opts)}
 }
 
 // Start launches all app processes under supervision.
@@ -179,7 +180,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	gradioScript, gradioEnv := "server.py", baseEnv
 	var py *serverPy
 	if pyOn {
-		if py, err = startServerPy(s.root, []string{mamba, "-p", envPath, "run"}, baseEnv); err != nil {
+		if py, err = startServerPy(s.root, []string{mamba, "-p", envPath, "run"}, baseEnv, s.opts.flags()); err != nil {
 			if front != nil {
 				front.Close()
 			}
@@ -190,7 +191,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	}
 
 	defs := []procDef{
-		{name: "gradio", cmd: mamba, args: []string{"-p", envPath, "run", "python", gradioScript, "--no-react"}, env: gradioEnv},
+		{name: "gradio", cmd: mamba, args: append([]string{"-p", envPath, "run", "python", gradioScript}, s.opts.flags().Args()...), env: gradioEnv},
 		{name: "react-ui", cmd: mamba, args: reactUIArgs(envPath, s.root.Dir(), nextPort, sw.Proxy), env: baseEnv},
 		{name: "extension-manager", cmd: mamba, args: []string{"-p", envPath, "run", "python", extMgrScript, "--port", fmt.Sprintf("%d", extPort)}, env: baseEnv},
 	}

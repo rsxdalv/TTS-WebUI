@@ -55,11 +55,6 @@ const serverPyEntry = "server_core.py"
 // is the only thing that faces the network.
 const gradioHost = "127.0.0.1"
 
-// serverPyFlags are the server.py switches the launcher passes on: it runs
-// React itself. --share and --docker are not launcher switches yet; when they
-// are, they go here and reach the router plan and the Gradio launch options.
-var serverPyFlags = appenv.Flags{NoReact: true}
-
 // serverPy is the Go side of one app run: the router on the public port (the
 // proxy tree's job), the extension manager, and the control API both of them
 // serve to the gradio child.
@@ -84,7 +79,7 @@ type serverPy struct {
 // `micromamba -p <env> run` command that runs the main env's python; baseEnv is
 // the environment the launcher gives every child. The environment the children
 // get is baseEnv plus .env and .env.user.
-func startServerPy(root paths.Root, prefix, baseEnv []string) (*serverPy, error) {
+func startServerPy(root paths.Root, prefix, baseEnv []string, flags appenv.Flags) (*serverPy, error) {
 	// Startup prep that server.py does in-process: output folders, a default
 	// .env when missing, then .env and .env.user on top of the launcher env.
 	if err := appenv.EnsureFolders(root.Dir()); err != nil {
@@ -103,17 +98,17 @@ func startServerPy(root paths.Root, prefix, baseEnv []string) (*serverPy, error)
 		slog.Warn("serverpy: " + w)
 	}
 	// The launcher runs React itself, so server.py never sees it.
-	plan, err := appenv.Plan(root.Dir(), rep.Env, serverPyFlags)
+	plan, err := appenv.Plan(root.Dir(), rep.Env, flags)
 	if err != nil {
 		return nil, err
 	}
 	// rep.Env (launcher env + .env + .env.user) is what the children run with.
-	return startServerPyOn(root, plan.Host, plan.PublicPort, prefix, rep.Env)
+	return startServerPyOn(root, plan.Host, plan.PublicPort, prefix, rep.Env, flags)
 }
 
 // startServerPyOn starts the router on host:publicPort, routing / to Gradio on
 // a free loopback port, and the control API on another loopback port.
-func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseEnv []string) (*serverPy, error) {
+func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseEnv []string, flags appenv.Flags) (*serverPy, error) {
 	gradioPort, err := freePort()
 	if err != nil {
 		return nil, fmt.Errorf("allocating the Gradio port: %w", err)
@@ -177,7 +172,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 	mux.Handle(extcatalog.Prefix, ext.Handler())
 	// The keyword arguments of Gradio's launch(): Python only passes them on.
 	mux.Handle(launchopts.Path, launchopts.New(launchopts.Options{
-		Config: cfg, Token: token, GradioHost: gradioHost, GradioPort: gradioPort, Flags: serverPyFlags,
+		Config: cfg, Token: token, GradioHost: gradioHost, GradioPort: gradioPort, Flags: flags,
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}).Handler())
 	// .env is rewritten only here (the Model Location tab; see appenv).

@@ -39,7 +39,9 @@ every write), so what Gradio gets is the file as it is at launch.
   `enable_queue`, `prevent_thread_lock` of the file; the last two are then set
   to the fixed values below. Fixed: `allowed_paths: ["."]`, `favicon_path:
   ./react-ui/public/favicon.ico`, `prevent_thread_lock: true`.
-- **Flags:** the launcher passes `serverPyFlags` (`NoReact` only today). With
+- **Flags:** the launcher passes its flags (`NoReact` always; `--share` and
+  `--docker` from `tts-webui launch`, via `launcher.WithShare`/`WithDocker`; the
+  same flags reach `appenv.Plan` and the gradio child's arguments). With
   `Share` the option `share` is true and the line `Gradio share mode enabled` is
   printed; `share` from config stays as written.
 

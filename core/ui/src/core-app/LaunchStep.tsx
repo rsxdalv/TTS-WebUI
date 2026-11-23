@@ -6,6 +6,8 @@ import { client } from "./client";
 interface ProcessStatus {
   name: string;
   running: boolean;
+  state?: string; // starting, ready, exited, failed, ...
+  error?: string; // why it failed (for example: no Python environment)
 }
 
 export function LaunchStep() {
@@ -183,7 +185,8 @@ export function LaunchStep() {
               />
               <span className="font-mono">{p.name}</span>
               <span className="text-gray-500 dark:text-gray-400">
-                {p.running ? "running" : "stopped"}
+                {p.running ? "running" : p.state ?? "stopped"}
+                {p.error ? `: ${p.error}` : ""}
               </span>
             </li>
           ))}

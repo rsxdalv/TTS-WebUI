@@ -8,11 +8,10 @@ with Go over its control API instead.
 Environment (set by the Go launcher):
     TTS_CORE_URL     base URL of Go's control API, e.g. http://127.0.0.1:7771
     TTS_CORE_TOKEN   shared secret, sent as X-TTS-Core-Token
-    TTS_GRADIO_PORT  port Gradio itself binds
-    TTS_GRADIO_HOST  Gradio's server_name
 
 Nothing is edited on disk: module attributes, the sys.argv is
-patched in place; the config dict is never touched (see gradio_overrides), so this must run before server.py is executed and before
+patched in place; the config dict is never touched (Gradio's private host and port come
+from the Go core's launch options), so this must run before server.py is executed and before
 anything does ``from tts_webui.gradio_proxy_tree.main import add_extension_route``.
 """
 
@@ -24,7 +23,7 @@ import time
 import urllib.error
 import urllib.request
 
-__all__ = ["install", "register_route", "gradio_overrides"]
+__all__ = ["install", "register_route"]
 
 TOKEN_HEADER = "X-TTS-Core-Token"
 _ATTEMPTS = 3
@@ -99,24 +98,6 @@ def install():
         f"Go core at {os.environ['TTS_CORE_URL']} routes the public port; Python proxy tree off"
     )
     return True
-
-
-def gradio_overrides(environ=None):
-    """Private host/port for Gradio's ``launch()``, from the Go core's environment.
-
-    These are deliberately not written into ``config["gradio_interface_options"]``:
-    the Settings tab saves that dict to config.json, and the private port must
-    never become the public one. Callers pass them to launch() on a copy.
-    """
-    environ = os.environ if environ is None else environ
-    overrides = {"inbrowser": False}  # the Go launcher opens the browser
-    port = environ.get("TTS_GRADIO_PORT")
-    if port:
-        overrides["server_port"] = int(port)
-    host = environ.get("TTS_GRADIO_HOST")
-    if host:
-        overrides["server_name"] = host
-    return overrides
 
 
 def _apply_argv(argv):

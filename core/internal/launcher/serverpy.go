@@ -20,6 +20,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extcatalog"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extprocs"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/history"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/launchopts"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/logview"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/piplist"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/router"
@@ -49,6 +50,15 @@ func serverPyEnabled(lookup func(string) (string, bool)) (bool, error) {
 // the Python bridges (routes and extension processes go to Go), then runs
 // server.py unchanged.
 const serverPyEntry = "server_core.py"
+
+// gradioHost is where Gradio itself binds: loopback, behind the router, which
+// is the only thing that faces the network.
+const gradioHost = "127.0.0.1"
+
+// serverPyFlags are the server.py switches the launcher passes on: it runs
+// React itself. --share and --docker are not launcher switches yet; when they
+// are, they go here and reach the router plan and the Gradio launch options.
+var serverPyFlags = appenv.Flags{NoReact: true}
 
 // serverPy is the Go side of one app run: the router on the public port (the
 // proxy tree's job), the extension manager, and the control API both of them
@@ -93,7 +103,7 @@ func startServerPy(root paths.Root, prefix, baseEnv []string) (*serverPy, error)
 		slog.Warn("serverpy: " + w)
 	}
 	// The launcher runs React itself, so server.py never sees it.
-	plan, err := appenv.Plan(root.Dir(), rep.Env, appenv.Flags{NoReact: true})
+	plan, err := appenv.Plan(root.Dir(), rep.Env, serverPyFlags)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +124,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 	}
 
 	rt := router.New(router.Options{Token: token})
-	if err := rt.AddRoute("/", "http://127.0.0.1:"+strconv.Itoa(gradioPort)); err != nil {
+	if err := rt.AddRoute("/", "http://"+net.JoinHostPort(gradioHost, strconv.Itoa(gradioPort))); err != nil {
 		return nil, err
 	}
 	// Bind before any child starts, so a running app on the same port is an
@@ -165,6 +175,11 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}).Handler())
 	mux.Handle(extcatalog.Prefix, ext.Handler())
+	// The keyword arguments of Gradio's launch(): Python only passes them on.
+	mux.Handle(launchopts.Path, launchopts.New(launchopts.Options{
+		Config: cfg, Token: token, GradioHost: gradioHost, GradioPort: gradioPort, Flags: serverPyFlags,
+		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+	}).Handler())
 	// .env is rewritten only here (the Model Location tab; see appenv).
 	mux.Handle(appenv.APIPrefix, appenv.NewAPI(appenv.APIOptions{
 		Root: root.Dir(), Token: token,
@@ -194,9 +209,6 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 		gradioEnv: append(append([]string(nil), baseEnv...),
 			"TTS_CORE_URL=http://"+ctlLn.Addr().String(),
 			"TTS_CORE_TOKEN="+token,
-			"TTS_GRADIO_PORT="+strconv.Itoa(gradioPort),
-			// Gradio stays on loopback; the router is the front door.
-			"TTS_GRADIO_HOST=127.0.0.1",
 		),
 		stopRouter: cancel,
 		routerDone: make(chan struct{}),
@@ -208,7 +220,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 		}
 	}()
 	go func() { _ = ctl.Serve(ctlLn) }()
-	slog.Info(fmt.Sprintf("serverpy: router on %s -> gradio 127.0.0.1:%d", sp.publicAddr, gradioPort))
+	slog.Info(fmt.Sprintf("serverpy: router on %s -> gradio %s", sp.publicAddr, net.JoinHostPort(gradioHost, strconv.Itoa(gradioPort))))
 	return sp, nil
 }
 

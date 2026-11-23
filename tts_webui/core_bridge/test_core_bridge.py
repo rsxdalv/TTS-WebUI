@@ -58,6 +58,10 @@ ANSWERS = {
     },
     ("POST", "latest-version"): "1.2.3",
     ("POST", "save-model-locations"): "saved",
+    ("GET", "options"): {
+        "options": {"server_name": "127.0.0.1", "server_port": 27700, "auth": [["u", "p"]]},
+        "lines": ["Starting Gradio server: http://127.0.0.1:27700"],
+    },
     ("POST", "add"): {"status": "Saved | Added: n.one | Skipped (exists): none", "json": "{}"},
     ("GET", "pip-list"): [{"name": "Alpha", "version": "1.0"}, {"name": "numpy", "version": "2.0"}],
     # logs
@@ -946,6 +950,31 @@ class EnvTest(unittest.TestCase):
         with mock.patch.dict(os.environ, env, clear=True):
             with self.assertRaises(CoreBridgeError):
                 bridge.env.save_model_locations("a", "b", "c", "d")
+
+
+class LaunchTest(unittest.TestCase):
+    def setUp(self):
+        self.stub = Stub()
+        self.addCleanup(self.stub.close)
+        env = mock.patch.dict(
+            os.environ, {"TTS_CORE_URL": self.stub.url, "TTS_CORE_TOKEN": "tok"}
+        )
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_options_come_from_go(self):
+        got = bridge.launch.options()
+        self.assertEqual(got["options"]["server_port"], 27700)
+        self.assertEqual(got["lines"], ["Starting Gradio server: http://127.0.0.1:27700"])
+        self.assertEqual(self.stub.requests[0][:4], ("GET", "options", {}, None))
+        with self.assertRaises(TypeError):
+            bridge.launch.options("x")
+
+    def test_core_off_raises(self):
+        env = {k: v for k, v in os.environ.items() if k != "TTS_CORE_URL"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            with self.assertRaises(CoreBridgeError):
+                bridge.launch.options()
 
 
 class PipTest(unittest.TestCase):

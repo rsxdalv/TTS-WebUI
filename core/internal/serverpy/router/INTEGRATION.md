@@ -10,8 +10,10 @@ and `server_core.py` (repo root). Nothing existing was modified.
    the function that builds the `python server.py --no-react` command):
    - entry script `server.py` -> `server_core.py` (stage 1's supervisor takes it as config);
    - add these env vars to the child:
-     `TTS_CORE_URL=http://127.0.0.1:<control port>`, `TTS_CORE_TOKEN=<token>`,
-     `TTS_GRADIO_PORT=<private gradio port>`, `TTS_GRADIO_HOST=127.0.0.1`.
+     `TTS_CORE_URL=http://127.0.0.1:<control port>`, `TTS_CORE_TOKEN=<token>`.
+     (Gradio's private host and port used to be `TTS_GRADIO_PORT` and
+     `TTS_GRADIO_HOST`; they now reach Python in the launch options, see
+     `launchopts`.)
    - keep `--no-react` (Go runs the React UI itself).
 2. **Launcher startup** (new code in the launcher, or wherever stage 1 starts things):
 

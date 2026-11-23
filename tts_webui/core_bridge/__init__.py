@@ -14,6 +14,7 @@ from .config import ConfigBridge
 from .env import EnvBridge
 from .extcatalog import ExtCatalogBridge
 from .history import HistoryBridge
+from .launch import LaunchBridge
 from .logs import LogsBridge
 from .pip import PipBridge
 from .transport import CoreBridgeError, enabled
@@ -25,6 +26,7 @@ _SUBBRIDGES = {
     "env": EnvBridge,
     "extcatalog": ExtCatalogBridge,
     "history": HistoryBridge,
+    "launch": LaunchBridge,
     "logs": LogsBridge,
     "pip": PipBridge,
 }

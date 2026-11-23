@@ -2,6 +2,8 @@ package launcher
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -11,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/launchopts"
 )
 
 func TestServerPyEnabled(t *testing.T) {
@@ -77,13 +81,15 @@ func TestServerPyRoutesToGradioAndServesControlAPI(t *testing.T) {
 	defer sp.Close()
 
 	env := envMap(sp.gradioEnv)
-	for _, k := range []string{"TTS_CORE_URL", "TTS_CORE_TOKEN", "TTS_GRADIO_PORT", "TTS_GRADIO_HOST"} {
+	for _, k := range []string{"TTS_CORE_URL", "TTS_CORE_TOKEN"} {
 		if env[k] == "" {
 			t.Fatalf("gradio env has no %s: %q", k, sp.gradioEnv)
 		}
 	}
-	if env["TTS_GRADIO_HOST"] != "127.0.0.1" {
-		t.Errorf("TTS_GRADIO_HOST = %q, want 127.0.0.1", env["TTS_GRADIO_HOST"])
+	// The address Gradio binds is not in the environment: Python asks for its
+	// launch options, and they carry the private host and port.
+	if _, ok := env["TTS_GRADIO_PORT"]; ok {
+		t.Errorf("TTS_GRADIO_PORT is still in the gradio env: %q", sp.gradioEnv)
 	}
 	if !strings.HasPrefix(env["TTS_CORE_URL"], "http://127.0.0.1:") {
 		t.Errorf("TTS_CORE_URL = %q, want a loopback URL", env["TTS_CORE_URL"])
@@ -92,8 +98,19 @@ func TestServerPyRoutesToGradioAndServesControlAPI(t *testing.T) {
 		t.Errorf("token has %d hex chars, want 64", len(env["TTS_CORE_TOKEN"]))
 	}
 
+	token := env["TTS_CORE_TOKEN"]
+	code, body := get(t, env["TTS_CORE_URL"]+launchopts.Path, token)
+	var launch launchopts.Result
+	if code != 200 || json.Unmarshal([]byte(body), &launch) != nil {
+		t.Fatalf("GET %s = %d %s", launchopts.Path, code, body)
+	}
+	if launch.Options["server_name"] != "127.0.0.1" || launch.Options["inbrowser"] != false {
+		t.Errorf("launch options: %v", launch.Options)
+	}
+	gradioPort := fmt.Sprint(launch.Options["server_port"])
+
 	// A stand-in Gradio on the port the gradio child is told to bind.
-	gln, err := net.Listen("tcp", "127.0.0.1:"+env["TTS_GRADIO_PORT"])
+	gln, err := net.Listen("tcp", "127.0.0.1:"+gradioPort)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,14 +124,13 @@ func TestServerPyRoutesToGradioAndServesControlAPI(t *testing.T) {
 		t.Fatalf("router GET /config = %d %q, want 200 \"gradio /config\"", code, body)
 	}
 
-	token := env["TTS_CORE_TOKEN"]
 	if code, _ := get(t, env["TTS_CORE_URL"]+"/api/extensions", ""); code != http.StatusForbidden {
 		t.Errorf("control API without token = %d, want 403", code)
 	}
 	if code, body := get(t, env["TTS_CORE_URL"]+"/api/extensions", token); code != 200 {
 		t.Errorf("GET /api/extensions = %d %q, want 200", code, body)
 	}
-	if code, body := get(t, env["TTS_CORE_URL"]+"/api/routes", token); code != 200 || !strings.Contains(body, env["TTS_GRADIO_PORT"]) {
+	if code, body := get(t, env["TTS_CORE_URL"]+"/api/routes", token); code != 200 || !strings.Contains(body, gradioPort) {
 		t.Errorf("GET /api/routes = %d %q, want 200 listing the gradio route", code, body)
 	}
 

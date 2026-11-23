@@ -125,11 +125,7 @@ class InstallTest(unittest.TestCase):
         self.assertIn("--docker", sys.argv)
 
     def test_install_patches_everything(self):
-        env = {
-            "TTS_CORE_URL": "http://127.0.0.1:1",
-            "TTS_GRADIO_PORT": "27700",
-            "TTS_GRADIO_HOST": "0.0.0.0",
-        }
+        env = {"TTS_CORE_URL": "http://127.0.0.1:1"}
         with mock.patch.dict(os.environ, env, clear=True), mock.patch("builtins.print"):
             self.assertTrue(bridge.install())
             self.assertEqual(os.environ["GRADIO_TREE_URL"], "")
@@ -137,10 +133,6 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(
             self.opts,
             {"server_port": 7770, "server_name": "127.0.0.1", "inbrowser": True},
-        )
-        self.assertEqual(
-            bridge.gradio_overrides(env),
-            {"server_port": 27700, "server_name": "0.0.0.0", "inbrowser": False},
         )
         self.assertEqual(sys.argv, ["server_core.py", "--no-react", "--no-tree-proxy"])
         self.assertIsNone(self.main.setup_gradio_proxy_tree({"server_port": 1}))
@@ -153,7 +145,6 @@ class InstallTest(unittest.TestCase):
         ):
             bridge.install()
         self.assertEqual(self.opts["server_port"], 7770)
-        self.assertEqual(bridge.gradio_overrides({}), {"inbrowser": False})
 
     def test_install_is_idempotent_and_no_tree_flag_not_duplicated(self):
         sys.argv[:] = ["x", "--no-tree-proxy"]

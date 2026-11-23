@@ -13,6 +13,9 @@ def print_gradio_options(options):
     """
     Print Gradio server options in a compact, grouped format
 
+    Only server.py (the legacy path) uses this; the Go core prints the same
+    listing from core/internal/serverpy/launchopts. Both leave secrets out.
+
     Args:
         options (dict): Dictionary of Gradio launch options
     """
@@ -70,7 +73,9 @@ def print_gradio_options(options):
         formatted_params = []
         for key, value in group_params.items():
             # Format the value based on its type
-            if isinstance(value, str):
+            if key == "ssl_keyfile_password" and value:
+                formatted_value = '"******"'
+            elif isinstance(value, str):
                 if len(value) > 20:  # Truncate long strings
                     formatted_value = f'"{value[:17]}..."'
                 else:

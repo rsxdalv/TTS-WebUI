@@ -96,3 +96,13 @@ func TestLatestVersion(t *testing.T) {
 		t.Errorf("GET: %d", code)
 	}
 }
+
+func TestEscapeForMambaRun(t *testing.T) {
+	got := escapeForMambaRun([]string{"uv", "gradio<=5.49.1", "a>=0.0.5", "x&y|z", "p(q)", "100%", "c^d", "git+https://h/x@main"})
+	want := []string{"uv", "gradio^<=5.49.1", "a^>=0.0.5", "x^&y^|z", "p^(q^)", "100%%", "c^^d", "git+https://h/x@main"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("arg %d: %q, want %q", i, got[i], want[i])
+		}
+	}
+}

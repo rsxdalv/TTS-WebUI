@@ -249,6 +249,9 @@ func (s *Store) venvSetupTokens(ctx context.Context, entry *Obj, reqToks []strin
 // stdout and stderr merged, to emit.
 func (s *Store) run(ctx context.Context, args []string, emit func(string)) error {
 	full := append(append([]string{}, s.opts.Run...), args...)
+	if runsThroughCmd(s.opts.Run) {
+		full = append(append([]string{}, s.opts.Run...), escapeForMambaRun(args)...)
+	}
 	if s.opts.Python != "" && args[0] == "python" {
 		full = append([]string{s.opts.Python}, args[1:]...)
 	}
@@ -272,6 +275,38 @@ func (s *Store) run(ctx context.Context, args []string, emit func(string)) error
 		}
 	}
 	return sc.Err() // the command's exit error, passed through CloseWithError
+}
+
+// runsThroughCmd reports whether prefix is `micromamba run` on Windows.
+func runsThroughCmd(prefix []string) bool {
+	if len(prefix) == 0 || runtime.GOOS != "windows" {
+		return false
+	}
+	base := strings.ToLower(filepath.Base(prefix[0]))
+	return base == "micromamba.exe" || base == "micromamba"
+}
+
+// escapeForMambaRun makes arguments reach the program unchanged through
+// `micromamba run` on Windows, which hands them to cmd.exe in a batch file: there
+// < > & | ( ) ^ are operators (so "gradio>=1" would redirect output to a file
+// named "=1") and % starts a variable. A caret escapes the operators; the batch
+// file wants %% for a percent sign.
+func escapeForMambaRun(args []string) []string {
+	out := make([]string, len(args))
+	for i, a := range args {
+		var b strings.Builder
+		for _, c := range a {
+			switch c {
+			case '^', '&', '|', '<', '>', '(', ')':
+				b.WriteByte('^')
+			case '%':
+				b.WriteByte('%')
+			}
+			b.WriteRune(c)
+		}
+		out[i] = b.String()
+	}
+	return out
 }
 
 // splitLines splits on \n and \r, like universal_newlines (pip's progress

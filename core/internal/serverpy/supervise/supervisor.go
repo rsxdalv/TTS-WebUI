@@ -16,6 +16,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
 	"sync"
 	"time"
@@ -27,8 +28,11 @@ import (
 
 // Process names, as they appear in the status.
 const (
-	NameGradio   = "gradio"
-	NameReact    = "react-ui"
+	NameGradio = "gradio"
+	NameReact  = "react-ui"
+	// NameCore is the Go side (router, control API, services). It is held for
+	// the whole run and is not part of the status.
+	NameCore     = "go-core"
 	logTailLines = 50
 )
 
@@ -60,6 +64,9 @@ type ProcessStatus struct {
 	ExitCode *int     `json:"exit_code,omitempty"`
 	Error    string   `json:"error,omitempty"`
 	LogTail  []string `json:"log_tail,omitempty"`
+	// Warning is something the run carries on despite (for example a missing
+	// GPU label). Set on the gradio entry.
+	Warning string `json:"warning,omitempty"`
 }
 
 // runner is the part of *procs.Proc the supervisor uses. A runner that also
@@ -123,9 +130,10 @@ type Supervisor struct {
 	cfg       Config
 	newRunner func() runner
 
-	mu  sync.Mutex
-	cur []*managed // current generation, in start order; nil before first Start
-	pub int        // public port of the current run; 0 = cfg.PublicPort
+	mu   sync.Mutex
+	cur  []*managed // current generation, in start order; nil before first Start
+	pub  int        // public port of the current run; 0 = cfg.PublicPort
+	warn string     // warning of the current run, shown on the gradio status
 
 	// supCtx/supCancel is supervisor-owned; it is never an HTTP request
 	// context, which would kill the app when the handler returned.
@@ -187,7 +195,7 @@ func (s *Supervisor) defs(c Config) []procDef {
 // aliveLocked reports whether any child process is alive.
 func (s *Supervisor) aliveLocked() bool {
 	for _, m := range s.cur {
-		if m.alive {
+		if m.alive && m.name != NameCore {
 			return true
 		}
 	}
@@ -207,13 +215,24 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	if running {
 		return ErrAlreadyRunning
 	}
+	s.releaseCore()
 
-	if !s.cfg.SkipGPUCheck {
-		if _, err := readGPULabel(s.cfg); err != nil {
-			return fmt.Errorf("determining GPU: %w", err)
-		}
+	// Gradio is optional. Without a Python environment it is not started and
+	// the Go core (front, control API, services) runs alone.
+	pyOK, pyMsg := pythonAvailable(s.cfg)
+	// The GPU label is checked here and nowhere else in Start. A missing or
+	// invalid one is a warning, not a stop (Config.StrictGPULabel makes it
+	// one again).
+	warn, err := s.checkGPULabel(pyOK)
+	if err != nil {
+		return err
 	}
-
+	s.mu.Lock()
+	s.warn = warn
+	s.mu.Unlock()
+	if warn != "" {
+		slog.Warn(warn)
+	}
 	var plan Plan
 	if s.cfg.Prepare != nil {
 		var err error
@@ -237,6 +256,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		return fmt.Errorf("ReactPort and PublicPort are both %d", c.PublicPort)
 	}
 
+	core := &react_ui_backend.Core{}
 	var front *react_ui_backend.Server
 	if !c.NoReact {
 		var err error
@@ -246,6 +266,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 			Routes:       plan.Switches,
 			LAN:          plan.Switches.ProxyLAN,
 			AllowedHosts: plan.Switches.ProxyAllowedHosts,
+			Core:         core,
 		})
 		if err != nil {
 			return fmt.Errorf("starting the React UI server: %w", err)
@@ -269,12 +290,14 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 			return fmt.Errorf("starting the Go side of gradio: %w", err)
 		}
 	}
+	var closeOnce sync.Once
 	closeSide := func() {
 		if side != nil && side.Close != nil {
-			side.Close()
+			closeOnce.Do(side.Close)
 		}
 	}
 	if side != nil {
+		core.Set(side.CoreURL, side.CoreToken)
 		c.GradioEnv = append(c.GradioEnv, side.Env...)
 	}
 
@@ -295,6 +318,16 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	cwd := c.Root.Dir()
 	prefix := c.CommandPrefix
 	gen := make([]*managed, 0, 3)
+	// The Go side has its own lifetime: it is held by a runner of its own that
+	// lives until Stop, whatever Gradio does. It is not part of the status.
+	if side != nil && side.Close != nil {
+		hold := newManaged(NameCore, 0, nil)
+		var hr runner = newFrontRunner(closeSide)
+		hold.r, hold.alive, hold.state = hr, true, StateReady
+		hold.markReady()
+		gen = append(gen, hold)
+		go s.watch(hold)
+	}
 	s.cur = gen
 	var startErr error
 	for _, d := range s.defs(c) {
@@ -305,15 +338,25 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		switch {
 		case d.static:
 			r = newFrontRunner(closeFront)
-		case d.name == NameGradio:
-			r = &closingRunner{runner: s.newRunner(), closers: []func(){closeSide}}
 		default:
 			r = s.newRunner()
+		}
+		if d.name == NameGradio && !pyOK {
+			// Not an error: the core runs without Gradio. The status says why.
+			m.state, m.errMsg = StateFailed, pyMsg
+			m.markGone()
+			slog.Warn("gradio not started: " + pyMsg)
+			continue
 		}
 		cmd, args := childCommand(prefix, d.args)
 		if err := r.Start(ctx, cmd, args, cwd, d.env); err != nil {
 			m.state, m.errMsg = StateFailed, err.Error()
 			m.markGone()
+			if d.name == NameGradio {
+				// Optional too: a Gradio that cannot start is a state.
+				slog.Warn("gradio did not start: " + err.Error())
+				continue
+			}
 			startErr = fmt.Errorf("starting %s: %w", d.name, err)
 			break
 		}
@@ -492,10 +535,11 @@ func (s *Supervisor) openBrowsers(ctx context.Context, gen []*managed, pubURL st
 	for _, m := range gen {
 		switch m.name {
 		case NameGradio:
-			if !wait(m) {
-				return
+			// A Gradio that is not coming (no Python, died) does not keep the
+			// React tab from opening: the Go core is the app.
+			if wait(m) {
+				open(pubURL)
 			}
-			open(pubURL)
 		case NameReact:
 			if !reactTab || !wait(m) {
 				return
@@ -549,6 +593,11 @@ func (s *Supervisor) statusesLocked() []ProcessStatus {
 			st.LogTail = tail(m.r.Lines(), logTailLines)
 		}
 		out = append(out, st)
+	}
+	for i := range out {
+		if out[i].Name == NameGradio {
+			out[i].Warning = s.warn
+		}
 	}
 	return out
 }
@@ -638,4 +687,71 @@ func childCommand(prefix, args []string) (string, []string) {
 		return args[0], append([]string(nil), args[1:]...)
 	}
 	return prefix[0], append(append([]string(nil), prefix[1:]...), args...)
+}
+
+// releaseCore closes the Go side of an earlier run that is still held (its
+// Gradio died or never started, and nothing else is alive), so a new Start can
+// bind the same ports.
+func (s *Supervisor) releaseCore() {
+	s.mu.Lock()
+	var hold *managed
+	for _, m := range s.cur {
+		if m.name == NameCore && m.alive && !m.stopping {
+			m.stopping, m.state = true, StateStopping
+			hold = m
+		}
+	}
+	s.mu.Unlock()
+	if hold == nil {
+		return
+	}
+	_ = hold.r.Stop()
+	select {
+	case <-hold.finished:
+	case <-time.After(5 * time.Second):
+	}
+}
+
+// pythonAvailable reports whether Gradio can be started: the command prefix's
+// program exists and, for `micromamba -p <env> run`, so does the env; with no
+// prefix (system Python) python must be on PATH. The message is what the
+// status shows.
+func pythonAvailable(c Config) (bool, string) {
+	if len(c.CommandPrefix) == 0 {
+		if _, err := exec.LookPath("python"); err != nil {
+			return false, "no Python environment: python was not found on PATH"
+		}
+		return true, ""
+	}
+	if _, err := exec.LookPath(c.CommandPrefix[0]); err != nil {
+		return false, "no Python environment: " + c.CommandPrefix[0] + " was not found (the install has not been done)"
+	}
+	for i := 1; i+1 < len(c.CommandPrefix); i++ {
+		if c.CommandPrefix[i] == "-p" || c.CommandPrefix[i] == "--prefix" {
+			if st, err := os.Stat(c.CommandPrefix[i+1]); err != nil || !st.IsDir() {
+				return false, "no Python environment: " + c.CommandPrefix[i+1] + " does not exist (the install has not been done)"
+			}
+		}
+	}
+	return true, ""
+}
+
+// checkGPULabel is the one place the GPU label is checked. Nothing started by
+// Start needs the label (Gradio, the Go side and the native extension
+// processes do not read it); only installing a native extension's torch does,
+// and that says so itself. So a missing or invalid label is a warning that the
+// status shows, and the run goes on without a label. With StrictGPULabel it is
+// an error as it was. Not checked when the check is skipped or Gradio cannot
+// start (nothing then depends on the label).
+func (s *Supervisor) checkGPULabel(pythonOK bool) (warning string, err error) {
+	if s.cfg.SkipGPUCheck || !pythonOK {
+		return "", nil
+	}
+	if _, rerr := readGPULabel(s.cfg); rerr != nil {
+		if s.cfg.StrictGPULabel {
+			return "", fmt.Errorf("determining GPU: %w", rerr)
+		}
+		return fmt.Sprintf("%v. Carrying on without a GPU label: Gradio and the Go core do not use it; installing a native extension's torch needs it and will say so", rerr), nil
+	}
+	return "", nil
 }

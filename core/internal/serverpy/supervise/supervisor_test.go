@@ -371,14 +371,16 @@ func TestStartAfterAllExited(t *testing.T) {
 
 func TestStartErrorMarksFailed(t *testing.T) {
 	s, _ := newSup(t, func(c *Config) { c.CommandPrefix = []string{filepath.Join(t.TempDir(), "nope")} })
-	err := s.Start(ctx())
-	if err == nil || !strings.Contains(err.Error(), "starting gradio") {
+	// No Python is a state, not a failed Start: Gradio is reported as failed
+	// with the reason, the React front is up.
+	if err := s.Start(ctx()); err != nil {
 		t.Fatalf("Start error = %v", err)
 	}
 	st := status(s, NameGradio)
-	if st.State != StateFailed || st.Running || st.Error == "" {
+	if st.State != StateFailed || st.Running || !strings.Contains(st.Error, "no Python environment") {
 		t.Errorf("status: %+v", st)
 	}
+	waitState(t, s, NameReact, StateReady)
 }
 
 // pidProc adds Pid() to a real proc; failRunner never starts.
@@ -392,28 +394,25 @@ func (failRunner) Start(context.Context, string, []string, string, []string) err
 	return errors.New("boom")
 }
 
-func TestStartFailureClosesTheReactFront(t *testing.T) {
+// A Gradio that cannot start leaves the Go front up (it used to close it).
+func TestGradioStartFailureKeepsTheReactFront(t *testing.T) {
 	s, e := newSup(t, nil)
-	n := 0
-	s.newRunner = func() runner {
-		n++
-		if n == 1 {
-			return failRunner{}
-		}
-		t.Error("a second child must not be started")
-		return &procs.Proc{}
-	}
-	err := s.Start(ctx())
-	if err == nil || !strings.Contains(err.Error(), "starting gradio") {
+	s.newRunner = func() runner { return failRunner{} }
+	if err := s.Start(ctx()); err != nil {
 		t.Fatalf("Start error = %v", err)
 	}
 	if g := status(s, NameGradio); g.State != StateFailed || g.Error != "boom" {
 		t.Errorf("gradio: %+v", g)
 	}
-	// The Go front was started before the children; a failed start closes it.
-	addr := fmt.Sprintf("127.0.0.1:%d", e.reactPort)
+	waitState(t, s, NameReact, StateReady)
+	c, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", e.reactPort), time.Second)
+	if err != nil {
+		t.Fatalf("the front must be up: %v", err)
+	}
+	_ = c.Close()
+	s.Stop()
 	waitFor(t, "react port closed", func() bool {
-		c, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+		c, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", e.reactPort), 100*time.Millisecond)
 		if err != nil {
 			return true
 		}
@@ -505,8 +504,10 @@ func TestBrowserNoReactAndDisabledAndFailure(t *testing.T) {
 		waitState(t, s, NameGradio, StateExited)
 		waitState(t, s, NameReact, StateReady)
 		time.Sleep(200 * time.Millisecond)
-		if got := e.op.get(); len(got) != 0 {
-			t.Errorf("opened %v although gradio never became ready", got)
+		// Gradio's own tab is not opened, but the Go core's React tab is.
+		want := fmt.Sprintf("http://127.0.0.1:%d", e.reactPort)
+		if got := e.op.get(); len(got) != 1 || got[0] != want {
+			t.Errorf("opened %v, want only %s", got, want)
 		}
 	})
 }
@@ -608,11 +609,41 @@ func TestAppLinkUsesConfiguredPort(t *testing.T) {
 	}
 }
 
-func TestGPUGate(t *testing.T) {
+// The GPU label is a warning, not a gate (Rob's decision): a missing or invalid
+// .gpu does not stop Start, and the status carries the warning. StrictGPULabel
+// brings the old hard errors back.
+func TestGPULabelIsAWarning(t *testing.T) {
 	s, e := newSup(t, func(c *Config) { c.SkipGPUCheck = false; c.NoReact = true })
-	err := s.Start(ctx())
-	if err == nil || !strings.Contains(err.Error(), "GPU label not set") {
-		t.Fatalf("missing .gpu: %v", err)
+	warned := func(want string) {
+		t.Helper()
+		if err := s.Start(ctx()); err != nil {
+			t.Fatalf("Start must not stop on the label: %v", err)
+		}
+		waitState(t, s, NameGradio, StateReady)
+		w := status(s, NameGradio).Warning
+		if want == "" && w != "" || want != "" && !strings.Contains(w, want) {
+			t.Fatalf("warning %q, want %q", w, want)
+		}
+		s.Stop()
+	}
+	warned("GPU label not set")
+	if err := os.MkdirAll(e.root.InstallerScripts(), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(e.root.MarkerFile(".gpu"), []byte("bogus\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	warned("invalid GPU label")
+	if err := os.WriteFile(e.root.MarkerFile(".gpu"), []byte("CPU\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	warned("")
+}
+
+func TestStrictGPULabelStopsStart(t *testing.T) {
+	s, e := newSup(t, func(c *Config) { c.SkipGPUCheck = false; c.StrictGPULabel = true; c.NoReact = true })
+	if err := s.Start(ctx()); err == nil || !strings.Contains(err.Error(), "GPU label not set") {
+		t.Fatalf("strict, missing .gpu: %v", err)
 	}
 	if err := os.MkdirAll(e.root.InstallerScripts(), 0o755); err != nil {
 		t.Fatal(err)
@@ -621,13 +652,13 @@ func TestGPUGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := s.Start(ctx()); err == nil || !strings.Contains(err.Error(), "invalid GPU label") {
-		t.Fatalf("bad .gpu: %v", err)
+		t.Fatalf("strict, bad .gpu: %v", err)
 	}
 	if err := os.WriteFile(e.root.MarkerFile(".gpu"), []byte("CPU\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Start(ctx()); err != nil {
-		t.Fatalf("valid .gpu: %v", err)
+		t.Fatalf("strict, valid .gpu: %v", err)
 	}
 	waitState(t, s, NameGradio, StateReady)
 }

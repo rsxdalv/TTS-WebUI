@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
 	"sort"
 	"strings"
@@ -90,6 +91,9 @@ func (s *Store) List(ctx context.Context) ([]Package, error) {
 	defer s.mu.Unlock()
 	ctx, cancel := context.WithTimeout(ctx, s.opts.Timeout)
 	defer cancel()
+	if !s.hasPython() {
+		return nil, ErrNoPython
+	}
 	full := s.command()
 	cmd := exec.CommandContext(ctx, full[0], full[1:]...)
 	cmd.Dir = s.opts.Root
@@ -234,9 +238,41 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	list, err := s.List(r.Context())
 	if err != nil {
+		if errors.Is(err, ErrNoPython) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error(), "code": "no_python"})
+			return
+		}
 		s.opts.Logf("piplist: %v", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
 		return
 	}
 	writeJSON(w, http.StatusOK, list)
+}
+
+// ErrNoPython is the answer when there is no Python to ask (no environment
+// installed yet, or no python on PATH). It is a state, not a failure: the
+// core runs without Python.
+var ErrNoPython = errors.New("no Python environment")
+
+// hasPython reports whether the command can start: the Python option or the
+// Run prefix's program and, for `micromamba -p <env> run`, the env directory.
+func (s *Store) hasPython() bool {
+	if s.opts.Python != "" {
+		_, err := exec.LookPath(s.opts.Python)
+		return err == nil
+	}
+	if len(s.opts.Run) == 0 {
+		_, err := exec.LookPath("python")
+		return err == nil
+	}
+	if _, err := exec.LookPath(s.opts.Run[0]); err != nil {
+		return false
+	}
+	for i := 1; i+1 < len(s.opts.Run); i++ {
+		if s.opts.Run[i] == "-p" || s.opts.Run[i] == "--prefix" {
+			st, err := os.Stat(s.opts.Run[i+1])
+			return err == nil && st.IsDir()
+		}
+	}
+	return true
 }

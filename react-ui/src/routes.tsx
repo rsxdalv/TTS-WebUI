@@ -28,6 +28,13 @@ const Pipeline = lazy(() => import("./pages/pipeline"));
 const Tools = lazy(() => import("./pages/tools"));
 const ToolsGpuInfo = lazy(() => import("./pages/tools/gpu_info"));
 const ToolsApiConfig = lazy(() => import("./pages/tools/api_config"));
+const ToolsPipList = lazy(() => import("./pages/tools/pip_list"));
+const ToolsExtensions = lazy(() => import("./pages/tools/extensions"));
+const ToolsRemixer = lazy(() => import("./pages/tools/simple_remixer"));
+const ToolsYouTube = lazy(() => import("./pages/tools/youtube_tutorials"));
+const ToolsLogViewer = lazy(() => import("./pages/tools/log_viewer"));
+const ToolsModelLocation = lazy(() => import("./pages/tools/model_location"));
+const ToolsServerSettings = lazy(() => import("./pages/tools/server_settings"));
 
 /** The outputs pages. */
 const Outputs = lazy(() => import("./pages/outputs"));
@@ -156,6 +163,13 @@ export const AppRoutes = () => (
       <Route path="/tools" element={<Tools />} />
       <Route path="/tools/gpu_info" element={<ToolsGpuInfo />} />
       <Route path="/tools/api_config" element={<ToolsApiConfig />} />
+      <Route path="/tools/pip_list" element={<ToolsPipList />} />
+      <Route path="/tools/extensions" element={<ToolsExtensions />} />
+      <Route path="/tools/simple_remixer" element={<ToolsRemixer />} />
+      <Route path="/tools/youtube_tutorials" element={<ToolsYouTube />} />
+      <Route path="/tools/log_viewer" element={<ToolsLogViewer />} />
+      <Route path="/tools/model_location" element={<ToolsModelLocation />} />
+      <Route path="/tools/server_settings" element={<ToolsServerSettings />} />
 
       <Route
         path="/extensions/huggingface_cache_manager"

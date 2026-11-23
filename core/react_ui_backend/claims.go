@@ -24,6 +24,8 @@ type Deps struct {
 	GradioBackend string
 	// GradioAuth is user:password for Gradio, or empty.
 	GradioAuth string
+	// Core reaches the launcher control API; may be nil or not set yet.
+	Core *Core
 }
 
 // Claim is an API route answered by Go.

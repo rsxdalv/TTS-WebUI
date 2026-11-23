@@ -47,7 +47,8 @@ type serverPy struct {
 	publicAddr string
 	// gradioEnv goes to the gradio child only: it carries the token. It is
 	// the loaded .env environment followed by the Go-core variables.
-	gradioEnv []string
+	gradioEnv          []string
+	coreURL, coreToken string
 
 	stopRouter context.CancelFunc
 	routerDone chan struct{}
@@ -197,6 +198,8 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 			"TTS_CORE_URL=http://"+ctlLn.Addr().String(),
 			"TTS_CORE_TOKEN="+token,
 		),
+		coreURL:    "http://" + ctlLn.Addr().String(),
+		coreToken:  token,
 		stopRouter: cancel,
 		routerDone: make(chan struct{}),
 	}

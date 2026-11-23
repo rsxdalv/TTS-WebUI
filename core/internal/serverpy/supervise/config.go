@@ -71,6 +71,9 @@ type Config struct {
 	// SkipGPUCheck disables the "installer_scripts/.gpu must exist and parse"
 	// gate that the launcher enforces before any start.
 	SkipGPUCheck bool
+	// StrictGPULabel makes a missing or invalid .gpu marker stop Start again
+	// (with SkipGPUCheck off). Off by default: it is only a warning.
+	StrictGPULabel bool
 	// SystemPython runs python, npm and uv straight from PATH, with no
 	// micromamba prefix: a container, Colab or any env the user manages. It
 	// implies SkipGPUCheck (there is no installer_scripts/.gpu without the

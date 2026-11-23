@@ -32,6 +32,8 @@ type GradioSide struct {
 	// Close ends the Go side. It runs when gradio exits and on Stop, at most
 	// once, and also when gradio could not be started.
 	Close func()
+	// CoreURL and CoreToken are the control API the React front calls.
+	CoreURL, CoreToken string
 }
 
 // ProcRef names a running child process, for the orphan record.

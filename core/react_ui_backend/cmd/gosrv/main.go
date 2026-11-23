@@ -19,6 +19,8 @@ func main() {
 	root := flag.String("root", "", "install root (it holds react-ui/out and react-ui/public)")
 	port := flag.Int("port", 0, "public port")
 	routes := flag.String("routes", "", "TTS_GO_ROUTES value (empty: every claim)")
+	coreURL := flag.String("core-url", "", "control API address for the core routes (dev: a pipd or logd)")
+	coreToken := flag.String("core-token", "dev", "its X-TTS-Core-Token")
 	flag.Parse()
 	set, err := switches.Parse(func(k string) (string, bool) {
 		if k == switches.EnvRoutes {
@@ -30,7 +32,11 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: gosrv -root DIR -port N [-routes LIST]", err)
 		os.Exit(2)
 	}
-	h, err := react_ui_backend.NewHandler(react_ui_backend.Config{Root: *root, Port: *port, Routes: set})
+	core := &react_ui_backend.Core{}
+	if *coreURL != "" {
+		core.Set(*coreURL, *coreToken)
+	}
+	h, err := react_ui_backend.NewHandler(react_ui_backend.Config{Root: *root, Port: *port, Routes: set, Core: core})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)

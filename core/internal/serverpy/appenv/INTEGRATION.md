@@ -175,6 +175,9 @@ installer_files\env\python.exe core\internal\serverpy\appenv\testdata\gen_golden
 
 ## Wired in (LAB-13.2, `TTS_GO_SERVERPY=1`)
 
+From step 28 this is the default: `TTS_GO_SERVERPY` unset or `1` runs the Go path, `0`
+runs the legacy `server.py` (rollback for one release; it cannot build extension tabs).
+
 `launcher/serverpy.go` `startServerPy` now does, before any child starts:
 `EnsureFolders` -> `EnsureEnv(root, baseEnv)` (logs when it creates `.env`) ->
 `LoadEnvReport` -> `Plan`. The merged environment (`rep.Env`: launcher env +

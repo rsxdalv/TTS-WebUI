@@ -25,8 +25,8 @@ func TestServerPyEnabled(t *testing.T) {
 		want    bool
 		wantErr bool
 	}{
-		{set: false, want: false},
-		{val: "", set: true, want: false},
+		{set: false, want: true},
+		{val: "", set: true, want: true},
 		{val: "0", set: true, want: false},
 		{val: "1", set: true, want: true},
 		{val: " 1 ", set: true, want: true},

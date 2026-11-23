@@ -26,10 +26,11 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/router"
 )
 
-// EnvServerPy turns on the Go side of the server.py port
-// (core/internal/serverpy): with "1" the app runs server_core.py behind the Go
-// router instead of server.py with its Python proxy tree, and Go runs the proxy
-// extensions. Unset, "" or "0" keeps server.py as before.
+// EnvServerPy switches the Go side of the server.py port
+// (core/internal/serverpy): by default (unset, "" or "1") the app runs
+// server_core.py behind the Go router, and Go runs the proxy extensions. "0"
+// runs server.py with its Python proxy tree as before, as a rollback for one
+// release: that path cannot load extension tabs (they come from the Go core).
 const EnvServerPy = "TTS_GO_SERVERPY"
 
 // serverPyEnabled reads EnvServerPy. Any other value is an error, so a typo
@@ -37,9 +38,9 @@ const EnvServerPy = "TTS_GO_SERVERPY"
 func serverPyEnabled(lookup func(string) (string, bool)) (bool, error) {
 	v, _ := lookup(EnvServerPy)
 	switch strings.TrimSpace(v) {
-	case "", "0":
+	case "0":
 		return false, nil
-	case "1":
+	case "", "1":
 		return true, nil
 	default:
 		return false, fmt.Errorf("%s must be 0 or 1, got %q", EnvServerPy, v)

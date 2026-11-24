@@ -37,6 +37,19 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 		s.fail(w, invalidf("%s runs in its own venv: there is no dependency check for it", pkg))
 		return
 	}
+	var steps []string
+	if op == "install" || op == "uninstall" {
+		g, err := s.RequiresGraph(r.Context())
+		if err == nil && op == "install" {
+			steps, err = s.planInstall(r.Context(), g, pkg)
+		} else if err == nil {
+			err = refuseIfRequired(g, pkg)
+		}
+		if err != nil {
+			s.fail(w, err)
+			return
+		}
+	}
 	if !s.install.TryLock() {
 		s.fail(w, fmt.Errorf("%w: another install is running", errBusy))
 		return
@@ -54,11 +67,40 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 			return s.pipUninstall(ctx, pkg, emit)
 		case op == "check-dependencies":
 			return s.pipInstall(ctx, entry, true, emit)
-		case native:
-			return s.venvSetup(ctx, entry, emit)
 		}
-		return s.pipInstall(ctx, entry, false, emit)
+		return s.runSteps(ctx, steps, entry, emit)
 	})
+}
+
+// runSteps installs the entries of a plan in order, the last one being entry.
+// A failed step stops the plan.
+func (s *Store) runSteps(ctx context.Context, steps []string, entry *Obj, emit func(string)) bool {
+	for i, step := range steps {
+		e := entry
+		if entry == nil || step != entry.Str("package_name") {
+			var err error
+			if e, err = s.find(step); err != nil {
+				emit(fmt.Sprintf("Failed: %v", err))
+				return false
+			}
+		}
+		if len(steps) > 1 {
+			emit(fmt.Sprintf("Installing %s (step %d of %d)", step, i+1, len(steps)))
+		}
+		var ok bool
+		if e.Str("proxy") == "native" {
+			ok = s.venvSetup(ctx, e, emit)
+		} else {
+			ok = s.pipInstall(ctx, e, false, emit)
+		}
+		if !ok {
+			if len(steps) > 1 {
+				emit(fmt.Sprintf("Stopped: step %d of %d (%s) failed", i+1, len(steps), step))
+			}
+			return false
+		}
+	}
+	return true
 }
 
 // noNewerVersion is what the update check says when pip names no new version.

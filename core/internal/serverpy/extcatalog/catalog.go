@@ -11,7 +11,9 @@ package extcatalog
 import (
 	"errors"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/system"
 	"os"
 	"path/filepath"
 	"sort"
@@ -50,6 +52,12 @@ type Store struct {
 func New(o Options) *Store {
 	if o.Logf == nil {
 		o.Logf = func(string, ...any) {}
+	}
+	if o.Platform == nil {
+		// Installs run the python and uv on PATH, like a store with no prefix did.
+		if root, err := paths.New(o.Root); err == nil {
+			o.Platform = system.New(system.Options{Root: root})
+		}
 	}
 	return &Store{opts: o}
 }

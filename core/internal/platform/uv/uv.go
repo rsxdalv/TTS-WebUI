@@ -362,3 +362,6 @@ func (p *Platform) Command(e *platform.Entry, argv []string) (platform.Command, 
 	}
 	return platform.Command{}, fmt.Errorf("the uv platform does not provide %q", argv[0])
 }
+
+// OS is the operating system the platform installs for.
+func (p *Platform) OS() string { return p.goos }

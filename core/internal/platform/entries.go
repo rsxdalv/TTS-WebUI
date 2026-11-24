@@ -3,6 +3,7 @@ package platform
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -44,6 +45,9 @@ type Entries struct {
 	// Packages returns the main env's distributions (normalised name ->
 	// version). nil means none are known.
 	Packages func(ctx context.Context) (map[string]string, error)
+	// Constraints is a pip constraints file passed to every install when it
+	// exists (the Gradio host holds torch with it).
+	Constraints string
 }
 
 // run runs argv through the platform in the install folder.
@@ -97,6 +101,11 @@ func (x Entries) PipInstall(ctx context.Context, e Entry, dryRun bool, emit Emit
 	args := []string{"python", "-m", "pip", "install"}
 	if dryRun {
 		args = append(args, "--dry-run")
+	}
+	if x.Constraints != "" {
+		if _, err := os.Stat(x.Constraints); err == nil {
+			args = append(args, "-c", x.Constraints)
+		}
 	}
 	args = append(append(args, e.Requirements...), GradioPin)
 	ok := x.run(ctx, args, emit) == nil

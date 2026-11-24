@@ -71,16 +71,9 @@ type Config struct {
 	// A child that misses it is marked failed; it is not killed.
 	ReadyTimeout time.Duration
 
-	// SkipGPUCheck disables the "installer_scripts/.gpu must exist and parse"
-	// gate that the launcher enforces before any start.
-	SkipGPUCheck bool
-	// StrictGPULabel makes a missing or invalid .gpu marker stop Start again
-	// (with SkipGPUCheck off). Off by default: it is only a warning.
-	StrictGPULabel bool
 	// SystemPython selects the system platform: python, npm and uv straight
 	// from PATH, for a container, Colab or any env the user manages. It
-	// implies SkipGPUCheck (there is no installer_scripts/.gpu without the
-	// installer) and replaces Platform.
+	// replaces Platform.
 	SystemPython bool
 
 	// SkipReactTab opens only the public URL, not the React one, when
@@ -147,9 +140,6 @@ func (c Config) normalized() (Config, error) {
 	}
 	if c.ProbeInterval <= 0 {
 		c.ProbeInterval = DefaultProbeInterval
-	}
-	if c.SystemPython {
-		c.SkipGPUCheck = true
 	}
 	if c.Platform == nil || c.SystemPython {
 		c.Platform = detect.Detect(detect.Options{Root: c.Root, SystemPython: c.SystemPython, Env: c.ExtraEnv})

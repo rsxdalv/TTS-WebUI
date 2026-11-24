@@ -37,7 +37,7 @@ func TestSystemPythonSelectsSystemAndSkipsTheGPUGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	var p platform.Platform = c.Platform
-	if p.Name() != "system" || !c.SkipGPUCheck {
-		t.Errorf("platform=%s skipGPU=%v", p.Name(), c.SkipGPUCheck)
+	if p.Name() != "system" {
+		t.Errorf("platform=%s", p.Name())
 	}
 }

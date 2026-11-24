@@ -187,8 +187,9 @@ func TestControlAPIStaysUpWhenGradioDies(t *testing.T) {
 	}
 }
 
-// No .gpu marker with a Python that can start: Start goes on, the status says so.
-func TestMissingGPULabelIsOnlyAWarning(t *testing.T) {
+// No .gpu marker with a Python that can start: nothing looks for it any more
+// (D29: the GPU choice belongs to the uv platform), so Start goes on without a word.
+func TestNoGPULabelIsNotLookedFor(t *testing.T) {
 	root, _, reactPort := coreInstall(t) // no installer_scripts/.gpu
 	sup := startCore(t, root, reactPort, func(c *supervise.Config) {
 		c.Platform = legacyenv.New(legacyenv.Options{Root: c.Root, Prefix: []string{os.Args[0], "-test.run=^TestGradioExitsAtOnce$", "--"}})
@@ -197,7 +198,7 @@ func TestMissingGPULabelIsOnlyAWarning(t *testing.T) {
 	if err := sup.Start(context.Background()); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
-	if g := gradioState(t, sup); !strings.Contains(g.Warning, "GPU label not set") {
+	if g := gradioState(t, sup); strings.Contains(g.Error, "GPU") {
 		t.Fatalf("gradio status: %+v", g)
 	}
 	base := fmt.Sprintf("http://127.0.0.1:%d", reactPort)

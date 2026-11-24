@@ -87,7 +87,6 @@ func TestCoreStartsWithoutPythonAndWithoutGPULabel(t *testing.T) {
 	s, _ := newSup(t, func(c *Config) {
 		c.StartGradioSide = p.start
 		c.Platform = nil // the default platform; nothing is installed in the temp root
-		c.SkipGPUCheck = false
 	})
 	if err := s.Start(ctx()); err != nil {
 		t.Fatalf("Start: %v", err)

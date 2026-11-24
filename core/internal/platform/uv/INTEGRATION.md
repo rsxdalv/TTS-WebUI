@@ -33,19 +33,24 @@ built, what differs, and what was run. P2 is not finished: see "Not done".
 |---|---|---|
 | Unit tests (fake uv = the test binary run as `uv`; stand-in through `Options.Prefix` in extcatalog) | pass | not run |
 | `TestRealInstall` (`UV_REAL_ROOT`): real uv and Python download, venv, `pip install six` | pass | not run |
-| Launcher in a fresh folder (no `installer_files`), `POST /api/ext/op/install` Piper without `gpu` | 409, nothing made | not run |
-| Same with `gpu: CPU`: uv platform then Piper (cold cache) | completed | not run |
-| Cancel while linking (Piper) and while downloading (Kitten TTS), install again | both completed on the second run | not run |
-| `torch_cpu.dll` in two venvs is one file | `fsutil hardlink list`: both venvs and `cache/archive-v0` | not run |
-| Remove Piper; Kitten still imports torch | 31550 files, 1.3 GB, disk freed 11.4 MB; `torch 2.11.0+cpu` | not run |
-| Generate one clip | **not run** (no Vite engine page, no start-on-open yet) | not run |
-| Extensions page GPU panel in a browser | **not run** | not run |
+| Launcher in a fresh folder (no `installer_files`), `POST /api/ext/op/install` an engine without `gpu` | 409, nothing made | 409 `needs: gpu_choice`, proposed NVIDIA (GTX 1070 seen through `nvidia-smi` in WSL), nothing made |
+| Same with `gpu: CPU`: uv platform then the engine (cold cache) | completed (Piper) | completed (Kitten, then Piper) |
+| Cancel while the engine downloads, install again | Piper while linking and Kitten while downloading: both completed on the second run | Kitten (client dropped during resolve/download): listed "not installed", the install again removed the unfinished venv and completed |
+| A torch file in two venvs is one file | `torch_cpu.dll`: `fsutil hardlink list` shows both venvs and `cache/archive-v0` | `libtorch_cpu.so`: inode 951440 in Kitten and Piper, 3 links with the cache (2 after Piper was removed) |
+| Remove one engine; the other still works | Piper removed (31550 files, 1.3 GB, disk freed 11.4 MB); Kitten still imports torch | Piper removed while running (33453 files, 1.8 GB, disk freed 43.3 MB); Kitten generated a clip afterwards |
+| Generate one clip from the Vite engine page (no Gradio host: "gradio not started") | Kitten clip (3 s) clicked in the real browser pane; a second clip (4 s) after Piper was removed while running | clips (214844 and 207644 bytes) made with `gradio_client` on the page the iframe shows (`http://127.0.0.1:7770/<pkg>/`); **no browser on WSL, nothing was clicked** |
+| Extensions page in a browser, fresh folder: Install on Kitten asks the GPU, Cancel during the download | GPU panel, install log and Cancel seen in the browser pane. The install used the preselected NVIDIA row (a radio click missed the screen); it was cancelled and a CPU install was not finished in the page | not run |
+| Removing a running engine | found a bug: Windows refused to delete the running `python.exe` and left a half-deleted venv. Fixed (the running process is stopped first); the re-run passed | passed in the same flow |
+| Install pre-flight (Windows path length, free disk) | unit tests only; not run against a real deep folder or a full disk | not run |
 
 ## Not done
 
 - Tools provider (git, ffmpeg on the engine's PATH, D26). Today `git+https` requirements use the machine's git.
-- Vite engine page: start an installed own-venv engine on open, show it in an iframe (D27, D31).
-- Venv folder name length (accepted in the design: measure on a real install, then shorten).
-- Disk-space check before an install (D30); uv platform uninstall; clearing the wheel cache.
-- `--system-python`: the uv platform works there in principle (it needs nothing from the main env) and was not run.
-- Linux, macOS; the GPU panel; NVIDIA row with a real GPU (only the CPU row was installed).
+- uv platform uninstall; clearing the wheel cache.
+- Venv folder name: measured the deepest file of a real torch venv at 138 characters below the venv folder, so the
+  pre-flight allows 150 and refuses a Windows install folder that would pass 259. The folder name was not shortened.
+- `--system-python` with the uv platform, Docker, macOS, the NVIDIA row with a real GPU (only the CPU row was installed).
+- The engine page was not opened in a browser on Linux. The iframe points at the Gradio port with the page's own
+  protocol, so a TLS public port (`ssl_*` in config.json) is not handled.
+- Found, not fixed (P4): on a fresh Linux folder the launcher logs `could not record the app processes ...
+  installer_files/app-processes.json: no such file or directory`.

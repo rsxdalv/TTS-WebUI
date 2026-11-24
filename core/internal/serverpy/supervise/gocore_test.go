@@ -93,7 +93,7 @@ func TestCoreStartsWithoutPythonAndWithoutGPULabel(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 	g := status(s, NameGradio)
-	if g.State != StateFailed || g.Running || !strings.Contains(g.Error, "no Python environment") {
+	if g.State != StateFailed || g.Running || !strings.Contains(g.Error, "Gradio host is not installed") {
 		t.Errorf("gradio: %+v", g)
 	}
 	waitState(t, s, NameReact, StateReady)

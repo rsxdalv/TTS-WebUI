@@ -260,6 +260,11 @@ func TestChildArgsAndEnv(t *testing.T) {
 
 func TestDefaultsAndForwardedFlagsDedup(t *testing.T) {
 	root, _ := paths.New(t.TempDir())
+	// An install with the legacy env is on legacy-env; a folder without it is on
+	// the Gradio host (see TestNewFolderIsOnTheGradioHost).
+	if err := os.MkdirAll(filepath.Join(root.InstallerFiles(), "env"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	s, err := New(Config{Root: root})
 	if err != nil {
 		t.Fatal(err)

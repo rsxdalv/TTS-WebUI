@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
 	"github.com/rsxdalv/TTS-WebUI/core/react_ui_backend"
 )
@@ -353,7 +354,11 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 			slog.Warn("gradio not started: " + pyMsg)
 			continue
 		}
-		pc, err := c.Platform.Command(nil, d.args)
+		var pc platform.Command
+		var err error
+		if !d.static { // the Go front is not a program
+			pc, err = c.Platform.Command(nil, d.args)
+		}
 		if err == nil {
 			err = r.Start(ctx, pc.Program, pc.Args, cwd, d.env)
 		}

@@ -20,6 +20,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/gradiohost"
 )
 
 const (
@@ -38,6 +40,13 @@ type Options struct {
 	// UV is the platform own-venv entries (proxy: native) run on. Nil means
 	// there is none: such an entry cannot be installed.
 	UV *uv.Platform
+	// Host makes and removes the Gradio host (detect.Host). It is set only while
+	// the install folder runs on it; nil when the main env is the existing one
+	// (legacy-env, system), which this app does not install.
+	Host *gradiohost.Platform
+	// AppRunning says whether the app is running now: the Gradio host's venv
+	// cannot be removed under its own process (Windows locks the python).
+	AppRunning func() bool
 	// StopEngine stops the running process of an own-venv engine before its venv
 	// is removed (Windows will not delete a running python.exe). It returns true
 	// when it stopped one. Nil means nothing runs engines in this process.

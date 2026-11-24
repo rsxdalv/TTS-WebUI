@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/requires"
 )
 
@@ -58,9 +59,13 @@ func (s *Store) RequiresGraph(ctx context.Context) (requires.Graph, error) {
 				return g, fmt.Errorf("%s: %v", pkg, err)
 			}
 			installed, _ := in.Of(pkg, e.Str("proxy"))
+			// A built-in tab is part of the host, not something installed on
+			// it: it must not stop the host from being removed.
+			installed = installed && !platform.Builtin(pkg)
 			g.Entries[pkg] = requires.Entry{Name: pkg, Requires: req, Installed: installed}
 		}
 	}
+	s.addHost(ctx, &g)
 	if s.opts.UV != nil {
 		g.Installable = map[string]string{"uv": uvWould}
 		if s.opts.UV.Status(ctx).Ready {

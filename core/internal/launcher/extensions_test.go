@@ -85,8 +85,9 @@ func TestExtensionsListEnableAndOps(t *testing.T) {
 	if e := ans.Extensions[byName("extension_deco")]; e.Kind != "decorator" || e.Disabled {
 		t.Errorf("decorator: %+v", e)
 	}
-	// There is no micromamba in the temp root, so pip cannot answer; the page is told.
-	if ans.Warning == "" || ans.AppRunning {
+	// A new folder is on the Gradio host, which is not installed: no tab is
+	// installed, which is an answer and not a warning.
+	if ans.Warning != "" || ans.AppRunning {
 		t.Errorf("warning=%q appRunning=%v", ans.Warning, ans.AppRunning)
 	}
 

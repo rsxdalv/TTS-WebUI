@@ -23,8 +23,12 @@ func TestRealCatalogRequires(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	uv, host := 0, 0
+	uv, host, own := 0, 0, 0
 	for name, e := range g.Entries {
+		if name == "gradio-host" { // the host is an entry of its own (host_test.go)
+			own++
+			continue
+		}
 		if err := g.Check(name); err != nil {
 			t.Errorf("%v", err)
 		}
@@ -37,7 +41,7 @@ func TestRealCatalogRequires(t *testing.T) {
 			t.Errorf("%s requires %v", name, e.Requires)
 		}
 	}
-	if uv != 20 || host+uv != len(g.Entries) || len(g.Entries) < 66 {
+	if uv != 20 || host+uv+own != len(g.Entries) || len(g.Entries) < 66 {
 		t.Errorf("uv=%d host=%d of %d", uv, host, len(g.Entries))
 	}
 }

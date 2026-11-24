@@ -147,3 +147,10 @@ func escapeForMambaRun(args []string) []string {
 	}
 	return out
 }
+
+// Present reports whether the folder has the legacy main env (the directory the
+// installer step makes). Whether it can start is Status's business.
+func Present(root paths.Root) bool {
+	st, err := os.Stat(envPath(root))
+	return err == nil && st.IsDir()
+}

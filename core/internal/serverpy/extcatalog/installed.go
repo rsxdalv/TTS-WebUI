@@ -33,6 +33,11 @@ func (s *Store) Installs(ctx context.Context) Installs {
 	if s.opts.Pip == nil {
 		return in
 	}
+	if s.hostActive() && !s.opts.Platform.Status(ctx).Ready {
+		// No Gradio host: no in-process tab is installed, which is an answer,
+		// not an error.
+		return in
+	}
 	pkgs, err := s.opts.Pip.Cached(ctx)
 	if err != nil {
 		in.Err = err

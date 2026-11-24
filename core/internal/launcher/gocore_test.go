@@ -112,7 +112,7 @@ func TestCoreBootsWithNoPythonEnvironment(t *testing.T) {
 	if err := sup.Start(context.Background()); err != nil {
 		t.Fatalf("Start with no Python env must succeed: %v", err)
 	}
-	if g := gradioState(t, sup); g.State != supervise.StateFailed || !strings.Contains(g.Error, "no Python environment") {
+	if g := gradioState(t, sup); g.State != supervise.StateFailed || !strings.Contains(g.Error, "Gradio host is not installed") {
 		t.Fatalf("gradio: %+v", g)
 	}
 	base := fmt.Sprintf("http://127.0.0.1:%d", reactPort)

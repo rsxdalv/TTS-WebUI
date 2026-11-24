@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/gradiohost"
 )
 
 // serveInstall streams an install, an uninstall or a dependency check as
@@ -30,9 +31,17 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 		return
 	}
 	pkg := o.Str("package_name")
+	if pkg == gradiohost.Name {
+		s.serveHost(w, r, op, o)
+		return
+	}
 	entry, err := s.find(pkg)
 	if err != nil {
 		s.fail(w, err)
+		return
+	}
+	if op == "check-dependencies" && s.hostActive() && !s.opts.Platform.Status(r.Context()).Ready && entry.Str("proxy") != "native" {
+		s.fail(w, invalidf("%s runs in the Gradio host, which is not installed: install it first", pkg))
 		return
 	}
 	native := entry.Str("proxy") == "native"
@@ -101,6 +110,13 @@ func (s *Store) runSteps(ctx context.Context, pl plan, entry *Obj, emit func(str
 		}
 	}
 	for _, step := range pl.Steps {
+		if step == gradiohost.Name {
+			say("the " + gradiohost.Title)
+			if !s.installHost(ctx, emit) {
+				return stopped("the " + gradiohost.Title)
+			}
+			continue
+		}
 		e := entry
 		if entry == nil || step != entry.Str("package_name") {
 			var err error

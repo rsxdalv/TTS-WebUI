@@ -33,7 +33,7 @@ type reqAnswer struct {
 	Extensions     []reqRow `json:"extensions"`
 }
 
-func listRequires(t *testing.T, root paths.Root, srv *server.Server, token string) map[string]reqRow {
+func listRequires(t *testing.T, root paths.Root, srv *server.Server, token, wantPlatform string) map[string]reqRow {
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(root.Dir(), "extensions.json"), []byte(extList), 0o644); err != nil {
 		t.Fatal(err)
@@ -54,7 +54,7 @@ func listRequires(t *testing.T, root paths.Root, srv *server.Server, token strin
 		rows[e.PackageName] = e
 	}
 	t.Logf("platform=%s ready=%v detail=%q", ans.Platform, ans.PlatformReady, ans.PlatformDetail)
-	if ans.Platform != "legacy-env" {
+	if ans.Platform != wantPlatform {
 		t.Fatalf("platform = %q", ans.Platform)
 	}
 	return rows
@@ -64,7 +64,11 @@ func listRequires(t *testing.T, root paths.Root, srv *server.Server, token strin
 // says what would be installed.
 func TestExtensionsListNewFolderSaysWhatWouldBeInstalled(t *testing.T) {
 	root, srv, token := newTestInstall(t)
-	rows := listRequires(t, root, srv, token)
+	rows := listRequires(t, root, srv, token, "gradio-host")
+	host := rows["gradio-host"]
+	if len(host.Requires) != 1 || host.Requires[0] != "uv" || host.RequirementsState[0].State != "missing" {
+		t.Errorf("gradio-host row: %+v", host)
+	}
 	nat := rows["extension_native"]
 	if len(nat.Requires) != 1 || nat.Requires[0] != "uv" || len(nat.RequirementsState) != 1 {
 		t.Fatalf("native: %+v", nat)
@@ -73,7 +77,8 @@ func TestExtensionsListNewFolderSaysWhatWouldBeInstalled(t *testing.T) {
 		t.Errorf("native uv: %+v", r)
 	}
 	tab := rows["extension_beta"]
-	if len(tab.Requires) != 1 || tab.Requires[0] != "gradio-host" || tab.RequirementsState[0].State != "missing" {
+	if len(tab.Requires) != 1 || tab.Requires[0] != "gradio-host" || tab.RequirementsState[0].State != "missing" ||
+		!strings.Contains(tab.RequirementsState[0].Would, "gradio-host") {
 		t.Errorf("tab: %+v", tab)
 	}
 }
@@ -94,7 +99,7 @@ func TestExtensionsListLegacyInstallShowsRequirementsMet(t *testing.T) {
 	if err := os.WriteFile(mamba, []byte("not a program"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	rows := listRequires(t, root, srv, token)
+	rows := listRequires(t, root, srv, token, "legacy-env")
 	for name, want := range map[string]string{"extension_beta": "gradio-host", "extension_deco": "gradio-host"} {
 		r := rows[name]
 		if len(r.RequirementsState) != 1 || r.RequirementsState[0].Name != want ||
@@ -126,7 +131,7 @@ func TestExtensionsListLegacyInstallShowsRequirementsMet(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root.Dir(), "platforms", "uv", "bin", uvName), []byte("x"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	nat = listRequires(t, root, srv, token)["extension_native"]
+	nat = listRequires(t, root, srv, token, "legacy-env")["extension_native"]
 	if len(nat.RequirementsState) != 1 || nat.RequirementsState[0].State != "ready" || nat.RequirementsState[0].Via != "uv" {
 		t.Errorf("extension_native after the platform install: %+v", nat)
 	}

@@ -2,6 +2,7 @@ package supervise
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -36,13 +37,31 @@ var probeClient = &http.Client{
 // 500. The Python proxy tree accepts TCP connections long before Gradio is
 // up and answers 502 until then, so a plain connect would report ready far too
 // early for the public port.
-func httpProbe(ctx context.Context, port int) bool {
+func httpProbe(ctx context.Context, port int) bool { return probeScheme(ctx, port, false) }
+
+// httpsProbe is httpProbe for a public port the router serves over TLS.
+func httpsProbe(ctx context.Context, port int) bool { return probeScheme(ctx, port, true) }
+
+// tlsProbeClient skips certificate verification: it only asks our own router,
+// on 127.0.0.1, whether it answers, and the certificate is usually issued for a
+// host name the probe does not use.
+var tlsProbeClient = &http.Client{
+	Timeout:       probeClient.Timeout,
+	CheckRedirect: probeClient.CheckRedirect,
+	Transport:     &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, DisableKeepAlives: true},
+}
+
+func probeScheme(ctx context.Context, port int, useTLS bool) bool {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		"http://"+net.JoinHostPort("127.0.0.1", strconv.Itoa(port))+"/", nil)
+		publicURLScheme(port, useTLS)+"/", nil)
 	if err != nil {
 		return false
 	}
-	resp, err := probeClient.Do(req)
+	client := probeClient
+	if useTLS {
+		client = tlsProbeClient
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return false
 	}
@@ -52,4 +71,12 @@ func httpProbe(ctx context.Context, port int) bool {
 }
 
 // publicURL is the URL of the user-facing Gradio entry.
-func publicURL(port int) string { return fmt.Sprintf("http://127.0.0.1:%d", port) }
+func publicURL(port int) string { return publicURLScheme(port, false) }
+
+// publicURLScheme is publicURL, https when the router serves TLS.
+func publicURLScheme(port int, useTLS bool) string {
+	if useTLS {
+		return fmt.Sprintf("https://127.0.0.1:%d", port)
+	}
+	return fmt.Sprintf("http://127.0.0.1:%d", port)
+}

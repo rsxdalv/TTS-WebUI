@@ -10,6 +10,7 @@ package supervise
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -130,10 +131,11 @@ type Supervisor struct {
 	cfg       Config
 	newRunner func() runner
 
-	mu   sync.Mutex
-	cur  []*managed // current generation, in start order; nil before first Start
-	pub  int        // public port of the current run; 0 = cfg.PublicPort
-	warn string     // warning of the current run, shown on the gradio status
+	mu     sync.Mutex
+	cur    []*managed // current generation, in start order; nil before first Start
+	pub    int        // public port of the current run; 0 = cfg.PublicPort
+	pubTLS bool       // the current run serves the public port over TLS
+	warn   string     // warning of the current run, shown on the gradio status
 
 	// supCtx/supCancel is supervisor-owned; it is never an HTTP request
 	// context, which would kill the app when the handler returned.
@@ -181,7 +183,7 @@ func (s *Supervisor) defs(c Config) []procDef {
 	gEnv = append(gEnv, c.GradioEnv...)
 
 	defs := []procDef{{
-		name: NameGradio, port: c.PublicPort, probe: httpProbe,
+		name: NameGradio, port: c.PublicPort, probe: publicProbe(c.PublicTLS),
 		args: append([]string{"python", c.GradioEntry}, c.gradioArgs()...),
 		env:  gEnv,
 	}}
@@ -244,6 +246,9 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	c := s.cfg
 	if plan.PublicPort != 0 {
 		c.PublicPort = plan.PublicPort
+	}
+	if plan.PublicTLS {
+		c.PublicTLS = true
 	}
 	if plan.GradioEntry != "" {
 		c.GradioEntry = plan.GradioEntry
@@ -314,6 +319,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.supCtx, s.supCancel = ctx, cancel
 	s.pub = c.PublicPort
+	s.pubTLS = c.PublicTLS
 
 	cwd := c.Root.Dir()
 	prefix := c.CommandPrefix
@@ -373,7 +379,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		return startErr
 	}
 	if c.OpenBrowser {
-		go s.openBrowsers(ctx, gen, publicURL(c.PublicPort), !c.SkipReactTab, c.ReactPort)
+		go s.openBrowsers(ctx, gen, publicURLScheme(c.PublicPort, c.PublicTLS), !c.SkipReactTab, c.ReactPort)
 	}
 	var refs []ProcRef
 	for _, m := range gen {
@@ -644,6 +650,21 @@ func (s *Supervisor) publish() {
 	}
 }
 
+func (s *Supervisor) pubTLSLocked() bool {
+	if s.pub != 0 {
+		return s.pubTLS
+	}
+	return s.cfg.PublicTLS
+}
+
+// publicProbe is the readiness probe of the public port.
+func publicProbe(useTLS bool) probeFunc {
+	if useTLS {
+		return httpsProbe
+	}
+	return httpProbe
+}
+
 func (s *Supervisor) publicPortLocked() int {
 	if s.pub != 0 {
 		return s.pub
@@ -655,9 +676,13 @@ func (s *Supervisor) publicPortLocked() int {
 func (s *Supervisor) AppLink() string {
 	s.mu.Lock()
 	port := s.publicPortLocked()
+	useTLS := s.pubTLSLocked()
 	s.mu.Unlock()
-	url := publicURL(port)
+	url := publicURLScheme(port, useTLS)
 	client := &http.Client{Timeout: 500 * time.Millisecond}
+	if useTLS {
+		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, DisableKeepAlives: true}
+	}
 	resp, err := client.Head(url)
 	if err != nil {
 		return ""

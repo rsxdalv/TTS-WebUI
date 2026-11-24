@@ -15,6 +15,9 @@ type Plan struct {
 	// PublicPort overrides Config.PublicPort for this run (the port from
 	// config.json, which the Go router or the proxy tree binds).
 	PublicPort int
+	// PublicTLS overrides Config.PublicTLS for this run (config.json names a
+	// certificate and key, and the router terminates TLS).
+	PublicTLS bool
 	// GradioEntry overrides Config.GradioEntry for this run.
 	GradioEntry string
 	// GradioEnv is added to the gradio child's environment after

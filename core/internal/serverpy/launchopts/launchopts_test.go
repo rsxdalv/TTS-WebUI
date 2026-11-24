@@ -60,8 +60,8 @@ func TestPlainOptions(t *testing.T) {
 		"inline": false, "inbrowser": false, "share": false, "debug": false, "max_threads": 40.0,
 		"auth": nil, "auth_message": nil, "show_error": false,
 		"server_name": "127.0.0.1", "server_port": 27700.0, "height": 500.0, "width": "100%",
-		"ssl_keyfile": nil, "ssl_certfile": nil, "ssl_keyfile_password": nil, "ssl_verify": true,
-		"quiet": true, "show_api": true, "_frontend": true,
+		"ssl_verify": true,
+		"quiet":      true, "show_api": true, "_frontend": true,
 		"allowed_paths": []any{"."}, "favicon_path": "./react-ui/public/favicon.ico", "prevent_thread_lock": true,
 	}
 	if got := roundTrip(t, r); !reflect.DeepEqual(got, want) {
@@ -151,13 +151,22 @@ func TestLegacyKeysAreDroppedAndFixedOnesWin(t *testing.T) {
 	}
 }
 
+// Gradio gets the login but not the certificate: the router serves TLS and
+// Gradio is plain HTTP behind it (a Gradio that also spoke TLS made the router's
+// plain proxy fail with EOF).
 func TestSecretsReachGradioButNotTheLines(t *testing.T) {
 	doc := strings.Replace(config(`"ssl_certfile":"c.pem"`), `"auth":null`, `"auth":"admin:hunter2hunter2hunter2"`, 1)
+	doc = strings.Replace(doc, `"ssl_keyfile":null`, `"ssl_keyfile":"k.pem"`, 1)
 	doc = strings.Replace(doc, `"ssl_keyfile_password":null`, `"ssl_keyfile_password":"sslsecretpassword-0123456789"`, 1)
 	r := compute(t, doc, appenv.Flags{})
 	m := roundTrip(t, r)
-	if m["ssl_keyfile_password"] != "sslsecretpassword-0123456789" || !reflect.DeepEqual(m["auth"], []any{[]any{"admin", "hunter2hunter2hunter2"}}) {
-		t.Fatalf("Gradio needs the real values: %v %v", m["ssl_keyfile_password"], m["auth"])
+	if !reflect.DeepEqual(m["auth"], []any{[]any{"admin", "hunter2hunter2hunter2"}}) {
+		t.Fatalf("Gradio needs the real login: %v", m["auth"])
+	}
+	for _, k := range []string{"ssl_certfile", "ssl_keyfile", "ssl_keyfile_password"} {
+		if _, ok := m[k]; ok {
+			t.Errorf("Gradio is handed %s: the router owns TLS", k)
+		}
 	}
 	all := strings.Join(r.Lines, "\n")
 	for _, secret := range []string{"hunter2", "sslsecret", "sslsecretpas"} {
@@ -165,8 +174,8 @@ func TestSecretsReachGradioButNotTheLines(t *testing.T) {
 			t.Errorf("a secret is printed (%s):\n%s", secret, all)
 		}
 	}
-	if !strings.Contains(all, `ssl_keyfile_password: "******"`) || !strings.Contains(all, `ssl_certfile: "c.pem"`) {
-		t.Errorf("security line:\n%s", all)
+	if !strings.Contains(all, "HTTPS enabled on the public port (certificate c.pem)") {
+		t.Errorf("no HTTPS line:\n%s", all)
 	}
 }
 
@@ -177,7 +186,7 @@ func TestDescribeFormat(t *testing.T) {
 		`  • Server   > server_name: "127.0.0.1", server_port: 27700, max_threads: 40, prevent_thread_lock: True, quiet: True`,
 		`  • Display  > inline: False, inbrowser: False, width: "100%", height: 500, favicon_path: "./react-ui/public...", show_api: True`,
 		`  • Access   > share: False, auth_message: "a message that is..."`,
-		`  • Security > ssl_keyfile: None, ssl_certfile: None, ssl_keyfile_password: None, ssl_verify: True, allowed_paths: ['.']`,
+		`  • Security > ssl_verify: True, allowed_paths: ['.']`,
 		`  • Debug    > debug: False, show_error: False`,
 	}
 	if !reflect.DeepEqual(r.Lines, want) {

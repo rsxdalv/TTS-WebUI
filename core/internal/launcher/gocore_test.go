@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/legacyenv"
 	"io"
 	"net"
 	"net/http"
@@ -148,7 +149,7 @@ func TestControlAPIStaysUpWhenGradioDies(t *testing.T) {
 	}
 	sup := startCore(t, root, reactPort, func(c *supervise.Config) {
 		// A "Python" that exists but whose Gradio exits with code 3 at once.
-		c.CommandPrefix = []string{os.Args[0], "-test.run=^TestGradioExitsAtOnce$", "--"}
+		c.Platform = legacyenv.New(legacyenv.Options{Root: c.Root, Prefix: []string{os.Args[0], "-test.run=^TestGradioExitsAtOnce$", "--"}})
 		c.ExtraEnv = append(c.ExtraEnv, "LAUNCHER_FAKE_GRADIO=1")
 	})
 	if err := sup.Start(context.Background()); err != nil {
@@ -181,7 +182,7 @@ func TestControlAPIStaysUpWhenGradioDies(t *testing.T) {
 func TestMissingGPULabelIsOnlyAWarning(t *testing.T) {
 	root, _, reactPort := coreInstall(t) // no installer_scripts/.gpu
 	sup := startCore(t, root, reactPort, func(c *supervise.Config) {
-		c.CommandPrefix = []string{os.Args[0], "-test.run=^TestGradioExitsAtOnce$", "--"}
+		c.Platform = legacyenv.New(legacyenv.Options{Root: c.Root, Prefix: []string{os.Args[0], "-test.run=^TestGradioExitsAtOnce$", "--"}})
 		c.ExtraEnv = append(c.ExtraEnv, "LAUNCHER_FAKE_GRADIO=1")
 	})
 	if err := sup.Start(context.Background()); err != nil {

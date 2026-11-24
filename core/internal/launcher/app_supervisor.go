@@ -6,6 +6,7 @@ package launcher
 
 import (
 	"context"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appenv"
@@ -159,8 +160,8 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		plan.GradioEnv = []string{"BROWSER=" + noopBrowser, "PYTHONUNBUFFERED=1"}
 		return plan, nil
 	}
-	cfg.StartGradioSide = func(prefix, baseEnv []string) (*supervise.GradioSide, error) {
-		py, err := startServerPy(root, prefix, baseEnv, o.flags())
+	cfg.StartGradioSide = func(p platform.Platform) (*supervise.GradioSide, error) {
+		py, err := startServerPy(root, p, o.flags())
 		if err != nil {
 			return nil, err
 		}

@@ -11,6 +11,7 @@ package extcatalog
 import (
 	"errors"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"os"
 	"path/filepath"
 	"sort"
@@ -27,13 +28,10 @@ var catalogFile = filepath.Join("data", "extensions-catalog", "lib", "extensions
 
 // Options configures a Store.
 type Options struct {
-	Root  string   // project root: holds extensions.json, .venvs/, installer_scripts/
-	Token string   // required; requests without it get 403
-	Run   []string // command prefix of the main env (micromamba -p env run); empty runs directly
-	// Python, when set, is the program used for "python" instead of Run + python
-	// (for trying the API outside the launcher).
-	Python string
-	Env    []string // environment of the install commands; nil inherits
+	Root  string // project root: holds extensions.json, .venvs/, installer_scripts/
+	Token string // required; requests without it get 403
+	// Platform is the runtime installs run on (the main env's python and uv).
+	Platform platform.Platform
 	// Config supplies the disabled and autostart lists for Resolve (appconfig.Store).
 	Config ConfigSource
 	// Pip lists the main env's distributions for Resolve's installed and

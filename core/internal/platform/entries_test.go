@@ -69,7 +69,7 @@ func TestVenvSetupStepsAndRefusals(t *testing.T) {
 	if x.Create(context.Background(), Entry{Package: "e", Own: true}, emit) || (*out)[len(*out)-1] != "Failed: bad requirements for e" {
 		t.Fatalf("no requirements: %q", *out)
 	}
-	e := Entry{Package: "e", Name: "E", Own: true, Requirements: []string{"e"}, Torch: []string{"torch==1", "--index-url", "u"}}
+	e := Entry{Package: "e", Name: "E", Own: true, Requirements: []string{"e"}, TorchArgs: func() ([]string, error) { return []string{"torch==1", "--index-url", "u"}, nil }}
 	x.Create(context.Background(), e, func(string) {})
 	// The first step cannot run, so only it was tried.
 	if len(f.argvs) != 1 || !reflect.DeepEqual(f.argvs[0], []string{"uv", "venv", VenvDir(root, "e"), "--allow-existing"}) {

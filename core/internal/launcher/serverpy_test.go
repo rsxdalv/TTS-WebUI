@@ -3,6 +3,10 @@ package launcher
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/legacyenv"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/system"
 	"io"
 	"net"
 	"net/http"
@@ -47,7 +51,7 @@ func get(t *testing.T, url, token string) (int, string) {
 }
 
 func TestServerPyRoutesToGradioAndServesControlAPI(t *testing.T) {
-	sp, err := startServerPyOn(makeRoot(t), "127.0.0.1", 0, []string{"no-such-micromamba", "run"}, nil, appenv.Flags{NoReact: true})
+	sp, err := startServerPyOn(makeRoot(t), "127.0.0.1", 0, testPlat(t, []string{"no-such-micromamba", "run"}), appenv.Flags{NoReact: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +130,7 @@ func TestServerPyPublicPortInUse(t *testing.T) {
 	}
 	defer busy.Close()
 	port := busy.Addr().(*net.TCPAddr).Port
-	_, err = startServerPyOn(makeRoot(t), "127.0.0.1", port, nil, nil, appenv.Flags{NoReact: true})
+	_, err = startServerPyOn(makeRoot(t), "127.0.0.1", port, testPlat(t, nil), appenv.Flags{NoReact: true})
 	if err == nil || !strings.Contains(err.Error(), "in use") {
 		t.Fatalf("got %v, want a port-in-use error", err)
 	}
@@ -142,7 +146,7 @@ func TestServerPyUsesConfigPort(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root.Dir(), "config.json"), []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	sp, err := startServerPy(root, nil, nil, appenv.Flags{NoReact: true})
+	sp, err := startServerPy(root, systemPlat(root), appenv.Flags{NoReact: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +169,7 @@ func TestServerPyPrepsFoldersEnvAndPassesItToChildren(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root.Dir(), ".env.user"), []byte("TTS_PREP_USER=user\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	sp, err := startServerPy(root, nil, []string{"TTS_PREP_BASE=base"}, appenv.Flags{NoReact: true})
+	sp, err := startServerPy(root, systemPlat(root, "TTS_PREP_BASE=base"), appenv.Flags{NoReact: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +204,7 @@ func TestServerPyShareFlagReachesLaunchOptions(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, share := range []bool{false, true} {
-		sp, err := startServerPy(root, nil, nil, options{share: share}.flags())
+		sp, err := startServerPy(root, systemPlat(root), options{share: share}.flags())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -254,7 +258,7 @@ func TestServerPyServesExtensionPagesThroughTheRouter(t *testing.T) {
 		[]byte(`{"tabs":[{"package_name":"ext.one","name":"One","requirements":"x","extension_type":"interface","extension_class":"tools"}]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	sp, err := startServerPyOn(root, "127.0.0.1", 0, []string{"no-such-micromamba", "run"}, nil, appenv.Flags{NoReact: true})
+	sp, err := startServerPyOn(root, "127.0.0.1", 0, testPlat(t, []string{"no-such-micromamba", "run"}), appenv.Flags{NoReact: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,4 +297,20 @@ func TestServerPyServesExtensionPagesThroughTheRouter(t *testing.T) {
 	if code, _ := get(t, base+"/_core/api/routes", envMap(sp.gradioEnv)["TTS_CORE_TOKEN"]); code != 404 {
 		t.Errorf("control API through /_core: %d", code)
 	}
+}
+
+// testPlat is the legacy-env platform with prefix in front of every command, on
+// a temp root (no prefix: the system platform).
+func testPlat(t *testing.T, prefix []string) platform.Platform {
+	t.Helper()
+	root := makeRoot(t)
+	if len(prefix) == 0 {
+		return systemPlat(root)
+	}
+	return legacyenv.New(legacyenv.Options{Root: root, Prefix: prefix})
+}
+
+// systemPlat is the system platform with env added to every command.
+func systemPlat(root paths.Root, env ...string) platform.Platform {
+	return system.New(system.Options{Root: root, Env: env})
 }

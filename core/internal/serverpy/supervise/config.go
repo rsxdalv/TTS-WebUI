@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
 )
 
 // Defaults applied by New for zero Config fields.
@@ -78,10 +77,10 @@ type Config struct {
 	// StrictGPULabel makes a missing or invalid .gpu marker stop Start again
 	// (with SkipGPUCheck off). Off by default: it is only a warning.
 	StrictGPULabel bool
-	// SystemPython runs python, npm and uv straight from PATH, with no
-	// micromamba prefix: a container, Colab or any env the user manages. It
+	// SystemPython selects the system platform: python, npm and uv straight
+	// from PATH, for a container, Colab or any env the user manages. It
 	// implies SkipGPUCheck (there is no installer_scripts/.gpu without the
-	// installer) and CommandPrefix stays empty.
+	// installer) and replaces Platform.
 	SystemPython bool
 
 	// SkipReactTab opens only the public URL, not the React one, when
@@ -93,10 +92,9 @@ type Config struct {
 	// anything is started (switch checks, orphan sweep, React recover and
 	// build). Its error aborts the Start. nil = the zero Plan.
 	Prepare func(ctx context.Context) (Plan, error)
-	// StartGradioSide starts the Go side of the gradio child. prefix is the
-	// command prefix (`micromamba -p <env> run`), baseEnv the environment of
-	// every child. nil = none.
-	StartGradioSide func(prefix, baseEnv []string) (*GradioSide, error)
+	// StartGradioSide starts the Go side of the gradio child, on the platform the
+	// children run on. nil = none.
+	StartGradioSide func(p platform.Platform) (*GradioSide, error)
 	// OnStarted is called with the child processes after a successful Start
 	// (the launcher records them for the orphan sweep).
 	OnStarted func([]ProcRef)
@@ -104,10 +102,9 @@ type Config struct {
 	// a failed Start has stopped what it started.
 	OnStopped func()
 
-	// CommandPrefix replaces `micromamba -p installer_files/env run`. The first
-	// element is the executable; the rest precede `python server.py ...`,
-	// `npm ...` etc. Tests point it at a fake child.
-	CommandPrefix []string
+	// Platform is the runtime the children run on. nil = the platform of the
+	// install folder (detect.Detect), with ExtraEnv added to its commands.
+	Platform platform.Platform
 	// Opener opens a URL in a browser. nil = the system default browser.
 	Opener func(url string) error
 	// ProbeInterval is the readiness polling period. 0 = 250 ms.
@@ -152,11 +149,10 @@ func (c Config) normalized() (Config, error) {
 		c.ProbeInterval = DefaultProbeInterval
 	}
 	if c.SystemPython {
-		c.CommandPrefix, c.SkipGPUCheck = nil, true
-	} else if len(c.CommandPrefix) == 0 {
-		c.CommandPrefix = micromambaPrefix(c.Root)
-	} else {
-		c.CommandPrefix = append([]string(nil), c.CommandPrefix...)
+		c.SkipGPUCheck = true
+	}
+	if c.Platform == nil || c.SystemPython {
+		c.Platform = detect.Detect(detect.Options{Root: c.Root, SystemPython: c.SystemPython, Env: c.ExtraEnv})
 	}
 	if c.Opener == nil {
 		c.Opener = OpenURL
@@ -187,43 +183,12 @@ func (c Config) gradioArgs() []string {
 	return out
 }
 
-// micromambaPath is the platform-specific micromamba binary path. It mirrors
-// the launcher's unexported helper (init_mamba.sh writes mamba/micromamba with
-// no bin/ subdirectory).
-func micromambaPath(root paths.Root) string {
-	if runtime.GOOS == "windows" {
-		return filepath.Join(root.InstallerFiles(), "mamba", "micromamba.exe")
-	}
-	return filepath.Join(root.InstallerFiles(), "mamba", "micromamba")
-}
-
-// installEnvPath is the conda env micromamba runs in.
-func installEnvPath(root paths.Root) string {
-	return filepath.Join(root.InstallerFiles(), "env")
-}
-
-// micromambaPrefix is `micromamba -p installer_files/env run`.
-func micromambaPrefix(root paths.Root) []string {
-	return []string{micromambaPath(root), "-p", installEnvPath(root), "run"}
-}
-
-// mambaRootEnv pins MAMBA_ROOT_PREFIX to the install's mamba directory so
-// micromamba does not fall back to ~/.micromamba.
-func mambaRootEnv(root paths.Root) string {
-	return "MAMBA_ROOT_PREFIX=" + filepath.Join(root.InstallerFiles(), "mamba")
-}
-
-// baseEnv is the environment shared by all children.
+// baseEnv is the environment shared by all children: the platform's, then
+// ExtraEnv (again, so it wins even for a platform built without it).
 func (c Config) baseEnv() []string {
-	env := append(os.Environ(), mambaRootEnv(c.Root))
-	return append(env, c.ExtraEnv...)
+	cmd, err := c.Platform.Command(nil, []string{"python"})
+	if err != nil {
+		return append([]string(nil), c.ExtraEnv...)
+	}
+	return append(cmd.Env, c.ExtraEnv...)
 }
-
-// CommandPrefix is the command that runs a program in the main env
-// (`micromamba -p <root>/installer_files/env run`), for callers that run
-// pip or uv while the app is stopped.
-func CommandPrefix(root paths.Root) []string { return micromambaPrefix(root) }
-
-// MambaRootEnv is MAMBA_ROOT_PREFIX=<root>/installer_files/mamba, which
-// micromamba needs to find its own state.
-func MambaRootEnv(root paths.Root) string { return mambaRootEnv(root) }

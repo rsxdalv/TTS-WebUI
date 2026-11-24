@@ -3,6 +3,8 @@ package extui
 import (
 	"context"
 	"encoding/json"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/legacyenv"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -38,8 +40,12 @@ func newHandler(t *testing.T, exposed bool) *Handler {
 	root := t.TempDir()
 	// Not a command: an install that reaches extcatalog runs it, fails, and
 	// still answers with a "done" line, which is all these tests need.
+	pr, err := paths.New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
 	cat := extcatalog.New(extcatalog.Options{
-		Root: root, Token: "cat-token", Run: []string{"no-such-command-for-extui-tests"},
+		Root: root, Token: "cat-token", Platform: legacyenv.New(legacyenv.Options{Root: pr, Prefix: []string{"no-such-command-for-extui-tests"}}),
 		Config: fakeCfg{}, Pip: fakePip{pkgs: []piplist.Package{{Name: "ext.one", Version: "1.0"}}},
 	})
 	body := `{"tabs":[` + ext("ext.one", "One", "") + `,` + ext("ext.two", "Two", "") + `,` +

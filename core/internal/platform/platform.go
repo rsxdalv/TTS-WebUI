@@ -37,9 +37,10 @@ type Entry struct {
 	Name         string   // display name, for messages ("" = Package)
 	Own          bool     // runs in its own venv (proxy: native); else in the main env
 	Requirements []string // already validated requirement tokens
-	// Torch is the torch install arguments of an own-venv entry. The table stays
-	// with the caller until P2 moves it here.
-	Torch []string
+	// TorchArgs resolves the torch install arguments of an own-venv entry, when
+	// the install gets that far. The table stays with the caller until P2 moves
+	// it here.
+	TorchArgs func() ([]string, error)
 }
 
 // Label is the name shown in messages.
@@ -80,8 +81,14 @@ type Platform interface {
 	// Create installs an entry; it reports success by the returned bool and
 	// says what happened through emit.
 	Create(ctx context.Context, e Entry, emit Emit) bool
+	// Check says what Create would do for an in-process entry, without doing it
+	// (pip --dry-run), through emit.
+	Check(ctx context.Context, e Entry, emit Emit) bool
 	EntryStatus(ctx context.Context, e Entry) EntryStatus
 	Remove(ctx context.Context, e Entry, emit Emit) bool
+	// WithEnv returns a copy whose commands also carry env (KEY=VALUE, after
+	// everything else, so it wins).
+	WithEnv(env []string) Platform
 	// Command resolves argv, whose first element is a logical program
 	// ("python", "uv", "npm"), for entry e. e may be nil for the main env.
 	Command(e *Entry, argv []string) (Command, error)

@@ -77,6 +77,11 @@ func (x Entries) Create(ctx context.Context, e Entry, emit Emit) bool {
 	return x.PipInstall(ctx, e, false, emit)
 }
 
+// Check is the dependency check of an in-process entry.
+func (x Entries) Check(ctx context.Context, e Entry, emit Emit) bool {
+	return x.PipInstall(ctx, e, true, emit)
+}
+
 // Remove uninstalls the entry's package from the main env. An own-venv
 // entry's directory is left (P2 removes it).
 func (x Entries) Remove(ctx context.Context, e Entry, emit Emit) bool {
@@ -121,11 +126,15 @@ func (x Entries) venvSetup(ctx context.Context, e Entry, emit Emit) bool {
 	if len(e.Requirements) == 0 {
 		return fail("Failed: bad requirements for %s", e.Label())
 	}
+	torch, err := e.TorchArgs()
+	if err != nil {
+		return fail("Failed: %v", err)
+	}
 	venv := VenvDir(x.Root, e.Package)
 	uvPip := []string{"uv", "pip", "install", "--python", VenvPython(x.Root, e.Package)}
 	steps := [][]string{
 		{"uv", "venv", venv, "--allow-existing"},
-		append(append([]string{}, uvPip...), e.Torch...),
+		append(append([]string{}, uvPip...), torch...),
 		append(append([]string{}, uvPip...), "torchcodec", "--index-url=https://download.pytorch.org/whl/cpu"),
 		append(append([]string{}, uvPip...), "xformers==0.0.35"),
 		append(append(append([]string{}, uvPip...), e.Requirements...), strings.Fields(compatibility)...),

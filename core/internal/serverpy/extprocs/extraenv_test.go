@@ -8,7 +8,7 @@ import (
 
 func TestExtraEnvWinsOverTheBase(t *testing.T) {
 	m, _, _ := newMgr(t, func(o *Options) {
-		o.BaseEnv = append(o.BaseEnv, "DELTA_MARK=from-base")
+		t.Setenv("DELTA_MARK", "from-base")
 		o.ExtraEnv = func() ([]string, error) { return []string{"DELTA_MARK=from-go"}, nil }
 	})
 	if _, err := m.Start(context.Background(), "extra", StartRequest{Port: freeP(t)}); err != nil {

@@ -2,6 +2,7 @@ package extprocs
 
 import (
 	"context"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/system"
 	"net/http"
 	"os"
 	"strconv"
@@ -31,9 +32,11 @@ func TestRealExtension(t *testing.T) {
 	}
 	fr := &fakeRoutes{}
 	m := New(Options{
-		Root:         r,
-		MainPython:   []string{py},
-		BaseEnv:      append(os.Environ(), "PYTHONPATH="+root, "GRADIO_ANALYTICS_ENABLED=False", "PYTHONIOENCODING=utf-8"),
+		Root: r,
+		Platform: system.New(system.Options{
+			Root: r, Python: py,
+			Env: []string{"PYTHONPATH=" + root, "GRADIO_ANALYTICS_ENABLED=False", "PYTHONIOENCODING=utf-8"},
+		}),
 		Routes:       fr,
 		Token:        "tok",
 		ReadyTimeout: 170 * time.Second,

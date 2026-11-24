@@ -45,6 +45,14 @@ func New(o Options) *Platform {
 	return p
 }
 
+// WithEnv returns a copy whose commands also carry env.
+func (p *Platform) WithEnv(env []string) platform.Platform {
+	q := *p
+	q.env = append(append([]string(nil), p.env...), env...)
+	q.Entries.Cmd = q.Command
+	return &q
+}
+
 func (p *Platform) Name() string       { return Name }
 func (p *Platform) Provides() []string { return []string{"gradio-host", "uv"} }
 

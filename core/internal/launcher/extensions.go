@@ -11,9 +11,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -22,7 +22,6 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appconfig"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extcatalog"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/piplist"
-	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/supervise"
 )
 
 // extOps are the extcatalog operations the Extensions page uses. The launcher
@@ -48,22 +47,18 @@ func newExtHost(root paths.Root, systemPython bool) (*extHost, error) {
 		return nil, fmt.Errorf("generating the extension token: %w", err)
 	}
 	token := hex.EncodeToString(b)
-	var prefix []string // system python: run python and uv from PATH
-	if !systemPython {
-		prefix = supervise.CommandPrefix(root)
-	}
-	env := append(os.Environ(), supervise.MambaRootEnv(root))
+	p := detect.Detect(detect.Options{Root: root, SystemPython: systemPython})
 	logf := func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) }
 	cfg := appconfig.New(appconfig.Options{Root: root.Dir(), Token: token, Logf: logf})
 	pip := piplist.New(piplist.Options{
 		Root: root.Dir(), Token: token,
-		Run: append([]string(nil), prefix...), Env: append([]string(nil), env...), Logf: logf,
+		Platform: p, Logf: logf,
 	})
 	return &extHost{
 		root: root, token: token, cfg: cfg,
 		cat: extcatalog.New(extcatalog.Options{
 			Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
-			Run: append([]string(nil), prefix...), Env: append([]string(nil), env...), Logf: logf,
+			Platform: p, Logf: logf,
 		}),
 		pip: pip,
 	}, nil

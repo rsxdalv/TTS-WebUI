@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -25,13 +27,15 @@ import (
 // reactPrep runs the React UI build step before the app starts.
 type reactPrep struct {
 	root         paths.Root
-	systemPython bool // run node tools from PATH, not the micromamba env
+	systemPython bool // run node tools from PATH (the system platform)
+	platform     platform.Platform
 	// runTool, when set, replaces the real tool runner (tests).
 	runTool func(ctx context.Context, name string, args ...string) error
 }
 
 func newReactPrep(root paths.Root, systemPython bool) *reactPrep {
-	return &reactPrep{root: root, systemPython: systemPython}
+	return &reactPrep{root: root, systemPython: systemPython,
+		platform: detect.Detect(detect.Options{Root: root, SystemPython: systemPython})}
 }
 
 // reactUIPlan is what Start must do before starting the processes.
@@ -181,12 +185,9 @@ func (s *reactPrep) tool() func(ctx context.Context, name string, args ...string
 func (s *reactPrep) runReactUITool(ctx context.Context, name string, args ...string) error {
 	p := &procs.Proc{}
 	dir := filepath.Join(s.root.Dir(), "react-ui")
-	var err error
-	if s.systemPython {
-		err = p.Start(ctx, name, args, dir, os.Environ())
-	} else {
-		full := append([]string{"-p", installEnvPath(s.root), "run", name}, args...)
-		err = p.Start(ctx, micromambaPath(s.root), full, dir, mambaEnv(s.root))
+	c, err := s.platform.Command(nil, append([]string{name}, args...))
+	if err == nil {
+		err = p.Start(ctx, c.Program, c.Args, dir, c.Env)
 	}
 	if err != nil {
 		return err

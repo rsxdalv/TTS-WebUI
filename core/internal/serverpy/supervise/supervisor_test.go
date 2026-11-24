@@ -518,6 +518,21 @@ func TestBrowserNoReactAndDisabledAndFailure(t *testing.T) {
 			t.Errorf("opened %v, want only %s", got, want)
 		}
 	})
+	t.Run("no gradio, and the launcher leaves the React tab out", func(t *testing.T) {
+		// The launcher sets SkipReactTab because Gradio's page is the one it
+		// opens. With no Gradio host that page does not exist: the Vite UI opens.
+		s, e := newSup(t, func(c *Config) { c.OpenBrowser, c.SkipReactTab = true, true }, "FAKE_GRADIO_EXIT=1")
+		if err := s.Start(ctx()); err != nil {
+			t.Fatal(err)
+		}
+		waitState(t, s, NameGradio, StateExited)
+		waitState(t, s, NameReact, StateReady)
+		time.Sleep(200 * time.Millisecond)
+		want := fmt.Sprintf("http://127.0.0.1:%d", e.reactPort)
+		if got := e.op.get(); len(got) != 1 || got[0] != want {
+			t.Errorf("opened %v, want only %s", got, want)
+		}
+	})
 }
 
 func TestStopRestartAndOwnedContext(t *testing.T) {

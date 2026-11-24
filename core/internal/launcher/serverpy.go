@@ -106,9 +106,20 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		return nil, err
 	}
 
-	rt := router.New(router.Options{Token: token})
-	if err := rt.AddRoute("/", "http://"+net.JoinHostPort(gradioHost, strconv.Itoa(gradioPort))); err != nil {
-		return nil, err
+	// The public port's "/" is Gradio. Without the Gradio host there is nothing
+	// to send it to: it answers a page that says so (not a 502) and points at the
+	// Vite UI. The port stays open: engine pages and the extension pages use it.
+	st := p.Status(context.Background())
+	noHost := detect.Host(p) != nil && !st.Ready
+	var home http.Handler
+	if noHost {
+		home = noHostPage(st.Detail)
+	}
+	rt := router.New(router.Options{Token: token, Home: home})
+	if !noHost {
+		if err := rt.AddRoute("/", "http://"+net.JoinHostPort(gradioHost, strconv.Itoa(gradioPort))); err != nil {
+			return nil, err
+		}
 	}
 	// Bind before any child starts, so a running app on the same port is an
 	// error here, not a crashed child later.

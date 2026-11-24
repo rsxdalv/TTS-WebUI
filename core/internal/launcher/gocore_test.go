@@ -107,7 +107,7 @@ func startCore(t *testing.T, root paths.Root, reactPort int, mutate func(*superv
 }
 
 func TestCoreBootsWithNoPythonEnvironment(t *testing.T) {
-	root, _, reactPort := coreInstall(t)
+	root, publicPort, reactPort := coreInstall(t)
 	sup := startCore(t, root, reactPort, nil) // no .gpu either
 	if err := sup.Start(context.Background()); err != nil {
 		t.Fatalf("Start with no Python env must succeed: %v", err)
@@ -118,6 +118,15 @@ func TestCoreBootsWithNoPythonEnvironment(t *testing.T) {
 	base := fmt.Sprintf("http://127.0.0.1:%d", reactPort)
 	if code, body := httpGet(t, base+"/"); code != 200 || !strings.Contains(body, "TTS WebUI") {
 		t.Fatalf("front: %d %q", code, body)
+	}
+	// The public port has no Gradio behind it: "/" says so (it is not a 502) and
+	// the extension pages the Vite UI links to are still served there.
+	pub := fmt.Sprintf("http://127.0.0.1:%d", publicPort)
+	if code, body := httpGet(t, pub+"/"); code != 200 || !strings.Contains(body, "Gradio pages are not installed") {
+		t.Fatalf("public /: %d %q", code, body)
+	}
+	if code, _ := httpGet(t, pub+"/healthz"); code != 200 {
+		t.Fatalf("public /healthz: %d", code)
 	}
 	// Routes backed by the real control API and services, with no Python.
 	if code, body := httpGet(t, base+"/api/go-data/logs/files"); code != 200 || strings.TrimSpace(body) != "[]" {

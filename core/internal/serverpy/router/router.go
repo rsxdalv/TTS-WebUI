@@ -43,6 +43,9 @@ type Options struct {
 	Token string
 	// Logger receives route changes and proxy errors. Nil means slog.Default().
 	Logger *slog.Logger
+	// Home answers GET / when no route owns it (there is no "/" upstream, as
+	// while the Gradio host is not installed). Nil means the JSON 404.
+	Home http.Handler
 }
 
 // route is one prefix -> upstream mapping. The ReverseProxy is built once per
@@ -59,6 +62,7 @@ type Router struct {
 	token     string
 	log       *slog.Logger
 	transport *http.Transport
+	home      http.Handler
 
 	mu     sync.RWMutex
 	routes map[string]*route
@@ -72,6 +76,7 @@ func New(opts Options) *Router {
 	}
 	return &Router{
 		token:     opts.Token,
+		home:      opts.Home,
 		log:       lg,
 		transport: newTransport(),
 		routes:    make(map[string]*route),
@@ -232,6 +237,10 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // With a "/" route in place none of this is reachable, as in Python.
 func (rt *Router) serveUnmatched(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
+		if rt.home != nil && r.URL.Path == "/" {
+			rt.home.ServeHTTP(w, r)
+			return
+		}
 		switch r.URL.Path {
 		case "/healthz":
 			writeJSON(w, http.StatusOK, struct {

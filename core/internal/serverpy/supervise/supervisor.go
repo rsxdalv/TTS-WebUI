@@ -545,16 +545,21 @@ func (s *Supervisor) openBrowsers(ctx context.Context, gen []*managed, pubURL st
 			slog.Warn("could not open browser", "url", url, "err", err)
 		}
 	}
+	noGradio := false
 	for _, m := range gen {
 		switch m.name {
 		case NameGradio:
-			// A Gradio that is not coming (no Python, died) does not keep the
-			// React tab from opening: the Go core is the app.
+			// A Gradio that is not coming (not installed, died) does not keep the
+			// React tab from opening: the Go core is the app. Then the Vite UI is
+			// the only page there is, so it opens even where the launcher would
+			// otherwise leave it out.
 			if wait(m) {
 				open(pubURL)
+			} else {
+				noGradio = true
 			}
 		case NameReact:
-			if !reactTab || !wait(m) {
+			if !(reactTab || noGradio) || !wait(m) {
 				return
 			}
 			open(fmt.Sprintf("http://127.0.0.1:%d", reactPort))

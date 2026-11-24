@@ -1,8 +1,12 @@
 package extcatalog
 
 import (
+	"bufio"
 	"context"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/gradiohost"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/requires"
@@ -115,3 +119,36 @@ func (s *Store) serveHost(w http.ResponseWriter, r *http.Request, op string, o *
 // HostActive is whether the Gradio host is an entry of this install that can be
 // installed and removed (not the existing Python env).
 func (s *Store) HostActive() bool { return s.hostActive() }
+
+// normalizeName makes distribution and catalog names comparable
+// (tts-webui-extension.vall_e_x and tts_webui_extension.vall_e_x are one name).
+func normalizeName(n string) string {
+	return strings.ToLower(strings.NewReplacer("-", "_", ".", "_").Replace(strings.TrimSpace(n)))
+}
+
+// hostBaseTabs is the set of tab packages the Gradio host's own requirements.txt
+// installs (normalized names). They come with the host, so they do not stop it
+// from being removed. Only on the host platform; empty elsewhere.
+func (s *Store) hostBaseTabs() map[string]bool {
+	out := map[string]bool{}
+	if !s.hostActive() {
+		return out
+	}
+	f, err := os.Open(filepath.Join(s.opts.Root, "requirements.txt"))
+	if err != nil {
+		return out
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "-") || strings.Contains(line, "://") {
+			continue
+		}
+		if i := strings.IndexAny(line, "<>=!~; [@"); i >= 0 {
+			line = line[:i]
+		}
+		out[normalizeName(line)] = true
+	}
+	return out
+}

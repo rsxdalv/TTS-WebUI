@@ -41,6 +41,7 @@ func entryRequires(e *Obj) ([]string, error) {
 func (s *Store) RequiresGraph(ctx context.Context) (requires.Graph, error) {
 	g := requires.Graph{Entries: map[string]requires.Entry{}, Provided: map[string]string{}}
 	in := s.Installs(ctx)
+	hostBase := s.hostBaseTabs()
 	for _, kind := range []string{"interface", "decorator"} {
 		list, err := s.List(kind)
 		if err != nil {
@@ -62,6 +63,9 @@ func (s *Store) RequiresGraph(ctx context.Context) (requires.Graph, error) {
 			// A built-in tab is part of the host, not something installed on
 			// it: it must not stop the host from being removed.
 			installed = installed && !platform.Builtin(pkg)
+			// A tab that requirements.txt installs is part of the host too: the
+			// host's own install put it there, so removing the host takes it away.
+			installed = installed && !hostBase[normalizeName(pkg)]
 			g.Entries[pkg] = requires.Entry{Name: pkg, Requires: req, Installed: installed}
 		}
 	}

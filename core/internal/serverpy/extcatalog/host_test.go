@@ -95,6 +95,16 @@ func TestTheHostIsRefusedWhileATabNeedsItAndWhileTheAppRuns(t *testing.T) {
 	if code != 400 || !strings.Contains(body, "cannot remove gradio-host: required by ext.tab") || strings.Contains(body, "builtin") {
 		t.Fatalf("with a tab: %d %s", code, body)
 	}
+	// A tab that requirements.txt installs came with the host: it is not a reason to keep it.
+	writeFile(t, root, "requirements.txt", "gradio==5.49.1\next-tab>=1\n")
+	g, err := s.RequiresGraph(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if deps := g.Dependants("gradio-host"); len(deps) != 0 {
+		t.Fatalf("a tab of requirements.txt blocks the host: %v", deps)
+	}
+	writeFile(t, root, "requirements.txt", "gradio==5.49.1\n")
 	pip.pkgs = nil
 	*running = true
 	if code, body = call(t, s.Handler(), "POST", Prefix+"uninstall", `{"package_name":"gradio-host"}`, "tok"); code != 400 || !strings.Contains(body, "stop the app first") {

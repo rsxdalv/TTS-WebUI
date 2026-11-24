@@ -1,12 +1,6 @@
 /// <reference types="vite/types/importMeta.d.ts" />
 
-/**
- * The environment variables the app reads (src/data/env.ts).
- * Vite inlines them at build time.
- */
-interface ImportMetaEnv {
-  readonly VITE_DB_API_URL?: string;
-}
+interface ImportMetaEnv {}
 
 interface ImportMeta {
   readonly env: ImportMetaEnv;

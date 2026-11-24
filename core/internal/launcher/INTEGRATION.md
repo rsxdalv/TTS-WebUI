@@ -41,8 +41,21 @@ were all reported absent first.
 | Line | Windows | Linux (WSL) |
 |---|---|---|
 | Fresh folder, no Python/git/Node: launches (`--no-browser --start`), Go pages work | steps are `download, preflight, update`; `:3000/` and `/history` 200, `host-status` `installed:false, installable:true`, `:7770/` answers the no-host page; Setup tab in the browser pane: download and pre-flight done, update amber with "Could not check for an update: ... HTTP 404" (the release has no json yet), Launch button shown | same by curl: steps, `:3000/`, `/history`, `host-status`, `:7770/` all as on Windows; no browser |
-| Install uv and an engine, generate | `tts_webui_extension.kitten_tts` through the launcher API with the GPU choice `CPU` (cold cache): uv, Python, tools (`git` came from `platforms/uv/tools`, the install used `git+https` with no git on PATH), engine venv; opened from `/engines` in the browser pane, Input typed, Process clicked: a 7 s clip with a waveform | see the next rows |
+| Install uv and an engine, generate | `tts_webui_extension.kitten_tts` through the launcher API with the GPU choice `CPU` (cold cache): uv, Python, tools (`git` came from `platforms/uv/tools`, the install used `git+https` with no git on PATH), engine venv; opened from `/engines` in the browser pane, Input typed, Process clicked: a 7 s clip with a waveform | same engine through the launcher API (`CPU`). **With git absent from PATH it failed, by design: on Linux no git is fetched (`git: not fetched on Linux ... apt install git`), and Kitten installs from a git URL.** With git and coreutils on PATH (python, node, uv absent) it installed (cold); the engine opened with `POST /api/go-data/engines/{pkg}/open`, and a 190844-byte wav came from `gradio_client` on the page the iframe shows. **Nothing was clicked** |
 | Update of an archive install | a local file server stood in for the release (`TTS_ARCHIVE_URL`): status said an update is waiting; POST update downloaded 10 MB, extracted 171 entries, saved `tts-webui.exe.new`, exit code 0 on the stream; after restarting the launcher `tts-webui.exe` is the new build (`--version` changed), `.old` is there, `.new` is gone, the launcher answers | not run (the swap and the extraction are unit-tested on Linux: `TestSwapPendingBinaryReplacesAndRuns`, `TestExtractWritesTheRunningBinaryBesideItself`) |
-| Old install updated to this version | scratch root with the real env through a junction and the real markers: six steps, `legacy: true` on `/api/app/notice`, `Runs on legacy-env` ready, 67 entries, Gradio on 7770 answered `/config` (1.1 MB) and the React front came up | see below |
+| Old install updated to this version | scratch root with the real env through a junction and the real markers: six steps, `legacy: true` on `/api/app/notice`, `Runs on legacy-env` ready, 67 entries, Gradio on 7770 answered `/config` (1.1 MB) and the React front came up; the launcher page (a folder with the `.gpu` marker only) shows the amber notice with the guide link above all six steps | six steps (markers copied from a P3 scratch: `.gitignore` only), `legacy: true`, Gradio `/config` 1.1 MB, React ready, the real env untouched (symlink removed afterwards) |
 | `install-host.sh` (the CI job) | ran to the end: gradio-host installed (gradio 5.49.1, torch 2.11.0+cpu, `import tts_webui` works) | not run |
 | Docker image | not run: no Docker daemon was running on this machine | not run |
+
+`gofmt`, `go vet ./...` and `go test ./...` pass in `core` (Windows). The launcher package's whole test suite also passes on Linux
+(a cross-built test binary run in WSL from the package folder).
+
+### Only in tests, not run for real
+
+- The Docker image build and start (no Docker daemon was running). The Dockerfile change is reviewed, not built.
+- The CI workflows (`update-full-repo-zip.yaml`, `test-pip-install.yaml`): written, YAML not run on GitHub. `install-host.sh` ran on
+  Windows only; the zip, `archive.json` publishing and `tts-webui-installer.json` are untested until the workflow runs on `main`.
+- The real release has no `tts-webui-installer.json` yet, so the real update check answers "Could not check (HTTP 404)" until CI publishes it.
+- Update on Linux and macOS (unit tests only); a swap while the launcher runs under a supervisor script; macOS.
+- The Colab notebook change (`pip install uv==0.13.6`).
+- Windows path length of `.venvs` in a deep folder; an update interrupted half way (files mixed until it is run again).

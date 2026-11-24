@@ -164,6 +164,7 @@ func extractZip(ctx context.Context, zipPath, destDir string, lg *Log) error {
 
 // extractFile writes one zip file entry to disk.
 func extractFile(f *zip.File, target string) error {
+	target = extractTarget(target)
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return err
 	}

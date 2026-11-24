@@ -27,18 +27,23 @@ type StepStatus struct {
 	Step    string `json:"step"`
 	Done    bool   `json:"done"`
 	Running bool   `json:"running,omitempty"`
+	// Detail is a line to show with the step: an update waiting, or why it could
+	// not be checked.
+	Detail string `json:"detail,omitempty"`
 }
 
 // Launcher holds shared mutable state for the step handlers.
 type Launcher struct {
-	root          paths.Root
-	mu            sync.Mutex
-	sprocs        map[string]*procs.Proc // subprocess steps: mamba, install, update, run
-	slogs         map[string]*Log        // log-only steps: download
-	stepMu        sync.Mutex             // held while a step request checks and starts (R2-3)
-	sup           appSupervisor          // C3.2: app process supervisor
-	updateOnce    sync.Once
-	updateChecked bool // true = already up to date (cached after first check)
+	root   paths.Root
+	mu     sync.Mutex
+	sprocs map[string]*procs.Proc // subprocess steps: mamba, install, update, run
+	slogs  map[string]*Log        // log-only steps: download
+	stepMu sync.Mutex             // held while a step request checks and starts (R2-3)
+	sup    appSupervisor          // C3.2: app process supervisor
+
+	updMu    sync.Mutex // guards updState and updAt (the update step's cached answer)
+	updState updateState
+	updAt    time.Time
 
 	systemPython bool      // the system platform (WithSystemPython)
 	extOnce      sync.Once // the Extensions page's stores, built on first use
@@ -142,7 +147,7 @@ func (l *Launcher) Register(srv *server.Server) {
 	srv.Handle("GET /api/steps/install/stream", l.handleProcStream("install"))
 
 	srv.Handle("POST /api/steps/update", l.handleUpdate())
-	srv.Handle("GET /api/steps/update/stream", l.handleProcStream("update"))
+	srv.Handle("GET /api/steps/update/stream", l.handleUpdateStream())
 
 	// C3.2: app supervisor endpoints (start/stop/restart/status/stream).
 	// These replace the legacy /poll endpoint with SSE.
@@ -162,26 +167,19 @@ func (l *Launcher) Register(srv *server.Server) {
 	srv.Handle("GET /api/app/diagnostic/stream", l.handleProcStream("diagnostic"))
 }
 
-// handleStatus returns [{step, done, running}] for all steps.
+// handleStatus returns [{step, done, running, detail}] for all steps.
 func (l *Launcher) handleStatus() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// For the update step: run isGitUpdated once and cache the result.
-		updateDone := false
-		if installDone(l.root) {
-			l.updateOnce.Do(func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-				defer cancel()
-				updated, err := isGitUpdated(ctx, l.root)
-				l.updateChecked = (err == nil && updated)
-			})
-			updateDone = l.updateChecked
-			// Also done when the update proc ran and exited cleanly after the once check.
-			if !updateDone {
-				if p := l.getProc("update"); p != nil && !p.Running() && p.ExitCode() == 0 {
-					updateDone = true
-				}
+		// The update step: an install with the old env asks git, any other folder asks
+		// the archive's published description. The answer is cached for a minute.
+		upd := l.updateStatus()
+		// Also done when the legacy update proc ran and exited cleanly.
+		if !upd.Done {
+			if p := l.getProc("update"); p != nil && !p.Running() && p.ExitCode() == 0 {
+				upd = updateState{Done: true}
 			}
 		}
+		updRunning := l.isStepRunning("update") || l.updateRunning()
 
 		// A running step is never reported done, so a reload during it shows it
 		// running and keeps the later steps unavailable (R2-3).
@@ -201,7 +199,7 @@ func (l *Launcher) handleStatus() http.Handler {
 				StepStatus{Step: "install", Done: installDone(l.root) && !installRunning, Running: installRunning},
 			)
 		}
-		statuses = append(statuses, StepStatus{Step: "update", Done: updateDone, Running: l.isStepRunning("update")})
+		statuses = append(statuses, StepStatus{Step: "update", Done: upd.Done && !updRunning, Running: updRunning, Detail: upd.Detail})
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(statuses)
 	})
@@ -407,7 +405,7 @@ func (l *Launcher) handleLogStream(step string) http.Handler {
 				return
 			case line, ok := <-live:
 				if !ok {
-					server.WriteSSEDone(w, flusher, 0)
+					server.WriteSSEDone(w, flusher, lg.ExitCode())
 					return
 				}
 				_, _ = fmt.Fprintf(w, "data: %s\n\n", line)
@@ -427,9 +425,22 @@ func (l *Launcher) handleLogStream(step string) http.Handler {
 				}
 			logSendDone:
 				flusher.Flush()
-				server.WriteSSEDone(w, flusher, 0)
+				server.WriteSSEDone(w, flusher, lg.ExitCode())
 				return
 			}
 		}
+	})
+}
+
+// handleUpdateStream follows the archive update (a log) when there is one, the
+// old env install's update process otherwise.
+func (l *Launcher) handleUpdateStream() http.Handler {
+	logStream, procStream := l.handleLogStream("update"), l.handleProcStream("update")
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if l.getLog("update") != nil {
+			logStream.ServeHTTP(w, r)
+			return
+		}
+		procStream.ServeHTTP(w, r)
 	})
 }

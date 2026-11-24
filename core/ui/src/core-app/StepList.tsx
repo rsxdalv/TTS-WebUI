@@ -38,7 +38,7 @@ const STEP_META: Record<string, { title: string; description: string; hasStream:
   },
   update: {
     title: "Update WebUI",
-    description: "Pull the latest changes and re-install dependencies if needed",
+    description: "Download the latest release and replace the program, the UI and the sources (your data is not touched)",
     hasStream: true,
   },
 };
@@ -50,7 +50,11 @@ export function StepList({ statuses, onRefresh }: StepListProps) {
   const anyRunning = statuses.some((s) => s.running);
   // The active step is the first one that is not done.
   const activeIdx = statuses.findIndex((s) => !isDone(s));
-  const allDone = statuses.length > 0 && statuses.every(isDone);
+  // Update is optional: an update waiting, or one that could not be checked
+  // (offline), never hides the Start button.
+  const allDone =
+    statuses.length > 0 &&
+    statuses.filter((s) => s.step !== "update").every(isDone);
 
   return (
     <div className="flex flex-col gap-4">
@@ -87,6 +91,7 @@ export function StepList({ statuses, onRefresh }: StepListProps) {
             state={state}
             hasStream={meta.hasStream}
             running={s.running}
+            detail={s.detail}
             onComplete={onRefresh}
           />
         );

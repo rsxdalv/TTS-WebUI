@@ -15,6 +15,7 @@ export interface StepStatus {
   step: string;
   done: boolean;
   running?: boolean;
+  detail?: string;
 }
 
 export function CoreApp() {

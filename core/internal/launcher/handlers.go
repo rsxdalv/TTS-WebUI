@@ -35,7 +35,7 @@ func (l *Launcher) handleDownload() http.Handler {
 		}
 		url := req.URL
 		if url == "" {
-			url = canonicalDownloadURL
+			url = archiveURL()
 		}
 
 		lg := newLog()
@@ -47,6 +47,7 @@ func (l *Launcher) handleDownload() http.Handler {
 		go func() {
 			if err := downloadAndExtract(context.Background(), url, destDir, lg); err != nil {
 				lg.AddLine(fmt.Sprintf("ERROR: %v", err))
+				lg.SetExit(1)
 			} else {
 				lg.AddLine("done")
 			}
@@ -280,6 +281,14 @@ func (l *Launcher) handleUpdate() http.Handler {
 		l.stepMu.Lock()
 		defer l.stepMu.Unlock()
 		if l.refuseWhileBusy(w, "update") {
+			return
+		}
+		if !l.legacy() {
+			if l.appRunning() {
+				http.Error(w, "stop the app before running update", http.StatusConflict)
+				return
+			}
+			l.startArchiveUpdate(w)
 			return
 		}
 

@@ -134,6 +134,8 @@ func TestUninstallingANativeEntryDeletesItsVenv(t *testing.T) {
 		t.Fatal(err)
 	}
 	os.Remove(log)
+	var stopped []string
+	s.opts.StopEngine = func(pkg string) bool { stopped = append(stopped, pkg); return true }
 	_, got, _ := stream(t, s, `uninstall {"package_name":"ext.native"}`)
 	text := strings.Join(got.lines, "\n")
 	if !got.ok || !strings.Contains(text, "Disk freed:") || !strings.Contains(text, "Successfully uninstalled Native Ext") {
@@ -141,6 +143,9 @@ func TestUninstallingANativeEntryDeletesItsVenv(t *testing.T) {
 	}
 	if _, err := os.Stat(venv); err == nil {
 		t.Fatal("the venv is still there")
+	}
+	if len(stopped) != 1 || stopped[0] != "ext.native" || !strings.Contains(text, "Stopped the running engine") {
+		t.Fatalf("the running engine was not stopped first: %v\n%s", stopped, text)
 	}
 	if _, err := os.Stat(log); err == nil {
 		t.Fatal("removing a venv ran a command (pip uninstall in the main env)")

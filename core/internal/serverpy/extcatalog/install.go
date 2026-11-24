@@ -252,6 +252,9 @@ func (s *Store) uninstall(ctx context.Context, entry *Obj, emit func(string)) bo
 		rec("Failed: the uv platform is not available")
 		return false
 	}
+	if s.opts.StopEngine != nil && s.opts.StopEngine(entry.Str("package_name")) {
+		rec("Stopped the running engine")
+	}
 	e := s.platformEntry(entry, nil)
 	ok := s.opts.UV.Remove(ctx, e, rec)
 	s.writeLog("uv-venv-uninstall", e.Name, log)

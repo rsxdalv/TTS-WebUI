@@ -431,3 +431,15 @@ func (m *Manager) Subscribe(pkg string) (<-chan string, func(), error) {
 	ch, cancel := e.proc.Subscribe()
 	return ch, cancel, nil
 }
+
+// StopIfRunning stops the process of pkg when it is starting or ready, and
+// reports whether it did. An engine that never started or already exited is
+// left alone.
+func (m *Manager) StopIfRunning(pkg string) bool {
+	for _, st := range m.List() {
+		if st.Package == pkg && (st.State == StateStarting || st.State == StateReady) {
+			return m.Stop(pkg) == nil
+		}
+	}
+	return false
+}

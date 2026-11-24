@@ -42,10 +42,11 @@ const gradioHost = "127.0.0.1"
 // proxy tree's job), the extension processes, and the control API both of them
 // serve to the gradio child.
 type serverPy struct {
-	rt  *router.Router
-	mgr *extprocs.Manager
-	ctl *http.Server
-	ui  *http.Server
+	root string // install folder, the key in runningEngines
+	rt   *router.Router
+	mgr  *extprocs.Manager
+	ctl  *http.Server
+	ui   *http.Server
 
 	// publicAddr is where the router listens (the address users open).
 	publicAddr string
@@ -142,13 +143,15 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		Platform: p,
 		Logf:     func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	})
+	var mgr *extprocs.Manager
 	ext := extcatalog.New(extcatalog.Options{
 		Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
 		Platform: p, UV: uv.New(uv.Options{Root: root}),
-		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+		StopEngine: func(pkg string) bool { return mgr.StopIfRunning(pkg) },
+		Logf:       func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	})
 
-	mgr := extprocs.New(extprocs.Options{
+	mgr = extprocs.New(extprocs.Options{
 		Root:     root,
 		Platform: p,
 		// Extension processes get no control token, so they receive the
@@ -158,6 +161,8 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		Token:    token,
 		Logf:     func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	})
+	// The launcher's Extensions page removes engines too, with its own store.
+	runningEngines.Store(root.Dir(), mgr)
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/routes", rt.ControlHandler())
@@ -206,6 +211,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 
 	ctx, cancel := context.WithCancel(context.Background())
 	sp := &serverPy{
+		root:       root.Dir(),
 		rt:         rt,
 		mgr:        mgr,
 		ctl:        ctl,
@@ -237,6 +243,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 func (sp *serverPy) Close() {
 	sp.closeOnce.Do(func() {
 		sp.mgr.StopAll()
+		runningEngines.CompareAndDelete(sp.root, sp.mgr)
 		sp.stopRouter()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -318,4 +325,17 @@ func tcpPort(a net.Addr) int {
 		return t.Port
 	}
 	return 0
+}
+
+// runningEngines maps an install folder to the extension process manager of the
+// app running on it. The launcher's Extensions page has its own catalog store,
+// which uses this to stop an engine before removing its venv.
+var runningEngines sync.Map // string -> *extprocs.Manager
+
+// stopRunningEngine stops pkg in the app running on root, if there is one.
+func stopRunningEngine(root, pkg string) bool {
+	if m, ok := runningEngines.Load(root); ok {
+		return m.(*extprocs.Manager).StopIfRunning(pkg)
+	}
+	return false
 }

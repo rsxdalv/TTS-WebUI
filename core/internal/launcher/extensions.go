@@ -64,6 +64,7 @@ func newExtHost(root paths.Root, systemPython bool) (*extHost, error) {
 		cat: extcatalog.New(extcatalog.Options{
 			Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
 			Platform: p, UV: uv.New(uv.Options{Root: root}), Logf: logf,
+			StopEngine: func(pkg string) bool { return stopRunningEngine(root.Dir(), pkg) },
 		}),
 		pip: pip, platform: p,
 	}, nil

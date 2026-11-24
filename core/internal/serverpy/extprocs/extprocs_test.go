@@ -645,3 +645,20 @@ func testPlatform(root paths.Root, prefix []string) platform.Platform {
 		Env: []string{"BASE_MARK=base", "TTS_CORE_TOKEN=secret", "TTS_CORE_URL=http://127.0.0.1:1"},
 	})
 }
+
+func TestStopIfRunning(t *testing.T) {
+	m, _, _ := newMgr(t, nil)
+	if m.StopIfRunning("pkg") {
+		t.Fatal("stopped an engine that never started")
+	}
+	if _, err := m.Start(context.Background(), "pkg", StartRequest{Port: freeP(t)}); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "ready", func() bool { return state(m, "pkg") == StateReady })
+	if !m.StopIfRunning("pkg") || state(m, "pkg") != StateExited {
+		t.Fatalf("running engine not stopped: %q", state(m, "pkg"))
+	}
+	if m.StopIfRunning("pkg") {
+		t.Fatal("reported a stop for an engine that had exited")
+	}
+}

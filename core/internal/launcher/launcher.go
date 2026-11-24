@@ -130,6 +130,7 @@ func (l *Launcher) CleanupOrphans() int { return sweepOrphans(l.root) }
 // under /api/.
 func (l *Launcher) Register(srv *server.Server) {
 	srv.Handle("GET /api/steps/status", l.handleStatus())
+	srv.Handle("GET /api/app/notice", l.handleNotice())
 
 	srv.Handle("POST /api/steps/download", l.handleDownload())
 	srv.Handle("GET /api/steps/download/stream", l.handleLogStream("download"))

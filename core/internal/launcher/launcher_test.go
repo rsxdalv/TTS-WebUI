@@ -202,3 +202,22 @@ func TestMambaGPUInstallRefusedOnFreshFolder(t *testing.T) {
 		}
 	}
 }
+
+func TestNotice_LegacyFolderGetsItNewFolderDoesNot(t *testing.T) {
+	get := func(srv *server.Server, token string) launcher.Notice {
+		var n launcher.Notice
+		resp := doRequest(t, srv, token, http.MethodGet, "/api/app/notice", "")
+		if err := json.NewDecoder(resp.Body).Decode(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	_, srv, token := newTestInstall(t)
+	if n := get(srv, token); !n.Legacy || !strings.Contains(n.Text, "MIGRATION.md") || n.URL == "" {
+		t.Errorf("legacy folder notice = %+v", n)
+	}
+	_, srv, token = newFreshInstall(t)
+	if n := get(srv, token); n.Legacy || n.Text != "" {
+		t.Errorf("new folder notice = %+v, want none", n)
+	}
+}

@@ -69,8 +69,6 @@ main-env `python`.
 | `extcatalog.Installs.Of` (pip list name, or `.venvs/<pkg>` exists) | `Platform.EntryStatus` |
 | `extprocs.Options.MainPython`, `extprocs.python()` | `Platform.Command(e, ["python"])` |
 | `launcher.react_ui_mode` npm via `micromamba` | `Platform.Command(nil, ["npm", ...])` |
-| `react_ui_backend` ffprobe search in `installer_files/env/...` | `Platform.ToolDirs()` (a small extra method: directories to search for `ffprobe`) |
-| `launcher/procscan_other.go` matches the word `micromamba` | `Platform.ProcessMarkers()` (what an orphan sweep looks for) |
 
 `torch.go`, the `.gpu` file and the GPU gate stay exactly as they are in P1. They move in P2/P3 (D29).
 
@@ -209,10 +207,11 @@ any non-test file matches `(?i)micromamba|installer_files|MAMBA_ROOT_PREFIX` out
 | `internal/launcher/steps.go` and the step handlers in `handlers.go` | the launcher's mamba/gpu/install steps and their markers (P4) |
 | `internal/paths/paths.go` | defines the folder (`InstallerFiles()`); no behaviour |
 | `cmd/tts-webui/cmd_launch.go` | the flag's help text names the micromamba env |
+| `react_ui_backend/go_ffmpeg_metadata.go` | ffprobe search in the env's folders; no seam method for it in P1 (decided), removed in P4 |
+| `internal/launcher/procscan_other.go` | orphan sweep matches the word `micromamba`; no seam method in P1 (decided), removed in P3 |
 
-Everything the earlier grep found outside that list (supervise, extcatalog, piplist, extprocs wiring,
-`react_ui_mode.go`, `procscan_other.go`, `go_ffmpeg_metadata.go`, the preflight message) moves behind the seam or is
-reworded. The test is allowed to fail on a new file; adding a file to the allow-list is a reviewed change.
+Everything else the earlier grep found outside that list (supervise, extcatalog, piplist, extprocs wiring,
+`react_ui_mode.go`, the preflight message) moves behind the seam or is reworded. The test is allowed to fail on a new file; adding a file to the allow-list is a reviewed change.
 Smoke and test fakes (`scripts/smoke`, `_test.go`) are exempt: the rule is about shipped code.
 
 ## 7. How "no change in behaviour" is checked
@@ -234,7 +233,7 @@ Smoke and test fakes (`scripts/smoke`, `_test.go`) are exempt: the rule is about
 3. `extcatalog` and `extprocs` take a `Platform` instead of `Run`/`Python`/`Env`/`MainPython`; `venventry` helper.
 4. `requires`: derivation, validation, `Resolve`, `Dependants`, the install plan.
 5. The Extensions page and API fields (section 4); Vite and launcher UI.
-6. `react_ui_mode`, ffprobe and orphan-marker moves; the grep guard test.
+6. `react_ui_mode` npm move; the grep guard test.
 7. Real runs on Windows and WSL against the baseline; `INTEGRATION.md` for `platform`.
 
 ## 9. Not decided here / not in P1
@@ -244,17 +243,11 @@ Smoke and test fakes (`scripts/smoke`, `_test.go`) are exempt: the rule is about
 - A version syntax in `requires`; `python`/`torch` fields (P2); `launch`/`health`/`api`/`keep_alive` (P6).
 - Anything under `platforms/` on disk.
 
-## For Rob
+## Gate answers (Rob, 2026-11-24)
 
-1. **`gradio-host` and `uv` as satisfied names in P1.** Proposed: `legacy-env` and `system` *provide* them, so every
-   existing entry shows "requires uv/gradio-host (provided by legacy-env)". Alternative: show only entries'
-   derived `requires` and say nothing about provision until P2/P3. Recommended: the first; it is what makes
-   "a new folder says what would be installed" true without a stub.
-2. **Keep `proxy: "native"`** as the own-venv marker for now, with `requires` derived from it. Alternative: write
-   `"requires": ["uv"]` into the 20 entries in P1. Recommended: derive, as the PLAN says (no rewrite up front).
-3. **Venv folder names.** `.venvs/<full package name>` stays through P1 (24 characters for Bark). Shorten in P2
-   after measuring depth? Recommended: yes, P2.
-4. **Grep guard allow-list** (section 6): the launcher's step files and `paths.go` stay allowed until P4. Say if you
-   want the guard stricter (steps moved into `installer_scripts` first), which makes P1 larger.
-5. **`ToolDirs()` and `ProcessMarkers()`** are two small extra methods on `Platform` so ffprobe lookup and the orphan
-   sweep leave their direct reference to the env. OK to add, or leave those two files on the allow-list?
+1. `legacy-env` and `system` provide `uv` and `gradio-host` in P1: **accepted**.
+2. `proxy: "native"` stays and `requires` is derived from it: **accepted**.
+3. Shorten venv folder names in P2 after measuring depth: **accepted**.
+4. The grep guard keeps the launcher step files and `paths.go` allowed until P4: **stay allowed**.
+5. `ToolDirs()` and `ProcessMarkers()`: **left out for now**. `go_ffmpeg_metadata.go` and `procscan_other.go` are on the
+   allow-list instead (section 6).

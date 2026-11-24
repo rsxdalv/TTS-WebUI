@@ -11,7 +11,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/requires"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -39,6 +41,8 @@ type extHost struct {
 	cfg   *appconfig.Store
 	cat   *extcatalog.Store
 	pip   *piplist.Store
+	// platform is what the stores run on.
+	platform platform.Platform
 }
 
 func newExtHost(root paths.Root, systemPython bool) (*extHost, error) {
@@ -60,7 +64,7 @@ func newExtHost(root paths.Root, systemPython bool) (*extHost, error) {
 			Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
 			Platform: p, Logf: logf,
 		}),
-		pip: pip,
+		pip: pip, platform: p,
 	}, nil
 }
 
@@ -84,12 +88,24 @@ type extItem struct {
 	Installed     bool   `json:"installed"`
 	Disabled      bool   `json:"disabled"`
 	CanBeDisabled bool   `json:"can_be_disabled"`
+	// Requires is what the entry needs first (its own list or the derived one),
+	// and RequirementsState says for each name whether it is there now.
+	Requires          []string       `json:"requires"`
+	RequirementsState []requires.Req `json:"requirements_state"`
 }
 
 type extListAnswer struct {
 	Extensions []extItem `json:"extensions"`
 	AppRunning bool      `json:"app_running"`
 	Warning    string    `json:"warning,omitempty"`
+	// Platform is the runtime this install runs on ("legacy-env", "system"), and
+	// PlatformReady whether its Python can start; PlatformDetail says why not.
+	Platform       string `json:"platform"`
+	PlatformReady  bool   `json:"platform_ready"`
+	PlatformDetail string `json:"platform_detail,omitempty"`
+	// RequiresError is set when the catalog's requires cannot be read (a bad
+	// name); the rows then carry no requirements.
+	RequiresError string `json:"requires_error,omitempty"`
 }
 
 // list answers the Extensions page: interface and decorator extensions with
@@ -99,6 +115,12 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 	lists, err := h.cfg.ExtensionLists()
 	if err != nil {
 		return ans, err
+	}
+	st := h.platform.Status(ctx)
+	ans.Platform, ans.PlatformReady, ans.PlatformDetail = h.platform.Name(), st.Ready, st.Detail
+	graph, gerr := h.cat.RequiresGraph(ctx)
+	if gerr != nil {
+		ans.RequiresError = gerr.Error()
 	}
 	installs := h.cat.Installs(ctx)
 	if installs.Err != nil {
@@ -122,6 +144,14 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 			}
 			proxy := e.Str("proxy")
 			installed, _ := installs.Of(pkg, proxy)
+			var req []string
+			var reqState []requires.Req
+			if gerr == nil {
+				req, reqState = graph.Entries[pkg].Requires, graph.State(pkg)
+			}
+			if req == nil {
+				req, reqState = []string{}, []requires.Req{}
+			}
 			ans.Extensions = append(ans.Extensions, extItem{
 				PackageName: pkg, Name: nonEmpty(e.Str("name"), pkg),
 				Description: e.Str("description"), Website: e.Str("website"),
@@ -130,6 +160,7 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 				Installed:     installed,
 				Disabled:      kind == "interface" && disabled[pkg],
 				CanBeDisabled: kind == "interface",
+				Requires:      req, RequirementsState: reqState,
 			})
 		}
 	}

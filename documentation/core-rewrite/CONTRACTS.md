@@ -271,7 +271,7 @@ It has no token, Host check or Origin check. This stays true whenever the proxy 
 | Host | The request must have host `127.0.0.1`, `localhost` or `[::1]` with port 3000. Otherwise `400` |
 | Origin | Checked on every `/api/*` request and every request that is not `GET` or `HEAD`. If an `Origin` header is present it must be `http://127.0.0.1:3000`, `http://localhost:3000` or `http://[::1]:3000`. Otherwise `403`. `Origin: null` is refused |
 | Token | None. Pages are served by Next and have no way to receive the launcher's token |
-| Launcher API | Never exposed on port 3000. Port 7700 keeps its token. A claim must not start processes or change the install |
+| Launcher API | Never exposed on port 3000. Port 7700 keeps its token. A claim must not start processes or change the install, with one exception (D31): `POST /api/go-data/engines/{pkg}/open` starts an installed own-venv engine named in the catalog, and nothing else |
 
 **LAN mode** (`TTS_GO_PROXY_LISTEN=lan`, opt-in, D20) changes only these rules:
 

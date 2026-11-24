@@ -19,6 +19,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appconfig"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appenv"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/engines"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extcatalog"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extprocs"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extui"
@@ -185,6 +186,10 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		Root: root.Dir(), Token: token,
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}).Handler())
+	// The Vite engine page starts an installed own-venv engine on open (D31).
+	mux.Handle(engines.Prefix, engines.New(engines.Options{
+		Cat: ext, Procs: mgr, Token: token, PublicPort: tcpPort(pub.Addr()),
+	}))
 	mux.Handle("/api/extensions", mgr.Handler())
 	mux.Handle("/api/extensions/", mgr.Handler())
 	ctl := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
@@ -305,4 +310,12 @@ func commandEnv(p platform.Platform) []string {
 		return os.Environ()
 	}
 	return c.Env
+}
+
+// tcpPort is the port of a TCP address, 0 for any other kind.
+func tcpPort(a net.Addr) int {
+	if t, ok := a.(*net.TCPAddr); ok {
+		return t.Port
+	}
+	return 0
 }

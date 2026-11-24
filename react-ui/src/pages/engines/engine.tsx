@@ -1,0 +1,87 @@
+import React from "react";
+import { useParams } from "react-router-dom";
+import { Template } from "../../components/Template";
+import { Button } from "../../components/ui/button";
+import { errorText, goGetJson, goSendJson } from "../../functions/goData";
+
+type Answer = {
+  package: string;
+  name: string;
+  state: "stopped" | "starting" | "ready" | "failed" | "exited";
+  error?: string;
+  public_port: number;
+  path: string;
+};
+
+/**
+ * Opening the page starts the engine (Go starts it only when it is installed)
+ * and shows the engine's own Gradio page. That page is served by the router on
+ * the Gradio port, so the frame points there, on the host this page was
+ * opened from.
+ */
+const EnginePage = () => {
+  const { pkg = "" } = useParams();
+  const [answer, setAnswer] = React.useState<Answer | null>(null);
+  const [error, setError] = React.useState("");
+  const [attempt, setAttempt] = React.useState(0);
+  const base = `/api/go-data/engines/${encodeURIComponent(pkg)}`;
+
+  React.useEffect(() => {
+    let live = true;
+    setError("");
+    setAnswer(null);
+    const poll = async (first: boolean) => {
+      try {
+        const a = first
+          ? await goSendJson<Answer>("POST", `${base}/open`, {})
+          : await goGetJson<Answer>(base);
+        if (!live) return;
+        setAnswer(a);
+        if (a.state === "starting" || (first && a.state !== "ready")) {
+          setTimeout(() => poll(false), 750);
+        }
+      } catch (e) {
+        if (live) setError(errorText(e));
+      }
+    };
+    poll(true);
+    return () => {
+      live = false;
+    };
+  }, [base, attempt]);
+
+  const src =
+    answer?.state === "ready"
+      ? `${window.location.protocol}//${window.location.hostname}:${answer.public_port}${answer.path}`
+      : "";
+
+  return (
+    <Template title={answer?.name || "Engine"}>
+      <div className="flex flex-col gap-3 p-4">
+        {error && <div className="text-red-600">{error}</div>}
+        {!error && answer && answer.state !== "ready" && (
+          <div>
+            {answer.state === "starting" || answer.state === "stopped"
+              ? "Starting the engine. The first start can take a minute."
+              : `The engine is ${answer.state}. ${answer.error ?? ""}`}
+          </div>
+        )}
+        {(error || answer?.state === "failed" || answer?.state === "exited") && (
+          <div>
+            <Button onClick={() => setAttempt(attempt + 1)}>Try again</Button>
+          </div>
+        )}
+        {src && (
+          <iframe
+            title={answer?.name || pkg}
+            src={src}
+            className="w-full border rounded"
+            style={{ height: "80vh" }}
+          />
+        )}
+      </div>
+    </Template>
+  );
+};
+
+export default EnginePage;

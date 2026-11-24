@@ -55,11 +55,34 @@ jobs:
           build darwin amd64 tts-webui-macos-amd64
           ls -l ../tts-webui*
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build the React UI export (react-ui/out)
+        # D32: the archive ships the export, so a new install needs no Node. build-static.js
+        # records this checkout's commit in out/_tts-export.json; the archive carries the
+        # same checkout's .git, so the launcher does not call the export stale.
+        working-directory: react-ui
+        run: |
+          npm install
+          npm run build:static
+          test -f out/_tts-export.json
+
+      - name: Describe the archive (archive.json)
+        # archive.json is in the zip and published beside it as tts-webui-installer.json:
+        # the launcher compares the two to tell whether an update is waiting (no git needed).
+        run: |
+          printf '{"commit":"%s","built":"%s"}\n' "$(git rev-parse HEAD)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > archive.json
+          cat archive.json
+          cp archive.json tts-webui-installer.json
+
       - name: Create zip file with full git history
         run: |
-          # Create a zip file containing the entire repository including .git folder
-          # zip -r tts-webui-installer.zip . -x "node_modules/*" "installer_files/*" "*.pyc" "__pycache__/*"
-          zip -r tts-webui-installer.zip .
+          # The repository including .git, the launchers, react-ui/out and archive.json.
+          # Not the Node dependencies of the build, nor the published copy of archive.json.
+          zip -r tts-webui-installer.zip . -x "react-ui/node_modules/*" "tts-webui-installer.json"
 
       - name: Delete existing asset if it exists
         uses: actions/github-script@v6
@@ -79,17 +102,16 @@ jobs:
             });
 
             const assets = release.assets;
-            const assetName = 'tts-webui-installer.zip';
+            const assetNames = ['tts-webui-installer.zip', 'tts-webui-installer.json'];
 
             for (const asset of assets) {
-              if (asset.name === assetName) {
+              if (assetNames.includes(asset.name)) {
                 console.log(`Deleting existing asset: ${asset.name} (${asset.id})`);
                 await github.rest.repos.deleteReleaseAsset({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   asset_id: asset.id
                 });
-                break;
               }
             }
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -97,6 +119,8 @@ jobs:
       - name: Upload ZIP to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: tts-webui-installer.zip
+          files: |
+            tts-webui-installer.zip
+            tts-webui-installer.json
           tag_name: v0.0.0
           token: ${{ secrets.GITHUB_TOKEN }}

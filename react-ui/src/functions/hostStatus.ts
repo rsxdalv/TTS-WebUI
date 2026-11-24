@@ -63,3 +63,9 @@ export const useHostStatus = (): HostState => {
   }, []);
   return state;
 };
+
+/** False only when the host is known not to be installed (loading and errors show the pages). */
+export const useGradioAvailable = (): boolean => {
+  const host = useHostStatus();
+  return !(host.kind === "known" && !host.status.installed);
+};

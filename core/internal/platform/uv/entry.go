@@ -100,6 +100,13 @@ func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.E
 			return fail("Failed: cannot remove the unfinished %s: %v", venv, err)
 		}
 	}
+	if err := checkPathLength(p.goos, venv); err != nil && !p.skipPathCheck {
+		return fail("Failed: %v", err)
+	}
+	free, known := freeBytes(p.root.Dir())
+	if err := checkDisk(free, known, row, p.rowInUse(row)); err != nil {
+		return fail("Failed: %v", err)
+	}
 	if err := os.MkdirAll(venv, 0o755); err != nil {
 		return fail("Failed: %v", err)
 	}

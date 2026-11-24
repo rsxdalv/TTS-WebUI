@@ -20,7 +20,7 @@ func uvStandIn(t *testing.T, root string) *uv.Platform {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return uv.New(uv.Options{Root: pr, Prefix: []string{os.Args[0], "-test.run=^TestHelperProcess$", "--"}})
+	return uv.New(uv.Options{Root: pr, SkipPathCheck: true, Prefix: []string{os.Args[0], "-test.run=^TestHelperProcess$", "--"}})
 }
 
 // markUVInstalled writes what a finished uv platform install leaves.

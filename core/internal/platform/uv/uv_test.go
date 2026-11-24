@@ -112,7 +112,7 @@ func newFixture(t *testing.T, l gpu.Label) *fixture {
 	t.Cleanup(srv.Close)
 	root, _ := paths.New(t.TempDir())
 	f := &fixture{t: t, root: root, srv: srv, log: filepath.Join(t.TempDir(), "uv.log")}
-	f.p = New(Options{Root: root, GPU: l, Archive: &Archive{URL: srv.URL + "/uv.zip", SHA256: sum},
+	f.p = New(Options{Root: root, GPU: l, SkipPathCheck: true, Archive: &Archive{URL: srv.URL + "/uv.zip", SHA256: sum},
 		Env: []string{"UV_FAKE_LOG=" + f.log}})
 	var out []string
 	f.out = &out

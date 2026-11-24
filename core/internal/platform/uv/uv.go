@@ -49,17 +49,21 @@ type Options struct {
 	Prefix []string
 	// GOOS and GOARCH default to the running machine.
 	GOOS, GOARCH string
+	// SkipPathCheck turns off the Windows path-length check of a new venv (tests
+	// install under long temporary folder names).
+	SkipPathCheck bool
 }
 
 // Platform is the uv platform.
 type Platform struct {
-	root         paths.Root
-	gpu          gpu.Label
-	env          []string
-	archive      *Archive
-	prefix       []string
-	client       *http.Client
-	goos, goarch string
+	root          paths.Root
+	gpu           gpu.Label
+	env           []string
+	archive       *Archive
+	prefix        []string
+	client        *http.Client
+	goos, goarch  string
+	skipPathCheck bool
 }
 
 var _ platform.Platform = (*Platform)(nil)
@@ -67,7 +71,7 @@ var _ platform.Platform = (*Platform)(nil)
 // New returns the platform for one install folder.
 func New(o Options) *Platform {
 	p := &Platform{root: o.Root, gpu: o.GPU, env: append([]string(nil), o.Env...), archive: o.Archive, prefix: o.Prefix,
-		client: o.Client, goos: o.GOOS, goarch: o.GOARCH}
+		client: o.Client, goos: o.GOOS, goarch: o.GOARCH, skipPathCheck: o.SkipPathCheck}
 	if p.goos == "" {
 		p.goos = runtime.GOOS
 	}

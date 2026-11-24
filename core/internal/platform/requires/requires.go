@@ -15,7 +15,7 @@ import (
 // which is an entry of its own from P3.
 var reserved = map[string]string{
 	"openai":     "the openai platform is not available in this version",
-	"uv":         "the uv platform is not available in this version",
+	"uv":         "the uv platform is not installed",
 	"audiocpp":   "the audiocpp platform is not available in this version",
 	"onnx":       "the onnx platform is not available in this version",
 	"legacy-env": "legacy-env is the existing install's own Python env: it is adopted, never installed",
@@ -67,6 +67,10 @@ type Graph struct {
 	// Provided maps a name the platform satisfies to the platform's name. Empty
 	// when the platform is not ready (nothing is provided).
 	Provided map[string]string
+	// Installable maps a platform that is not there but can be installed to what
+	// installing it does ("install the uv platform ..."). A requirement named
+	// here is satisfied by installing it first, not refused.
+	Installable map[string]string
 }
 
 // Req is the state of one requirement of an entry.
@@ -76,6 +80,8 @@ type Req struct {
 	State string `json:"state"`           // "ready" or "missing"
 	Via   string `json:"via,omitempty"`   // what satisfies it
 	Would string `json:"would,omitempty"` // what would be installed, or why it cannot be
+	// Installable is true for a missing platform that an install can set up.
+	Installable bool `json:"installable,omitempty"`
 }
 
 // Check says whether every name an entry requires exists: a platform name, the
@@ -111,6 +117,9 @@ func (g Graph) one(n string) Req {
 		}
 		return Req{Name: n, Kind: kind, State: "ready", Via: via}
 	}
+	if what, ok := g.Installable[n]; ok {
+		return Req{Name: n, Kind: "platform", State: "missing", Would: what, Installable: true}
+	}
 	if why, ok := reserved[n]; ok {
 		kind := "platform"
 		if n == "gradio-host" {
@@ -133,6 +142,8 @@ type Plan struct {
 	// Steps are the entries to install, dependencies first, the entry last. An
 	// entry that is already installed is not in it.
 	Steps []string
+	// Platforms are platforms to install before the first step, in order.
+	Platforms []string
 	// Blocked are requirements that cannot be satisfied by installing an entry:
 	// a platform or the Gradio host that is not there.
 	Blocked []Req
@@ -163,7 +174,11 @@ func (g Graph) Resolve(entry string) (Plan, error) {
 			if !isEntry {
 				if q := g.one(r); q.State != "ready" && !blocked[r] {
 					blocked[r] = true
-					p.Blocked = append(p.Blocked, q)
+					if q.Installable {
+						p.Platforms = append(p.Platforms, r)
+					} else {
+						p.Blocked = append(p.Blocked, q)
+					}
 				}
 				continue
 			}

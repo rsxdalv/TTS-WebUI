@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"log/slog"
 	"net"
 	"net/http"
@@ -142,8 +143,8 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 	})
 	ext := extcatalog.New(extcatalog.Options{
 		Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
-		Platform: p,
-		Logf:     func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+		Platform: p, UV: uv.New(uv.Options{Root: root}),
+		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	})
 
 	mgr := extprocs.New(extprocs.Options{

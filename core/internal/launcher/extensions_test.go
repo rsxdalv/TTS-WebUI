@@ -24,6 +24,9 @@ func TestExtensionsListEnableAndOps(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, ".venvs", "extension_native"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(dir, ".venvs", "extension_native", "entry.json"), []byte(`{"package":"extension_native"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Disable Beta in config.json, then list: the page shows it disabled.
 	resp := doRequest(t, srv, token, http.MethodPost, "/api/ext/enabled", `{"package_name":"extension_beta","enabled":false}`)

@@ -54,34 +54,51 @@ func TestPipInstallCommandAndMessages(t *testing.T) {
 	}
 }
 
-func TestVenvSetupStepsAndRefusals(t *testing.T) {
-	root := t.TempDir()
+func TestAnOwnVenvEntryIsNotTheMainEnvsToInstall(t *testing.T) {
 	f := &fakeCmd{}
-	x := Entries{Root: root, Cmd: f.cmd}
+	x := Entries{Root: t.TempDir(), Cmd: f.cmd}
 	out, emit := lines()
-	if x.Create(context.Background(), Entry{Package: "../x", Own: true, Requirements: []string{"x"}}, emit) {
-		t.Fatal("a bad package name must be refused")
+	if x.Create(context.Background(), Entry{Package: "e", Name: "E", Own: true, Requirements: []string{"e"}}, emit) {
+		t.Fatal("the main env cannot make an own venv")
 	}
-	if len(f.argvs) != 0 || !strings.Contains((*out)[len(*out)-1], "is not a valid package name for a virtual environment") {
-		t.Fatalf("ran %v, last %q", f.argvs, (*out)[len(*out)-1])
+	if len(f.argvs) != 0 || !strings.Contains((*out)[len(*out)-1], "the uv platform makes") {
+		t.Fatalf("ran %v, last %q", f.argvs, *out)
 	}
-	out, emit = lines()
-	if x.Create(context.Background(), Entry{Package: "e", Own: true}, emit) || (*out)[len(*out)-1] != "Failed: bad requirements for e" {
-		t.Fatalf("no requirements: %q", *out)
+}
+
+func TestOwnVenvStatus(t *testing.T) {
+	root := t.TempDir()
+	if got := OwnVenvStatus(root, "p"); got != (EntryStatus{}) {
+		t.Fatalf("absent: %+v", got)
 	}
-	e := Entry{Package: "e", Name: "E", Own: true, Requirements: []string{"e"}, TorchArgs: func() ([]string, error) { return []string{"torch==1", "--index-url", "u"}, nil }}
-	x.Create(context.Background(), e, func(string) {})
-	// The first step cannot run, so only it was tried.
-	if len(f.argvs) != 1 || !reflect.DeepEqual(f.argvs[0], []string{"uv", "venv", VenvDir(root, "e"), "--allow-existing"}) {
-		t.Fatalf("steps = %q", f.argvs)
+	dir := VenvDir(root, "p")
+	_ = os.MkdirAll(dir, 0o755)
+	if got := OwnVenvStatus(root, "p"); !got.Partial || got.Installed {
+		t.Fatalf("a directory with no python: %+v", got)
+	}
+	py := VenvPython(root, "p")
+	_ = os.MkdirAll(filepath.Dir(py), 0o755)
+	_ = os.WriteFile(py, nil, 0o755)
+	if got := OwnVenvStatus(root, "p"); !got.Installed {
+		t.Fatalf("an older venv (python, no markers) is installed: %+v", got)
+	}
+	_ = os.WriteFile(filepath.Join(dir, InstallingFile), nil, 0o644)
+	if got := OwnVenvStatus(root, "p"); !got.Partial || got.Installed {
+		t.Fatalf("the install marker means unfinished: %+v", got)
+	}
+	_ = os.WriteFile(filepath.Join(dir, EntryFile), nil, 0o644)
+	if got := OwnVenvStatus(root, "p"); !got.Installed || got.Partial {
+		t.Fatalf("entry.json means done: %+v", got)
 	}
 }
 
 func TestInstalledIn(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(VenvDir(root, "own"), 0o755); err != nil {
+	py := VenvPython(root, "own")
+	if err := os.MkdirAll(filepath.Dir(py), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	_ = os.WriteFile(py, nil, 0o755)
 	dists := map[string]string{NormalizeDist("My-Pkg"): "1.2"}
 	cases := []struct {
 		e    Entry

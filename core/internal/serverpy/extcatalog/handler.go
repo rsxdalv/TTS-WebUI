@@ -92,8 +92,8 @@ func only(o *Obj, keys ...string) error {
 
 var ops = map[string]string{
 	"list": http.MethodGet, "table": http.MethodGet, "picker": http.MethodGet,
-	"resolve": http.MethodGet,
-	"parse":   http.MethodPost, "add": http.MethodPost,
+	"resolve": http.MethodGet, "uv-platform": http.MethodGet,
+	"parse": http.MethodPost, "add": http.MethodPost,
 	"install": http.MethodPost, "install-entry": http.MethodPost,
 	"uninstall": http.MethodPost, "check-dependencies": http.MethodPost,
 	"latest-version": http.MethodPost,
@@ -185,6 +185,8 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, res)
 	case "install", "uninstall", "check-dependencies":
 		s.serveInstall(w, r, op)
+	case "uv-platform":
+		s.serveUVPlatform(w, r)
 	case "latest-version":
 		s.serveLatestVersion(w, r)
 	case "install-entry":

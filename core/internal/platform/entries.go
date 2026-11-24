@@ -11,10 +11,6 @@ import (
 // Gradio. The pin moves to the gradio-host entry in P3.
 const GradioPin = "gradio==5.49.1"
 
-const compatibility = `gradio<=5.49.1 gradio-goodtabs>=0.0.5 gradio-goodtab>=0.0.5 gradio-iconbutton>=0.0.1 ffmpeg-python==0.2.0 matplotlib`
-
-var pkgDir = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-
 var nonAlnum = regexp.MustCompile(`[-_.]+`)
 
 // NormalizeDist is pip's name normalisation (PEP 503, with "_" as the
@@ -30,7 +26,7 @@ func NormalizeDist(s string) string {
 func InstalledIn(root string, e Entry, dists map[string]string) EntryStatus {
 	switch {
 	case e.Own:
-		return EntryStatus{Installed: dirExists(VenvDir(root, e.Package))}
+		return OwnVenvStatus(root, e.Package)
 	case Builtin(e.Package):
 		return EntryStatus{Installed: true}
 	}
@@ -69,10 +65,12 @@ func (x Entries) EntryStatus(ctx context.Context, e Entry) EntryStatus {
 	return InstalledIn(x.Root, e, dists)
 }
 
-// Create installs an entry: pip into the main env, or an own venv.
+// Create installs an in-process entry: pip into the main env. An own-venv
+// entry belongs to the uv platform.
 func (x Entries) Create(ctx context.Context, e Entry, emit Emit) bool {
 	if e.Own {
-		return x.venvSetup(ctx, e, emit)
+		emit(fmt.Sprintf("Failed: %s runs in its own venv, which the uv platform makes", e.Label()))
+		return false
 	}
 	return x.PipInstall(ctx, e, false, emit)
 }
@@ -82,8 +80,7 @@ func (x Entries) Check(ctx context.Context, e Entry, emit Emit) bool {
 	return x.PipInstall(ctx, e, true, emit)
 }
 
-// Remove uninstalls the entry's package from the main env. An own-venv
-// entry's directory is left (P2 removes it).
+// Remove uninstalls the entry's package from the main env.
 func (x Entries) Remove(ctx context.Context, e Entry, emit Emit) bool {
 	ok := x.run(ctx, []string{"python", "-m", "pip", "uninstall", "-y", e.Package}, emit) == nil
 	if ok {
@@ -110,40 +107,4 @@ func (x Entries) PipInstall(ctx context.Context, e Entry, dryRun bool, emit Emit
 		emit(fmt.Sprintf("Failed to install %s dependencies", e.Label()))
 	}
 	return ok
-}
-
-// venvSetup is venv_setup_wrapper: .venvs/<package> with uv, torch for the
-// chosen GPU, torchcodec, xformers, then the requirements.
-func (x Entries) venvSetup(ctx context.Context, e Entry, emit Emit) bool {
-	emit(fmt.Sprintf("Setting up virtual environment and installing dependencies for %s...", e.Label()))
-	fail := func(format string, a ...any) bool {
-		emit(fmt.Sprintf(format, a...))
-		return false
-	}
-	if !pkgDir.MatchString(e.Package) {
-		return fail("Failed: %q is not a valid package name for a virtual environment", e.Package)
-	}
-	if len(e.Requirements) == 0 {
-		return fail("Failed: bad requirements for %s", e.Label())
-	}
-	torch, err := e.TorchArgs()
-	if err != nil {
-		return fail("Failed: %v", err)
-	}
-	venv := VenvDir(x.Root, e.Package)
-	uvPip := []string{"uv", "pip", "install", "--python", VenvPython(x.Root, e.Package)}
-	steps := [][]string{
-		{"uv", "venv", venv, "--allow-existing"},
-		append(append([]string{}, uvPip...), torch...),
-		append(append([]string{}, uvPip...), "torchcodec", "--index-url=https://download.pytorch.org/whl/cpu"),
-		append(append([]string{}, uvPip...), "xformers==0.0.35"),
-		append(append(append([]string{}, uvPip...), e.Requirements...), strings.Fields(compatibility)...),
-	}
-	for _, args := range steps {
-		if err := x.run(ctx, args, emit); err != nil {
-			return fail("Failed to run %s: %v", strings.Join(args[:min(3, len(args))], " "), err)
-		}
-	}
-	emit(fmt.Sprintf("Successfully set up virtual environment for %s with dependencies", e.Label()))
-	return true
 }

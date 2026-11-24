@@ -20,7 +20,10 @@ import (
 func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) {
 	o, err := body(w, r)
 	if err == nil {
-		err = only(o, "package_name")
+		err = only(o, "package_name", "gpu")
+		if err == nil && op != "install" && o.Str("gpu") != "" {
+			err = invalidf("gpu is only for an install")
+		}
 	}
 	if err != nil {
 		s.fail(w, err)
@@ -37,16 +40,19 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 		s.fail(w, invalidf("%s runs in its own venv: there is no dependency check for it", pkg))
 		return
 	}
-	var steps []string
+	var pl plan
 	if op == "install" || op == "uninstall" {
 		g, err := s.RequiresGraph(r.Context())
 		if err == nil && op == "install" {
-			steps, err = s.planInstall(r.Context(), g, pkg)
+			pl, err = s.planInstall(r.Context(), g, pkg)
+			if err == nil {
+				err = s.chooseGPU(&pl, o.Str("gpu"))
+			}
 		} else if err == nil {
 			err = refuseIfRequired(g, pkg)
 		}
 		if err != nil {
-			s.fail(w, err)
+			s.failInstall(w, err)
 			return
 		}
 	}
@@ -64,18 +70,37 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 	s.stream(w, r, func(ctx context.Context, emit func(string)) bool {
 		switch {
 		case op == "uninstall":
-			return s.pipUninstall(ctx, pkg, emit)
+			return s.uninstall(ctx, entry, emit)
 		case op == "check-dependencies":
 			return s.pipInstall(ctx, entry, true, emit)
 		}
-		return s.runSteps(ctx, steps, entry, emit)
+		return s.runSteps(ctx, pl, entry, emit)
 	})
 }
 
-// runSteps installs the entries of a plan in order, the last one being entry.
-// A failed step stops the plan.
-func (s *Store) runSteps(ctx context.Context, steps []string, entry *Obj, emit func(string)) bool {
-	for i, step := range steps {
+// runSteps installs the platforms of a plan, then its entries in order, the last
+// one being entry. A failed step stops the plan.
+func (s *Store) runSteps(ctx context.Context, pl plan, entry *Obj, emit func(string)) bool {
+	n := 0
+	say := func(what string) {
+		n++
+		if pl.Total > 1 {
+			emit(fmt.Sprintf("Installing %s (step %d of %d)", what, n, pl.Total))
+		}
+	}
+	stopped := func(what string) bool {
+		if pl.Total > 1 {
+			emit(fmt.Sprintf("Stopped: step %d of %d (%s) failed", n, pl.Total, what))
+		}
+		return false
+	}
+	for _, name := range pl.Platforms {
+		say("the " + name + " platform")
+		if !s.installPlatform(ctx, name, pl.GPU, emit) {
+			return stopped("the " + name + " platform")
+		}
+	}
+	for _, step := range pl.Steps {
 		e := entry
 		if entry == nil || step != entry.Str("package_name") {
 			var err error
@@ -84,9 +109,7 @@ func (s *Store) runSteps(ctx context.Context, steps []string, entry *Obj, emit f
 				return false
 			}
 		}
-		if len(steps) > 1 {
-			emit(fmt.Sprintf("Installing %s (step %d of %d)", step, i+1, len(steps)))
-		}
+		say(step)
 		var ok bool
 		if e.Str("proxy") == "native" {
 			ok = s.venvSetup(ctx, e, emit)
@@ -94,10 +117,7 @@ func (s *Store) runSteps(ctx context.Context, steps []string, entry *Obj, emit f
 			ok = s.pipInstall(ctx, e, false, emit)
 		}
 		if !ok {
-			if len(steps) > 1 {
-				emit(fmt.Sprintf("Stopped: step %d of %d (%s) failed", i+1, len(steps), step))
-			}
-			return false
+			return stopped(step)
 		}
 	}
 	return true
@@ -178,7 +198,7 @@ func (s *Store) platformEntry(entry *Obj, toks []string) platform.Entry {
 	}
 	return platform.Entry{
 		Package: pkg, Name: name, Own: entry.Str("proxy") == "native", Requirements: toks,
-		TorchArgs: s.torchArgs,
+		Python: entry.Str("python"), TorchRow: entry.Str("torch"),
 	}
 }
 
@@ -220,6 +240,24 @@ func (s *Store) pipInstallTokens(ctx context.Context, entry *Obj, toks []string,
 	return ok
 }
 
+// uninstall removes an entry: its venv when it runs in one, otherwise pip
+// uninstall in the main env.
+func (s *Store) uninstall(ctx context.Context, entry *Obj, emit func(string)) bool {
+	if entry.Str("proxy") != "native" {
+		return s.pipUninstall(ctx, entry.Str("package_name"), emit)
+	}
+	var log []string
+	rec := func(l string) { log = append(log, l); emit(l) }
+	if s.opts.UV == nil {
+		rec("Failed: the uv platform is not available")
+		return false
+	}
+	e := s.platformEntry(entry, nil)
+	ok := s.opts.UV.Remove(ctx, e, rec)
+	s.writeLog("uv-venv-uninstall", e.Name, log)
+	return ok
+}
+
 // pipUninstall is pip_uninstall_wrapper.
 func (s *Store) pipUninstall(ctx context.Context, pkg string, emit func(string)) bool {
 	var log []string
@@ -245,7 +283,11 @@ func (s *Store) venvSetupTokens(ctx context.Context, entry *Obj, reqToks []strin
 	rec := func(l string) { log = append(log, l); emit(l) }
 	e := s.platformEntry(entry, reqToks)
 	e.Own = true
-	ok := s.opts.Platform.Create(ctx, e, rec)
+	if s.opts.UV == nil {
+		rec("Failed: the uv platform is not available")
+		return false
+	}
+	ok := s.opts.UV.Create(ctx, e, rec)
 	s.writeLog("uv-venv-install", e.Name, log)
 	return ok
 }

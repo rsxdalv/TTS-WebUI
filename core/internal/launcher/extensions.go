@@ -14,6 +14,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/requires"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -62,7 +63,7 @@ func newExtHost(root paths.Root, systemPython bool) (*extHost, error) {
 		root: root, token: token, cfg: cfg,
 		cat: extcatalog.New(extcatalog.Options{
 			Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
-			Platform: p, Logf: logf,
+			Platform: p, UV: uv.New(uv.Options{Root: root}), Logf: logf,
 		}),
 		pip: pip, platform: p,
 	}, nil

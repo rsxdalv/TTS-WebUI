@@ -44,6 +44,9 @@ type Options struct {
 	// Archive replaces the pinned uv archive (tests serve a fake one).
 	Archive *Archive
 	Client  *http.Client
+	// Prefix replaces the pinned uv program (and its arguments) with a stand-in:
+	// tests point it at a fake. The platform then downloads nothing.
+	Prefix []string
 	// GOOS and GOARCH default to the running machine.
 	GOOS, GOARCH string
 }
@@ -54,6 +57,7 @@ type Platform struct {
 	gpu          gpu.Label
 	env          []string
 	archive      *Archive
+	prefix       []string
 	client       *http.Client
 	goos, goarch string
 }
@@ -62,7 +66,7 @@ var _ platform.Platform = (*Platform)(nil)
 
 // New returns the platform for one install folder.
 func New(o Options) *Platform {
-	p := &Platform{root: o.Root, gpu: o.GPU, env: append([]string(nil), o.Env...), archive: o.Archive,
+	p := &Platform{root: o.Root, gpu: o.GPU, env: append([]string(nil), o.Env...), archive: o.Archive, prefix: o.Prefix,
 		client: o.Client, goos: o.GOOS, goarch: o.GOARCH}
 	if p.goos == "" {
 		p.goos = runtime.GOOS
@@ -139,7 +143,7 @@ func (p *Platform) Status(context.Context) platform.Status {
 		}
 		return platform.Status{Detail: "the uv platform is not installed"}
 	}
-	if _, err := os.Stat(p.UVPath()); err != nil {
+	if _, err := os.Stat(p.UVPath()); err != nil && len(p.prefix) == 0 {
 		return platform.Status{Detail: "the uv platform is damaged: " + p.UVPath() + " is missing (repair it)"}
 	}
 	if _, err := os.Stat(p.PythonDir()); err != nil {
@@ -221,6 +225,9 @@ func (p *Platform) Uninstall(_ context.Context, emit platform.Emit) error {
 // fetchUV downloads and checks the pinned uv unless the one in bin/ already
 // answers with the pinned version.
 func (p *Platform) fetchUV(ctx context.Context, emit platform.Emit) error {
+	if len(p.prefix) > 0 {
+		return nil
+	}
 	if _, err := os.Stat(p.UVPath()); err == nil && p.uvVersionOK(ctx) {
 		emit("uv " + Version + " is already there")
 		return nil
@@ -334,6 +341,9 @@ func (p *Platform) Command(e *platform.Entry, argv []string) (platform.Command, 
 	}
 	switch argv[0] {
 	case "uv":
+		if len(p.prefix) > 0 {
+			return platform.Command{Program: p.prefix[0], Args: append(append([]string(nil), p.prefix[1:]...), argv[1:]...), Env: env, Dir: p.root.Dir()}, nil
+		}
 		return platform.Command{Program: p.UVPath(), Args: append([]string(nil), argv[1:]...), Env: env, Dir: p.root.Dir()}, nil
 	case "python":
 		return platform.Command{}, errors.New("the uv platform has no main Python: only an installed entry has one")

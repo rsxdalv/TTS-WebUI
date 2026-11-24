@@ -39,10 +39,6 @@ type Entry struct {
 	Requirements []string // already validated requirement tokens
 	Python       string   // Python version of an own-venv entry ("" = the platform's pin)
 	TorchRow     string   // torch table row of an own-venv entry ("" = the default row of the GPU choice)
-	// TorchArgs resolves the torch install arguments of an own-venv entry, when
-	// the install gets that far. The table stays with the caller until P2 moves
-	// it here.
-	TorchArgs func() ([]string, error)
 }
 
 // Label is the name shown in messages.
@@ -126,4 +122,30 @@ func OwnVenvCommand(root string, e *Entry, argv []string, env []string) (c Comma
 		return Command{}, false
 	}
 	return Command{Program: VenvPython(root, e.Package), Args: append([]string(nil), argv[1:]...), Env: env, Dir: root}, true
+}
+
+// Files an own-venv install leaves in .venvs/<package>/ (the uv platform writes
+// them): EntryFile when it is done, InstallingFile while it is not.
+const (
+	EntryFile      = "entry.json"
+	InstallingFile = "installing.json"
+)
+
+// OwnVenvStatus is the state of an own-venv entry on disk: installed when
+// entry.json is there. A venv an older install made has neither file and still
+// has its python: it is installed too (an existing install is adopted, not
+// migrated). A directory with the install marker, or with no python, is
+// partial; no directory is absent.
+func OwnVenvStatus(root, pkg string) EntryStatus {
+	dir := VenvDir(root, pkg)
+	if !dirExists(dir) {
+		return EntryStatus{}
+	}
+	if _, err := os.Stat(filepath.Join(dir, EntryFile)); err == nil {
+		return EntryStatus{Installed: true}
+	}
+	if _, err := os.Stat(filepath.Join(dir, InstallingFile)); err == nil || !OwnVenvExists(root, pkg) {
+		return EntryStatus{Partial: true}
+	}
+	return EntryStatus{Installed: true}
 }

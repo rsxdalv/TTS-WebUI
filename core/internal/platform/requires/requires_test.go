@@ -116,3 +116,27 @@ func TestDependantsOnlyInstalled(t *testing.T) {
 		t.Fatalf("got %v", got)
 	}
 }
+
+// A platform that is not there but can be installed is a step to take first, not
+// a refusal; one that cannot be installed still refuses.
+func TestResolvePlansAnInstallablePlatformFirst(t *testing.T) {
+	g := Graph{
+		Entries:     map[string]Entry{"eng": {Name: "eng", Requires: []string{"uv"}}, "tab": {Name: "tab", Requires: []string{"gradio-host"}}},
+		Provided:    map[string]string{},
+		Installable: map[string]string{"uv": "install the uv platform"},
+	}
+	p, err := g.Resolve("eng")
+	if err != nil || len(p.Platforms) != 1 || p.Platforms[0] != "uv" || len(p.Blocked) != 0 || len(p.Steps) != 1 {
+		t.Fatalf("plan = %+v, %v", p, err)
+	}
+	if r := g.State("eng")[0]; r.State != "missing" || !r.Installable || r.Would != "install the uv platform" {
+		t.Errorf("state = %+v", r)
+	}
+	if p, _ := g.Resolve("tab"); len(p.Blocked) != 1 || len(p.Platforms) != 0 {
+		t.Errorf("gradio-host cannot be installed in this version: %+v", p)
+	}
+	g.Provided["uv"] = "uv"
+	if p, _ := g.Resolve("eng"); len(p.Platforms) != 0 || len(p.Blocked) != 0 {
+		t.Errorf("uv is there: %+v", p)
+	}
+}

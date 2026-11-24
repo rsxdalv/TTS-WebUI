@@ -36,7 +36,7 @@ func (p *Platform) venv(pkg string) string { return platform.VenvDir(p.root.Dir(
 
 // EntryInfo reads entry.json of an installed entry.
 func (p *Platform) EntryInfo(pkg string) (EntryState, bool) {
-	b, err := os.ReadFile(filepath.Join(p.venv(pkg), "entry.json"))
+	b, err := os.ReadFile(filepath.Join(p.venv(pkg), platform.EntryFile))
 	if err != nil {
 		return EntryState{}, false
 	}
@@ -47,23 +47,10 @@ func (p *Platform) EntryInfo(pkg string) (EntryState, bool) {
 	return s, true
 }
 
-// EntryStatus: installed when entry.json is there. A venv that an older install
-// made has no entry.json and no installing marker: it is installed too (an
-// existing install is adopted, not migrated). A directory with the install
-// marker, or with no python, is Partial.
+// EntryStatus is platform.OwnVenvStatus: entry.json is written last, installing.json
+// marks an unfinished install.
 func (p *Platform) EntryStatus(_ context.Context, e platform.Entry) platform.EntryStatus {
-	dir := p.venv(e.Package)
-	if st, err := os.Stat(dir); err != nil || !st.IsDir() {
-		return platform.EntryStatus{}
-	}
-	if _, ok := p.EntryInfo(e.Package); ok {
-		return platform.EntryStatus{Installed: true}
-	}
-	_, marker := os.Stat(filepath.Join(dir, "installing.json"))
-	if marker == nil || !platform.OwnVenvExists(p.root.Dir(), e.Package) {
-		return platform.EntryStatus{Partial: true}
-	}
-	return platform.EntryStatus{Installed: true}
+	return platform.OwnVenvStatus(p.root.Dir(), e.Package)
 }
 
 // Check has nothing to check: an own-venv entry has no dependency check.
@@ -106,8 +93,8 @@ func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.E
 	if err := os.MkdirAll(venv, 0o755); err != nil {
 		return fail("Failed: %v", err)
 	}
-	_ = os.Remove(filepath.Join(venv, "entry.json"))
-	if err := os.WriteFile(filepath.Join(venv, "installing.json"), []byte(`{"package":"`+e.Package+`"}`), 0o644); err != nil {
+	_ = os.Remove(filepath.Join(venv, platform.EntryFile))
+	if err := os.WriteFile(filepath.Join(venv, platform.InstallingFile), []byte(`{"package":"`+e.Package+`"}`), 0o644); err != nil {
 		return fail("Failed: %v", err)
 	}
 	emit(fmt.Sprintf("Python %s, torch row %s (about %d MB, shared with every other venv on this row)", py, row.Name, row.ApproxMB))
@@ -138,10 +125,10 @@ func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.E
 	state := EntryState{Package: e.Package, Platform: Name, Python: py, TorchRow: row.Name,
 		InstalledAt: time.Now().UTC().Format(time.RFC3339)}
 	b, _ := json.MarshalIndent(state, "", "  ")
-	if err := os.WriteFile(filepath.Join(venv, "entry.json"), b, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(venv, platform.EntryFile), b, 0o644); err != nil {
 		return fail("Failed: %v", err)
 	}
-	_ = os.Remove(filepath.Join(venv, "installing.json"))
+	_ = os.Remove(filepath.Join(venv, platform.InstallingFile))
 	emit(fmt.Sprintf("Successfully set up virtual environment for %s with dependencies", e.Label()))
 	return true
 }

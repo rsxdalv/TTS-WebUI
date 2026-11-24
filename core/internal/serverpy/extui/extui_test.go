@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -38,14 +39,15 @@ func ext(pkg, name, extra string) string {
 func newHandler(t *testing.T, exposed bool) *Handler {
 	t.Helper()
 	root := t.TempDir()
-	// Not a command: an install that reaches extcatalog runs it, fails, and
-	// still answers with a "done" line, which is all these tests need.
+	// A program that exists and fails: an install that reaches extcatalog runs
+	// it, it fails, and the install still answers with a "done" line, which is
+	// all these tests need.
 	pr, err := paths.New(root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	cat := extcatalog.New(extcatalog.Options{
-		Root: root, Token: "cat-token", Platform: legacyenv.New(legacyenv.Options{Root: pr, Prefix: []string{"no-such-command-for-extui-tests"}}),
+		Root: root, Token: "cat-token", Platform: legacyenv.New(legacyenv.Options{Root: pr, Prefix: failingProgram()}),
 		Config: fakeCfg{}, Pip: fakePip{pkgs: []piplist.Package{{Name: "ext.one", Version: "1.0"}}},
 	})
 	body := `{"tabs":[` + ext("ext.one", "One", "") + `,` + ext("ext.two", "Two", "") + `,` +
@@ -288,4 +290,13 @@ func TestExposedIsReadOnly(t *testing.T) {
 	if w := do(h, post(cookie, token, "/ext/api/op/install", `{"package_name":"ext.one"}`, nil)); w.Code != 403 || !strings.Contains(w.Body.String(), "read-only") {
 		t.Errorf("install: %d %s", w.Code, w.Body)
 	}
+}
+
+// failingProgram is a command prefix that starts and exits with an error
+// whatever follows it.
+func failingProgram() []string {
+	if runtime.GOOS == "windows" {
+		return []string{"cmd", "/c", "exit", "1", "&"}
+	}
+	return []string{"false"}
 }

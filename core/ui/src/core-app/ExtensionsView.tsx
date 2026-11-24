@@ -9,7 +9,7 @@ interface Ext {
   description: string;
   website: string;
   extension_class: string;
-  kind: "interface" | "decorator";
+  kind: "interface" | "decorator" | "host";
   proxy: string;
   builtin: boolean;
   installed: boolean;
@@ -43,6 +43,15 @@ function blocker(e: Ext): Requirement | undefined {
   return e.requirements_state.find(
     (r) =>
       r.state === "missing" && !r.installable && !(r.would ?? "").startsWith("would install"),
+  );
+}
+
+// installsHost is whether installing this entry also installs the Gradio host:
+// the host itself, or a tab that runs inside it while it is not installed.
+function installsHost(e: Ext): boolean {
+  return (
+    e.kind === "host" ||
+    e.requirements_state.some((r) => r.name === "gradio-host" && r.state === "missing")
   );
 }
 
@@ -208,7 +217,12 @@ export function ExtensionsView() {
     const out = new Map<string, Ext[]>();
     for (const e of data?.extensions ?? []) {
       if (q && !`${e.name} ${e.package_name} ${e.description}`.toLowerCase().includes(q)) continue;
-      const key = e.kind === "decorator" ? "Decorators" : title(e.extension_class || "other");
+      const key =
+        e.kind === "host"
+          ? "Gradio host"
+          : e.kind === "decorator"
+            ? "Decorators"
+            : title(e.extension_class || "other");
       out.set(key, [...(out.get(key) ?? []), e]);
     }
     for (const list of out.values()) {
@@ -216,9 +230,8 @@ export function ExtensionsView() {
         (a, b) => Number(b.installed) - Number(a.installed) || a.name.localeCompare(b.name),
       );
     }
-    return [...out.entries()].sort(([a], [b]) =>
-      a === "Decorators" ? 1 : b === "Decorators" ? -1 : a.localeCompare(b),
-    );
+    const rank = (g: string) => (g === "Gradio host" ? 0 : g === "Decorators" ? 2 : 1);
+    return [...out.entries()].sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b));
   }, [data, filter]);
 
   if (error) {
@@ -315,12 +328,16 @@ export function ExtensionsView() {
                   )}
                   {!e.builtin && e.installed && (
                     <>
-                      <button className={btn} disabled={!!busy} onClick={() => run(e, "latest-version")}>
-                        Check update
-                      </button>
-                      <button className={btn} disabled={!!busy} onClick={() => run(e, "install")}>
-                        Update
-                      </button>
+                      {e.kind !== "host" && (
+                        <>
+                          <button className={btn} disabled={!!busy} onClick={() => run(e, "latest-version")}>
+                            Check update
+                          </button>
+                          <button className={btn} disabled={!!busy} onClick={() => run(e, "install")}>
+                            Update
+                          </button>
+                        </>
+                      )}
                       <button className={btn} disabled={!!busy} onClick={() => run(e, "uninstall")}>
                         Uninstall
                       </button>
@@ -341,8 +358,10 @@ export function ExtensionsView() {
         <div className="p-3 rounded-lg border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950 text-sm flex flex-col gap-2">
           <strong>Which GPU is this for?</strong>
           <p className="text-gray-700 dark:text-gray-300">
-            {ask.ext.name} runs on the uv platform, which is installed first: uv, Python and torch
-            for the GPU you choose. Proposed: <strong>{ask.ask.proposed}</strong> ({ask.ask.reason}).
+            {installsHost(ask.ext)
+              ? `${ask.ext.name} needs the Gradio host, which is installed first on the uv platform: uv, Python, torch for the GPU you choose and the app's requirements.`
+              : `${ask.ext.name} runs on the uv platform, which is installed first: uv, Python and torch for the GPU you choose.`}{" "}
+            Proposed: <strong>{ask.ask.proposed}</strong> ({ask.ask.reason}).
             Every engine on the same torch build shares its files; another build is a separate
             download.
           </p>
@@ -359,7 +378,11 @@ export function ExtensionsView() {
           </select>
           <div className="flex gap-2">
             <button className={btnPrimary} onClick={() => run(ask.ext, "install", ask.pick)}>
-              Install uv and {ask.ext.name}
+              {installsHost(ask.ext)
+                ? ask.ext.kind === "host"
+                  ? "Install uv and the Gradio host"
+                  : `Install uv, the Gradio host and ${ask.ext.name}`
+                : `Install uv and ${ask.ext.name}`}
             </button>
             <button className={btn} onClick={() => setAsk(null)}>
               Not now

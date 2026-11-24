@@ -89,6 +89,12 @@ func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.E
 	if err := checkVersion(py); err != nil {
 		return fail("Failed: %v", err)
 	}
+	if err := p.installTools(ctx, emit); err != nil {
+		return fail("Failed: %v", err)
+	}
+	if needsGit(e.Requirements) && !p.gitAvailable() {
+		return fail("Failed: %s installs from a git URL and git is not on this machine. %s", e.Label(), systemToolHint("git", p.goos))
+	}
 	venv := p.venv(e.Package)
 	if _, err := os.Stat(filepath.Join(venv, platform.InstallingFile)); err == nil {
 		// The last attempt did not finish (cancelled or failed). It may have left

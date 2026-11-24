@@ -52,6 +52,9 @@ type Options struct {
 	// SkipPathCheck turns off the Windows path-length check of a new venv (tests
 	// install under long temporary folder names).
 	SkipPathCheck bool
+	// Tools replaces the pinned tools (git, ffmpeg); tests serve fake archives. Nil
+	// means the pinned ones, or none while Prefix is set.
+	Tools []Tool
 }
 
 // Platform is the uv platform.
@@ -64,6 +67,7 @@ type Platform struct {
 	client        *http.Client
 	goos, goarch  string
 	skipPathCheck bool
+	tools         []Tool
 }
 
 var _ platform.Platform = (*Platform)(nil)
@@ -71,7 +75,7 @@ var _ platform.Platform = (*Platform)(nil)
 // New returns the platform for one install folder.
 func New(o Options) *Platform {
 	p := &Platform{root: o.Root, gpu: o.GPU, env: append([]string(nil), o.Env...), archive: o.Archive, prefix: o.Prefix,
-		client: o.Client, goos: o.GOOS, goarch: o.GOARCH, skipPathCheck: o.SkipPathCheck}
+		client: o.Client, goos: o.GOOS, goarch: o.GOARCH, skipPathCheck: o.SkipPathCheck, tools: o.Tools}
 	if p.goos == "" {
 		p.goos = runtime.GOOS
 	}
@@ -198,6 +202,9 @@ func (p *Platform) Install(ctx context.Context, emit platform.Emit) error {
 		return err
 	}
 	p.checkSameVolume(emit)
+	if err := p.installTools(ctx, emit); err != nil {
+		return err
+	}
 	st := State{Name: Name, UVVersion: Version, Python: PythonVersion, GPU: string(p.gpu),
 		InstalledAt: time.Now().UTC().Format(time.RFC3339)}
 	b, _ := json.MarshalIndent(st, "", "  ")
@@ -329,6 +336,7 @@ func (p *Platform) environ() []string {
 	if p.goos != "darwin" { // APFS clones by default; elsewhere say hardlink out loud
 		env = append(env, "UV_LINK_MODE=hardlink")
 	}
+	env = append(env, p.toolEnv()...)
 	return append(env, p.env...)
 }
 

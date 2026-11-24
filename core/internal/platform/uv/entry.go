@@ -1,0 +1,246 @@
+package uv
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"time"
+
+	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/torchrows"
+)
+
+// compatibility is installed with every venv so the Gradio pages an engine
+// serves keep working (it is what the old native install added after the
+// requirements).
+const compatibility = `gradio<=5.49.1 gradio-goodtabs>=0.0.5 gradio-goodtab>=0.0.5 gradio-iconbutton>=0.0.1 ffmpeg-python==0.2.0 matplotlib`
+
+var pkgDir = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
+// EntryState is .venvs/<package>/entry.json, written when the install is done.
+type EntryState struct {
+	Package     string `json:"package"`
+	Platform    string `json:"platform"`
+	Python      string `json:"python"`
+	TorchRow    string `json:"torch_row"`
+	InstalledAt string `json:"installed_at"`
+}
+
+func (p *Platform) venv(pkg string) string { return platform.VenvDir(p.root.Dir(), pkg) }
+
+// EntryInfo reads entry.json of an installed entry.
+func (p *Platform) EntryInfo(pkg string) (EntryState, bool) {
+	b, err := os.ReadFile(filepath.Join(p.venv(pkg), "entry.json"))
+	if err != nil {
+		return EntryState{}, false
+	}
+	var s EntryState
+	if json.Unmarshal(b, &s) != nil || s.Package != pkg {
+		return EntryState{}, false
+	}
+	return s, true
+}
+
+// EntryStatus: installed when entry.json is there. A venv that an older install
+// made has no entry.json and no installing marker: it is installed too (an
+// existing install is adopted, not migrated). A directory with the install
+// marker, or with no python, is Partial.
+func (p *Platform) EntryStatus(_ context.Context, e platform.Entry) platform.EntryStatus {
+	dir := p.venv(e.Package)
+	if st, err := os.Stat(dir); err != nil || !st.IsDir() {
+		return platform.EntryStatus{}
+	}
+	if _, ok := p.EntryInfo(e.Package); ok {
+		return platform.EntryStatus{Installed: true}
+	}
+	_, marker := os.Stat(filepath.Join(dir, "installing.json"))
+	if marker == nil || !platform.OwnVenvExists(p.root.Dir(), e.Package) {
+		return platform.EntryStatus{Partial: true}
+	}
+	return platform.EntryStatus{Installed: true}
+}
+
+// Check has nothing to check: an own-venv entry has no dependency check.
+func (p *Platform) Check(_ context.Context, e platform.Entry, emit platform.Emit) bool {
+	emit(e.Label() + " runs in its own venv: there is no dependency check for it")
+	return false
+}
+
+// Create makes .venvs/<package>: the venv from the platform's Python, torch of
+// the row, torchcodec, xformers when the row has it, then the requirements.
+// Cancelling stops uv; running it again reuses the cache and finishes.
+func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.Emit) bool {
+	emit(fmt.Sprintf("Setting up virtual environment and installing dependencies for %s...", e.Label()))
+	fail := func(format string, a ...any) bool {
+		emit(fmt.Sprintf(format, a...))
+		return false
+	}
+	if !pkgDir.MatchString(e.Package) {
+		return fail("Failed: %q is not a valid package name for a virtual environment", e.Package)
+	}
+	if len(e.Requirements) == 0 {
+		return fail("Failed: bad requirements for %s", e.Label())
+	}
+	st, ok := p.Info()
+	if !ok {
+		return fail("Failed: the uv platform is not installed")
+	}
+	row, err := p.rowFor(e, p.GPU())
+	if err != nil {
+		return fail("Failed: %v", err)
+	}
+	py := e.Python
+	if py == "" {
+		py = st.Python
+	}
+	if err := checkVersion(py); err != nil {
+		return fail("Failed: %v", err)
+	}
+	venv := p.venv(e.Package)
+	if err := os.MkdirAll(venv, 0o755); err != nil {
+		return fail("Failed: %v", err)
+	}
+	_ = os.Remove(filepath.Join(venv, "entry.json"))
+	if err := os.WriteFile(filepath.Join(venv, "installing.json"), []byte(`{"package":"`+e.Package+`"}`), 0o644); err != nil {
+		return fail("Failed: %v", err)
+	}
+	emit(fmt.Sprintf("Python %s, torch row %s (about %d MB, shared with every other venv on this row)", py, row.Name, row.ApproxMB))
+	pyExe := platform.VenvPython(p.root.Dir(), e.Package)
+	cache := []string{"--cache-dir", p.CacheDir(), "--no-config"}
+	pip := append([]string{"pip", "install", "--python", pyExe}, cache...)
+	var steps [][]string
+	if py != st.Python {
+		steps = append(steps, []string{"python", "install", py, "--no-bin", "--no-registry"})
+	}
+	steps = append(steps,
+		append([]string{"venv", venv, "--python", py, "--managed-python", "--no-python-downloads", "--allow-existing"}, cache...),
+		append(append([]string{}, pip...), row.InstallArgs()...),
+		append(append([]string{}, pip...), "torchcodec", "--index-url="+torchrows.TorchcodecIndex),
+	)
+	if row.Xformers != "" {
+		steps = append(steps, append(append([]string{}, pip...), row.Xformers))
+	}
+	steps = append(steps, append(append(append([]string{}, pip...), e.Requirements...), strings.Fields(compatibility)...))
+	for _, args := range steps {
+		if err := p.run(ctx, emit, args...); err != nil {
+			if ctx.Err() != nil {
+				return fail("Cancelled: %s was not finished (install it again to continue; downloads are kept)", e.Label())
+			}
+			return fail("Failed to run uv %s: %v", strings.Join(args[:min(2, len(args))], " "), err)
+		}
+	}
+	state := EntryState{Package: e.Package, Platform: Name, Python: py, TorchRow: row.Name,
+		InstalledAt: time.Now().UTC().Format(time.RFC3339)}
+	b, _ := json.MarshalIndent(state, "", "  ")
+	if err := os.WriteFile(filepath.Join(venv, "entry.json"), b, 0o644); err != nil {
+		return fail("Failed: %v", err)
+	}
+	_ = os.Remove(filepath.Join(venv, "installing.json"))
+	emit(fmt.Sprintf("Successfully set up virtual environment for %s with dependencies", e.Label()))
+	return true
+}
+
+func (p *Platform) rowFor(e platform.Entry, g gpu.Label) (torchrows.Row, error) {
+	if e.TorchRow != "" {
+		return torchrows.ByName(e.TorchRow, p.goos)
+	}
+	if g == "" {
+		return torchrows.Row{}, fmt.Errorf("the uv platform has no GPU choice")
+	}
+	return torchrows.Default(g, p.goos)
+}
+
+var versionRe = regexp.MustCompile(`^3\.\d{1,2}(\.\d{1,2})?$`)
+
+func checkVersion(v string) error {
+	if !versionRe.MatchString(v) {
+		return fmt.Errorf("%q is not a Python version (use 3.10.11 or 3.11)", v)
+	}
+	return nil
+}
+
+// Remove deletes the entry's venv, which is what removing an own-venv entry
+// means, and says what that freed: the venv's size, and the disk the volume
+// really got back. Most of a venv's files are hardlinks into the wheel cache, so
+// the second number is usually small until the cache is cleared; the cache's
+// size is reported next to it.
+func (p *Platform) Remove(_ context.Context, e platform.Entry, emit platform.Emit) bool {
+	if !pkgDir.MatchString(e.Package) {
+		emit(fmt.Sprintf("Failed to remove %s: not a valid package name", e.Package))
+		return false
+	}
+	dir := p.venv(e.Package)
+	if _, err := os.Stat(dir); err != nil {
+		emit(fmt.Sprintf("%s has no virtual environment: nothing to remove", e.Label()))
+		return true
+	}
+	files, bytes := treeSize(dir)
+	before, haveFree := freeBytes(p.root.Dir())
+	if err := removeAll(dir); err != nil {
+		emit(fmt.Sprintf("Failed to remove %s: %v", dir, err))
+		return false
+	}
+	after, _ := freeBytes(p.root.Dir())
+	emit(fmt.Sprintf("Removed %s: %d files, %s as the venv sees them", dir, files, human(bytes)))
+	_, cache := treeSize(p.CacheDir())
+	if haveFree {
+		freed := int64(after) - int64(before)
+		if freed < 0 {
+			freed = 0
+		}
+		emit(fmt.Sprintf("Disk freed: %s (free space of the volume before and after)", human(freed)))
+	}
+	emit(fmt.Sprintf("The wheel cache keeps %s that other engines share; the venv's files were hardlinks into it", human(cache)))
+	emit(fmt.Sprintf("Successfully uninstalled %s", e.Label()))
+	return true
+}
+
+func human(n int64) string {
+	switch {
+	case n >= 1<<30:
+		return fmt.Sprintf("%.1f GB", float64(n)/(1<<30))
+	case n >= 1<<20:
+		return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
+	}
+	return fmt.Sprintf("%d KB", n>>10)
+}
+
+// treeSize counts the files under dir and their size.
+func treeSize(dir string) (files int, bytes int64) {
+	_ = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if info, err := d.Info(); err == nil {
+			files++
+			bytes += info.Size()
+		}
+		return nil
+	})
+	return
+}
+
+// removeAll is os.RemoveAll that also removes read-only files and retries a
+// few times: on Windows a file another process just closed can still be locked.
+func removeAll(dir string) error {
+	var err error
+	for i := 0; i < 5; i++ {
+		if err = os.RemoveAll(dir); err == nil {
+			return nil
+		}
+		_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, werr error) error {
+			if werr == nil {
+				_ = os.Chmod(path, 0o777)
+			}
+			return nil
+		})
+		time.Sleep(time.Duration(i+1) * 200 * time.Millisecond)
+	}
+	return err
+}

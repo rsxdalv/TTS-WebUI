@@ -37,6 +37,8 @@ type Entry struct {
 	Name         string   // display name, for messages ("" = Package)
 	Own          bool     // runs in its own venv (proxy: native); else in the main env
 	Requirements []string // already validated requirement tokens
+	Python       string   // Python version of an own-venv entry ("" = the platform's pin)
+	TorchRow     string   // torch table row of an own-venv entry ("" = the default row of the GPU choice)
 	// TorchArgs resolves the torch install arguments of an own-venv entry, when
 	// the install gets that far. The table stays with the caller until P2 moves
 	// it here.
@@ -54,6 +56,7 @@ func (e Entry) Label() string {
 // EntryStatus is whether an entry is installed on a platform.
 type EntryStatus struct {
 	Installed bool
+	Partial   bool   // a directory is there but the install did not finish (own-venv)
 	Version   string // the pip distribution's version; "" for an own-venv or built-in entry
 }
 

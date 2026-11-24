@@ -31,3 +31,18 @@ built, how it differs from the plan, and what was run. What was only in tests or
 
 ## Verification
 
+Run on 2026-11-25 from `platform/p4-default-install`, Windows 10 (Go 1.27.4) and WSL `tts-linux-test`, in scratch folders
+under the OS temp directory. A "fresh folder" is `git clone` of the branch (so it has `.git`, as the zip does) plus
+`react-ui/out` built by `npm run build:static`, a launcher built from the branch and an `archive.json` written by hand
+(what CI now does). The zip packaging by CI itself was not run. The launcher was started with PATH holding only the
+Windows system folders (Windows) or an empty folder (WSL); `python`, `git`, `node`, `npm`, `uv`, `micromamba`, `ffprobe`
+were all reported absent first.
+
+| Line | Windows | Linux (WSL) |
+|---|---|---|
+| Fresh folder, no Python/git/Node: launches (`--no-browser --start`), Go pages work | steps are `download, preflight, update`; `:3000/` and `/history` 200, `host-status` `installed:false, installable:true`, `:7770/` answers the no-host page; Setup tab in the browser pane: download and pre-flight done, update amber with "Could not check for an update: ... HTTP 404" (the release has no json yet), Launch button shown | same by curl: steps, `:3000/`, `/history`, `host-status`, `:7770/` all as on Windows; no browser |
+| Install uv and an engine, generate | `tts_webui_extension.kitten_tts` through the launcher API with the GPU choice `CPU` (cold cache): uv, Python, tools (`git` came from `platforms/uv/tools`, the install used `git+https` with no git on PATH), engine venv; opened from `/engines` in the browser pane, Input typed, Process clicked: a 7 s clip with a waveform | see the next rows |
+| Update of an archive install | a local file server stood in for the release (`TTS_ARCHIVE_URL`): status said an update is waiting; POST update downloaded 10 MB, extracted 171 entries, saved `tts-webui.exe.new`, exit code 0 on the stream; after restarting the launcher `tts-webui.exe` is the new build (`--version` changed), `.old` is there, `.new` is gone, the launcher answers | not run (the swap and the extraction are unit-tested on Linux: `TestSwapPendingBinaryReplacesAndRuns`, `TestExtractWritesTheRunningBinaryBesideItself`) |
+| Old install updated to this version | scratch root with the real env through a junction and the real markers: six steps, `legacy: true` on `/api/app/notice`, `Runs on legacy-env` ready, 67 entries, Gradio on 7770 answered `/config` (1.1 MB) and the React front came up | see below |
+| `install-host.sh` (the CI job) | ran to the end: gradio-host installed (gradio 5.49.1, torch 2.11.0+cpu, `import tts_webui` works) | not run |
+| Docker image | not run: no Docker daemon was running on this machine | not run |

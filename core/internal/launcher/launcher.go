@@ -48,6 +48,7 @@ type Launcher struct {
 
 // New creates a Launcher for the given install root.
 func New(root paths.Root, opts ...Option) *Launcher {
+	launcherPorts.Store(root.Dir(), buildOptions(opts).launcherPort)
 	return &Launcher{
 		root:         root,
 		sprocs:       make(map[string]*procs.Proc),

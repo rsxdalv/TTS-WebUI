@@ -205,6 +205,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}).Handler())
 	// The Vite engine page starts an installed own-venv engine on open (D31).
+	mux.Handle(hostStatusPath, hostStatusHandler(p, token, root.Dir()))
 	mux.Handle(engines.Prefix, engines.New(engines.Options{
 		Cat: ext, Procs: mgr, Token: token, PublicPort: tcpPort(pub.Addr()),
 	}))

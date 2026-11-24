@@ -9,7 +9,7 @@ import {
   CommandGroup,
   CommandItem,
 } from "@/components/ui/command";
-import { Route, routes } from "./Header";
+import { Route, useMenuRoutes } from "./Header";
 
 function CommandShortcut() {
   return (
@@ -25,6 +25,7 @@ function CommandShortcut() {
 export function RouteCommands({}) {
   const [isFocused, setIsFocused] = useState(false);
   const router = useRouter();
+  const { routes } = useMenuRoutes();
   const allRoutes: (Route & { parent?: Route })[] = routes.reduce(
     (acc, route) => [
       ...acc,
@@ -76,6 +77,7 @@ function CommandDialogContent({
 }) {
   const [isFocused, setIsFocused] = useState(false);
   const router = useRouter();
+  const { routes } = useMenuRoutes();
 
   const runCommand = (command: () => void) => {
     setOpen(false);

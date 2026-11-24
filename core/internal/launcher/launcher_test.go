@@ -2,6 +2,7 @@ package launcher_test
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,8 +15,21 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/server"
 )
 
-// newTestInstall sets up a minimal install root and returns a running test server.
+// newTestInstall sets up an install root with a micromamba install started
+// (installer_files exists), so it has all six steps, and returns a running test
+// server. newFreshInstall is a new folder from the archive (P4).
 func newTestInstall(t *testing.T) (paths.Root, *server.Server, string) {
+	t.Helper()
+	root, srv, token := newFreshInstall(t)
+	if err := os.MkdirAll(root.InstallerFiles(), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return root, srv, token
+}
+
+// newFreshInstall is a folder as the archive leaves it: installer_scripts and
+// nothing of a micromamba install.
+func newFreshInstall(t *testing.T) (paths.Root, *server.Server, string) {
 	t.Helper()
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "installer_scripts"), 0o755); err != nil {
@@ -146,6 +160,45 @@ func TestPreflightEndpoint_Returns7Checks(t *testing.T) {
 	if pr.OK {
 		if _, err := os.Stat(root.MarkerFile(".preflight_ok")); err != nil {
 			t.Error("expected .preflight_ok marker when preflight passes")
+		}
+	}
+}
+
+func TestStepsStatus_FreshFolderHasThreeSteps(t *testing.T) {
+	_, srv, token := newFreshInstall(t)
+	resp := doRequest(t, srv, token, http.MethodGet, "/api/steps/status", "")
+	var statuses []launcher.StepStatus
+	if err := json.NewDecoder(resp.Body).Decode(&statuses); err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, s := range statuses {
+		names = append(names, s.Step)
+	}
+	if got := strings.Join(names, ","); got != "download,preflight,update" {
+		t.Fatalf("steps of a new folder = %s, want download,preflight,update", got)
+	}
+}
+
+func TestMambaGPUInstallRefusedOnFreshFolder(t *testing.T) {
+	root, srv, token := newFreshInstall(t)
+	for path, body := range map[string]string{
+		"/api/steps/mamba":   "",
+		"/api/steps/gpu":     `{"label":"CPU"}`,
+		"/api/steps/install": "",
+	} {
+		resp := doRequest(t, srv, token, http.MethodPost, path, body)
+		msg, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("POST %s: status %d, want 400 (%s)", path, resp.StatusCode, msg)
+		}
+		if !strings.Contains(string(msg), "micromamba install") {
+			t.Errorf("POST %s: %q does not say it is a micromamba step", path, msg)
+		}
+	}
+	for _, name := range []string{"installer_files", filepath.Join("installer_scripts", ".gpu")} {
+		if _, err := os.Stat(filepath.Join(root.Dir(), name)); err == nil {
+			t.Errorf("%s was created on a new folder", name)
 		}
 	}
 }

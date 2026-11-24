@@ -114,7 +114,7 @@ func (l *Launcher) handleMamba() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		l.stepMu.Lock()
 		defer l.stepMu.Unlock()
-		if l.refuseWhileBusy(w, "mamba") {
+		if l.refuseNotLegacy(w, "mamba") || l.refuseWhileBusy(w, "mamba") {
 			return
 		}
 
@@ -159,7 +159,7 @@ func (l *Launcher) handleGPU() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		l.stepMu.Lock()
 		defer l.stepMu.Unlock()
-		if l.refuseWhileBusy(w, "gpu") {
+		if l.refuseNotLegacy(w, "gpu") || l.refuseWhileBusy(w, "gpu") {
 			return
 		}
 		var req gpuRequest
@@ -188,7 +188,7 @@ func (l *Launcher) handleInstall() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		l.stepMu.Lock()
 		defer l.stepMu.Unlock()
-		if l.refuseWhileBusy(w, "install") {
+		if l.refuseNotLegacy(w, "install") || l.refuseWhileBusy(w, "install") {
 			return
 		}
 		if !mambaDone(l.root) {

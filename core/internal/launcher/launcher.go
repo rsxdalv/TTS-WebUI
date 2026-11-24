@@ -191,11 +191,17 @@ func (l *Launcher) handleStatus() http.Handler {
 		statuses := []StepStatus{
 			{Step: "download", Done: downloadDone(l.root) && !dlRunning, Running: dlRunning},
 			{Step: "preflight", Done: preflightDone(l.root)},
-			{Step: "mamba", Done: mambaDone(l.root) && !mambaRunning, Running: mambaRunning},
-			{Step: "gpu", Done: gpuDone(l.root)},
-			{Step: "install", Done: installDone(l.root) && !installRunning, Running: installRunning},
-			{Step: "update", Done: updateDone, Running: l.isStepRunning("update")},
 		}
+		// The steps that set up the old env belong to an install that has one.
+		// A new folder shows download, pre-flight and update (P4).
+		if l.legacy() {
+			statuses = append(statuses,
+				StepStatus{Step: "mamba", Done: mambaDone(l.root) && !mambaRunning, Running: mambaRunning},
+				StepStatus{Step: "gpu", Done: gpuDone(l.root)},
+				StepStatus{Step: "install", Done: installDone(l.root) && !installRunning, Running: installRunning},
+			)
+		}
+		statuses = append(statuses, StepStatus{Step: "update", Done: updateDone, Running: l.isStepRunning("update")})
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(statuses)
 	})

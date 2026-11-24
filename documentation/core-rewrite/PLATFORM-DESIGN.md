@@ -2,7 +2,8 @@
 
 Written 2026-11-24 for the P1 design gate of [PLAN.md](PLAN.md): the manifest fields (D5, D-open-2) and the disk
 layout (D28), plus the seam they hang on (D23, D24). Nothing here is implemented yet. After the gate, P1 is built in
-the order of the last section. Rob's answers to "For Rob" at the end decide what changes.
+the order of the last section. Rob's answers are at the end. What was built, where it differs from this text and what was checked is in
+[core/internal/platform/INTEGRATION.md](../../core/internal/platform/INTEGRATION.md).
 
 Everything below was read from the code on `platform/p1-seam`: `extensions.json` (66 entries, all `interface`, 20 with
 `"proxy": "native"`, 10 `recommended`), `extcatalog` (`install.go`, `installed.go`, `torch.go`, `catalog.go`),

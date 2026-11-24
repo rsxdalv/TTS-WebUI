@@ -81,7 +81,7 @@ func WithNoBrowser() Option { return func(o *options) { o.noBrowser = true } }
 func WithShare() Option { return func(o *options) { o.share = true } }
 
 // WithSystemPython runs python, npm and uv from PATH instead of the installer's
-// micromamba env (Docker, Colab, an env the user manages). The GPU gate is off.
+// legacy-env (Docker, Colab, an env the user manages: the system platform). The GPU gate is off.
 func WithSystemPython() Option { return func(o *options) { o.systemPython = true } }
 
 // WithNoReact leaves the React UI out: no build and no front.

@@ -204,7 +204,7 @@ func checkConflictingConda(ctx context.Context, root paths.Root, runner Runner) 
 			return Check{
 				ID:      "ConflictingConda",
 				Status:  StatusWarn,
-				Message: fmt.Sprintf("system conda found at %q (outside installer_files/) — may interfere; run 'conda deactivate' before installing", strings.TrimSpace(stdout)),
+				Message: fmt.Sprintf("system conda found at %q (outside the install folder) — may interfere; run 'conda deactivate' before installing", strings.TrimSpace(stdout)),
 			}, nil
 		}
 	}

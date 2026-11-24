@@ -2,10 +2,10 @@
 // on (PLATFORM-DESIGN.md). A platform answers four questions about the
 // runtime (status, install, repair, uninstall) and four about one entry on it
 // (create, status, remove, command). Every other package asks a Platform for a
-// command instead of building `micromamba -p env run ...` itself.
+// command instead of building the main env's command line itself.
 //
 // P1 has two implementations, both adopted rather than installed: legacy-env
-// (the micromamba main env) and system (the Python on PATH).
+// (the existing main env) and system (the Python on PATH).
 package platform
 
 import (

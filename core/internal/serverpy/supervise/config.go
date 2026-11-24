@@ -27,7 +27,7 @@ func DefaultGradioArgs() []string { return []string{"--no-react"} }
 // Config describes the app process group. The zero value is not usable: Root
 // is required. All other fields have defaults (see New).
 type Config struct {
-	// Root is the install root (cwd of every child, home of installer_files).
+	// Root is the install root (cwd of every child).
 	Root paths.Root
 
 	// PublicPort is the port the user-facing Gradio entry answers on (the proxy

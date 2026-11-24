@@ -19,6 +19,9 @@ func TestEngineRoutesForwardOnlyOpenAndState(t *testing.T) {
 	front := srv.URL
 	const pkg = "tts_webui_extension.piper_tts"
 
+	if r := request(t, "GET", front+"/api/go-data/engine-list", nil, nil); r.StatusCode != 200 {
+		t.Fatalf("list: %d", r.StatusCode)
+	}
 	if r := request(t, "GET", front+"/api/go-data/engines/"+pkg, nil, nil); r.StatusCode != 200 {
 		t.Fatalf("state: %d", r.StatusCode)
 	}
@@ -39,7 +42,7 @@ func TestEngineRoutesForwardOnlyOpenAndState(t *testing.T) {
 		}
 	}
 	got := f.requests()
-	if len(got) != 2 || !strings.HasPrefix(got[0], "GET /api/engines/"+pkg+" ") || !strings.HasPrefix(got[1], "POST /api/engines/"+pkg+"/open ") {
+	if len(got) != 3 || !strings.HasPrefix(got[0], "GET /api/engines/ ") || !strings.HasPrefix(got[1], "GET /api/engines/"+pkg+" ") || !strings.HasPrefix(got[2], "POST /api/engines/"+pkg+"/open ") {
 		t.Fatalf("forwarded: %v", got)
 	}
 }

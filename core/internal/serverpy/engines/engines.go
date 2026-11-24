@@ -5,6 +5,7 @@
 // (extcatalog.Engine), and it only starts: the stop, the logs and the install
 // stay on the token-only control API.
 //
+//	GET  /api/engines/           the installed engines (package, name, description)
 //	POST /api/engines/{pkg}/open  start (or find) the engine, answer its state
 //	GET  /api/engines/{pkg}       the state, for polling until "ready"
 //
@@ -108,6 +109,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pkg, action, _ := strings.Cut(rest, "/")
+	if pkg == "" && action == "" {
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", http.MethodGet)
+			writeErr(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		list, err := h.o.Cat.Engines()
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, list)
+		return
+	}
 	var want string
 	switch action {
 	case "":

@@ -141,3 +141,18 @@ func TestNonLoopbackRefused(t *testing.T) {
 		t.Fatalf("status %d", w.Code)
 	}
 }
+
+func TestListNeedsTheToken(t *testing.T) {
+	h := newH(fakeCat{piper: nil, "half": extcatalog.ErrNotInstalled}, &fakeProcs{})
+	if w := do(h, "GET", Prefix, ""); w.Code != 403 {
+		t.Fatalf("no token: %d", w.Code)
+	}
+	w := do(h, "GET", Prefix, "tok")
+	var list []extcatalog.InstalledEngine
+	if err := json.Unmarshal(w.Body.Bytes(), &list); err != nil || w.Code != 200 || len(list) != 1 || list[0].Package != piper {
+		t.Fatalf("%d %v %s", w.Code, err, w.Body)
+	}
+	if w := do(h, "POST", Prefix, "tok"); w.Code != 405 {
+		t.Fatalf("post: %d", w.Code)
+	}
+}

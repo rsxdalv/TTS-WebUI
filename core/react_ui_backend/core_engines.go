@@ -6,6 +6,9 @@ package react_ui_backend
 // catalog engine that is installed starts, nothing else is reachable, and the
 // route only starts, never stops, installs or reads logs. The front door's Origin
 // check and the JSON content type below keep another site from calling it.
+//
+// The list has its own path (engine-list): a claim's bare prefix
+// (/api/go-data/engines) is the static export's, not Go's.
 
 import (
 	"net/http"
@@ -17,6 +20,7 @@ func init() {
 	RegisterClaim(Claim{
 		Switch: "core-engines",
 		Patterns: []string{
+			"GET /api/go-data/engine-list",
 			"GET /api/go-data/engines/{pkg}",
 			"POST /api/go-data/engines/{pkg}/open",
 		},
@@ -26,17 +30,19 @@ func init() {
 
 func newEngines(core *Core) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		pkg := r.PathValue("pkg")
-		if extprocs.ValidatePackage(pkg) != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid package name")
-			return
-		}
-		method, path := http.MethodGet, "/api/engines/"+pkg
-		if r.Method == http.MethodPost {
-			if !requireJSON(w, r) {
+		method, path := http.MethodGet, "/api/engines/"
+		if pkg := r.PathValue("pkg"); pkg != "" {
+			if extprocs.ValidatePackage(pkg) != nil {
+				writeAPIError(w, http.StatusBadRequest, "invalid package name")
 				return
 			}
-			method, path = http.MethodPost, path+"/open"
+			path += pkg
+			if r.Method == http.MethodPost {
+				if !requireJSON(w, r) {
+					return
+				}
+				method, path = http.MethodPost, path+"/open"
+			}
 		}
 		resp, err := core.do(r.Context(), method, path, nil, "")
 		if err != nil {

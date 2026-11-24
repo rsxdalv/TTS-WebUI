@@ -14,7 +14,7 @@ const EnginesPage = () => {
   const [error, setError] = React.useState("");
 
   React.useEffect(() => {
-    goGetJson<Engine[]>("/api/go-data/engines")
+    goGetJson<Engine[]>("/api/go-data/engine-list")
       .then(setEngines)
       .catch((e) => setError(errorText(e)));
   }, []);
@@ -34,7 +34,7 @@ const EnginesPage = () => {
             <li key={e.package} className="border rounded p-3">
               <Link
                 className="font-semibold underline"
-                to={`/engines/${encodeURIComponent(e.package)}`}
+                to={`/engine?pkg=${encodeURIComponent(e.package)}`}
               >
                 {e.name || e.package}
               </Link>

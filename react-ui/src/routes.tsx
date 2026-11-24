@@ -167,7 +167,7 @@ export const AppRoutes = () => (
       <Route path="/tools/api_config" element={<ToolsApiConfig />} />
       <Route path="/tools/pip_list" element={<ToolsPipList />} />
       <Route path="/engines" element={<EnginesIndex />} />
-      <Route path="/engines/:pkg" element={<EnginePage />} />
+      <Route path="/engine" element={<EnginePage />} />
       <Route path="/tools/extensions" element={<ToolsExtensions />} />
       <Route path="/tools/simple_remixer" element={<ToolsRemixer />} />
       <Route path="/tools/youtube_tutorials" element={<ToolsYouTube />} />

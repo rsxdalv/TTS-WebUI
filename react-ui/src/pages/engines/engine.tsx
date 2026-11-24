@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Template } from "../../components/Template";
 import { Button } from "../../components/ui/button";
 import { errorText, goGetJson, goSendJson } from "../../functions/goData";
@@ -20,7 +20,9 @@ type Answer = {
  * opened from.
  */
 const EnginePage = () => {
-  const { pkg = "" } = useParams();
+  // The package name has a dot, so it is a query value: a path with a dot is a
+  // missing asset to the static server.
+  const pkg = useSearchParams()[0].get("pkg") ?? "";
   const [answer, setAnswer] = React.useState<Answer | null>(null);
   const [error, setError] = React.useState("");
   const [attempt, setAttempt] = React.useState(0);

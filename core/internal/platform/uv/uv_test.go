@@ -302,12 +302,18 @@ func TestAFailedCreateIsPartialAndRunningItAgainCompletes(t *testing.T) {
 	if st := f.p.EntryStatus(context.Background(), e); st.Installed || !st.Partial {
 		t.Fatalf("after a failure: %+v", st)
 	}
+	// A package the failed attempt left half linked must not survive into the retry.
+	stale := filepath.Join(f.root.Dir(), ".venvs", e.Package, "stale-from-last-attempt")
+	os.WriteFile(stale, []byte("x"), 0o644)
 	f.p.env = f.p.env[:1]
 	if !f.p.Create(context.Background(), e, f.emit) {
 		t.Fatalf("second create failed:\n%s", strings.Join(*f.out, "\n"))
 	}
 	if st := f.p.EntryStatus(context.Background(), e); !st.Installed || st.Partial {
 		t.Fatalf("after the second run: %+v", st)
+	}
+	if _, err := os.Stat(stale); err == nil {
+		t.Fatal("the unfinished venv was reused instead of started again")
 	}
 }
 

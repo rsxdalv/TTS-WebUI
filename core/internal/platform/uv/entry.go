@@ -90,6 +90,16 @@ func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.E
 		return fail("Failed: %v", err)
 	}
 	venv := p.venv(e.Package)
+	if _, err := os.Stat(filepath.Join(venv, platform.InstallingFile)); err == nil {
+		// The last attempt did not finish (cancelled or failed). It may have left
+		// a package half linked, which uv will not install over (found in the
+		// real cancel run), so the venv starts again; the downloads are in the
+		// cache and are not fetched twice.
+		emit("Removing the venv the last attempt left unfinished (downloads are kept)")
+		if err := removeAll(venv); err != nil {
+			return fail("Failed: cannot remove the unfinished %s: %v", venv, err)
+		}
+	}
 	if err := os.MkdirAll(venv, 0o755); err != nil {
 		return fail("Failed: %v", err)
 	}

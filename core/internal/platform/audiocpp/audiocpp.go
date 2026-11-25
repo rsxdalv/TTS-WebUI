@@ -211,6 +211,7 @@ func (p *Platform) Install(ctx context.Context, emit platform.Emit) error {
 		_ = os.RemoveAll(tmp)
 		return fmt.Errorf("the archive has no %s", filepath.Base(p.ServerPath()))
 	}
+	ServerFor(p.root).Stop()
 	if err := os.RemoveAll(p.BinDir()); err != nil {
 		_ = os.RemoveAll(tmp)
 		return fmt.Errorf("cannot replace %s (is the audio.cpp server running? stop it first): %w", p.BinDir(), err)
@@ -238,6 +239,7 @@ func (p *Platform) Repair(ctx context.Context, emit platform.Emit) error {
 // Uninstall removes platforms/audiocpp, models included. The caller refuses
 // while a model entry needs it and stops the server first.
 func (p *Platform) Uninstall(_ context.Context, emit platform.Emit) error {
+	ServerFor(p.root).Stop()
 	if err := os.RemoveAll(p.Dir()); err != nil {
 		return err
 	}

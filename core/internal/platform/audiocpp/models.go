@@ -21,6 +21,7 @@ type Model struct {
 	Dir          string // models/<Dir>/
 	GGUF         string // the GGUF's file name in Dir
 	LoadOptions  map[string]any
+	SampleRate   int // of the PCM the server streams (16-bit mono)
 	Voices       []string
 	DefaultVoice string
 	License      string
@@ -43,6 +44,7 @@ var Models = []Model{
 		Dir:          "pocket-en-q8",
 		GGUF:         "pocket-tts-english-q8_0.gguf",
 		LoadOptions:  map[string]any{"language": "english"},
+		SampleRate:   24000,
 		Voices:       []string{"alba", "cosette", "marius"},
 		DefaultVoice: "alba",
 		License:      "CC-BY-4.0",

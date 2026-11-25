@@ -128,6 +128,7 @@ func (p *Platform) Remove(_ context.Context, e platform.Entry, emit platform.Emi
 		emit("Failed: " + e.Label() + " is not an audio.cpp model this version knows")
 		return false
 	}
+	ServerFor(p.root).Stop() // a running server holds the files open
 	if err := os.RemoveAll(p.ModelDir(m)); err != nil {
 		emit("Failed: " + err.Error())
 		return false

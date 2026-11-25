@@ -168,6 +168,10 @@ export const routes: Route[] = [
     text: "OpenAI",
   },
   {
+    href: "/onnx",
+    text: "ONNX",
+  },
+  {
     href: "/tools",
     text: "Tools",
     subroutes: [

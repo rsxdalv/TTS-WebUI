@@ -1,35 +1,23 @@
 package openai
 
-import (
-	"errors"
-	"fmt"
-	"time"
-)
+import "time"
 
-// ClipMeta is what a local engine records beside a clip.
-type ClipMeta struct {
-	Engine string // the name in the folder and in the metadata
-	Model  string
-	Voice  string
-	Text   string
-	Speed  float64
-}
+// Saved is where a clip went, relative to the install folder (with /).
+type Saved = saved
 
-// SaveClip checks that wav is a WAV file with audio in it and saves it in
-// <root>/outputs in the layout History reads (the same code the openai platform
-// uses for a remote clip). Other engines that make WAV files in Go call it.
-func SaveClip(root string, now time.Time, m ClipMeta, wav []byte) (Result, error) {
+// SaveClip saves a WAV that another platform generated, in the layout the History
+// page reads (outputs/<date>__<label>__<title>/<same>.{wav,json,png}). label
+// names the generator in the folder name and in the metadata's "endpoint".
+// It returns where the clip went and its length in seconds.
+func SaveClip(root string, now time.Time, label, text, model, voice string, wav []byte) (Saved, float64, error) {
 	w, err := parseWav(wav)
 	if err != nil {
-		return Result{}, fmt.Errorf("not a usable WAV file: %w", err)
+		return Saved{}, 0, err
 	}
-	if w.frames() == 0 {
-		return Result{}, errors.New("the WAV file has no audio in it")
-	}
-	sv, err := saveGeneration(root, now, meta{Text: m.Text, Endpoint: m.Engine, Model: m.Model, Voice: m.Voice,
-		Speed: m.Speed, ResponseFormat: "wav"}, wav, w)
+	s, err := saveGeneration(root, now, meta{Text: text, Endpoint: label, Model: model, Voice: voice,
+		Speed: 1, ResponseFormat: "wav", Label: label}, wav, w)
 	if err != nil {
-		return Result{}, fmt.Errorf("saving the clip in outputs/: %w", err)
+		return Saved{}, 0, err
 	}
-	return Result{Folder: sv.Folder, Wav: sv.Wav, PNG: sv.PNG, JSON: sv.JSON, Seconds: w.seconds(), Bytes: len(wav)}, nil
+	return s, w.seconds(), nil
 }

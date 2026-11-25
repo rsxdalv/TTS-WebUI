@@ -312,30 +312,26 @@ func (p *Platform) pythonExe(ctx context.Context) (string, error) {
 	return out, nil
 }
 
-// toolEnv is what the tools add to a command's environment: PATH first, and
-// LD_LIBRARY_PATH for shared libraries on Linux. Only tools that are there count.
-// base is the environment it extends (the inherited one).
-func (p *Platform) toolEnv() []string {
-	var path, lib []string
+// toolEnv is what the tools add to a command's environment: the tools' folders for
+// PATH (put first by environ, in front of whatever PATH the command otherwise has),
+// and LD_LIBRARY_PATH for shared libraries on Linux. Only tools that are there count.
+func (p *Platform) toolEnv() (pathDirs []string, env []string) {
+	var lib []string
 	for _, t := range p.pinnedTools() {
 		if !p.toolThere(t) {
 			continue
 		}
 		for _, d := range t.Path {
-			path = append(path, filepath.Join(p.toolDir(t), filepath.FromSlash(d)))
+			pathDirs = append(pathDirs, filepath.Join(p.toolDir(t), filepath.FromSlash(d)))
 		}
 		for _, d := range t.Lib {
 			lib = append(lib, filepath.Join(p.toolDir(t), filepath.FromSlash(d)))
 		}
 	}
-	var env []string
-	if len(path) > 0 {
-		env = append(env, "PATH="+strings.Join(append(path, os.Getenv("PATH")), string(os.PathListSeparator)))
-	}
 	if len(lib) > 0 && p.goos == "linux" {
 		env = append(env, "LD_LIBRARY_PATH="+strings.Join(append(lib, os.Getenv("LD_LIBRARY_PATH")), ":"))
 	}
-	return env
+	return pathDirs, env
 }
 
 // needsGit reports whether a requirement is installed from a git URL.

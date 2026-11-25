@@ -172,6 +172,10 @@ export const routes: Route[] = [
     text: "ONNX",
   },
   {
+    href: "/audiocpp",
+    text: "audio.cpp",
+  },
+  {
     href: "/tools",
     text: "Tools",
     subroutes: [

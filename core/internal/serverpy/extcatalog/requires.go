@@ -7,6 +7,7 @@ import (
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/audiocpp"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/requires"
 )
 
@@ -60,6 +61,9 @@ func (s *Store) RequiresGraph(ctx context.Context) (requires.Graph, error) {
 				return g, fmt.Errorf("%s: %v", pkg, err)
 			}
 			installed, _ := in.Of(pkg, e.Str("proxy"))
+			if requiresAudio(e) {
+				installed = s.audioEntryStatus(ctx, pkg)
+			}
 			// A built-in tab is part of the host, not something installed on
 			// it: it must not stop the host from being removed.
 			installed = installed && !platform.Builtin(pkg)
@@ -70,6 +74,12 @@ func (s *Store) RequiresGraph(ctx context.Context) (requires.Graph, error) {
 		}
 	}
 	s.addHost(ctx, &g)
+	if s.opts.UV != nil {
+		g.Installable = map[string]string{"uv": uvWould}
+		if s.opts.UV.Status(ctx).Ready {
+			g.Provided["uv"] = "uv"
+		}
+	}
 	if s.opts.ONNX != nil {
 		if g.Installable == nil {
 			g.Installable = map[string]string{}
@@ -79,13 +89,13 @@ func (s *Store) RequiresGraph(ctx context.Context) (requires.Graph, error) {
 			g.Provided["onnx"] = "onnx"
 		}
 	}
-	if s.opts.UV != nil {
+	if s.opts.AudioCpp != nil && s.opts.AudioCpp.Supported() {
 		if g.Installable == nil {
 			g.Installable = map[string]string{}
 		}
-		g.Installable["uv"] = uvWould
-		if s.opts.UV.Status(ctx).Ready {
-			g.Provided["uv"] = "uv"
+		g.Installable[audiocpp.Name] = audioWould
+		if s.opts.AudioCpp.Status(ctx).Ready {
+			g.Provided[audiocpp.Name] = audiocpp.Name
 		}
 	}
 	if s.opts.Platform != nil && s.opts.Platform.Status(ctx).Ready {
@@ -114,6 +124,7 @@ type plan struct {
 	Steps     []string
 	Total     int
 	GPU       gpu.Label // the choice for the uv platform, when it is in Platforms
+	AudioRow  string    // the build of the audiocpp platform, when it is in Platforms
 }
 
 // planInstall resolves what installing pkg takes. A requirement that is not

@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/audiocpp"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/gradiohost"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/onnx"
@@ -19,6 +20,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -65,7 +67,7 @@ func newExtHost(root paths.Root, systemPython bool, appRunning func() bool) (*ex
 		root: root, token: token, cfg: cfg,
 		cat: extcatalog.New(extcatalog.Options{
 			Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
-			Platform: p, UV: uv.New(uv.Options{Root: root}), ONNX: onnx.New(onnx.Options{Root: root}), Host: detect.Host(p), AppRunning: appRunning, Logf: logf,
+			Platform: p, UV: uv.New(uv.Options{Root: root}), AudioCpp: audiocpp.New(audiocpp.Options{Root: root}), ONNX: onnx.New(onnx.Options{Root: root}), Host: detect.Host(p), AppRunning: appRunning, Logf: logf,
 			StopEngine: func(pkg string) bool { return stopRunningEngine(root.Dir(), pkg) },
 		}),
 		pip: pip, platform: p,
@@ -81,13 +83,16 @@ func (l *Launcher) extensions() (*extHost, error) {
 
 // extItem is one row of the Extensions page.
 type extItem struct {
-	PackageName   string `json:"package_name"`
-	Name          string `json:"name"`
-	Description   string `json:"description"`
-	Website       string `json:"website"`
-	Class         string `json:"extension_class"`
-	Kind          string `json:"kind"` // interface or decorator
-	Proxy         string `json:"proxy"`
+	PackageName string `json:"package_name"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Website     string `json:"website"`
+	Class       string `json:"extension_class"`
+	Kind        string `json:"kind"` // interface or decorator
+	Proxy       string `json:"proxy"`
+	// Validation is "full" when an own-venv engine generated real audio in P6,
+	// "unvalidated" when it only passed the install and start checks, "" otherwise.
+	Validation    string `json:"validation"`
 	Builtin       bool   `json:"builtin"`
 	Installed     bool   `json:"installed"`
 	Disabled      bool   `json:"disabled"`
@@ -145,6 +150,15 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 			Requires: graph.Entries[gradiohost.Name].Requires, RequirementsState: graph.State(gradiohost.Name),
 		})
 	}
+	if h.cat.AudioCppSupported() {
+		// The audiocpp platform is a row of its own, like the Gradio host: models require it.
+		ans.Extensions = append(ans.Extensions, extItem{
+			PackageName: audiocpp.Name, Name: "audio.cpp (" + audiocpp.Version + ")",
+			Description: "The audio.cpp server, checked against its sha256, and the audio.cpp models below. Runs without Python.",
+			Class:       "platform", Kind: "platform", Installed: h.cat.AudioCppReady(ctx),
+			Requires: []string{}, RequirementsState: []requires.Req{},
+		})
+	}
 	for _, kind := range []string{"interface", "decorator"} {
 		entries, err := h.cat.List(kind)
 		if err != nil {
@@ -157,6 +171,9 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 			}
 			proxy := e.Str("proxy")
 			installed, _ := installs.Of(pkg, proxy)
+			if gerr == nil && slices.Contains(graph.Entries[pkg].Requires, audiocpp.Name) {
+				installed = graph.Entries[pkg].Installed // an audio.cpp model: its files are on the platform
+			}
 			var req []string
 			var reqState []requires.Req
 			if gerr == nil {
@@ -168,7 +185,7 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 			ans.Extensions = append(ans.Extensions, extItem{
 				PackageName: pkg, Name: nonEmpty(e.Str("name"), pkg),
 				Description: e.Str("description"), Website: e.Str("website"),
-				Class: e.Str("extension_class"), Kind: kind, Proxy: proxy,
+				Class: e.Str("extension_class"), Kind: kind, Proxy: proxy, Validation: e.Str("validation"),
 				Builtin:       strings.Contains(pkg, "builtin"),
 				Installed:     installed,
 				Disabled:      kind == "interface" && disabled[pkg],

@@ -44,7 +44,21 @@ func newGradioFileProxy(deps Deps) http.Handler {
 			return
 		}
 		// Both branches of the original build the same string.
-		target, err := url.Parse(deps.GradioBackend + path)
+		backend := deps.GradioBackend
+		if rest, ok := strings.CutPrefix(path, engineFilePrefix); ok {
+			pkg, tail, _ := strings.Cut(rest, "/")
+			if _, owned := engineOwnerPkgs()[pkg]; !owned || tail == "" {
+				writeJSONError(w, http.StatusBadRequest, "Invalid path")
+				return
+			}
+			b, err := engineBackend(r.Context(), deps.Core, pkg, false)
+			if err != nil {
+				writeJSONError(w, http.StatusBadGateway, "Failed to fetch file from the engine: "+err.Error())
+				return
+			}
+			backend, path = b, tail
+		}
+		target, err := url.Parse(backend + path)
 		if err != nil {
 			gradioFileFailed(w)
 			return

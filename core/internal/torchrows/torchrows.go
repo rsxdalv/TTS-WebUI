@@ -53,6 +53,18 @@ var rows = []Row{
 		ApproxMB: 3500,
 	},
 	{
+		// The last CUDA build that still carries Pascal (sm_61; Maxwell and Volta too).
+		// A GTX 1070 reports the cu128 build as unsupported; torch 2.11.0+cu126 ran a
+		// matrix multiply on it (P6). Not a GPU choice's default: an entry asks for it
+		// with "torch": "cu126" in extensions.json. No xformers: its wheel is for cu128.
+		Name: "cu126",
+		Packages: []string{"torch==" + TorchVersion + "+cu126", "torchvision",
+			"torchaudio==" + TorchVersion + "+cu126"},
+		IndexURL: "https://download.pytorch.org/whl/cu126",
+		OS:       []string{"windows", "linux"},
+		ApproxMB: 3000,
+	},
+	{
 		Name:     "cpu",
 		Packages: []string{"torch==" + TorchVersion + "+cpu", "torchvision", "torchaudio==" + TorchVersion},
 		IndexURL: "https://download.pytorch.org/whl/cpu",

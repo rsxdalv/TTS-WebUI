@@ -159,19 +159,25 @@ func (h *Handler) speech(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	m, _ := h.p.model(in.Package)
-	speed := in.Speed
-	if speed == 0 {
-		speed = 1
-	}
-	res, err := openai.SaveClip(h.p.root.Dir(), h.now(), openai.ClipMeta{Engine: "onnx_" + m.Dir, Model: m.Title,
-		Voice: voiceName(in.Voice), Text: in.Input, Speed: speed}, wav)
+	sv, secs, err := openai.SaveClip(h.p.root.Dir(), h.now(), "onnx_"+m.Dir, in.Input, m.Title, voiceName(in.Voice), wav)
 	if err != nil {
 		h.logf("onnx %s: %v", in.Package, err)
-		writeErr(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, http.StatusInternalServerError, "saving the clip in outputs/: "+err.Error())
 		return
 	}
-	h.logf("onnx %s: saved %s (%.1f s)", in.Package, res.Folder, res.Seconds)
-	writeJSON(w, http.StatusOK, res)
+	h.logf("onnx %s: saved %s (%.1f s)", in.Package, sv.Folder, secs)
+	writeJSON(w, http.StatusOK, Clip{Folder: sv.Folder, Wav: sv.Wav, PNG: sv.PNG, JSON: sv.JSON, Seconds: secs, Bytes: len(wav)})
+}
+
+// Clip is the answer of POST speech: where the clip went (relative to the
+// install folder).
+type Clip struct {
+	Folder  string  `json:"folder"`
+	Wav     string  `json:"wav"`
+	PNG     string  `json:"png"`
+	JSON    string  `json:"json"`
+	Seconds float64 `json:"seconds"`
+	Bytes   int     `json:"bytes"`
 }
 
 func voiceName(v int) string { return "voice " + strconv.Itoa(v) }

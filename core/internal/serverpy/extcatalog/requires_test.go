@@ -41,7 +41,9 @@ func TestRealCatalogRequires(t *testing.T) {
 			t.Errorf("%s requires %v", name, e.Requires)
 		}
 	}
-	if uv != 20 || host+uv+own != len(g.Entries) || len(g.Entries) < 66 {
+	// P6 moves one engine at a time: 20 at the start, +1 for each converted
+	// engine (Kokoro is the 21st).
+	if uv != 21 || host+uv+own != len(g.Entries) || len(g.Entries) < 66 {
 		t.Errorf("uv=%d host=%d of %d", uv, host, len(g.Entries))
 	}
 }

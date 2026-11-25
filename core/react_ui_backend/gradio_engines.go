@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -132,4 +133,24 @@ func engineOwnerPkgs() map[string]bool {
 		out[p] = true
 	}
 	return out
+}
+
+// logEngineTail writes the last lines of an engine's output to the launcher
+// log after one of its calls failed: the browser only gets "Internal Server
+// Error", and the engine's own error is otherwise only on the token-only
+// control API.
+func logEngineTail(ctx context.Context, core *Core, pkg string) {
+	resp, err := core.do(ctx, http.MethodGet, "/api/extensions/"+pkg+"/logs?tail=40", nil, "")
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	var out struct {
+		Lines []string `json:"lines"`
+	}
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if json.Unmarshal(raw, &out) != nil || len(out.Lines) == 0 {
+		return
+	}
+	slog.Warn("engine output after a failed call", "pkg", pkg, "tail", strings.Join(out.Lines, "\n"))
 }

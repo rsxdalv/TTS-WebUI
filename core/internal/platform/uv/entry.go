@@ -18,8 +18,11 @@ import (
 
 // compatibility is installed with every venv so the Gradio pages an engine
 // serves keep working (it is what the old native install added after the
-// requirements).
-const compatibility = `gradio<=5.49.1 gradio-goodtabs>=0.0.5 gradio-goodtab>=0.0.5 gradio-iconbutton>=0.0.1 ffmpeg-python==0.2.0 matplotlib`
+// requirements). scipy is what the engine harness itself imports (the
+// decorators write wav files with it): P6 found Kokoro died on start without it.
+// pip is there because engines shell out to `python -m pip` (Kokoro's G2P
+// downloads its spaCy model that way); a uv venv has no pip of its own.
+const compatibility = `gradio<=5.49.1 gradio-goodtabs>=0.0.5 gradio-goodtab>=0.0.5 gradio-iconbutton>=0.0.1 ffmpeg-python==0.2.0 matplotlib scipy pip`
 
 var pkgDir = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 

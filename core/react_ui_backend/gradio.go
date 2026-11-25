@@ -111,6 +111,9 @@ func (g *gradioRoute) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		<-r.Context().Done()
 	default:
 		slog.Warn("gradio route", "name", name, "err", err)
+		if route.engine != "" {
+			logEngineTail(call.ctx, route.core, route.engine)
+		}
 		sendNextError(w, http.StatusInternalServerError, "Internal Server Error")
 	}
 }

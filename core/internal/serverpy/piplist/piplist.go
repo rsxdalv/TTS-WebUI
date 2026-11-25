@@ -12,9 +12,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"net"
 	"net/http"
-	"os"
 	"os/exec"
 	"sort"
 	"strings"
@@ -33,15 +33,12 @@ const (
 
 // Options configures a Store.
 type Options struct {
-	Root  string   // working directory of the command
-	Token string   // required; requests without it get 403
-	Run   []string // command prefix of the main env (micromamba -p env run); empty runs directly
-	// Python, when set, is the program used for "python" instead of Run + python
-	// (for trying the API outside the launcher).
-	Python  string
-	Env     []string      // environment of the command; nil inherits
-	Timeout time.Duration // default 2 minutes
-	Logf    func(format string, args ...any)
+	Root  string // working directory of the command
+	Token string // required; requests without it get 403
+	// Platform runs pip: the main env's python.
+	Platform platform.Platform
+	Timeout  time.Duration // default 2 minutes
+	Logf     func(format string, args ...any)
 }
 
 // Package is one installed distribution.
@@ -74,13 +71,9 @@ func New(o Options) *Store {
 	return &Store{opts: o}
 }
 
-// command is the pip invocation: the Run prefix (or Python) plus the pip args.
-func (s *Store) command() []string {
-	args := []string{"-m", "pip", "list", "--format=json", "--disable-pip-version-check"}
-	if s.opts.Python != "" {
-		return append([]string{s.opts.Python}, args...)
-	}
-	return append(append(append([]string{}, s.opts.Run...), "python"), args...)
+// command is the pip invocation, resolved by the platform.
+func (s *Store) command() (platform.Command, error) {
+	return s.opts.Platform.Command(nil, []string{"python", "-m", "pip", "list", "--format=json", "--disable-pip-version-check"})
 }
 
 // List runs pip and returns the packages sorted case-insensitively by name
@@ -91,15 +84,16 @@ func (s *Store) List(ctx context.Context) ([]Package, error) {
 	defer s.mu.Unlock()
 	ctx, cancel := context.WithTimeout(ctx, s.opts.Timeout)
 	defer cancel()
-	if !s.hasPython() {
+	if !s.opts.Platform.Status(ctx).Ready {
 		return nil, ErrNoPython
 	}
-	full := s.command()
-	cmd := exec.CommandContext(ctx, full[0], full[1:]...)
-	cmd.Dir = s.opts.Root
-	if s.opts.Env != nil {
-		cmd.Env = s.opts.Env
+	pc, err := s.command()
+	if err != nil {
+		return nil, err
 	}
+	cmd := exec.CommandContext(ctx, pc.Program, pc.Args...)
+	cmd.Dir = s.opts.Root
+	cmd.Env = pc.Env
 	var stdout, stderr limited
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
@@ -253,26 +247,3 @@ func (s *Store) serve(w http.ResponseWriter, r *http.Request) {
 // installed yet, or no python on PATH). It is a state, not a failure: the
 // core runs without Python.
 var ErrNoPython = errors.New("no Python environment")
-
-// hasPython reports whether the command can start: the Python option or the
-// Run prefix's program and, for `micromamba -p <env> run`, the env directory.
-func (s *Store) hasPython() bool {
-	if s.opts.Python != "" {
-		_, err := exec.LookPath(s.opts.Python)
-		return err == nil
-	}
-	if len(s.opts.Run) == 0 {
-		_, err := exec.LookPath("python")
-		return err == nil
-	}
-	if _, err := exec.LookPath(s.opts.Run[0]); err != nil {
-		return false
-	}
-	for i := 1; i+1 < len(s.opts.Run); i++ {
-		if s.opts.Run[i] == "-p" || s.opts.Run[i] == "--prefix" {
-			st, err := os.Stat(s.opts.Run[i+1])
-			return err == nil && st.IsDir()
-		}
-	}
-	return true
-}

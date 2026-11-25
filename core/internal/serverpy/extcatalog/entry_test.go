@@ -456,33 +456,9 @@ func TestInstallEntryRefusesAnIncompleteEntry(t *testing.T) {
 	}
 }
 
-// TestInstallEntryNativeUsesItsOwnProxy checks a "native" entry goes to the
-// venv path.
-func TestInstallEntryNativeUsesItsOwnProxy(t *testing.T) {
-	s, root, log := installStore(t)
-	writeFile(t, root, "installer_scripts/.gpu", "CPU\n")
-	entry := strings.Replace(goodEntry,
-		`"extension_platform_version": "0.0.1"`,
-		`"extension_platform_version": "0.0.1", "proxy": "native"`, 1)
-	_, got, _ := stream(t, s, `install-entry {"entry":`+entry+`}`)
-	if !got.ok {
-		t.Fatalf("native: %+v", got.lines)
-	}
-	l := readLog(t, log)
-	if len(l) != 5 {
-		t.Fatalf("commands: %q", l)
-	}
-	if !strings.HasPrefix(l[0], "uv venv ") || !strings.Contains(l[0], ".venvs") {
-		t.Errorf("venv: %q", l[0])
-	}
-	if !strings.Contains(l[4], "git+https://github.com/rsxdalv/tts_webui_extension.one@main") {
-		t.Errorf("requirements: %q", l[4])
-	}
-}
-
 // TestInstallEntryIsRefusedWhileAnotherInstallRuns checks the lock.
 func TestInstallEntryIsRefusedWhileAnotherInstallRuns(t *testing.T) {
-	s, _ := newStore(t)
+	s, _, _ := installStore(t)
 	s.install.Lock()
 	h := s.Handler()
 	if c, b := call(t, h, "POST", "/api/extcatalog/install-entry", `{"entry":`+goodEntry+`}`, "tok"); c != 409 || !strings.Contains(b, "another install is running") {

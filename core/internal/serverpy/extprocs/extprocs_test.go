@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/legacyenv"
 	"io"
 	"net"
 	"net/http"
@@ -110,8 +112,7 @@ func newMgr(t *testing.T, mod func(*Options)) (*Manager, *fakeRoutes, paths.Root
 	fr := &fakeRoutes{}
 	o := Options{
 		Root:         root,
-		MainPython:   []string{fakeBin},
-		BaseEnv:      append(os.Environ(), "BASE_MARK=base", "TTS_CORE_TOKEN=secret", "TTS_CORE_URL=http://127.0.0.1:1"),
+		Platform:     testPlatform(root, []string{fakeBin}),
 		Routes:       fr,
 		Token:        "tok",
 		ReadyTimeout: 20 * time.Second,
@@ -170,7 +171,7 @@ func firstReport(t *testing.T, m *Manager, pkg string) report {
 
 func TestStartReturnsBeforeReadyThenRegistersRoute(t *testing.T) {
 	m, fr, root := newMgr(t, func(o *Options) {
-		o.BaseEnv = append(o.BaseEnv, "FAKE_DELAY_MS=700")
+		t.Setenv("FAKE_DELAY_MS", "700")
 	})
 	port := freeP(t)
 	res, err := m.Start(context.Background(), "tts_webui_extension.bark", StartRequest{
@@ -198,7 +199,7 @@ func TestStartReturnsBeforeReadyThenRegistersRoute(t *testing.T) {
 	if r.Pid != res.Pid {
 		t.Errorf("reported pid %d != result pid %d", r.Pid, res.Pid)
 	}
-	if strings.Join(r.Args, " ") != "-m tts_webui.extensions_loader.proxy_harness" {
+	if strings.Join(r.Args, " ") != "python -m tts_webui.extensions_loader.proxy_harness" {
 		t.Errorf("args = %v", r.Args)
 	}
 	want := map[string]string{
@@ -301,7 +302,7 @@ func TestStopRemovesRouteAndRestartWorks(t *testing.T) {
 
 func TestExitDetection(t *testing.T) {
 	// Exits on its own after becoming ready.
-	m, fr, _ := newMgr(t, func(o *Options) { o.BaseEnv = append(o.BaseEnv, "FAKE_EXIT_AFTER_MS=1500", "FAKE_EXIT_CODE=0") })
+	m, fr, _ := newMgr(t, func(o *Options) { t.Setenv("FAKE_EXIT_AFTER_MS", "1500"); t.Setenv("FAKE_EXIT_CODE", "0") })
 	if _, err := m.Start(context.Background(), "late", StartRequest{Port: freeP(t)}); err != nil {
 		t.Fatal(err)
 	}
@@ -316,7 +317,9 @@ func TestExitDetection(t *testing.T) {
 
 	// Exits before ever listening: failed.
 	m2, _, _ := newMgr(t, func(o *Options) {
-		o.BaseEnv = append(o.BaseEnv, "FAKE_NEVER_LISTEN=1", "FAKE_EXIT_AFTER_MS=100", "FAKE_EXIT_CODE=7")
+		t.Setenv("FAKE_NEVER_LISTEN", "1")
+		t.Setenv("FAKE_EXIT_AFTER_MS", "100")
+		t.Setenv("FAKE_EXIT_CODE", "7")
 	})
 	if _, err := m2.Start(context.Background(), "early", StartRequest{Port: freeP(t)}); err != nil {
 		t.Fatal(err)
@@ -331,7 +334,7 @@ func TestExitDetection(t *testing.T) {
 func TestReadyTimeoutMarksFailedButKeepsProcess(t *testing.T) {
 	m, fr, _ := newMgr(t, func(o *Options) {
 		o.ReadyTimeout = 300 * time.Millisecond
-		o.BaseEnv = append(o.BaseEnv, "FAKE_NEVER_LISTEN=1")
+		t.Setenv("FAKE_NEVER_LISTEN", "1")
 	})
 	if _, err := m.Start(context.Background(), "slow", StartRequest{Port: freeP(t)}); err != nil {
 		t.Fatal(err)
@@ -372,13 +375,13 @@ func TestNilRoutesAllowed(t *testing.T) {
 }
 
 func TestVenvPythonPreferredAndMainPythonPrefix(t *testing.T) {
-	m, _, root := newMgr(t, func(o *Options) { o.MainPython = []string{fakeBin, "--main-prefix"} })
+	m, _, root := newMgr(t, func(o *Options) { o.Platform = testPlatform(o.Root, []string{fakeBin, "--main-prefix"}) })
 
 	if _, err := m.Start(context.Background(), "plain", StartRequest{Port: freeP(t)}); err != nil {
 		t.Fatal(err)
 	}
 	r := firstReport(t, m, "plain")
-	if strings.Join(r.Args, " ") != "--main-prefix -m tts_webui.extensions_loader.proxy_harness" {
+	if strings.Join(r.Args, " ") != "--main-prefix python -m tts_webui.extensions_loader.proxy_harness" {
 		t.Errorf("main args = %v", r.Args)
 	}
 
@@ -631,5 +634,31 @@ func TestAPIEndToEnd(t *testing.T) {
 	code, b = call("GET", "/api/extensions", "")
 	if !strings.Contains(string(b), `"exited"`) {
 		t.Errorf("after stop list = %d %s", code, b)
+	}
+}
+
+// testPlatform is the legacy-env platform with a fake child in front of every
+// command and the base environment the tests look for in the child's report.
+func testPlatform(root paths.Root, prefix []string) platform.Platform {
+	return legacyenv.New(legacyenv.Options{
+		Root: root, Prefix: prefix,
+		Env: []string{"BASE_MARK=base", "TTS_CORE_TOKEN=secret", "TTS_CORE_URL=http://127.0.0.1:1"},
+	})
+}
+
+func TestStopIfRunning(t *testing.T) {
+	m, _, _ := newMgr(t, nil)
+	if m.StopIfRunning("pkg") {
+		t.Fatal("stopped an engine that never started")
+	}
+	if _, err := m.Start(context.Background(), "pkg", StartRequest{Port: freeP(t)}); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "ready", func() bool { return state(m, "pkg") == StateReady })
+	if !m.StopIfRunning("pkg") || state(m, "pkg") != StateExited {
+		t.Fatalf("running engine not stopped: %q", state(m, "pkg"))
+	}
+	if m.StopIfRunning("pkg") {
+		t.Fatal("reported a stop for an engine that had exited")
 	}
 }

@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/system"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appconfig"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extcatalog"
 )
@@ -21,10 +23,14 @@ func main() {
 	token := flag.String("token", "dev", "shared secret for X-TTS-Core-Token")
 	python := flag.String("python", "", "python used for pip installs (default: python on PATH)")
 	flag.Parse()
+	dir, err := paths.New(*root)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle(extcatalog.Prefix, extcatalog.New(extcatalog.Options{
-		Root: *root, Token: *token, Python: *python, Logf: log.Printf,
+		Root: *root, Token: *token, Platform: system.New(system.Options{Root: dir, Python: *python}), Logf: log.Printf,
 		Config: appconfig.New(appconfig.Options{Root: *root, Token: *token, Logf: log.Printf}),
 	}).Handler())
 	srv := &http.Server{Addr: *addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}

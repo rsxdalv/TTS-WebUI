@@ -32,6 +32,9 @@ func validateEntry(e *Obj) string {
 	if len(bad) > 0 {
 		return "Wrong types for: " + strings.Join(bad, ", ")
 	}
+	if _, err := entryRequires(e); err != nil {
+		return err.Error()
+	}
 	return ""
 }
 

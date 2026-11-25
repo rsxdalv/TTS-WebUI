@@ -4,6 +4,12 @@ import { useRouter } from "@/shims/router";
 import { ExternalLinkIcon } from "lucide-react";
 import { RouteCommands } from "./RouteCommands";
 import { cn } from "../lib/utils";
+import {
+  HostStatus,
+  isGradioPath,
+  launcherUrl,
+  useHostStatus,
+} from "../functions/hostStatus";
 
 export type Route = {
   href: string;
@@ -174,6 +180,7 @@ export const routes: Route[] = [
         text: "API Config",
       },
       { href: "/tools/pip_list", text: "Installed Packages" },
+      { href: "/engines", text: "Engines" },
       { href: "/tools/extensions", text: "Extension Lists" },
       { href: "/tools/simple_remixer", text: "Simple Remixer" },
       { href: "/tools/log_viewer", text: "Log Viewer" },
@@ -272,7 +279,63 @@ const RouteLinks = ({ routes }: { routes: Route[] }) => {
   );
 };
 
+/**
+ * What the menu shows while the Gradio host is not installed: the pages that
+ * call it are left out (a link to a page that cannot work is a dead link) and
+ * one link points at the launcher, where the host is installed.
+ */
+const withoutGradioPages = (routes: Route[]): Route[] =>
+  routes
+    .filter((r) => !isGradioPath(r.href))
+    .map((r) =>
+      r.subroutes ? { ...r, subroutes: withoutGradioPages(r.subroutes) } : r
+    );
+
+const HostNotice = ({
+  status,
+  onGradioPage,
+}: {
+  status: HostStatus;
+  onGradioPage: boolean;
+}) => {
+  const url = launcherUrl(status);
+  return (
+    <div className="w-full p-2 mt-1 bg-yellow-50 border border-yellow-300 rounded text-sm">
+      {onGradioPage
+        ? "This page needs the Gradio host, which is not installed. "
+        : "The Gradio pages (text-to-speech, music, conversion, pipeline) need the Gradio host, which is not installed. "}
+      {status.installable ? (
+        url ? (
+          <>
+            Install it from the{" "}
+            <a className="underline" href={url}>
+              Extensions page of the launcher
+            </a>
+            .
+          </>
+        ) : (
+          "Install it from the Extensions page of the launcher."
+        )
+      ) : (
+        "It is managed outside this app."
+      )}
+    </div>
+  );
+};
+
+/**
+ * The routes the menu and the command palette offer: all of them, except the
+ * pages that call the Gradio host while it is known not to be installed.
+ */
+export const useMenuRoutes = () => {
+  const host = useHostStatus();
+  const noHost = host.kind === "known" && !host.status.installed;
+  return { host, noHost, routes: noHost ? withoutGradioPages(routes) : routes };
+};
+
 export const Header = ({}) => {
+  const { host, noHost, routes: menuRoutes } = useMenuRoutes();
+  const router = useRouter();
   return (
     <>
       <div className="flex items-center w-full pb-1">
@@ -300,7 +363,13 @@ export const Header = ({}) => {
           Feedback / Bug reports
         </a>
       </div>
-      <RouteLinks routes={routes} />
+      <RouteLinks routes={menuRoutes} />
+      {noHost && host.kind === "known" && (
+        <HostNotice
+          status={host.status}
+          onGradioPage={isGradioPath(router.asPath.split("?")[0])}
+        />
+      )}
     </>
   );
 };

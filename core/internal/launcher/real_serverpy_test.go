@@ -3,6 +3,8 @@ package launcher
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/legacyenv"
 	"io"
 	"net/http"
 	"os"
@@ -47,9 +49,10 @@ func realRoot(t *testing.T) paths.Root {
 	return root
 }
 
-// realPrefix is the micromamba command the supervisor runs Python with.
-func realPrefix(root paths.Root) []string {
-	return []string{micromambaPath(root), "-p", installEnvPath(root), "run"}
+// realPlat is the legacy-env platform of the real install (prefix nil) or with
+// a prefix of the test's own, plus env.
+func realPlat(root paths.Root, prefix []string, env ...string) platform.Platform {
+	return legacyenv.New(legacyenv.Options{Root: root, Prefix: prefix, Env: env})
 }
 
 // postJSON sends body to the control API as Python's bridge does.
@@ -120,8 +123,7 @@ func TestRealExtensionProcessAppliesDecorators(t *testing.T) {
 		pkg = "tts_webui_extension.mms"
 	}
 	// Unbuffered, so the log has the decorator lines by the time it is ready.
-	baseEnv := append(os.Environ(), "MAMBA_ROOT_PREFIX="+filepath.Join(root.InstallerFiles(), "mamba"), "PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8")
-	sp, err := startServerPy(root, realPrefix(root), baseEnv, appenv.Flags{NoReact: true})
+	sp, err := startServerPy(root, realPlat(root, nil, "PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8"), appenv.Flags{NoReact: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,9 +180,8 @@ func TestRealPipInstallThroughBridge(t *testing.T) {
 	if pipEnv == "" || py == "" || pkg == "" {
 		t.Skip(EnvRealPipEnv + ", LAUNCHER_REAL_PYTHON or LAUNCHER_REAL_INSTALL_PKG not set")
 	}
-	baseEnv := append(os.Environ(), "MAMBA_ROOT_PREFIX="+filepath.Join(root.InstallerFiles(), "mamba"), "PYTHONIOENCODING=utf-8")
 	prefix := []string{micromambaPath(root), "-p", pipEnv, "run"}
-	sp, err := startServerPy(root, prefix, baseEnv, appenv.Flags{NoReact: true})
+	sp, err := startServerPy(root, realPlat(root, prefix, "PYTHONIOENCODING=utf-8"), appenv.Flags{NoReact: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,8 +220,7 @@ func TestRealBridgeStartsAndStopsExtension(t *testing.T) {
 	if pkg == "" {
 		pkg = "tts_webui_extension.mms"
 	}
-	baseEnv := append(os.Environ(), "MAMBA_ROOT_PREFIX="+filepath.Join(root.InstallerFiles(), "mamba"), "PYTHONIOENCODING=utf-8")
-	sp, err := startServerPy(root, realPrefix(root), baseEnv, appenv.Flags{NoReact: true})
+	sp, err := startServerPy(root, realPlat(root, nil, "PYTHONIOENCODING=utf-8"), appenv.Flags{NoReact: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,8 +264,7 @@ func TestRealNativeExtensionInstallAndStart(t *testing.T) {
 	if py == "" || pkg == "" {
 		t.Skip("LAUNCHER_REAL_PYTHON or LAUNCHER_REAL_NATIVE_PKG not set")
 	}
-	baseEnv := append(os.Environ(), "MAMBA_ROOT_PREFIX="+filepath.Join(root.InstallerFiles(), "mamba"), "PYTHONIOENCODING=utf-8", "PYTHONUNBUFFERED=1")
-	sp, err := startServerPy(root, realPrefix(root), baseEnv, appenv.Flags{NoReact: true})
+	sp, err := startServerPy(root, realPlat(root, nil, "PYTHONIOENCODING=utf-8", "PYTHONUNBUFFERED=1"), appenv.Flags{NoReact: true})
 	if err != nil {
 		t.Fatal(err)
 	}

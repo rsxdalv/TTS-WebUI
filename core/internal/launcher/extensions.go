@@ -11,9 +11,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/gradiohost"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/requires"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -22,7 +26,6 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appconfig"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extcatalog"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/piplist"
-	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/supervise"
 )
 
 // extOps are the extcatalog operations the Extensions page uses. The launcher
@@ -40,39 +43,38 @@ type extHost struct {
 	cfg   *appconfig.Store
 	cat   *extcatalog.Store
 	pip   *piplist.Store
+	// platform is what the stores run on.
+	platform platform.Platform
 }
 
-func newExtHost(root paths.Root, systemPython bool) (*extHost, error) {
+func newExtHost(root paths.Root, systemPython bool, appRunning func() bool) (*extHost, error) {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
 		return nil, fmt.Errorf("generating the extension token: %w", err)
 	}
 	token := hex.EncodeToString(b)
-	var prefix []string // system python: run python and uv from PATH
-	if !systemPython {
-		prefix = supervise.CommandPrefix(root)
-	}
-	env := append(os.Environ(), supervise.MambaRootEnv(root))
+	p := detect.Detect(detect.Options{Root: root, SystemPython: systemPython})
 	logf := func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) }
 	cfg := appconfig.New(appconfig.Options{Root: root.Dir(), Token: token, Logf: logf})
 	pip := piplist.New(piplist.Options{
 		Root: root.Dir(), Token: token,
-		Run: append([]string(nil), prefix...), Env: append([]string(nil), env...), Logf: logf,
+		Platform: p, Logf: logf,
 	})
 	return &extHost{
 		root: root, token: token, cfg: cfg,
 		cat: extcatalog.New(extcatalog.Options{
 			Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
-			Run: append([]string(nil), prefix...), Env: append([]string(nil), env...), Logf: logf,
+			Platform: p, UV: uv.New(uv.Options{Root: root}), Host: detect.Host(p), AppRunning: appRunning, Logf: logf,
+			StopEngine: func(pkg string) bool { return stopRunningEngine(root.Dir(), pkg) },
 		}),
-		pip: pip,
+		pip: pip, platform: p,
 	}, nil
 }
 
 // extensions builds the stores on first use, so a launcher that never opens the
 // Extensions page never touches them.
 func (l *Launcher) extensions() (*extHost, error) {
-	l.extOnce.Do(func() { l.ext, l.extErr = newExtHost(l.root, l.systemPython) })
+	l.extOnce.Do(func() { l.ext, l.extErr = newExtHost(l.root, l.systemPython, l.sup.Running) })
 	return l.ext, l.extErr
 }
 
@@ -89,12 +91,24 @@ type extItem struct {
 	Installed     bool   `json:"installed"`
 	Disabled      bool   `json:"disabled"`
 	CanBeDisabled bool   `json:"can_be_disabled"`
+	// Requires is what the entry needs first (its own list or the derived one),
+	// and RequirementsState says for each name whether it is there now.
+	Requires          []string       `json:"requires"`
+	RequirementsState []requires.Req `json:"requirements_state"`
 }
 
 type extListAnswer struct {
 	Extensions []extItem `json:"extensions"`
 	AppRunning bool      `json:"app_running"`
 	Warning    string    `json:"warning,omitempty"`
+	// Platform is the runtime this install runs on ("legacy-env", "system"), and
+	// PlatformReady whether its Python can start; PlatformDetail says why not.
+	Platform       string `json:"platform"`
+	PlatformReady  bool   `json:"platform_ready"`
+	PlatformDetail string `json:"platform_detail,omitempty"`
+	// RequiresError is set when the catalog's requires cannot be read (a bad
+	// name); the rows then carry no requirements.
+	RequiresError string `json:"requires_error,omitempty"`
 }
 
 // list answers the Extensions page: interface and decorator extensions with
@@ -105,6 +119,12 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 	if err != nil {
 		return ans, err
 	}
+	st := h.platform.Status(ctx)
+	ans.Platform, ans.PlatformReady, ans.PlatformDetail = h.platform.Name(), st.Ready, st.Detail
+	graph, gerr := h.cat.RequiresGraph(ctx)
+	if gerr != nil {
+		ans.RequiresError = gerr.Error()
+	}
 	installs := h.cat.Installs(ctx)
 	if installs.Err != nil {
 		// Without pip's answer, say so and show everything as not installed
@@ -114,6 +134,15 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 	disabled := map[string]bool{}
 	for _, n := range lists.Disabled {
 		disabled[n] = true
+	}
+	if h.cat.HostActive() && gerr == nil {
+		// The Gradio host is an entry of its own: it is not in extensions.json.
+		ans.Extensions = append(ans.Extensions, extItem{
+			PackageName: gradiohost.Name, Name: gradiohost.Title,
+			Description: "The Gradio web interface and the tabs that run inside it. Optional: the Go pages, the engines and the OpenAI-style endpoints work without it.",
+			Class:       "host", Kind: "host", Installed: graph.Entries[gradiohost.Name].Installed,
+			Requires: graph.Entries[gradiohost.Name].Requires, RequirementsState: graph.State(gradiohost.Name),
+		})
 	}
 	for _, kind := range []string{"interface", "decorator"} {
 		entries, err := h.cat.List(kind)
@@ -127,6 +156,14 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 			}
 			proxy := e.Str("proxy")
 			installed, _ := installs.Of(pkg, proxy)
+			var req []string
+			var reqState []requires.Req
+			if gerr == nil {
+				req, reqState = graph.Entries[pkg].Requires, graph.State(pkg)
+			}
+			if req == nil {
+				req, reqState = []string{}, []requires.Req{}
+			}
 			ans.Extensions = append(ans.Extensions, extItem{
 				PackageName: pkg, Name: nonEmpty(e.Str("name"), pkg),
 				Description: e.Str("description"), Website: e.Str("website"),
@@ -135,6 +172,7 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 				Installed:     installed,
 				Disabled:      kind == "interface" && disabled[pkg],
 				CanBeDisabled: kind == "interface",
+				Requires:      req, RequirementsState: reqState,
 			})
 		}
 	}

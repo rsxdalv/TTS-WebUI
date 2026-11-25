@@ -3,6 +3,7 @@ package supervise
 import (
 	"context"
 	"errors"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -25,7 +26,7 @@ func TestHooksSideAndRecord(t *testing.T) {
 	var closed, started, stopped atomic.Int32
 	var refs []ProcRef
 	s, e := newSup(t, func(c *Config) {
-		c.StartGradioSide = func(prefix, baseEnv []string) (*GradioSide, error) {
+		c.StartGradioSide = func(platform.Platform) (*GradioSide, error) {
 			return &GradioSide{Close: func() { closed.Add(1) }}, nil
 		}
 		c.OnStarted = func(r []ProcRef) { refs = r; started.Add(1) }
@@ -52,7 +53,7 @@ func TestHooksSideAndRecord(t *testing.T) {
 
 func TestSideStartErrorStopsStart(t *testing.T) {
 	s, _ := newSup(t, func(c *Config) {
-		c.StartGradioSide = func(_, _ []string) (*GradioSide, error) { return nil, errors.New("port taken") }
+		c.StartGradioSide = func(platform.Platform) (*GradioSide, error) { return nil, errors.New("port taken") }
 	})
 	if err := s.Start(context.Background()); err == nil {
 		t.Fatal("expected an error")

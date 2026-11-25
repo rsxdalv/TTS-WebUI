@@ -46,7 +46,7 @@ func runLaunch(ctx context.Context, args []string) error {
 		return fmt.Errorf("creating server: %w", err)
 	}
 
-	var opts []launcher.Option
+	opts := []launcher.Option{launcher.WithLauncherPort(*port)}
 	if *noBrowser {
 		opts = append(opts, launcher.WithNoBrowser())
 	}

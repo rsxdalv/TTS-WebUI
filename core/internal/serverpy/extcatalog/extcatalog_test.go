@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/legacyenv"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -330,6 +332,14 @@ func TestHelperProcess(t *testing.T) {
 		fmt.Fprintln(f, strings.Join(args, " "))
 		f.Close()
 	}
+	if len(args) > 1 && args[0] == "venv" { // what uv leaves: a python in the venv
+		bin, exe := "bin", "python"
+		if os.PathSeparator == '\\' {
+			bin, exe = "Scripts", "python.exe"
+		}
+		_ = os.MkdirAll(filepath.Join(args[1], bin), 0o755)
+		_ = os.WriteFile(filepath.Join(args[1], bin, exe), []byte("fake"), 0o755)
+	}
 	fmt.Println("out: " + strings.Join(args[:min(2, len(args))], " "))
 	fmt.Fprintln(os.Stderr, "err: progress\rmore")
 	for _, a := range args {
@@ -347,10 +357,15 @@ func installStore(t *testing.T) (*Store, string, string) {
 	t.Helper()
 	root := t.TempDir()
 	log := filepath.Join(root, "helper.log")
+	t.Setenv("EXTCATALOG_HELPER", "1")
+	t.Setenv("HELPER_LOG", log)
+	pr, err := paths.New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
 	s := New(Options{
 		Root: root, Token: "tok",
-		Run: []string{os.Args[0], "-test.run=^TestHelperProcess$", "--"},
-		Env: append(os.Environ(), "EXTCATALOG_HELPER=1", "HELPER_LOG="+log),
+		Platform: legacyenv.New(legacyenv.Options{Root: pr, Prefix: []string{os.Args[0], "-test.run=^TestHelperProcess$", "--"}}),
 	})
 	return s, root, log
 }
@@ -438,73 +453,6 @@ func TestPipInstallUninstall(t *testing.T) {
 	}
 }
 
-func TestNativeVenvSetup(t *testing.T) {
-	s, root, log := installStore(t)
-	writeFile(t, root, "extensions.json", `{"tabs":[`+entry("ext.native", "Native Ext", `"proxy":"native"`)+`]}`)
-	// no GPU choice yet: fails before running anything
-	_, got, _ := stream(t, s, `install {"package_name":"ext.native"}`)
-	if got.ok || !strings.Contains(strings.Join(got.lines, "\n"), "GPU choice file not found") {
-		t.Fatalf("no .gpu: %+v", got)
-	}
-	if _, err := os.Stat(log); err == nil {
-		t.Fatal("something ran without a GPU choice")
-	}
-	writeFile(t, root, "installer_scripts/.gpu", "CPU\n")
-	_, got, _ = stream(t, s, `install {"package_name":"ext.native"}`)
-	if !got.ok {
-		t.Fatalf("native: %+v", got)
-	}
-	l := readLog(t, log)
-	if len(l) != 5 {
-		t.Fatalf("commands: %q", l)
-	}
-	venv := filepath.Join(root, ".venvs", "ext.native")
-	py := filepath.Join(venv, "bin", "python")
-	if os.PathSeparator == '\\' {
-		py = filepath.Join(venv, "Scripts", "python.exe")
-	}
-	want := []string{
-		"uv venv " + venv + " --allow-existing",
-		"uv pip install --python " + py + " torch==2.11.0+cpu torchvision torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cpu",
-		"uv pip install --python " + py + " torchcodec --index-url=https://download.pytorch.org/whl/cpu",
-		"uv pip install --python " + py + " xformers==0.0.35",
-		"uv pip install --python " + py + " git+https://example.com/ext.native@main gradio<=5.49.1 gradio-goodtabs>=0.0.5 gradio-goodtab>=0.0.5 gradio-iconbutton>=0.0.1 ffmpeg-python==0.2.0 matplotlib",
-	}
-	for i := range want {
-		if l[i] != want[i] {
-			t.Errorf("step %d:\n got %s\nwant %s", i+1, l[i], want[i])
-		}
-	}
-	joined := strings.Join(got.lines, "\n")
-	if !strings.HasPrefix(joined, "Setting up virtual environment and installing dependencies for Native Ext...") || !strings.Contains(joined, "Successfully set up virtual environment for Native Ext with dependencies") {
-		t.Errorf("messages:\n%s", joined)
-	}
-	if _, err := os.Stat(filepath.Join(root, "installer_scripts", "logs", "uv-venv-install-Native Ext.log")); err != nil {
-		t.Errorf("log: %v", err)
-	}
-	// unsupported GPU choice, and a failing step stops the rest
-	writeFile(t, root, "installer_scripts/.gpu", "Quantum")
-	if _, got, _ = stream(t, s, `install {"package_name":"ext.native"}`); got.ok || !strings.Contains(strings.Join(got.lines, "\n"), "Unsupported GPU choice: Quantum") {
-		t.Errorf("unsupported: %+v", got)
-	}
-	writeFile(t, root, "installer_scripts/.gpu", "NVIDIA GPU")
-	os.Remove(log)
-	writeFile(t, root, "extensions.json", `{"tabs":[`+strings.Replace(entry("ext.native", "Native Ext", `"proxy":"native"`), "git+https://example.com/ext.native@main", "FAILME", 1)+`]}`)
-	_, got, _ = stream(t, s, `install {"package_name":"ext.native"}`)
-	if got.ok || len(readLog(t, log)) != 5 { // fails at the last step; earlier four ran
-		t.Errorf("failing step: ok=%v commands=%d", got.ok, len(readLog(t, log)))
-	}
-	// a package name that would escape .venvs is refused
-	writeFile(t, root, "extensions.json", `{"tabs":[`+entry("../evil", "Evil", `"proxy":"native"`)+`]}`)
-	os.Remove(log)
-	if _, got, _ = stream(t, s, `install {"package_name":"../evil"}`); got.ok {
-		t.Error("path-like package name accepted")
-	}
-	if _, err := os.Stat(log); err == nil {
-		t.Error("something ran for a bad package name")
-	}
-}
-
 func TestOneInstallAtATime(t *testing.T) {
 	s, root, _ := installStore(t)
 	writeFile(t, root, "extensions.json", `{"tabs":[`+entry("ext.pip", "Pip Ext")+`]}`)
@@ -514,22 +462,4 @@ func TestOneInstallAtATime(t *testing.T) {
 		t.Errorf("busy: %d %s", c, b)
 	}
 	s.install.Unlock()
-}
-
-func TestTorchTable(t *testing.T) {
-	s, root := newStore(t)
-	for choice, want := range map[string]string{
-		"NVIDIA GPU":                    "torch==2.11.0+cu128 torchvision torchaudio==2.11.0+cu128 --index-url https://download.pytorch.org/whl/cu128",
-		"CPU":                           "torch==2.11.0+cpu torchvision torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cpu",
-		"Apple M Series Chip":           "torch==2.11.0 torchvision torchaudio==2.11.0",
-		"Custom (Manual torch install)": "torch==2.11.0 torchvision torchaudio==2.11.0",
-		"AMD GPU (ROCM, Linux only)":    "torch==2.11.0 torchvision torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/rocm7.2",
-		"Intel GPU (XPU)":               "torch==2.11.0 torchvision torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/test/xpu",
-	} {
-		writeFile(t, root, "installer_scripts/.gpu", choice+"\r\n")
-		got, err := s.torchArgs()
-		if err != nil || strings.Join(got, " ") != want {
-			t.Errorf("%s: %q %v", choice, got, err)
-		}
-	}
 }

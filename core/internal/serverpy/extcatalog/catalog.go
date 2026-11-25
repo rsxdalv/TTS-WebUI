@@ -11,11 +11,17 @@ package extcatalog
 import (
 	"errors"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/system"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/gradiohost"
 )
 
 const (
@@ -27,13 +33,24 @@ var catalogFile = filepath.Join("data", "extensions-catalog", "lib", "extensions
 
 // Options configures a Store.
 type Options struct {
-	Root  string   // project root: holds extensions.json, .venvs/, installer_scripts/
-	Token string   // required; requests without it get 403
-	Run   []string // command prefix of the main env (micromamba -p env run); empty runs directly
-	// Python, when set, is the program used for "python" instead of Run + python
-	// (for trying the API outside the launcher).
-	Python string
-	Env    []string // environment of the install commands; nil inherits
+	Root  string // project root: holds extensions.json, .venvs/, installer_scripts/
+	Token string // required; requests without it get 403
+	// Platform is the runtime installs run on (the main env's python and uv).
+	Platform platform.Platform
+	// UV is the platform own-venv entries (proxy: native) run on. Nil means
+	// there is none: such an entry cannot be installed.
+	UV *uv.Platform
+	// Host makes and removes the Gradio host (detect.Host). It is set only while
+	// the install folder runs on it; nil when the main env is the existing one
+	// (legacy-env, system), which this app does not install.
+	Host *gradiohost.Platform
+	// AppRunning says whether the app is running now: the Gradio host's venv
+	// cannot be removed under its own process (Windows locks the python).
+	AppRunning func() bool
+	// StopEngine stops the running process of an own-venv engine before its venv
+	// is removed (Windows will not delete a running python.exe). It returns true
+	// when it stopped one. Nil means nothing runs engines in this process.
+	StopEngine func(pkg string) bool
 	// Config supplies the disabled and autostart lists for Resolve (appconfig.Store).
 	Config ConfigSource
 	// Pip lists the main env's distributions for Resolve's installed and
@@ -52,6 +69,12 @@ type Store struct {
 func New(o Options) *Store {
 	if o.Logf == nil {
 		o.Logf = func(string, ...any) {}
+	}
+	if o.Platform == nil {
+		// Installs run the python and uv on PATH, like a store with no prefix did.
+		if root, err := paths.New(o.Root); err == nil {
+			o.Platform = system.New(system.Options{Root: root})
+		}
 	}
 	return &Store{opts: o}
 }

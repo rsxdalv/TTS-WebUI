@@ -76,7 +76,7 @@ func TestLatestVersion(t *testing.T) {
 	}
 
 	// the last word of the "Would install" line
-	s.opts.Env = append(s.opts.Env, "HELPER_WOULD_INSTALL=gradio-5.49.1 ext.pip-1.2.3")
+	t.Setenv("HELPER_WOULD_INSTALL", "gradio-5.49.1 ext.pip-1.2.3")
 	if code, v := latest(t, s, "ext.pip"); code != 200 || v != "ext.pip-1.2.3" {
 		t.Fatalf("version: %d %q", code, v)
 	}
@@ -94,15 +94,5 @@ func TestLatestVersion(t *testing.T) {
 	}
 	if code, _ := call(t, s.Handler(), "GET", Prefix+"latest-version", "", "tok"); code != 405 {
 		t.Errorf("GET: %d", code)
-	}
-}
-
-func TestEscapeForMambaRun(t *testing.T) {
-	got := escapeForMambaRun([]string{"uv", "gradio<=5.49.1", "a>=0.0.5", "x&y|z", "p(q)", "100%", "c^d", "git+https://h/x@main"})
-	want := []string{"uv", "gradio^<=5.49.1", "a^>=0.0.5", "x^&y^|z", "p^(q^)", "100%%", "c^^d", "git+https://h/x@main"}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Errorf("arg %d: %q, want %q", i, got[i], want[i])
-		}
 	}
 }

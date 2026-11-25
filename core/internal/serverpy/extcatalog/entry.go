@@ -21,7 +21,7 @@ import (
 func (s *Store) serveInstallEntry(w http.ResponseWriter, r *http.Request) {
 	o, err := body(w, r)
 	if err == nil {
-		err = only(o, "entry")
+		err = only(o, "entry", "gpu")
 	}
 	if err != nil {
 		s.fail(w, err)
@@ -36,19 +36,27 @@ func (s *Store) serveInstallEntry(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, invalidf("entry: %s", msg))
 		return
 	}
+	pl, err := s.planPasted(r.Context(), entry)
+	if err == nil {
+		err = s.chooseGPU(&pl, o.Str("gpu"))
+	}
+	if err != nil {
+		s.failInstall(w, err)
+		return
+	}
 	if !s.install.TryLock() {
 		s.fail(w, fmt.Errorf("%w: another install is running", errBusy))
 		return
 	}
 	defer s.install.Unlock()
 	s.stream(w, r, func(ctx context.Context, emit func(string)) bool {
-		return s.installEntry(ctx, entry, emit)
+		return s.installEntry(ctx, entry, pl, emit)
 	})
 }
 
 // installEntry installs one entry: its own requirements and its own proxy
 // ("native" means the venv path), never a package looked up by name.
-func (s *Store) installEntry(ctx context.Context, entry *Obj, emit func(string)) bool {
+func (s *Store) installEntry(ctx context.Context, entry *Obj, pl plan, emit func(string)) bool {
 	name := entry.Str("name")
 	if name == "" {
 		name = entry.Str("package_name")
@@ -56,6 +64,12 @@ func (s *Store) installEntry(ctx context.Context, entry *Obj, emit func(string))
 	req := entry.Str("requirements")
 	if req == "" || req == "builtin" {
 		emit(fmt.Sprintf("%s has no requirements to install", name))
+		return false
+	}
+	// What the entry requires is installed first (the entry is the last step).
+	before := pl
+	before.Steps = pl.Steps[:len(pl.Steps)-1]
+	if len(before.Platforms)+len(before.Steps) > 0 && !s.runSteps(ctx, before, nil, emit) {
 		return false
 	}
 	toks, err := validateRequirements(req)

@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/legacyenv"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/system"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -46,9 +50,10 @@ func TestHelperProcess(t *testing.T) {
 func fake(t *testing.T, mode string) *Store {
 	t.Helper()
 	t.Setenv("FAKE_PIP", mode)
+	root := t.TempDir()
 	return New(Options{
-		Root: t.TempDir(), Token: "tok", Timeout: 2 * time.Second,
-		Run: []string{os.Args[0], "-test.run=^TestHelperProcess$", "--"},
+		Root: root, Token: "tok", Timeout: 2 * time.Second,
+		Platform: prefixed(t, root, []string{os.Args[0], "-test.run=^TestHelperProcess$", "--"}),
 	})
 }
 
@@ -81,7 +86,8 @@ func TestFailures(t *testing.T) {
 	if _, err := s.List(context.Background()); err == nil || !strings.Contains(err.Error(), "timed out") {
 		t.Fatalf("hang: %v", err)
 	}
-	s = New(Options{Root: t.TempDir(), Token: "tok", Run: []string{"definitely-not-a-program"}})
+	dir := t.TempDir()
+	s = New(Options{Root: dir, Token: "tok", Platform: prefixed(t, dir, []string{"definitely-not-a-program"})})
 	if _, err := s.List(context.Background()); err == nil {
 		t.Fatal("missing program accepted")
 	}
@@ -163,4 +169,18 @@ func TestCachedRemembersUntilInvalidated(t *testing.T) {
 	if got, err := s.Cached(ctx); err != nil || len(got) != 4 {
 		t.Fatalf("after the failure: %v %v", got, err)
 	}
+}
+
+// prefixed is the legacy-env platform with prefix in front of every command
+// (empty: the system platform, python from PATH).
+func prefixed(t *testing.T, dir string, prefix []string) platform.Platform {
+	t.Helper()
+	root, err := paths.New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(prefix) == 0 {
+		return system.New(system.Options{Root: root})
+	}
+	return legacyenv.New(legacyenv.Options{Root: root, Prefix: prefix})
 }

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/rsxdalv/TTS-WebUI/core/internal/torchrows"
 )
 
 // This file ports installer_scripts/js/initializeApp.js: python version, torch,
@@ -17,10 +19,10 @@ import (
 // Version pins. These are the only copies in the Go port; keep them in step
 // with js/initializeApp.js while the original is still the default.
 const (
-	torchVersion    = "2.11.0"
-	cudaVersion     = "12.8"
-	cudaVersionTag  = "cu128"
-	xformersVersion = "0.0.35" // NVIDIA only; the ROCm line installs xformers unpinned
+	torchVersion    = torchrows.TorchVersion // the torch table (internal/torchrows) is the one copy
+	cudaVersion     = torchrows.CUDAVersion
+	cudaVersionTag  = torchrows.CUDATag
+	xformersVersion = torchrows.XformersVersion // NVIDIA only; the ROCm line installs xformers unpinned
 	torchPin        = "torch==" + torchVersion
 
 	pythonVersion = "3.10.11" // 3.11 has limited support, 3.12 is not yet supported
@@ -37,10 +39,10 @@ const (
 )
 
 var rocmVersionTag = map[string]string{
-	"2.6.0":  "rocm6.2.4",
-	"2.7.0":  "rocm6.3",
-	"2.7.1":  "rocm6.3",
-	"2.11.0": "rocm7.2",
+	"2.6.0":                "rocm6.2.4",
+	"2.7.0":                "rocm6.3",
+	"2.7.1":                "rocm6.3",
+	torchrows.TorchVersion: torchrows.ROCmTag,
 }
 
 // extensions are installed with the core packages. The quotes are part of the

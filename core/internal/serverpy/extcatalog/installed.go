@@ -2,11 +2,8 @@ package extcatalog
 
 import (
 	"context"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
 
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/piplist"
 )
 
@@ -17,13 +14,7 @@ type PackageSource interface {
 	Invalidate()
 }
 
-var nonAlnum = regexp.MustCompile(`[-_.]+`)
-
-// normalizeDist is pip's name normalisation (PEP 503, with "_" as the
-// separator), enough to compare a distribution with a package name from the lists.
-func normalizeDist(s string) string {
-	return nonAlnum.ReplaceAllString(strings.ToLower(s), "_")
-}
+func normalizeDist(s string) string { return platform.NormalizeDist(s) }
 
 // Installs says which extensions are installed. It is what
 // check_if_package_installed and _get_version answered in Python.
@@ -42,6 +33,11 @@ func (s *Store) Installs(ctx context.Context) Installs {
 	if s.opts.Pip == nil {
 		return in
 	}
+	if s.hostActive() && !s.opts.Platform.Status(ctx).Ready {
+		// No Gradio host: no in-process tab is installed, which is an answer,
+		// not an error.
+		return in
+	}
 	pkgs, err := s.opts.Pip.Cached(ctx)
 	if err != nil {
 		in.Err = err
@@ -58,20 +54,13 @@ func NeedsPip(pkg, proxy string) bool {
 	return proxy != "native" && !isBuiltin(pkg)
 }
 
-func isBuiltin(pkg string) bool { return strings.Contains(pkg, "builtin") }
+func isBuiltin(pkg string) bool { return platform.Builtin(pkg) }
 
 // Of answers for one extension: a native one is installed when its venv
 // exists (it has no version here), a built-in one always is, any other when
 // the main env has the distribution (names compared after normalisation, not
 // by find_spec) and then it has that distribution's version.
 func (in Installs) Of(pkg, proxy string) (installed bool, version string) {
-	switch {
-	case proxy == "native":
-		_, err := os.Stat(filepath.Join(in.root, ".venvs", pkg))
-		return err == nil, ""
-	case isBuiltin(pkg):
-		return true, ""
-	}
-	v, ok := in.dists[normalizeDist(pkg)]
-	return ok, v
+	st := platform.InstalledIn(in.root, platform.Entry{Package: pkg, Own: proxy == "native"}, in.dists)
+	return st.Installed, st.Version
 }

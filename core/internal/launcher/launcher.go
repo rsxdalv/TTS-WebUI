@@ -40,7 +40,7 @@ type Launcher struct {
 	updateOnce    sync.Once
 	updateChecked bool // true = already up to date (cached after first check)
 
-	systemPython bool      // no micromamba prefix (WithSystemPython)
+	systemPython bool      // the system platform (WithSystemPython)
 	extOnce      sync.Once // the Extensions page's stores, built on first use
 	ext          *extHost
 	extErr       error
@@ -48,6 +48,7 @@ type Launcher struct {
 
 // New creates a Launcher for the given install root.
 func New(root paths.Root, opts ...Option) *Launcher {
+	launcherPorts.Store(root.Dir(), buildOptions(opts).launcherPort)
 	return &Launcher{
 		root:         root,
 		sprocs:       make(map[string]*procs.Proc),

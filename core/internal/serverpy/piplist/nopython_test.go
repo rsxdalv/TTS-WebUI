@@ -18,7 +18,8 @@ func TestNoPythonIsAState(t *testing.T) {
 		"no env":         {os.Args[0], "-p", missingEnv, "run"},
 		"no python path": nil,
 	} {
-		s := New(Options{Root: t.TempDir(), Token: "tok", Run: run})
+		dir := t.TempDir()
+		s := New(Options{Root: dir, Token: "tok", Platform: prefixed(t, dir, run)})
 		if name == "no python path" {
 			t.Setenv("PATH", t.TempDir())
 		}
@@ -26,7 +27,8 @@ func TestNoPythonIsAState(t *testing.T) {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
-	s := New(Options{Root: t.TempDir(), Token: "tok", Run: []string{os.Args[0], "-p", missingEnv, "run"}})
+	dir := t.TempDir()
+	s := New(Options{Root: dir, Token: "tok", Platform: prefixed(t, dir, []string{os.Args[0], "-p", missingEnv, "run"})})
 	r := httptest.NewRequest("GET", Path, nil)
 	r.RemoteAddr = "127.0.0.1:1"
 	r.Header.Set(TokenHeader, "tok")

@@ -24,6 +24,9 @@ func TestExtensionsListEnableAndOps(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, ".venvs", "extension_native"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(dir, ".venvs", "extension_native", "entry.json"), []byte(`{"package":"extension_native"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Disable Beta in config.json, then list: the page shows it disabled.
 	resp := doRequest(t, srv, token, http.MethodPost, "/api/ext/enabled", `{"package_name":"extension_beta","enabled":false}`)
@@ -82,8 +85,9 @@ func TestExtensionsListEnableAndOps(t *testing.T) {
 	if e := ans.Extensions[byName("extension_deco")]; e.Kind != "decorator" || e.Disabled {
 		t.Errorf("decorator: %+v", e)
 	}
-	// There is no micromamba in the temp root, so pip cannot answer; the page is told.
-	if ans.Warning == "" || ans.AppRunning {
+	// A new folder is on the Gradio host, which is not installed: no tab is
+	// installed, which is an answer and not a warning.
+	if ans.Warning != "" || ans.AppRunning {
 		t.Errorf("warning=%q appRunning=%v", ans.Warning, ans.AppRunning)
 	}
 

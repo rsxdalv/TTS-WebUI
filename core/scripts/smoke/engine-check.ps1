@@ -33,7 +33,9 @@ param(
     [string] $App = "http://127.0.0.1:3000",
     [string] $Router = "http://127.0.0.1:7770",
     [int] $StartTimeoutSec = 300,
-    [int] $InferenceTimeoutSec = 1800
+    [int] $InferenceTimeoutSec = 1800,
+    # tier 5 on the GPU: the engines' own "use GPU" / device settings are switched on (float32 on Pascal)
+    [switch] $Gpu
 )
 $ErrorActionPreference = "Stop"
 $Root = (Resolve-Path $Root).Path
@@ -161,7 +163,9 @@ $inferenceCalls = @{
 function Check-Inference($pkg) {
     $c = $inferenceCalls[$pkg]
     if (-not $c) { return "NOTRUN: no call defined for this engine" }
-    $body = $c.Body | ConvertTo-Json -Compress
+    $b = $c.Body.Clone()
+    if ($Gpu) { if ($b.ContainsKey("use_gpu")) { $b.use_gpu = $true }; if ($b.ContainsKey("device")) { $b.device = "cuda" } }
+    $body = $b | ConvertTo-Json -Compress
     $r = Invoke-WebRequest -Uri "$App/api/gradio/$($c.Name)" -Method Post -ContentType "application/json" -Body $body -UseBasicParsing -TimeoutSec $InferenceTimeoutSec -Headers @{ Origin = $App }
     $j = $r.Content | ConvertFrom-Json
     $url = $j.audio.url

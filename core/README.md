@@ -36,7 +36,7 @@ CGO_ENABLED=0 go build -trimpath -o bin/tts-webui ./cmd/tts-webui
 - `internal/gpu/` - the GPU labels the installer accepts
 - `internal/paths/`, `internal/version/` - install-root paths, build info
 - `internal/webui/` - `go:embed` of the built setup page
-- `ui/` - the setup page source (React/Vite)
+- `ui/` - the setup page source (Solid 2.0/Vite)
 - `scripts/` - `build-webui.sh|ps1` build `ui/` into `internal/webui/assets/`; `smoke/m1.ps1` is a Windows smoke test
 
 `go:embed` cannot reach outside its package, so `scripts/build-webui.sh` builds

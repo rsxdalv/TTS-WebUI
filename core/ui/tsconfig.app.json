@@ -12,7 +12,8 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
-    "jsx": "react-jsx",
+    "jsx": "preserve",
+    "jsxImportSource": "@solidjs/web",
 
     /* Linting */
     "strict": true,

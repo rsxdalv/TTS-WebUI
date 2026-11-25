@@ -1,6 +1,15 @@
 // LaunchStep: after all installation steps are done, drives the app lifecycle
 // via /api/app/* — no /api/steps/run involvement.
-import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  createStore,
+  For,
+  Loading,
+  onSettled,
+  Show,
+} from "solid-js";
 import { client } from "./client";
 
 interface ProcessStatus {
@@ -11,28 +20,36 @@ interface ProcessStatus {
   warning?: string; // carried on despite, e.g. a missing GPU label
 }
 
+interface LanAnswer {
+  lan: boolean;
+  warning?: string;
+  urls?: string[];
+}
+
 export function LaunchStep() {
-  const [processes, setProcesses] = useState<ProcessStatus[]>([]);
-  const [appURL, setAppURL] = useState("");
-  const [launched, setLaunched] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [diagLines, setDiagLines] = useState<string[]>([]);
-  const [diagRunning, setDiagRunning] = useState(false);
-  const [lan, setLan] = useState<{ lan: boolean; warning?: string; urls?: string[] }>({ lan: false });
-  const esRef = useRef<EventSource | null>(null);
-  const diagEsRef = useRef<EventSource | null>(null);
-  const linkTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [processes, setProcesses] = createSignal<ProcessStatus[]>([]);
+  const [appURL, setAppURL] = createSignal("");
+  const [launched, setLaunched] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
+  const [diagLines, setDiagLines] = createStore<string[]>([]);
+  const [diagRunning, setDiagRunning] = createSignal(false);
+  let es: EventSource | undefined;
+  let diagEs: EventSource | undefined;
 
-  const stopLinkPolling = useCallback(() => {
-    if (linkTimerRef.current !== null) {
-      clearInterval(linkTimerRef.current);
-      linkTimerRef.current = null;
-    }
-  }, []);
+  // LAN mode (TTS_GO_PROXY_LISTEN=lan): show the same warning the launcher logs (R2-8).
+  // A failed read is "not LAN", as before.
+  const lan = createMemo<LanAnswer>(() =>
+    client("/api/app/lan")
+      .then((r) => (r.ok ? (r.json() as Promise<LanAnswer>) : { lan: false }))
+      .catch(() => ({ lan: false })),
+  );
 
-  const startLinkPolling = useCallback(() => {
-    if (linkTimerRef.current !== null) return;
-    linkTimerRef.current = setInterval(async () => {
+  // Poll the app link while any process runs. The effect re-runs only when
+  // "anything running" flips, and its cleanup is what stops the timer.
+  const anyRunning = createMemo(() => processes().some((p) => p.running));
+  createEffect(anyRunning, (running) => {
+    if (!running) return;
+    const timer = setInterval(async () => {
       try {
         const r = await client("/api/app/link");
         if (!r.ok) return;
@@ -42,49 +59,29 @@ export function LaunchStep() {
         // ignore network errors during polling
       }
     }, 2000);
-  }, []);
-
-  // Start/stop link polling based on whether any process is running.
-  useEffect(() => {
-    const anyRunning = processes.some((p) => p.running);
-    if (anyRunning) {
-      startLinkPolling();
-    } else {
-      stopLinkPolling();
-    }
-  }, [processes, startLinkPolling, stopLinkPolling]);
-
-  // LAN mode (TTS_GO_PROXY_LISTEN=lan): show the same warning the launcher logs (R2-8).
-  useEffect(() => {
-    client("/api/app/lan")
-      .then((r) => (r.ok ? r.json() : { lan: false }))
-      .then((d) => setLan(d as { lan: boolean; warning?: string; urls?: string[] }))
-      .catch(() => {});
-  }, []);
+    return () => clearInterval(timer);
+  });
 
   // Cleanup on unmount.
-  useEffect(() => {
-    return () => {
-      esRef.current?.close();
-      diagEsRef.current?.close();
-      stopLinkPolling();
-    };
-  }, [stopLinkPolling]);
+  onSettled(() => () => {
+    es?.close();
+    diagEs?.close();
+  });
 
   function subscribeStatus() {
-    if (esRef.current) return;
-    const es = new EventSource("/api/app/status/stream");
-    esRef.current = es;
-    es.onmessage = (e) => {
+    if (es) return;
+    const source = new EventSource("/api/app/status/stream");
+    es = source;
+    source.onmessage = (e) => {
       try {
         setProcesses(JSON.parse(e.data) as ProcessStatus[]);
       } catch {
         // ignore parse errors
       }
     };
-    es.onerror = () => {
-      if (es.readyState === EventSource.CLOSED) {
-        esRef.current = null;
+    source.onerror = () => {
+      if (source.readyState === EventSource.CLOSED) {
+        es = undefined;
       }
     };
   }
@@ -116,131 +113,136 @@ export function LaunchStep() {
   }
 
   async function runDiagnostic() {
-    if (diagRunning) return;
-    setDiagLines([]);
+    if (diagRunning()) return;
+    setDiagLines(() => []);
     setDiagRunning(true);
-    diagEsRef.current?.close();
+    diagEs?.close();
     await client("/api/app/diagnostic", { method: "POST" });
-    const es = new EventSource("/api/app/diagnostic/stream");
-    diagEsRef.current = es;
-    es.onmessage = (e) => {
-      setDiagLines((prev) => [...prev, e.data]);
-    };
-    es.addEventListener("done", () => {
+    const source = new EventSource("/api/app/diagnostic/stream");
+    diagEs = source;
+    source.onmessage = (e) =>
+      setDiagLines((lines) => {
+        lines.push(e.data);
+      });
+    source.addEventListener("done", () => {
       setDiagRunning(false);
-      es.close();
-      diagEsRef.current = null;
+      source.close();
+      diagEs = undefined;
     });
-    es.onerror = () => {
+    source.onerror = () => {
       setDiagRunning(false);
-      es.close();
-      diagEsRef.current = null;
+      source.close();
+      diagEs = undefined;
     };
   }
 
-  const anyRunning = processes.some((p) => p.running);
-  const allStopped = launched && processes.length > 0 && !anyRunning;
+  const allStopped = () => launched() && processes().length > 0 && !anyRunning();
 
   return (
-    <div className="rounded-xl border border-blue-400 dark:border-blue-600 bg-white dark:bg-gray-900 p-4">
-      <h2 className="text-base font-semibold mb-2">Launch WebUI</h2>
+    <div class="rounded-xl border border-blue-400 dark:border-blue-600 bg-white dark:bg-gray-900 p-4">
+      <h2 class="text-base font-semibold mb-2">Launch WebUI</h2>
 
-      {lan.lan && (
-        <div
-          role="alert"
-          className="mb-3 p-3 rounded-lg border border-amber-400 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700 text-sm text-amber-900 dark:text-amber-200"
-        >
-          <p className="font-medium">Reachable from your network, with no password</p>
-          <p className="mt-1">{lan.warning}</p>
-          {lan.urls && lan.urls.length > 0 && (
-            <ul className="mt-1 font-mono text-xs">
-              {lan.urls.map((u) => (
-                <li key={u}>{u}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      <Loading fallback={null}>
+        <Show when={lan().lan}>
+          <div
+            role="alert"
+            class="mb-3 p-3 rounded-lg border border-amber-400 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700 text-sm text-amber-900 dark:text-amber-200"
+          >
+            <p class="font-medium">Reachable from your network, with no password</p>
+            <p class="mt-1">{lan().warning}</p>
+            <Show when={lan().urls?.length}>
+              <ul class="mt-1 font-mono text-xs">
+                <For each={lan().urls}>{(u) => <li>{u}</li>}</For>
+              </ul>
+            </Show>
+          </div>
+        </Show>
+      </Loading>
 
-      {error && (
-        <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>
-      )}
+      <Show when={error()}>
+        {(message) => (
+          <p class="text-sm text-red-600 dark:text-red-400 mb-2">{message()}</p>
+        )}
+      </Show>
 
-      {!launched && (
+      <Show when={!launched()}>
         <button
-          onClick={launch}
-          className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
+          onClick={() => void launch()}
+          class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
         >
           Launch WebUI
         </button>
-      )}
+      </Show>
 
-      {launched && processes.length > 0 && (
-        <ul className="mt-2 space-y-1">
-          {processes.map((p) => (
-            <li key={p.name} className="flex items-center gap-2 text-sm">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  p.running ? "bg-green-500" : "bg-gray-400"
-                }`}
-              />
-              <span className="font-mono">{p.name}</span>
-              <span className="text-gray-500 dark:text-gray-400">
-                {p.running ? "running" : p.state ?? "stopped"}
-                {p.error ? `: ${p.error}` : ""}
-                {p.warning ? ` (warning: ${p.warning})` : ""}
-              </span>
-            </li>
-          ))}
+      <Show when={launched() && processes().length > 0}>
+        <ul class="mt-2 space-y-1">
+          <For each={processes()} keyed={(p) => p.name}>
+            {(p) => (
+              <li class="flex items-center gap-2 text-sm">
+                <span
+                  class={[
+                    "w-2 h-2 rounded-full",
+                    p().running ? "bg-green-500" : "bg-gray-400",
+                  ]}
+                />
+                <span class="font-mono">{p().name}</span>
+                <span class="text-gray-500 dark:text-gray-400">
+                  {p().running ? "running" : (p().state ?? "stopped")}
+                  {p().error ? `: ${p().error}` : ""}
+                  {p().warning ? ` (warning: ${p().warning})` : ""}
+                </span>
+              </li>
+            )}
+          </For>
         </ul>
-      )}
+      </Show>
 
-      {appURL && (
-        <a
-          href={appURL}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 inline-flex px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 text-sm"
-        >
-          Open WebUI →
-        </a>
-      )}
+      <Show when={appURL()}>
+        {(url) => (
+          <a
+            href={url()}
+            target="_blank"
+            rel="noreferrer"
+            class="mt-3 inline-flex px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 text-sm"
+          >
+            Open WebUI →
+          </a>
+        )}
+      </Show>
 
-      {allStopped && (
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          App stopped.
-        </p>
-      )}
+      <Show when={allStopped()}>
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">App stopped.</p>
+      </Show>
 
-      {launched && (
-        <div className="mt-3 flex gap-2">
+      <Show when={launched()}>
+        <div class="mt-3 flex gap-2">
           <button
-            onClick={stop}
-            className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+            onClick={() => void stop()}
+            class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             Stop
           </button>
           <button
-            onClick={restart}
-            className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+            onClick={() => void restart()}
+            class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             Restart
           </button>
           <button
-            onClick={runDiagnostic}
-            disabled={diagRunning}
-            className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+            onClick={() => void runDiagnostic()}
+            disabled={diagRunning()}
+            class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
           >
-            {diagRunning ? "Running Diagnostic…" : "Diagnostic"}
+            {diagRunning() ? "Running Diagnostic…" : "Diagnostic"}
           </button>
         </div>
-      )}
+      </Show>
 
-      {diagLines.length > 0 && (
-        <pre className="mt-3 p-2 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono overflow-auto max-h-48">
+      <Show when={diagLines.length > 0}>
+        <pre class="mt-3 p-2 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono overflow-auto max-h-48">
           {diagLines.join("\n")}
         </pre>
-      )}
+      </Show>
     </div>
   );
 }

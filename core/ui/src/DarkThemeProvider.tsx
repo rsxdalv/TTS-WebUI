@@ -1,47 +1,47 @@
 import {
-  useState,
-  useEffect,
   createContext,
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  onSettled,
   useContext,
-  ReactNode,
-} from "react";
+  type Accessor,
+  type ParentComponent,
+} from "solid-js";
 
 type Theme = "light" | "dark" | "system";
 
-function getEffectiveTheme(theme: Theme): boolean {
-  if (theme === "dark") return true;
-  if (theme === "light") return false;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
-}
-
 interface DarkThemeContextType {
-  theme: Theme;
+  theme: Accessor<Theme>;
   setTheme: (t: Theme) => void;
-  isDark: boolean;
+  isDark: Accessor<boolean>;
 }
 
-const DarkThemeContext = createContext<DarkThemeContextType | null>(null);
+const DarkThemeContext = createContext<DarkThemeContextType>();
 
-export function DarkThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem("theme") as Theme) || "system",
+export const DarkThemeProvider: ParentComponent = (props) => {
+  const [theme, setTheme] = createSignal<Theme>(
+    (localStorage.getItem("theme") as Theme) || "system",
   );
-  const [isDark, setIsDark] = useState(() => getEffectiveTheme(theme));
 
-  useEffect(() => {
-    const apply = (dark: boolean) => {
-      document.documentElement.classList.toggle("dark", dark);
-      setIsDark(dark);
-    };
-    apply(getEffectiveTheme(theme));
+  // The OS preference is its own signal; "system" just reads it. No effect has
+  // to write isDark back, and the listener lives for the provider's lifetime.
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const [systemDark, setSystemDark] = createSignal(mq.matches);
+  onSettled(() => {
+    const handler = () => setSystemDark(mq.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  });
 
-    if (theme === "system") {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      const handler = () => apply(getEffectiveTheme("system"));
-      mq.addEventListener("change", handler);
-      return () => mq.removeEventListener("change", handler);
-    }
-  }, [theme]);
+  const isDark = createMemo(
+    () => theme() === "dark" || (theme() === "system" && systemDark()),
+  );
+
+  createEffect(isDark, (dark) => {
+    document.documentElement.classList.toggle("dark", dark);
+  });
 
   const setThemeAndPersist = (t: Theme) => {
     localStorage.setItem("theme", t);
@@ -49,50 +49,61 @@ export function DarkThemeProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <DarkThemeContext.Provider
+    <DarkThemeContext
       value={{ theme, setTheme: setThemeAndPersist, isDark }}
     >
-      {children}
-    </DarkThemeContext.Provider>
+      {props.children}
+    </DarkThemeContext>
   );
-}
+};
+
+const OPTIONS: { theme: Theme; icon: string; title: string; active: string }[] = [
+  {
+    theme: "light",
+    icon: "☀️",
+    title: "Light mode",
+    active: "bg-white dark:bg-gray-700 shadow-sm text-amber-600",
+  },
+  {
+    theme: "dark",
+    icon: "🌙",
+    title: "Dark mode",
+    active: "bg-white dark:bg-gray-700 shadow-sm text-amber-400",
+  },
+  {
+    theme: "system",
+    icon: "💻",
+    title: "System theme",
+    active: "bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-gray-200",
+  },
+];
 
 export function ThemeToggle() {
+  // useContext is typed T: with no provider above it throws on its own.
   const ctx = useContext(DarkThemeContext);
-  if (!ctx)
-    throw new Error("ThemeToggle must be used within DarkThemeProvider");
-  const { theme, setTheme } = ctx;
 
   return (
-    <div className="flex items-center gap-1 bg-gray-200 dark:bg-gray-800 rounded-lg p-1">
-      <button
-        onClick={() => setTheme("light")}
-        className={`text-lg px-2 py-1 rounded cursor-pointer transition-colors ${theme === "light" ? "bg-white dark:bg-gray-700 shadow-sm text-amber-600" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"}`}
-        title="Light mode"
-      >
-        ☀️
-      </button>
-      <button
-        onClick={() => setTheme("dark")}
-        className={`text-lg px-2 py-1 rounded cursor-pointer transition-colors ${theme === "dark" ? "bg-white dark:bg-gray-700 shadow-sm text-amber-400" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"}`}
-        title="Dark mode"
-      >
-        🌙
-      </button>
-      <button
-        onClick={() => setTheme("system")}
-        className={`text-lg px-2 py-1 rounded cursor-pointer transition-colors ${theme === "system" ? "bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-gray-200" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"}`}
-        title="System theme"
-      >
-        💻
-      </button>
+    <div class="flex items-center gap-1 bg-gray-200 dark:bg-gray-800 rounded-lg p-1">
+      <For each={OPTIONS}>
+        {(o) => (
+          <button
+            onClick={() => ctx.setTheme(o.theme)}
+            class={[
+              "text-lg px-2 py-1 rounded cursor-pointer transition-colors",
+              ctx.theme() === o.theme
+                ? o.active
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200",
+            ]}
+            title={o.title}
+          >
+            {o.icon}
+          </button>
+        )}
+      </For>
     </div>
   );
 }
 
 export function useDarkTheme() {
-  const ctx = useContext(DarkThemeContext);
-  if (!ctx)
-    throw new Error("useDarkTheme must be used within DarkThemeProvider");
-  return ctx;
+  return useContext(DarkThemeContext);
 }

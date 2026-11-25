@@ -1,5 +1,5 @@
 ﻿// StepItem: renders one installation step, calling only /api/steps/*.
-import { useState, useEffect, useRef } from "react";
+import { createEffect, createSignal, createStore, For, onSettled, Show } from "solid-js";
 import { client } from "./client";
 
 interface StepItemProps {
@@ -13,64 +13,64 @@ interface StepItemProps {
   onComplete: () => void;
 }
 
-export function StepItem({
-  step,
-  title,
-  description,
-  state,
-  hasStream,
-  running,
-  detail,
-  onComplete,
-}: StepItemProps) {
-  const [isRunning, setIsRunning] = useState(false);
-  const [logs, setLogs] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const esRef = useRef<EventSource | null>(null);
-  const logEndRef = useRef<HTMLDivElement | null>(null);
+export function StepItem(props: StepItemProps) {
+  const [isRunning, setIsRunning] = createSignal(false);
+  const [logs, setLogs] = createStore<string[]>([]);
+  const [error, setError] = createSignal<string | null>(null);
+  // The stream is a push source, not a read: it stays an imperative handle.
+  let es: EventSource | undefined;
+  let logEnd: HTMLDivElement | undefined;
 
   // Auto-scroll to the bottom as new log lines arrive.
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [logs]);
+  createEffect(
+    () => logs.length,
+    () => {
+      logEnd?.scrollIntoView({ behavior: "smooth" });
+    },
+  );
 
   // Tear down EventSource when step becomes inactive.
-  useEffect(() => {
-    if (state !== "active") {
-      esRef.current?.close();
-      esRef.current = null;
-    }
-  }, [state]);
+  createEffect(
+    () => props.state,
+    (state) => {
+      if (state !== "active") {
+        es?.close();
+        es = undefined;
+      }
+    },
+  );
 
   // Reattach to an in-progress stream on page reload.
-  useEffect(() => {
-    if (state === "active" && running) {
+  onSettled(() => {
+    if (props.state === "active" && props.running) {
       setIsRunning(true);
       openStream();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
 
   function openStream() {
-    if (esRef.current) return;
-    const es = new EventSource(`/api/steps/${step}/stream`);
-    esRef.current = es;
-    es.onmessage = (e) => setLogs((prev) => [...prev, e.data]);
-    es.addEventListener("done", (e) => {
-      es.close();
-      esRef.current = null;
+    if (es) return;
+    const source = new EventSource(`/api/steps/${props.step}/stream`);
+    es = source;
+    source.onmessage = (e) =>
+      setLogs((lines) => {
+        lines.push(e.data);
+      });
+    source.addEventListener("done", (e) => {
+      source.close();
+      es = undefined;
       const payload = JSON.parse((e as MessageEvent).data ?? "{}") as {
         exitCode?: number;
       };
       if ((payload.exitCode ?? 0) === 0) {
-        onComplete();
+        props.onComplete();
       } else {
         setError(`Step exited with code ${payload.exitCode}`);
         setIsRunning(false);
       }
     });
-    es.onerror = () => {
-      if (es.readyState === EventSource.CLOSED) {
+    source.onerror = () => {
+      if (source.readyState === EventSource.CLOSED) {
         setIsRunning(false);
       }
     };
@@ -79,14 +79,14 @@ export function StepItem({
   async function runStep() {
     setIsRunning(true);
     setError(null);
-    setLogs([]);
+    setLogs(() => []);
 
     let responseBody: { started?: boolean } = {};
     try {
-      const r = await client(`/api/steps/${step}`, { method: "POST" });
+      const r = await client(`/api/steps/${props.step}`, { method: "POST" });
       if (!r.ok) {
         const text = await r.text();
-        setError(`POST /api/steps/${step} → ${r.status}: ${text}`);
+        setError(`POST /api/steps/${props.step} → ${r.status}: ${text}`);
         setIsRunning(false);
         return;
       }
@@ -98,80 +98,85 @@ export function StepItem({
     }
 
     // If the server says started:false (e.g. update already up-to-date), complete immediately.
-    if (hasStream && responseBody.started === false) {
+    if (props.hasStream && responseBody.started === false) {
       setIsRunning(false);
-      onComplete();
+      props.onComplete();
       return;
     }
 
-    if (hasStream) {
+    if (props.hasStream) {
       openStream();
     } else {
       setIsRunning(false);
-      onComplete();
+      props.onComplete();
     }
   }
 
+  const cardClass = () =>
+    props.state === "done" && props.detail
+      ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30"
+      : props.state === "done"
+        ? "border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/30"
+        : props.state === "active"
+          ? "border-blue-400 dark:border-blue-600 bg-white dark:bg-gray-900"
+          : "border-gray-200 dark:border-gray-800 opacity-50";
+
   return (
-    <div
-      className={`rounded-xl border p-4 transition-colors ${
-        state === "done" && detail
-          ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30"
-          : state === "done"
-            ? "border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/30"
-          : state === "active"
-            ? "border-blue-400 dark:border-blue-600 bg-white dark:bg-gray-900"
-            : "border-gray-200 dark:border-gray-800 opacity-50"
-      }`}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            {state === "done" && !detail && (
-              <span className="text-green-600 dark:text-green-400 text-sm">✓</span>
-            )}
-            <span className="font-medium text-sm">{title}</span>
+    <div class={["rounded-xl border p-4 transition-colors", cardClass()]}>
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <Show when={props.state === "done" && !props.detail}>
+              <span class="text-green-600 dark:text-green-400 text-sm">✓</span>
+            </Show>
+            <span class="font-medium text-sm">{props.title}</span>
           </div>
-          {description && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {description}
+          <Show when={props.description}>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {props.description}
             </p>
-          )}
-          {detail && (
-            <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">{detail}</p>
-          )}
+          </Show>
+          <Show when={props.detail}>
+            <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">{props.detail}</p>
+          </Show>
         </div>
-        {state === "active" && (
+        <Show when={props.state === "active"}>
           <button
-            onClick={runStep}
-            disabled={isRunning}
-            className={`shrink-0 py-1.5 px-3 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-              isRunning
+            onClick={() => void runStep()}
+            disabled={isRunning()}
+            class={[
+              "shrink-0 py-1.5 px-3 rounded-lg text-sm font-medium transition-colors cursor-pointer",
+              isRunning()
                 ? "bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-wait"
-                : "bg-blue-600 hover:bg-blue-500 text-white"
-            }`}
+                : "bg-blue-600 hover:bg-blue-500 text-white",
+            ]}
           >
-            {isRunning ? "Running..." : "Run"}
+            {isRunning() ? "Running..." : "Run"}
           </button>
-        )}
+        </Show>
       </div>
 
-      {error && (
-        <div className="mt-3 p-2 rounded bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-xs font-mono">
-          {error}
-        </div>
-      )}
+      <Show when={error()}>
+        {(message) => (
+          <div class="mt-3 p-2 rounded bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-xs font-mono">
+            {message()}
+          </div>
+        )}
+      </Show>
 
-      {logs.length > 0 && (
-        <div className="mt-3 max-h-48 overflow-y-auto bg-gray-950 rounded-lg p-3">
-          {logs.map((line, i) => (
-            <div key={i} className="text-xs font-mono text-green-400 whitespace-pre-wrap">
-              {line}
-            </div>
-          ))}
-          <div ref={logEndRef} />
+      <Show when={logs.length > 0}>
+        <div class="mt-3 max-h-48 overflow-y-auto bg-gray-950 rounded-lg p-3">
+          {/* Append-only lines: non-keyed, so a repeated line is its own row. */}
+          <For each={logs} keyed={false}>
+            {(line) => (
+              <div class="text-xs font-mono text-green-400 whitespace-pre-wrap">
+                {line()}
+              </div>
+            )}
+          </For>
+          <div ref={(el) => (logEnd = el)} />
         </div>
-      )}
+      </Show>
     </div>
   );
 }

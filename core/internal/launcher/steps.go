@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -91,4 +92,41 @@ func gpuDone(root paths.Root) bool {
 func installDone(root paths.Root) bool {
 	_, err := os.Stat(root.MarkerFile(".git_version"))
 	return err == nil
+}
+
+// legacy reports whether this launcher's folder is a micromamba install.
+func (l *Launcher) legacy() bool { return legacyInstall(l.root, l.systemPython) }
+
+// refuseNotLegacy answers 400 and returns true for a step that only a micromamba
+// install has, so a new folder cannot create installer_files by a stray request.
+func (l *Launcher) refuseNotLegacy(w http.ResponseWriter, step string) bool {
+	if l.legacy() {
+		return false
+	}
+	http.Error(w, step+" is a step of a micromamba install; a new install has none (install uv, the Gradio host and engines from the Extensions page)", http.StatusBadRequest)
+	return true
+}
+
+// legacyMarkers are the files only the micromamba install writes.
+var legacyMarkers = []string{".gpu", ".git_version", ".python_version", ".pip_packages"}
+
+// legacyInstall reports whether the folder holds a micromamba install, or the
+// start of one: the installer_files directory the mamba step creates, or a marker
+// the install step writes. Such a folder keeps the mamba, gpu and install steps
+// and their markers (P4). A new folder from the archive has none of these and
+// shows download, pre-flight and update only: the engines and the Gradio host are
+// installed from the Extensions page. --system-python never has them.
+func legacyInstall(root paths.Root, systemPython bool) bool {
+	if systemPython {
+		return false
+	}
+	if st, err := os.Stat(root.InstallerFiles()); err == nil && st.IsDir() {
+		return true
+	}
+	for _, m := range legacyMarkers {
+		if _, err := os.Stat(root.MarkerFile(m)); err == nil {
+			return true
+		}
+	}
+	return false
 }

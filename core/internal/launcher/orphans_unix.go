@@ -35,7 +35,9 @@ type groupRecord struct {
 }
 
 func recordPath(root paths.Root) string {
-	return filepath.Join(root.InstallerFiles(), "app-processes.json")
+	// Not in the old installer's folder: a new install has none, and the folder must not look like
+	// an install with the old env because the app was started once.
+	return filepath.Join(root.Dir(), "platforms", "app-processes.json")
 }
 
 // recordGroups writes the record for the given app processes.
@@ -50,6 +52,10 @@ func recordGroups(root paths.Root, procs []appProc) {
 	}
 	data, err := json.MarshalIndent(rec, "", "  ")
 	if err != nil {
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(recordPath(root)), 0o755); err != nil {
+		slog.Warn("could not record the app processes", "err", err)
 		return
 	}
 	if err := os.WriteFile(recordPath(root), data, 0o644); err != nil {

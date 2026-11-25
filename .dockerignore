@@ -1,0 +1,15 @@
+# What a developer's checkout carries must not end up in the image (data/ stays: it holds tracked files; CI builds a clean checkout).
+.git
+.claude
+**/node_modules
+react-ui/out
+installer_files
+platforms
+.venvs
+cache
+outputs
+favorites
+config.json
+.env
+core/dist
+*.exe

@@ -46,6 +46,10 @@ var ffprobeRun = func(ctx context.Context, root, file string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, exe, "-v", "error", "-print_format", "json", "-show_format", "-show_streams", "-i", file)
+	// The provider's Linux build is shared: ffprobe loads libav* from ../lib.
+	if lib := filepath.Join(filepath.Dir(exe), "..", "lib"); runtime.GOOS == "linux" && strings.Contains(filepath.ToSlash(exe), "/tools/ffmpeg/") {
+		cmd.Env = append(os.Environ(), "LD_LIBRARY_PATH="+lib)
+	}
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
@@ -54,7 +58,7 @@ var ffprobeRun = func(ctx context.Context, root, file string) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-var errNoFFprobe = errors.New("ffprobe was not found (install ffmpeg or add ffprobe to PATH)")
+var errNoFFprobe = errors.New("ffprobe was not found (install ffmpeg or add ffprobe to PATH; installing any engine from the launcher installs uv first, which fetches ffmpeg)")
 
 // findFFprobe looks in the project environment first, then on PATH.
 func findFFprobe(root string) string {
@@ -66,6 +70,8 @@ func findFFprobe(root string) string {
 		filepath.Join(root, "installer_files", "env", "Library", "bin"),
 		filepath.Join(root, "installer_files", "env", "bin"),
 		filepath.Join(root, "installer_files", "env", "Scripts"),
+		// The uv platform's tools provider (D26): a new install has no env.
+		filepath.Join(root, "platforms", "uv", "tools", "ffmpeg", "bin"),
 	} {
 		p := filepath.Join(dir, name)
 		if st, err := os.Stat(p); err == nil && st.Mode().IsRegular() {

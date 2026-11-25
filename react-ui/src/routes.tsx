@@ -89,7 +89,6 @@ const HuggingFaceCacheManager = lazy(() =>
 );
 
 /** The remaining pages. */
-const Db = lazy(() => import("./pages/db"));
 const Placeholder = lazy(() => import("./pages/placeholder"));
 const TestGradioProxy = lazy(() => import("./pages/test-gradio-proxy"));
 
@@ -113,7 +112,6 @@ export const AppRoutes = () => (
       <Route path="/" element={<Home />} />
       <Route path="/pipeline" element={<Pipeline />} />
       <Route path="/placeholder" element={<Placeholder />} />
-      <Route path="/db" element={<Db />} />
       <Route path="/test-gradio-proxy" element={<TestGradioProxy />} />
 
       <Route path="/text-to-speech" element={<TextToSpeech />} />

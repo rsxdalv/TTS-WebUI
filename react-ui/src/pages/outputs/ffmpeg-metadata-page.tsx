@@ -8,10 +8,14 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { BarkMetadataDisplay } from "../../components/BarkMetadataDisplay";
+import { goGetJson } from "../../functions/goData";
+import { launcherUrl, type HostStatus } from "../../functions/hostStatus";
 
 const FFMPEGMetadataPage = () => {
   const [audioUrl, setAudioUrl] = useState<string | undefined>();
   const [metadata, setMetadata] = useState<any>(null);
+  const [missing, setMissing] = useState(false);
+  const [launcher, setLauncher] = useState("");
 
   const loadMetadata = async (x: string) => {
     // x is /file-input-cache/<name>; the Go core reads that uploaded file.
@@ -23,6 +27,13 @@ const FFMPEGMetadataPage = () => {
     });
     const data = await response.json();
     setMetadata(response.ok ? data : { error: data.error ?? response.statusText });
+    if (response.status === 503) {
+      // ffprobe is missing: the uv platform fetches ffmpeg; the launcher installs it.
+      setMissing(true);
+      goGetJson<HostStatus>("/api/go-data/host-status")
+        .then((s) => setLauncher(launcherUrl(s)))
+        .catch(() => setLauncher(""));
+    }
   };
 
   return (
@@ -39,6 +50,7 @@ const FFMPEGMetadataPage = () => {
               callback={(file) => {
                 setAudioUrl(file);
                 setMetadata(null);
+                setMissing(false);
                 if (!file) return;
                 loadMetadata(file);
               }}
@@ -51,6 +63,19 @@ const FFMPEGMetadataPage = () => {
             <CardTitle>Metadata</CardTitle>
           </CardHeader>
           <CardContent>
+            {missing && (
+              <p className="mb-2">
+                ffprobe is not installed. Installing any engine from the launcher installs uv first, which fetches ffmpeg:{" "}
+                {launcher ? (
+                  <a className="underline" href={launcher + "#extensions"}>
+                    open the launcher's Extensions page
+                  </a>
+                ) : (
+                  "open the launcher's Extensions page and install an engine (uv is installed first)"
+                )}
+                .
+              </p>
+            )}
             {metadata ? (
               <MetadataViewer metadata={metadata} />
             ) : (

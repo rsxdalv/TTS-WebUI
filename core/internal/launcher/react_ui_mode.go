@@ -12,8 +12,11 @@ import (
 	"fmt"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/legacyenv"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/system"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -108,7 +111,7 @@ func missingExportClaims(sw switches.Set) string {
 }
 
 // errUINotBuilt is the error for an install with no export and no way to build one.
-var errUINotBuilt = errors.New("the React UI is not built: run Install or Update in the launcher, then start the app again")
+var errUINotBuilt = errors.New("the React UI is not built: react-ui/out is missing. The installer zip ships it, so run Update in the launcher or download the zip again (an install with the old env builds it in Install)")
 
 // canBuildExport reports whether `npm run build:static` can run: react-ui has
 // the script and its dependencies are installed.
@@ -185,7 +188,20 @@ func (s *reactPrep) tool() func(ctx context.Context, name string, args ...string
 func (s *reactPrep) runReactUITool(ctx context.Context, name string, args ...string) error {
 	p := &procs.Proc{}
 	dir := filepath.Join(s.root.Dir(), "react-ui")
-	c, err := s.platform.Command(nil, append([]string{name}, args...))
+	// A clone that builds for itself uses its own Node from PATH; only the old env
+	// and the system platform run it through the platform.
+	var c platform.Command
+	var err error
+	switch s.platform.Name() {
+	case legacyenv.Name, system.Name:
+		c, err = s.platform.Command(nil, append([]string{name}, args...))
+	default:
+		if path, e := exec.LookPath(name); e != nil {
+			err = fmt.Errorf("%s was not found on PATH: a clone that builds the React UI itself needs Node; the installer zip ships react-ui/out", name)
+		} else {
+			c = platform.Command{Program: path, Args: args}
+		}
+	}
 	if err == nil {
 		err = p.Start(ctx, c.Program, c.Args, dir, c.Env)
 	}

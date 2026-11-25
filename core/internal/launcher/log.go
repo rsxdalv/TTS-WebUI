@@ -18,6 +18,7 @@ type Log struct {
 	subs      []*logSub
 	doneCh    chan struct{}
 	closeOnce sync.Once
+	exit      int
 }
 
 // newLog returns a Log ready for use.
@@ -88,4 +89,18 @@ func (l *Log) Subscribe() (<-chan string, func()) {
 		}
 	}
 	return sub.ch, cancel
+}
+
+// SetExit records a non-zero exit code a stream reports when the log ends.
+func (l *Log) SetExit(code int) {
+	l.mu.Lock()
+	l.exit = code
+	l.mu.Unlock()
+}
+
+// ExitCode is what SetExit recorded (0 by default).
+func (l *Log) ExitCode() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.exit
 }

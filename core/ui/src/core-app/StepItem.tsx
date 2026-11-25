@@ -9,6 +9,7 @@ interface StepItemProps {
   state: "done" | "active" | "pending";
   hasStream: boolean;
   running?: boolean; // server reports a proc is already running (reattach on mount)
+  detail?: string; // a line from the server: an update waiting, or why it could not be checked
   onComplete: () => void;
 }
 
@@ -19,6 +20,7 @@ export function StepItem({
   state,
   hasStream,
   running,
+  detail,
   onComplete,
 }: StepItemProps) {
   const [isRunning, setIsRunning] = useState(false);
@@ -113,8 +115,10 @@ export function StepItem({
   return (
     <div
       className={`rounded-xl border p-4 transition-colors ${
-        state === "done"
-          ? "border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/30"
+        state === "done" && detail
+          ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30"
+          : state === "done"
+            ? "border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/30"
           : state === "active"
             ? "border-blue-400 dark:border-blue-600 bg-white dark:bg-gray-900"
             : "border-gray-200 dark:border-gray-800 opacity-50"
@@ -123,7 +127,7 @@ export function StepItem({
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            {state === "done" && (
+            {state === "done" && !detail && (
               <span className="text-green-600 dark:text-green-400 text-sm">✓</span>
             )}
             <span className="font-medium text-sm">{title}</span>
@@ -132,6 +136,9 @@ export function StepItem({
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               {description}
             </p>
+          )}
+          {detail && (
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">{detail}</p>
           )}
         </div>
         {state === "active" && (

@@ -5,6 +5,7 @@ import { StepList } from "./StepList";
 import { DarkThemeProvider, ThemeToggle } from "../DarkThemeProvider";
 import { client } from "./client";
 import { ExtensionsView } from "./ExtensionsView";
+import { Notice } from "./Notice";
 
 type Page = "setup" | "extensions";
 
@@ -15,6 +16,7 @@ export interface StepStatus {
   step: string;
   done: boolean;
   running?: boolean;
+  detail?: string;
 }
 
 export function CoreApp() {
@@ -68,6 +70,7 @@ export function CoreApp() {
           <ThemeToggle />
         </header>
         <main className={`${page === "extensions" ? "max-w-4xl" : "max-w-2xl"} mx-auto px-4 py-8`}>
+          <Notice />
           {page === "extensions" && <ExtensionsView />}
           {page === "setup" && error && (
             <div className="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm">

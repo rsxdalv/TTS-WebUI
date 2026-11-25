@@ -1,4 +1,9 @@
-name: Test pip install requirements
+name: Test default install (gradio-host)
+
+# The default install has no micromamba and no shared env: the launcher installs uv, the
+# pinned Python and the app's requirements into .venvs/gradio-host. This job does what the
+# Extensions page does for the Gradio host, on the three OSes. The
+# install needs nothing from the runner but the launcher (Go builds that only).
 
 on:
   workflow_dispatch:
@@ -10,80 +15,34 @@ jobs:
   build:
     strategy:
       fail-fast: false
-      max-parallel: 4
       matrix:
         platform: [ubuntu-latest, macos-14, windows-latest]
-        # platform: [ubuntu-latest]
-        # python-version: ["3.10", "3.11", "3.12"]
-        python-version: ["3.10", "3.11"]
-        # python-version: ["3.12"]
-        include:
-          - python-version: "3.10"
-            cp_tag: "310"
-          - python-version: "3.11"
-            cp_tag: "311"
-          # - python-version: "3.12"
-          #   cp_tag: "312"
 
     runs-on: ${{ matrix.platform }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-go@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          go-version-file: core/go.mod
 
-      - name: Install torch
-        run: python -m pip install torch==2.11.0 torchvision torchaudio==2.11.0
+      - name: Build the launcher
+        shell: bash
+        working-directory: core
+        run: CGO_ENABLED=0 go build -trimpath -o ../tts-webui-ci ./cmd/tts-webui
 
-      # Mac-specific xformers installation
-      - name: Install xformers on macOS
-        if: matrix.platform == 'macos-14'
-        run: |
-          python -m pip install https://github.com/rsxdalv/xformers/releases/download/v0.0.30/xformers-0.0.30+cbc9beb.d20250514-cp${{ matrix.cp_tag }}-cp${{ matrix.cp_tag }}-macosx_11_0_universal2.whl
-
-      # xformers installation for non-macOS platforms
-      - name: Install xformers on non-macOS
-        if: matrix.platform != 'macos-14'
-        run: |
-          python -m pip install xformers==0.0.35 --index-url https://download.pytorch.org/whl/cu128
-
-      - name: Upgrade setuptools for Python 3.12
-        if: matrix.python-version == '3.12'
-        run: python -m pip install --upgrade setuptools
-
-      - name: Install dependencies
+      - name: Install gradio-host through the launcher
         shell: bash
         run: |
-          python -m pip install -r requirements.txt \
-            "tts-webui-extension.rvc>=0.0.5" \
-            "tts-webui-extension.styletts2>=0.1.0" \
-            --extra-index-url https://tts-webui.github.io/extensions-index/
+          bash core/scripts/ci/install-host.sh "$PWD/tts-webui-ci" "$PWD"
 
-      - name: Test tts_webui
-        run: python -c "import tts_webui"
-
-      - name: Print installed packages
-        run: python -m pip list
-
-      - name: Test install all extensions
-        continue-on-error: true
-        # fix bug with 'fixture' extensions that do not have a real repo (builtin)
-        run: |
-          for ext in $(cat extensions.json | grep "requirements" | grep "git+" | cut -d '"' -f 4); do
-            echo "Installing $ext"
-            python -m pip install --dry-run $ext
-          done
-
-      # uv lock
-      # - name: Lock with uv
-      #   run: uv lock
-
-      # upload uv lock artifact
-      # - name: Upload uv lock artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: uv-lock-${{ matrix.platform }}-${{ matrix.python-version }}
-      #     path: .uv-lock
+      - name: Upload launcher log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-host-${{ matrix.platform }}
+          path: |
+            install-host.launcher.log
+            install-host.out
+            installer_scripts/logs

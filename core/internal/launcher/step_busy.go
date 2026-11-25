@@ -14,6 +14,9 @@ func (l *Launcher) runningStep() string {
 			}
 			continue
 		}
+		if s == "update" && l.updateRunning() {
+			return s
+		}
 		if l.isStepRunning(s) {
 			return s
 		}

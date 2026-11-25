@@ -35,7 +35,7 @@ func (l *Launcher) handleDownload() http.Handler {
 		}
 		url := req.URL
 		if url == "" {
-			url = canonicalDownloadURL
+			url = archiveURL()
 		}
 
 		lg := newLog()
@@ -47,6 +47,7 @@ func (l *Launcher) handleDownload() http.Handler {
 		go func() {
 			if err := downloadAndExtract(context.Background(), url, destDir, lg); err != nil {
 				lg.AddLine(fmt.Sprintf("ERROR: %v", err))
+				lg.SetExit(1)
 			} else {
 				lg.AddLine("done")
 			}
@@ -114,7 +115,7 @@ func (l *Launcher) handleMamba() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		l.stepMu.Lock()
 		defer l.stepMu.Unlock()
-		if l.refuseWhileBusy(w, "mamba") {
+		if l.refuseNotLegacy(w, "mamba") || l.refuseWhileBusy(w, "mamba") {
 			return
 		}
 
@@ -159,7 +160,7 @@ func (l *Launcher) handleGPU() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		l.stepMu.Lock()
 		defer l.stepMu.Unlock()
-		if l.refuseWhileBusy(w, "gpu") {
+		if l.refuseNotLegacy(w, "gpu") || l.refuseWhileBusy(w, "gpu") {
 			return
 		}
 		var req gpuRequest
@@ -188,7 +189,7 @@ func (l *Launcher) handleInstall() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		l.stepMu.Lock()
 		defer l.stepMu.Unlock()
-		if l.refuseWhileBusy(w, "install") {
+		if l.refuseNotLegacy(w, "install") || l.refuseWhileBusy(w, "install") {
 			return
 		}
 		if !mambaDone(l.root) {
@@ -280,6 +281,14 @@ func (l *Launcher) handleUpdate() http.Handler {
 		l.stepMu.Lock()
 		defer l.stepMu.Unlock()
 		if l.refuseWhileBusy(w, "update") {
+			return
+		}
+		if !l.legacy() {
+			if l.appRunning() {
+				http.Error(w, "stop the app before running update", http.StatusConflict)
+				return
+			}
+			l.startArchiveUpdate(w)
 			return
 		}
 

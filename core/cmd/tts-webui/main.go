@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rsxdalv/TTS-WebUI/core/internal/launcher"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/version"
 )
 
@@ -21,6 +22,12 @@ func main() {
 	if len(args) > 0 && (args[0] == "--version" || args[0] == "-version") {
 		fmt.Printf("tts-webui %s\n", version.String())
 		return
+	}
+	// An update leaves the new launcher as <exe>.new; switch to it first.
+	if handled, code, err := launcher.SwapPendingBinary(args); err != nil {
+		fmt.Fprintf(os.Stderr, "tts-webui: could not switch to the downloaded launcher (%v); running the old one\n", err)
+	} else if handled {
+		os.Exit(code)
 	}
 	if len(args) > 0 && args[0] == "launch" { // accepted for compatibility
 		args = args[1:]

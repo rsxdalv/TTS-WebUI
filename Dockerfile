@@ -4,6 +4,12 @@ WORKDIR /src
 COPY core/ ./core/
 RUN cd core && CGO_ENABLED=0 go build -trimpath -o /out/tts-webui ./cmd/tts-webui
 
+# The React UI export (react-ui/out). Node is needed to build it, not to run the app.
+FROM node:22 AS react
+WORKDIR /src/react-ui
+COPY react-ui/ ./
+RUN npm install && npm run build:static
+
 # Python 3.10 w/ Nvidia Cuda
 FROM nvidia/cuda:12.8.0-devel-ubuntu22.04 AS env_base
 
@@ -11,20 +17,10 @@ FROM nvidia/cuda:12.8.0-devel-ubuntu22.04 AS env_base
 RUN apt-get update && apt-get install --no-install-recommends -y \
     git vim nano build-essential python3-dev python3-venv python3-pip gcc g++ ffmpeg
 
-ENV NODE_VERSION=22.9.0
-RUN apt-get update && apt install -y curl
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-ENV NVM_DIR=/root/.nvm
-RUN . "$NVM_DIR/nvm.sh" && nvm install ${NODE_VERSION}
-RUN . "$NVM_DIR/nvm.sh" && nvm use v${NODE_VERSION}
-RUN . "$NVM_DIR/nvm.sh" && nvm alias default v${NODE_VERSION}
-ENV PATH="/root/.nvm/versions/node/v${NODE_VERSION}/bin/:${PATH}"
-RUN node --version
-RUN npm --version
 
-# Install uv
-# ADD --chmod=755 https://astral.sh/uv/install.sh /install.sh
-# RUN /install.sh && rm /install.sh
+# uv, at the version the uv platform pins (core/internal/platform/uv/pin.go): the system
+# platform runs entries with the image's Python and this uv, from PATH.
+RUN pip install --no-cache-dir uv==0.13.6
 
 # Define PyTorch version
 ENV TORCH_VERSION=2.11.0
@@ -36,10 +32,8 @@ RUN pip install --no-cache-dir setuptools torch==$TORCH_VERSION torchvision torc
 # Set working directory
 WORKDIR /app
 
-# Clone the repo
-RUN git clone https://github.com/rsxdalv/tts-webui.git /app/tts-webui
-
-# Set working directory to the cloned repo
+# The sources of the commit being built (the archive of D32 is the same files), not a fresh clone of main.
+COPY . /app/tts-webui
 WORKDIR /app/tts-webui
 
 # Install all requirements
@@ -49,11 +43,10 @@ RUN pip install "tts-webui-extension.rvc>=0.0.6" --extra-index-url https://tts-w
 RUN pip install "tts-webui-extension.styletts2>=0.1.0" --extra-index-url https://tts-webui.github.io/extensions-index/
 
 
-# SQLite is included with Python, no additional setup needed
-# Build the React UI
-RUN cd react-ui && npm install && npm run build:static
+# The React UI export built above
+COPY --from=react /src/react-ui/out /app/tts-webui/react-ui/out
 
-# The launcher starts the app on 0.0.0.0:7770 with the image's own Python and Node
+# The launcher starts the app on 0.0.0.0:7770 with the image's own Python
 COPY --from=launcher /out/tts-webui /usr/local/bin/tts-webui
 
 # Run the server

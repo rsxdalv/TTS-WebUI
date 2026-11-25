@@ -43,3 +43,9 @@ export const goSendJson = async <T>(
 
 export const errorText = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
+
+export const goDelete = async <T>(path: string): Promise<T> => {
+  const response = await fetch(path, { method: "DELETE" });
+  if (!response.ok) throw new Error(await readError(response));
+  return response.json();
+};

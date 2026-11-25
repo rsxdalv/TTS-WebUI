@@ -164,6 +164,10 @@ export const routes: Route[] = [
     ],
   },
   {
+    href: "/openai",
+    text: "OpenAI",
+  },
+  {
     href: "/tools",
     text: "Tools",
     subroutes: [

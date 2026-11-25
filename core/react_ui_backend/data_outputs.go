@@ -90,7 +90,7 @@ func dataFromJSON(root, collection string) ([]any, error) {
 		if !isObj {
 			continue // spreading anything else leaves no "date"
 		}
-		item := generateResult(result, collection, dirname)
+		item := generateResult(result, collection, dirname, filepath.Join(base, dirname))
 		date, _ := item.get("date")
 		if !truthy(date) {
 			continue
@@ -140,12 +140,21 @@ func readdirNames(dir string) []string {
 	return names
 }
 
-func generateResult(result *jsObject, collection, dirname string) *jsObject {
+// generateResult adds the fields the page reads. The audio is the .ogg the
+// original named; a folder that has a .wav and no .ogg (the Chatterbox and openai
+// generations, which write no .ogg) points at the .wav, which the page can play.
+func generateResult(result *jsObject, collection, dirname, dir string) *jsObject {
 	item := newJSObject()
 	for _, k := range result.keys {
 		item.set(k, result.vals[k])
 	}
-	coreFilename := filepath.Join(dirname, dirname+".ogg")
+	ext := ".ogg"
+	if _, err := os.Stat(filepath.Join(dir, dirname+".ogg")); err != nil {
+		if _, err := os.Stat(filepath.Join(dir, dirname+".wav")); err == nil {
+			ext = ".wav"
+		}
+	}
+	coreFilename := filepath.Join(dirname, dirname+ext)
 	item.set("semantic_prompt", nil)
 	item.set("coarse_prompt", nil)
 	item.set("filename", filepath.ToSlash(filepath.Join("api", "webui-generations", collection, coreFilename)))

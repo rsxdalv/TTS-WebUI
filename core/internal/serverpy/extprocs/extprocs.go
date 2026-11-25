@@ -8,9 +8,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"net"
-	"os"
-	"path/filepath"
 	"regexp"
 	"runtime"
 	"sort"
@@ -61,11 +60,10 @@ var harnessArgs = []string{"-m", "tts_webui.extensions_loader.proxy_harness"}
 // Options configure a Manager.
 type Options struct {
 	Root paths.Root
-	// MainPython is the command prefix for the main env (e.g. micromamba -p
-	// installer_files/env run python). Used when .venvs/<pkg> has no python.
-	MainPython []string
-	// BaseEnv is the environment of the children. nil inherits os.Environ().
-	BaseEnv []string
+	// Platform resolves the program of every extension: its own venv's python
+	// when .venvs/<pkg> has one, else the main env's. Its command environment is
+	// the base environment of the children.
+	Platform platform.Platform
 	// ExtraEnv, when set, is asked at each start for KEY=VALUE variables that
 	// Go computes for the extension (the resolved decorators). They win over
 	// BaseEnv, so Python cannot override them.
@@ -139,16 +137,10 @@ func (m *Manager) logf(f string, a ...any) {
 	}
 }
 
-func (m *Manager) python(pkg string) []string {
-	rel := filepath.Join(".venvs", pkg, "bin", "python")
-	if runtime.GOOS == "windows" {
-		rel = filepath.Join(".venvs", pkg, "Scripts", "python.exe")
-	}
-	venv := filepath.Join(m.opts.Root.Dir(), rel)
-	if st, err := os.Stat(venv); err == nil && !st.IsDir() {
-		return []string{venv}
-	}
-	return m.opts.MainPython
+// command is the python command of an extension: its own venv's when it has
+// one, otherwise the platform's main env.
+func (m *Manager) command(pkg string) (platform.Command, error) {
+	return m.opts.Platform.Command(&platform.Entry{Package: pkg, Own: true}, []string{"python"})
 }
 
 func portUsable(p int) bool {
@@ -190,9 +182,9 @@ func (m *Manager) Start(ctx context.Context, pkg string, req StartRequest) (Star
 		return StartResult{Port: old.port, Pid: old.pid, AlreadyRunning: true}, nil
 	}
 
-	py := m.python(pkg)
-	if len(py) == 0 {
-		return StartResult{}, errors.New("no python configured (MainPython empty and no .venvs python)")
+	pc, err := m.command(pkg)
+	if err != nil {
+		return StartResult{}, fmt.Errorf("no python for %s: %w", pkg, err)
 	}
 
 	port := req.Port
@@ -203,14 +195,14 @@ func (m *Manager) Start(ctx context.Context, pkg string, req StartRequest) (Star
 		}
 	}
 
-	env, err := m.buildEnv(pkg, port, req)
+	env, err := m.buildEnv(pkg, port, req, pc.Env)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("environment of %s: %w", pkg, err)
 	}
 	cctx, cancel := context.WithCancel(context.Background())
 	e := &entry{pkg: pkg, port: port, state: StateStarting, cancel: cancel, proc: &procs.Proc{}, exited: make(chan struct{})}
-	args := append(append([]string{}, py[1:]...), harnessArgs...)
-	if err := e.proc.Start(cctx, py[0], args, m.opts.Root.Dir(), env); err != nil {
+	args := append(append([]string{}, pc.Args...), harnessArgs...)
+	if err := e.proc.Start(cctx, pc.Program, args, m.opts.Root.Dir(), env); err != nil {
 		cancel()
 		e.state, e.errMsg, e.dead = StateFailed, "spawn: "+err.Error(), true
 		close(e.exited)
@@ -257,11 +249,7 @@ func setEnv(env []string, k, v string) []string {
 	return append(dropEnv(env, k), k+"="+v)
 }
 
-func (m *Manager) buildEnv(pkg string, port int, req StartRequest) ([]string, error) {
-	base := m.opts.BaseEnv
-	if base == nil {
-		base = os.Environ()
-	}
+func (m *Manager) buildEnv(pkg string, port int, req StartRequest, base []string) ([]string, error) {
 	env := append([]string{}, base...)
 	if m.opts.ExtraEnv != nil {
 		extra, err := m.opts.ExtraEnv()

@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/legacyenv"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -347,10 +349,15 @@ func installStore(t *testing.T) (*Store, string, string) {
 	t.Helper()
 	root := t.TempDir()
 	log := filepath.Join(root, "helper.log")
+	t.Setenv("EXTCATALOG_HELPER", "1")
+	t.Setenv("HELPER_LOG", log)
+	pr, err := paths.New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
 	s := New(Options{
 		Root: root, Token: "tok",
-		Run: []string{os.Args[0], "-test.run=^TestHelperProcess$", "--"},
-		Env: append(os.Environ(), "EXTCATALOG_HELPER=1", "HELPER_LOG="+log),
+		Platform: legacyenv.New(legacyenv.Options{Root: pr, Prefix: []string{os.Args[0], "-test.run=^TestHelperProcess$", "--"}}),
 	})
 	return s, root, log
 }

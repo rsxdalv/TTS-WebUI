@@ -2,6 +2,7 @@ package supervise
 
 import (
 	"context"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"testing"
 )
 
@@ -10,7 +11,7 @@ import (
 func TestSubscribeLogsSeesThroughTheClosingRunner(t *testing.T) {
 	s, _ := newSup(t, func(c *Config) {
 		c.NoReact = true
-		c.StartGradioSide = func(prefix, baseEnv []string) (*GradioSide, error) {
+		c.StartGradioSide = func(platform.Platform) (*GradioSide, error) {
 			return &GradioSide{Close: func() {}}, nil
 		}
 	})

@@ -15,12 +15,39 @@ interface Ext {
   installed: boolean;
   disabled: boolean;
   can_be_disabled: boolean;
+  requires: string[];
+  requirements_state: Requirement[];
+}
+
+interface Requirement {
+  name: string;
+  kind: "platform" | "entry";
+  state: "ready" | "missing";
+  via?: string;
+  would?: string;
+}
+
+// blocker is the first requirement that installing this entry cannot satisfy:
+// a platform (or the Gradio host) that is not there.
+function blocker(e: Ext): Requirement | undefined {
+  return e.requirements_state.find(
+    (r) => r.state === "missing" && !(r.would ?? "").startsWith("would install"),
+  );
+}
+
+function requirementText(r: Requirement): string {
+  if (r.state === "ready") return `${r.name} (${r.via})`;
+  return `${r.name}: ${r.would ?? "missing"}`;
 }
 
 interface ListAnswer {
   extensions: Ext[];
   app_running: boolean;
   warning?: string;
+  platform: string;
+  platform_ready: boolean;
+  platform_detail?: string;
+  requires_error?: string;
 }
 
 type Op = "install" | "uninstall" | "check-dependencies" | "latest-version";
@@ -168,6 +195,15 @@ export function ExtensionsView() {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 text-sm">
+        Runs on: <strong>{data.platform}</strong>
+        {data.platform_ready ? "" : ` — not available: ${data.platform_detail ?? ""}`}
+      </div>
+      {data.requires_error && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm">
+          {data.requires_error}
+        </div>
+      )}
       {data.warning && (
         <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-200 text-sm">
           {data.warning}
@@ -212,6 +248,11 @@ export function ExtensionsView() {
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">{e.description}</p>
+                  {e.requires.length > 0 && !e.builtin && (
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Requires: {e.requirements_state.map(requirementText).join(", ")}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500 dark:text-gray-500">
                     {e.package_name}
                     {e.website && (
@@ -226,7 +267,12 @@ export function ExtensionsView() {
                 </div>
                 <div className="flex flex-wrap gap-2 justify-end shrink-0">
                   {!e.builtin && !e.installed && (
-                    <button className={btnPrimary} disabled={!!busy} onClick={() => run(e, "install")}>
+                    <button
+                      className={btnPrimary}
+                      disabled={!!busy || !!blocker(e)}
+                      title={blocker(e) ? requirementText(blocker(e)!) : undefined}
+                      onClick={() => run(e, "install")}
+                    >
                       Install
                     </button>
                   )}

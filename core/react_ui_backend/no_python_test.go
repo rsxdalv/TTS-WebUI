@@ -7,6 +7,8 @@ package react_ui_backend
 // or crash; each route answers a plain state.
 
 import (
+	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/legacyenv"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -32,14 +34,19 @@ const newRouteNames = "core-pip,core-logs,core-model-locations,core-settings,cor
 func realCore(t *testing.T, root string) *Core {
 	t.Helper()
 	missing := []string{filepath.Join(root, "installer_files", "micromamba-missing"), "-p", filepath.Join(root, "installer_files", "env"), "run"}
+	pr, err := paths.New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plat := legacyenv.New(legacyenv.Options{Root: pr, Prefix: missing})
 	cfg := appconfig.New(appconfig.Options{Root: root, Token: noPyToken})
-	ext := extcatalog.New(extcatalog.Options{Root: root, Token: noPyToken, Config: cfg, Run: missing})
+	ext := extcatalog.New(extcatalog.Options{Root: root, Token: noPyToken, Config: cfg, Platform: plat})
 	mux := http.NewServeMux()
 	mux.Handle(appconfig.Path, cfg.Handler())
 	mux.Handle(appconfig.OpsPrefix, cfg.OpsHandler())
 	mux.Handle(extcatalog.Prefix, ext.Handler())
 	mux.Handle(appenv.APIPrefix, appenv.NewAPI(appenv.APIOptions{Root: root, Token: noPyToken}).Handler())
-	mux.Handle(piplist.Path, piplist.New(piplist.Options{Root: root, Token: noPyToken, Run: missing}).Handler())
+	mux.Handle(piplist.Path, piplist.New(piplist.Options{Root: root, Token: noPyToken, Platform: plat}).Handler())
 	mux.Handle(logview.Prefix, logview.New(logview.Options{Root: root, Token: noPyToken}).Handler())
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)

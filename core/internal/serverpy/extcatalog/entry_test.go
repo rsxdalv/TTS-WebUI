@@ -482,7 +482,7 @@ func TestInstallEntryNativeUsesItsOwnProxy(t *testing.T) {
 
 // TestInstallEntryIsRefusedWhileAnotherInstallRuns checks the lock.
 func TestInstallEntryIsRefusedWhileAnotherInstallRuns(t *testing.T) {
-	s, _ := newStore(t)
+	s, _, _ := installStore(t)
 	s.install.Lock()
 	h := s.Handler()
 	if c, b := call(t, h, "POST", "/api/extcatalog/install-entry", `{"entry":`+goodEntry+`}`, "tok"); c != 409 || !strings.Contains(b, "another install is running") {

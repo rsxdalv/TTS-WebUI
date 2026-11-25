@@ -36,19 +36,24 @@ func (s *Store) serveInstallEntry(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, invalidf("entry: %s", msg))
 		return
 	}
+	steps, err := s.planPasted(r.Context(), entry)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
 	if !s.install.TryLock() {
 		s.fail(w, fmt.Errorf("%w: another install is running", errBusy))
 		return
 	}
 	defer s.install.Unlock()
 	s.stream(w, r, func(ctx context.Context, emit func(string)) bool {
-		return s.installEntry(ctx, entry, emit)
+		return s.installEntry(ctx, entry, steps, emit)
 	})
 }
 
 // installEntry installs one entry: its own requirements and its own proxy
 // ("native" means the venv path), never a package looked up by name.
-func (s *Store) installEntry(ctx context.Context, entry *Obj, emit func(string)) bool {
+func (s *Store) installEntry(ctx context.Context, entry *Obj, steps []string, emit func(string)) bool {
 	name := entry.Str("name")
 	if name == "" {
 		name = entry.Str("package_name")
@@ -56,6 +61,10 @@ func (s *Store) installEntry(ctx context.Context, entry *Obj, emit func(string))
 	req := entry.Str("requirements")
 	if req == "" || req == "builtin" {
 		emit(fmt.Sprintf("%s has no requirements to install", name))
+		return false
+	}
+	// What the entry requires is installed first (the entry is the last step).
+	if len(steps) > 1 && !s.runSteps(ctx, steps[:len(steps)-1], nil, emit) {
 		return false
 	}
 	toks, err := validateRequirements(req)

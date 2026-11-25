@@ -5,6 +5,7 @@ package supervise
 // next Start). A Gradio that cannot start, has no Python, or dies is a state.
 
 import (
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -20,7 +21,7 @@ type sideProbe struct {
 	urls            []string
 }
 
-func (p *sideProbe) start(_, _ []string) (*GradioSide, error) {
+func (p *sideProbe) start(platform.Platform) (*GradioSide, error) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(200) }))
 	p.created.Add(1)
 	p.mu.Lock()
@@ -85,7 +86,7 @@ func TestCoreStartsWithoutPythonAndWithoutGPULabel(t *testing.T) {
 	p := &sideProbe{}
 	s, _ := newSup(t, func(c *Config) {
 		c.StartGradioSide = p.start
-		c.CommandPrefix = nil // the default micromamba prefix; nothing is installed in the temp root
+		c.Platform = nil // the default platform; nothing is installed in the temp root
 		c.SkipGPUCheck = false
 	})
 	if err := s.Start(ctx()); err != nil {

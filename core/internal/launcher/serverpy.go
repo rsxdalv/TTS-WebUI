@@ -6,9 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -56,11 +58,12 @@ type serverPy struct {
 }
 
 // startServerPy reads the public host and port the way server.py does
-// (config.json, .env, .env.user) and starts the Go side on them. prefix is the
-// `micromamba -p <env> run` command that runs the main env's python; baseEnv is
-// the environment the launcher gives every child. The environment the children
-// get is baseEnv plus .env and .env.user.
-func startServerPy(root paths.Root, prefix, baseEnv []string, flags appenv.Flags) (*serverPy, error) {
+// (config.json, .env, .env.user) and starts the Go side on them. p is the
+// platform the children run on; its command environment is what the launcher
+// gives every child. The environment the children get is that plus .env and
+// .env.user.
+func startServerPy(root paths.Root, p platform.Platform, flags appenv.Flags) (*serverPy, error) {
+	baseEnv := commandEnv(p)
 	// Startup prep that server.py does in-process: output folders, a default
 	// .env when missing, then .env and .env.user on top of the launcher env.
 	if err := appenv.EnsureFolders(root.Dir()); err != nil {
@@ -84,12 +87,12 @@ func startServerPy(root paths.Root, prefix, baseEnv []string, flags appenv.Flags
 		return nil, err
 	}
 	// rep.Env (launcher env + .env + .env.user) is what the children run with.
-	return startServerPyOn(root, plan.Host, plan.PublicPort, prefix, rep.Env, flags)
+	return startServerPyOn(root, plan.Host, plan.PublicPort, p.WithEnv(rep.Env), flags)
 }
 
 // startServerPyOn starts the router on host:publicPort, routing / to Gradio on
 // a free loopback port, and the control API on another loopback port.
-func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseEnv []string, flags appenv.Flags) (*serverPy, error) {
+func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Platform, flags appenv.Flags) (*serverPy, error) {
 	gradioPort, err := freePort()
 	if err != nil {
 		return nil, fmt.Errorf("allocating the Gradio port: %w", err)
@@ -134,19 +137,18 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 	// Extension lists, which extensions load, pip/uv installs (see extcatalog).
 	pip := piplist.New(piplist.Options{
 		Root: root.Dir(), Token: token,
-		Run: append([]string(nil), prefix...), Env: append([]string(nil), baseEnv...),
-		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+		Platform: p,
+		Logf:     func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	})
 	ext := extcatalog.New(extcatalog.Options{
 		Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
-		Run: append([]string(nil), prefix...), Env: append([]string(nil), baseEnv...),
-		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+		Platform: p,
+		Logf:     func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	})
 
 	mgr := extprocs.New(extprocs.Options{
-		Root:       root,
-		MainPython: append(append([]string(nil), prefix...), "python"),
-		BaseEnv:    append([]string(nil), baseEnv...),
+		Root:     root,
+		Platform: p,
 		// Extension processes get no control token, so they receive the
 		// resolved decorators instead of asking for them.
 		ExtraEnv: ext.DecoratorEnv,
@@ -203,7 +205,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 		ctl:        ctl,
 		ui:         ui,
 		publicAddr: pub.Addr().String(),
-		gradioEnv: append(append([]string(nil), baseEnv...),
+		gradioEnv: append(commandEnv(p),
 			"TTS_CORE_URL=http://"+ctlLn.Addr().String(),
 			"TTS_CORE_TOKEN="+token,
 		),
@@ -293,4 +295,13 @@ func isLoopbackHost(host string) bool {
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
+}
+
+// commandEnv is the environment the platform gives a command.
+func commandEnv(p platform.Platform) []string {
+	c, err := p.Command(nil, []string{"python"})
+	if err != nil {
+		return os.Environ()
+	}
+	return c.Env
 }

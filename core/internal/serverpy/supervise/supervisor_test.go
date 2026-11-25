@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/legacyenv"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
 )
 
@@ -97,7 +99,7 @@ func newSup(t *testing.T, mutate func(*Config), extraEnv ...string) (*Supervisor
 		PublicPort:    e.gradioPort,
 		ReactPort:     e.reactPort,
 		SkipGPUCheck:  true,
-		CommandPrefix: []string{fakeBin},
+		Platform:      prefixPlatform(root, []string{fakeBin}),
 		Opener:        e.op.open,
 		ProbeInterval: 20 * time.Millisecond,
 		ReadyTimeout:  20 * time.Second,
@@ -267,9 +269,10 @@ func TestDefaultsAndForwardedFlagsDedup(t *testing.T) {
 		strings.Join(c.GradioArgs, " ") != "--no-react" || c.ReadyTimeout != DefaultReadyTimeout {
 		t.Errorf("defaults: %+v", c)
 	}
-	want := []string{micromambaPath(root), "-p", installEnvPath(root), "run"}
-	if strings.Join(c.CommandPrefix, "|") != strings.Join(want, "|") {
-		t.Errorf("prefix = %v, want %v", c.CommandPrefix, want)
+	pc, err := c.Platform.Command(nil, []string{"python", "server_core.py"})
+	if err != nil || c.Platform.Name() != "legacy-env" || !strings.Contains(pc.Program, "micromamba") ||
+		strings.Join(pc.Args[:2], " ") != "-p "+filepath.Join(root.InstallerFiles(), "env") {
+		t.Errorf("default platform %s: %q %q (%v)", c.Platform.Name(), pc.Program, pc.Args, err)
 	}
 	c.Share = true
 	c.GradioArgs = []string{"--no-react", "--share"}
@@ -370,7 +373,7 @@ func TestStartAfterAllExited(t *testing.T) {
 }
 
 func TestStartErrorMarksFailed(t *testing.T) {
-	s, _ := newSup(t, func(c *Config) { c.CommandPrefix = []string{filepath.Join(t.TempDir(), "nope")} })
+	s, _ := newSup(t, func(c *Config) { c.Platform = prefixPlatform(c.Root, []string{filepath.Join(t.TempDir(), "nope")}) })
 	// No Python is a state, not a failed Start: Gradio is reported as failed
 	// with the reason, the React front is up.
 	if err := s.Start(ctx()); err != nil {
@@ -661,4 +664,10 @@ func TestStrictGPULabelStopsStart(t *testing.T) {
 		t.Fatalf("strict, valid .gpu: %v", err)
 	}
 	waitState(t, s, NameGradio, StateReady)
+}
+
+// prefixPlatform is the legacy-env platform with a fake child in front of every
+// command, so a test runs the supervisor against a program it controls.
+func prefixPlatform(root paths.Root, prefix []string) platform.Platform {
+	return legacyenv.New(legacyenv.Options{Root: root, Prefix: prefix})
 }

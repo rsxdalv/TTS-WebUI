@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/system"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/piplist"
 )
 
@@ -20,9 +22,13 @@ func main() {
 	token := flag.String("token", "dev", "shared secret for X-TTS-Core-Token")
 	python := flag.String("python", "python", "python to run pip with")
 	flag.Parse()
+	dir, err := paths.New(*root)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	mux := http.NewServeMux()
-	mux.Handle(piplist.Path, piplist.New(piplist.Options{Root: *root, Token: *token, Python: *python, Logf: log.Printf}).Handler())
+	mux.Handle(piplist.Path, piplist.New(piplist.Options{Root: *root, Token: *token, Platform: system.New(system.Options{Root: dir, Python: *python}), Logf: log.Printf}).Handler())
 	srv := &http.Server{Addr: *addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	log.Printf("pipd: %s on %s", *root, *addr)
 	log.Fatal(srv.ListenAndServe())

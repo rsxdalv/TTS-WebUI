@@ -17,7 +17,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"sync"
 	"time"
@@ -221,7 +220,8 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 
 	// Gradio is optional. Without a Python environment it is not started and
 	// the Go core (front, control API, services) runs alone.
-	pyOK, pyMsg := pythonAvailable(s.cfg)
+	st := s.cfg.Platform.Status(setupCtx)
+	pyOK, pyMsg := st.Ready, st.Detail
 	// The GPU label is checked here and nowhere else in Start. A missing or
 	// invalid one is a warning, not a stop (Config.StrictGPULabel makes it
 	// one again).
@@ -289,7 +289,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	var side *GradioSide
 	if s.cfg.StartGradioSide != nil {
 		var err error
-		side, err = s.cfg.StartGradioSide(c.CommandPrefix[:len(c.CommandPrefix):len(c.CommandPrefix)], c.baseEnv())
+		side, err = s.cfg.StartGradioSide(c.Platform)
 		if err != nil {
 			closeFront()
 			return fmt.Errorf("starting the Go side of gradio: %w", err)
@@ -322,7 +322,6 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	s.pubTLS = c.PublicTLS
 
 	cwd := c.Root.Dir()
-	prefix := c.CommandPrefix
 	gen := make([]*managed, 0, 3)
 	// The Go side has its own lifetime: it is held by a runner of its own that
 	// lives until Stop, whatever Gradio does. It is not part of the status.
@@ -354,8 +353,11 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 			slog.Warn("gradio not started: " + pyMsg)
 			continue
 		}
-		cmd, args := childCommand(prefix, d.args)
-		if err := r.Start(ctx, cmd, args, cwd, d.env); err != nil {
+		pc, err := c.Platform.Command(nil, d.args)
+		if err == nil {
+			err = r.Start(ctx, pc.Program, pc.Args, cwd, d.env)
+		}
+		if err != nil {
 			m.state, m.errMsg = StateFailed, err.Error()
 			m.markGone()
 			if d.name == NameGradio {
@@ -705,15 +707,6 @@ func readGPULabel(c Config) (string, error) {
 	return string(label), nil
 }
 
-// childCommand is the program and arguments of one child: the prefix, then the
-// child's own command line; with no prefix (SystemPython) the child's own.
-func childCommand(prefix, args []string) (string, []string) {
-	if len(prefix) == 0 {
-		return args[0], append([]string(nil), args[1:]...)
-	}
-	return prefix[0], append(append([]string(nil), prefix[1:]...), args...)
-}
-
 // releaseCore closes the Go side of an earlier run that is still held (its
 // Gradio died or never started, and nothing else is alive), so a new Start can
 // bind the same ports.
@@ -735,30 +728,6 @@ func (s *Supervisor) releaseCore() {
 	case <-hold.finished:
 	case <-time.After(5 * time.Second):
 	}
-}
-
-// pythonAvailable reports whether Gradio can be started: the command prefix's
-// program exists and, for `micromamba -p <env> run`, so does the env; with no
-// prefix (system Python) python must be on PATH. The message is what the
-// status shows.
-func pythonAvailable(c Config) (bool, string) {
-	if len(c.CommandPrefix) == 0 {
-		if _, err := exec.LookPath("python"); err != nil {
-			return false, "no Python environment: python was not found on PATH"
-		}
-		return true, ""
-	}
-	if _, err := exec.LookPath(c.CommandPrefix[0]); err != nil {
-		return false, "no Python environment: " + c.CommandPrefix[0] + " was not found (the install has not been done)"
-	}
-	for i := 1; i+1 < len(c.CommandPrefix); i++ {
-		if c.CommandPrefix[i] == "-p" || c.CommandPrefix[i] == "--prefix" {
-			if st, err := os.Stat(c.CommandPrefix[i+1]); err != nil || !st.IsDir() {
-				return false, "no Python environment: " + c.CommandPrefix[i+1] + " does not exist (the install has not been done)"
-			}
-		}
-	}
-	return true, ""
 }
 
 // checkGPULabel is the one place the GPU label is checked. Nothing started by

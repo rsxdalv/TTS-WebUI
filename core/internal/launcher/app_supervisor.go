@@ -6,6 +6,7 @@ package launcher
 
 import (
 	"context"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appenv"
@@ -80,7 +81,7 @@ func WithNoBrowser() Option { return func(o *options) { o.noBrowser = true } }
 func WithShare() Option { return func(o *options) { o.share = true } }
 
 // WithSystemPython runs python, npm and uv from PATH instead of the installer's
-// micromamba env (Docker, Colab, an env the user manages). The GPU gate is off.
+// legacy-env (Docker, Colab, an env the user manages: the system platform). The GPU gate is off.
 func WithSystemPython() Option { return func(o *options) { o.systemPython = true } }
 
 // WithNoReact leaves the React UI out: no build and no front.
@@ -159,8 +160,8 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		plan.GradioEnv = []string{"BROWSER=" + noopBrowser, "PYTHONUNBUFFERED=1"}
 		return plan, nil
 	}
-	cfg.StartGradioSide = func(prefix, baseEnv []string) (*supervise.GradioSide, error) {
-		py, err := startServerPy(root, prefix, baseEnv, o.flags())
+	cfg.StartGradioSide = func(p platform.Platform) (*supervise.GradioSide, error) {
+		py, err := startServerPy(root, p, o.flags())
 		if err != nil {
 			return nil, err
 		}

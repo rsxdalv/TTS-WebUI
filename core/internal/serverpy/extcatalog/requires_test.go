@@ -42,8 +42,8 @@ func TestRealCatalogRequires(t *testing.T) {
 		}
 	}
 	// P6 moves one engine at a time: 20 at the start, +1 for each converted
-	// engine (Kokoro 21st, MMS and Vall-E-X 22nd and 23rd).
-	if uv != 23 || host+uv+own != len(g.Entries) || len(g.Entries) < 66 {
+	// engine (Kokoro 21st, MMS and Vall-E-X 22nd and 23rd, Chatterbox and StyleTTS2 24th and 25th; F5-TTS needs gradio>=6, see LAB-48).
+	if uv != 25 || host+uv+own != len(g.Entries) || len(g.Entries) < 66 {
 		t.Errorf("uv=%d host=%d of %d", uv, host, len(g.Entries))
 	}
 }

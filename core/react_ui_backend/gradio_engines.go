@@ -32,6 +32,9 @@ var engineOwners = map[string]string{
 
 	"mms": "tts_webui_extension.mms",
 
+	"chatterbox_tts":        "tts_webui_extension.chatterbox",
+	"get_chatterbox_voices": "tts_webui_extension.chatterbox",
+
 	"vall_e_x_generate":                  "tts_webui_extension.vall_e_x",
 	"vall_e_x_split_text_into_sentences": "tts_webui_extension.vall_e_x",
 	"vall_e_x_tokenize":                  "tts_webui_extension.vall_e_x",

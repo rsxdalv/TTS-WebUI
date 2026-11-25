@@ -44,6 +44,9 @@ type meta struct {
 	Voice          string
 	Speed          float64
 	ResponseFormat string
+	// Label replaces "openai_<endpoint>" in the folder name when another platform
+	// saves a clip (SaveClip).
+	Label string
 }
 
 // saveGeneration writes the clip, its metadata and its waveform into
@@ -54,8 +57,12 @@ func saveGeneration(root string, now time.Time, m meta, wavBytes []byte, w wavIn
 	if err != nil {
 		return saved{}, err
 	}
+	label := "openai_" + m.Endpoint
+	if m.Label != "" {
+		label = m.Label
+	}
 	base := fmt.Sprintf("%s__%s__%s", now.Format("2006-01-02_15-04-05"),
-		promptToTitle("openai_"+m.Endpoint), promptToTitle(m.Text))
+		promptToTitle(label), promptToTitle(m.Text))
 	outputs := filepath.Join(root, "outputs")
 	if err := os.MkdirAll(outputs, 0o755); err != nil {
 		return saved{}, err

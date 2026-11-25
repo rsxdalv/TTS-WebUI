@@ -1016,6 +1016,23 @@
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.whisper",
                 "extension_platform_version": "0.0.2"
             }
+        ],
+        "audiocpp": [
+            {
+                "package_name": "audiocpp_pocket_tts_en",
+                "name": "Pocket TTS (English, audio.cpp)",
+                "requirements": "audio.cpp GGUF model files (pinned, sha256 checked)",
+                "description": "Pocket TTS, 100M, English, q8 GGUF (about 146 MB with three voices), run by the audio.cpp server. No Python. Generate on the audio.cpp page; cancel mid-generation works.",
+                "extension_type": "interface",
+                "extension_class": "audiocpp",
+                "author": "Kyutai",
+                "extension_author": "rsxdalv",
+                "license": "CC-BY-4.0",
+                "website": "https://huggingface.co/kyutai/pocket-tts",
+                "extension_website": "https://github.com/0xShug0/audio.cpp",
+                "extension_platform_version": "0.0.1",
+                "requires": ["audiocpp"]
+            }
         ]
     },
     "decorators": [

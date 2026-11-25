@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/audiocpp"
 )
 
 // The extensions.json of the repository: every entry gets a requires, derived
@@ -23,7 +25,7 @@ func TestRealCatalogRequires(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	uv, host, own := 0, 0, 0
+	uv, host, own, audio := 0, 0, 0, 0
 	for name, e := range g.Entries {
 		if name == "gradio-host" { // the host is an entry of its own (host_test.go)
 			own++
@@ -37,14 +39,16 @@ func TestRealCatalogRequires(t *testing.T) {
 			uv++
 		case "gradio-host":
 			host++
+		case "audiocpp": // the audio.cpp models (P7)
+			audio++
 		default:
 			t.Errorf("%s requires %v", name, e.Requires)
 		}
 	}
 	// P6 moves one engine at a time: 20 at the start, +1 for each converted
 	// engine (Kokoro 21st, MMS and Vall-E-X 22nd and 23rd, Chatterbox and StyleTTS2 24th and 25th; ACE-Step, Demucs and Vocos 26th to 28th, RVC, Audio Separator and Resemble Enhance 29th to 31st, AP-BWE, PyRNNoise and Seamless M4T 32nd to 34th, CosyVoice, XTTS and Higgs V2 35th to 37th, VibeVoice, Kimi Audio and MiMo-Audio 38th to 40th; F5-TTS needs gradio>=6, see LAB-49).
-	if uv != 40 || host+uv+own != len(g.Entries) || len(g.Entries) < 66 {
-		t.Errorf("uv=%d host=%d of %d", uv, host, len(g.Entries))
+	if uv != 40 || audio != len(audiocpp.Models) || host+uv+own+audio != len(g.Entries) || len(g.Entries) < 66 {
+		t.Errorf("uv=%d host=%d audio=%d of %d", uv, host, audio, len(g.Entries))
 	}
 }
 

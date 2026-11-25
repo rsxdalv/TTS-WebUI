@@ -9,7 +9,7 @@ interface Ext {
   description: string;
   website: string;
   extension_class: string;
-  kind: "interface" | "decorator" | "host";
+  kind: "interface" | "decorator" | "host" | "platform";
   proxy: string;
   validation?: string;
   builtin: boolean;
@@ -90,11 +90,16 @@ async function runOp(
   onLine: (line: string) => void,
   gpu?: string,
   signal?: AbortSignal,
+  audioRow?: string,
 ): Promise<boolean | GPUAsk> {
   const r = await client(`/api/ext/op/${op}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(gpu ? { package_name: packageName, gpu } : { package_name: packageName }),
+    body: JSON.stringify({
+      package_name: packageName,
+      ...(gpu ? { gpu } : {}),
+      ...(audioRow ? { audiocpp_row: audioRow } : {}),
+    }),
     signal,
   });
   if (op === "latest-version") {
@@ -157,10 +162,20 @@ export function ExtensionsView() {
   const [ask, setAsk] = useState<{ ext: Ext; ask: GPUAsk; pick: string } | null>(null);
   const abort = useRef<AbortController | null>(null);
 
+  // The audio.cpp build (cpu or vulkan) is chosen for an install that installs the
+  // audiocpp platform: the platform itself, or a model while it is missing.
+  const [audioRow, setAudioRow] = useState("cpu");
+  const installsAudio = (e: Ext) =>
+    e.package_name === "audiocpp" ||
+    e.requirements_state.some((r) => r.name === "audiocpp" && r.state === "missing");
+
   const run = async (ext: Ext, op: Op, gpu?: string) => {
     setBusy(ext.package_name);
     setAsk(null);
-    setLog([`> ${op} ${ext.package_name}${gpu ? ` (GPU: ${gpu})` : ""}`]);
+    const row = op === "install" && installsAudio(ext) ? audioRow : undefined;
+    setLog([
+      `> ${op} ${ext.package_name}${gpu ? ` (GPU: ${gpu})` : ""}${row ? ` (audio.cpp build: ${row})` : ""}`,
+    ]);
     abort.current = new AbortController();
     try {
       const res = await runOp(
@@ -169,6 +184,7 @@ export function ExtensionsView() {
         (l) => setLog((prev) => [...prev, l]),
         gpu,
         abort.current.signal,
+        row,
       );
       if (typeof res === "object") {
         // The uv platform is installed first and needs the GPU choice.
@@ -221,9 +237,13 @@ export function ExtensionsView() {
       const key =
         e.kind === "host"
           ? "Gradio host"
-          : e.kind === "decorator"
-            ? "Decorators"
-            : title(e.extension_class || "other");
+          : e.kind === "platform"
+            ? "Platforms"
+            : e.kind === "decorator"
+              ? "Decorators"
+              : e.extension_class === "audiocpp"
+                ? "audio.cpp models"
+                : title(e.extension_class || "other");
       out.set(key, [...(out.get(key) ?? []), e]);
     }
     for (const list of out.values()) {
@@ -231,7 +251,7 @@ export function ExtensionsView() {
         (a, b) => Number(b.installed) - Number(a.installed) || a.name.localeCompare(b.name),
       );
     }
-    const rank = (g: string) => (g === "Gradio host" ? 0 : g === "Decorators" ? 2 : 1);
+    const rank = (g: string) => (g === "Gradio host" || g === "Platforms" ? 0 : g === "Decorators" ? 2 : 1);
     return [...out.entries()].sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b));
   }, [data, filter]);
 
@@ -273,6 +293,20 @@ export function ExtensionsView() {
         placeholder="Filter extensions"
         className="px-3 py-2 text-sm rounded border border-gray-300 dark:border-gray-700 bg-transparent"
       />
+      {data.extensions.some((e) => e.package_name === "audiocpp" && !e.installed) && (
+        <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm flex items-center gap-2">
+          <label htmlFor="audio-row">audio.cpp build to install:</label>
+          <select
+            id="audio-row"
+            className="px-2 py-1 rounded border border-gray-300 dark:border-gray-700 bg-transparent"
+            value={audioRow}
+            onChange={(e) => setAudioRow(e.target.value)}
+          >
+            <option value="cpu">CPU (34 MB, runs anywhere)</option>
+            <option value="vulkan">Vulkan (84 MB, needs a GPU driver with Vulkan)</option>
+          </select>
+        </div>
+      )}
       {groups.map(([group, list]) => (
         <section key={group} className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
@@ -330,7 +364,7 @@ export function ExtensionsView() {
                   )}
                   {!e.builtin && e.installed && (
                     <>
-                      {e.kind !== "host" && (
+                      {e.kind !== "host" && e.kind !== "platform" && (
                         <>
                           <button className={btn} disabled={!!busy} onClick={() => run(e, "latest-version")}>
                             Check update

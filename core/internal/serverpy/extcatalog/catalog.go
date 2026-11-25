@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/audiocpp"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/system"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"os"
@@ -40,6 +41,9 @@ type Options struct {
 	// UV is the platform own-venv entries (proxy: native) run on. Nil means
 	// there is none: such an entry cannot be installed.
 	UV *uv.Platform
+	// AudioCpp is the platform audio.cpp models run on. Nil means there is none: a
+	// model cannot be installed.
+	AudioCpp *audiocpp.Platform
 	// Host makes and removes the Gradio host (detect.Host). It is set only while
 	// the install folder runs on it; nil when the main env is the existing one
 	// (legacy-env, system), which this app does not install.

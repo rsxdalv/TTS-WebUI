@@ -12,12 +12,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/audiocpp"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/gradiohost"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/requires"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -64,7 +66,7 @@ func newExtHost(root paths.Root, systemPython bool, appRunning func() bool) (*ex
 		root: root, token: token, cfg: cfg,
 		cat: extcatalog.New(extcatalog.Options{
 			Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
-			Platform: p, UV: uv.New(uv.Options{Root: root}), Host: detect.Host(p), AppRunning: appRunning, Logf: logf,
+			Platform: p, UV: uv.New(uv.Options{Root: root}), AudioCpp: audiocpp.New(audiocpp.Options{Root: root}), Host: detect.Host(p), AppRunning: appRunning, Logf: logf,
 			StopEngine: func(pkg string) bool { return stopRunningEngine(root.Dir(), pkg) },
 		}),
 		pip: pip, platform: p,
@@ -144,6 +146,15 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 			Requires: graph.Entries[gradiohost.Name].Requires, RequirementsState: graph.State(gradiohost.Name),
 		})
 	}
+	if h.cat.AudioCppSupported() {
+		// The audiocpp platform is a row of its own, like the Gradio host: models require it.
+		ans.Extensions = append(ans.Extensions, extItem{
+			PackageName: audiocpp.Name, Name: "audio.cpp (" + audiocpp.Version + ")",
+			Description: "The audio.cpp server, checked against its sha256, and the audio.cpp models below. Runs without Python.",
+			Class:       "platform", Kind: "platform", Installed: h.cat.AudioCppReady(ctx),
+			Requires: []string{}, RequirementsState: []requires.Req{},
+		})
+	}
 	for _, kind := range []string{"interface", "decorator"} {
 		entries, err := h.cat.List(kind)
 		if err != nil {
@@ -156,6 +167,9 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 			}
 			proxy := e.Str("proxy")
 			installed, _ := installs.Of(pkg, proxy)
+			if gerr == nil && slices.Contains(graph.Entries[pkg].Requires, audiocpp.Name) {
+				installed = graph.Entries[pkg].Installed // an audio.cpp model: its files are on the platform
+			}
 			var req []string
 			var reqState []requires.Req
 			if gerr == nil {

@@ -160,7 +160,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 	var mgr *extprocs.Manager
 	ext := extcatalog.New(extcatalog.Options{
 		Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
-		Platform: p, UV: uv.New(uv.Options{Root: root}),
+		Platform: p, UV: uv.New(uv.Options{Root: root}), AudioCpp: audiocpp.New(audiocpp.Options{Root: root}),
 		Host: detect.Host(p), AppRunning: func() bool { return true },
 		StopEngine: func(pkg string) bool { return mgr.StopIfRunning(pkg) },
 		Logf:       func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },

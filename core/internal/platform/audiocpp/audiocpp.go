@@ -72,6 +72,15 @@ func New(o Options) *Platform {
 	return p
 }
 
+// Supported reports whether this OS and architecture have a pinned build to install.
+func (p *Platform) Supported() bool {
+	if p.archive != nil {
+		return true
+	}
+	_, err := ArchiveFor(p.goos, p.goarch, RowCPU)
+	return err == nil
+}
+
 // WithRow returns a copy that installs this row.
 func (p *Platform) WithRow(row string) *Platform { q := *p; q.row = row; return &q }
 

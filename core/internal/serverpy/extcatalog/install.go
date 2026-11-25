@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/audiocpp"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/gradiohost"
 )
 
@@ -21,9 +22,12 @@ import (
 func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) {
 	o, err := body(w, r)
 	if err == nil {
-		err = only(o, "package_name", "gpu")
+		err = only(o, "package_name", "gpu", "audiocpp_row")
 		if err == nil && op != "install" && o.Str("gpu") != "" {
 			err = invalidf("gpu is only for an install")
+		}
+		if err == nil && op != "install" && o.Str("audiocpp_row") != "" {
+			err = invalidf("audiocpp_row is only for an install")
 		}
 	}
 	if err != nil {
@@ -33,6 +37,10 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 	pkg := o.Str("package_name")
 	if pkg == gradiohost.Name {
 		s.serveHost(w, r, op, o)
+		return
+	}
+	if pkg == audiocpp.Name {
+		s.serveAudioCpp(w, r, op, o)
 		return
 	}
 	entry, err := s.find(pkg)
@@ -56,6 +64,9 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 			pl, err = s.planInstall(r.Context(), g, pkg)
 			if err == nil {
 				err = s.chooseGPU(&pl, o.Str("gpu"))
+			}
+			if err == nil {
+				err = s.chooseAudioRow(&pl, o.Str("audiocpp_row"))
 			}
 		} else if err == nil {
 			err = refuseIfRequired(g, pkg)
@@ -105,6 +116,12 @@ func (s *Store) runSteps(ctx context.Context, pl plan, entry *Obj, emit func(str
 	}
 	for _, name := range pl.Platforms {
 		say("the " + name + " platform")
+		if name == audiocpp.Name {
+			if !s.installAudioCpp(ctx, pl.AudioRow, emit) {
+				return stopped("the " + name + " platform")
+			}
+			continue
+		}
 		if !s.installPlatform(ctx, name, pl.GPU, emit) {
 			return stopped("the " + name + " platform")
 		}
@@ -127,7 +144,9 @@ func (s *Store) runSteps(ctx context.Context, pl plan, entry *Obj, emit func(str
 		}
 		say(step)
 		var ok bool
-		if e.Str("proxy") == "native" {
+		if requiresAudio(e) {
+			ok = s.audioModelSetup(ctx, e, emit)
+		} else if e.Str("proxy") == "native" {
 			ok = s.venvSetup(ctx, e, emit)
 		} else {
 			ok = s.pipInstall(ctx, e, false, emit)
@@ -259,6 +278,9 @@ func (s *Store) pipInstallTokens(ctx context.Context, entry *Obj, toks []string,
 // uninstall removes an entry: its venv when it runs in one, otherwise pip
 // uninstall in the main env.
 func (s *Store) uninstall(ctx context.Context, entry *Obj, emit func(string)) bool {
+	if requiresAudio(entry) {
+		return s.audioModelRemove(ctx, entry, emit)
+	}
 	if entry.Str("proxy") != "native" {
 		return s.pipUninstall(ctx, entry.Str("package_name"), emit)
 	}

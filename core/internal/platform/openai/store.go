@@ -279,3 +279,6 @@ func privateHost(host string) bool {
 	ip := net.ParseIP(host)
 	return ip != nil && (ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast())
 }
+
+// ValidName reports whether s is acceptable as an endpoint name.
+func ValidName(s string) bool { return nameRe.MatchString(s) }

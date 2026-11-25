@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/openai"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"log/slog"
 	"net"
@@ -209,6 +210,11 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 	mux.Handle(engines.Prefix, engines.New(engines.Options{
 		Cat: ext, Procs: mgr, Token: token, PublicPort: tcpPort(pub.Addr()),
 	}))
+	// The openai platform: named remote endpoints, keys kept by Go (see platform/openai).
+	mux.Handle(openai.Prefix, openai.NewHandler(openai.NewClient(openai.Options{
+		Store: openai.NewStore(root.Dir()), Root: root.Dir(),
+		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+	}), token))
 	mux.Handle("/api/extensions", mgr.Handler())
 	mux.Handle("/api/extensions/", mgr.Handler())
 	ctl := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}

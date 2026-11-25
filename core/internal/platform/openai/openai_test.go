@@ -493,3 +493,25 @@ func TestPlatformIsAlwaysReadyAndRunsNothing(t *testing.T) {
 		t.Fatal("a remote endpoint has no command")
 	}
 }
+
+func TestControlAPIWantsTheToken(t *testing.T) {
+	root := t.TempDir()
+	h := NewHandler(NewClient(Options{Store: NewStore(root), Root: root}), "tok")
+	for _, c := range []struct {
+		tok, peer string
+		want      int
+	}{
+		{"", "127.0.0.1:1", 403}, {"wrong", "127.0.0.1:1", 403}, {"tok", "192.168.1.2:1", 403}, {"tok", "127.0.0.1:1", 200},
+	} {
+		req := httptest.NewRequest("GET", "/api/openai/endpoints", nil)
+		req.RemoteAddr = c.peer
+		if c.tok != "" {
+			req.Header.Set(TokenHeader, c.tok)
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != c.want {
+			t.Errorf("%+v: %d", c, rec.Code)
+		}
+	}
+}

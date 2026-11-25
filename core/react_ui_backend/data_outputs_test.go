@@ -177,3 +177,39 @@ func TestDataOutputsNonStringDateIs500WithTwoItems(t *testing.T) {
 		t.Fatalf("status %d", resp.StatusCode)
 	}
 }
+
+func TestDataOutputsPointsAtTheWavWhenThereIsNoOgg(t *testing.T) {
+	root := t.TempDir()
+	for name, files := range map[string][]string{"a_ogg": {".json", ".ogg", ".wav"}, "b_wav": {".json", ".wav"}, "c_none": {".json"}} {
+		dir := filepath.Join(root, "outputs", name)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for _, ext := range files {
+			body := "x"
+			if ext == ".json" {
+				body = `{"date":"2026-01-01 10:00:00.000000"}`
+			}
+			if err := os.WriteFile(filepath.Join(dir, name+ext), []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	items, err := dataFromJSON(root, "outputs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, it := range items {
+		o := it.(*jsObject)
+		f, _ := o.get("filename")
+		fn := f.(string)
+		got[fn[strings.LastIndex(fn, "/")+1:]] = fn[strings.LastIndex(fn, "."):]
+	}
+	want := map[string]string{"a_ogg.ogg": ".ogg", "b_wav.wav": ".wav", "c_none.ogg": ".ogg"}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("%s: got %v, want %v", k, got, want)
+		}
+	}
+}

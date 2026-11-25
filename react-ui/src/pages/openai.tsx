@@ -178,8 +178,8 @@ const Generate = ({ endpoints }: { endpoints: Endpoint[] }) => {
       {error && <div className="text-red-600 break-words">{error}</div>}
       {clip && (
         <div className="flex flex-col gap-2">
-          <audio controls src={`/${clip.wav}`} className="w-full" />
-          <img src={`/${clip.png}`} alt="waveform" className="w-full" />
+          <audio controls src={`/api/webui-generations/${clip.wav}`} className="w-full" />
+          <img src={`/api/webui-generations/${clip.png}`} alt="waveform" className="w-full" />
           <div className="text-sm text-gray-600">
             {clip.seconds.toFixed(1)} s, saved as <code>{clip.folder}</code>.{" "}
             <Link className="underline" to="/outputs/outputs">

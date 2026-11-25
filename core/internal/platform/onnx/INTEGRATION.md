@@ -9,7 +9,7 @@ and what was run. **Windows x64 and CPU only.**
 | Piece | Where |
 |---|---|
 | `platform/onnx` | `Install` (pinned sherpa-onnx **v1.13.8** `win-x64-shared-MT-Release`, sha256 checked, unpacked beside `runtime.new` and swapped, `platform.json` last); `Create` / `Remove` / `EntryStatus` for a pinned model (`models/<dir>`, `entry.json` last; a folder without it is `Partial`); `Command` (`offline-tts`, no shell); `Generate` (one child process per clip, killed on cancel, temporary folder removed always). |
-| `handler.go` | Control API `/api/onnx/engines` and `/api/onnx/speech` (loopback + token, like `platform/openai`). The clip is saved by `openai.SaveClip` (new, `platform/openai/clip.go`: the P5 save code, exported) in the layout History reads. |
+| `handler.go` | Control API `/api/onnx/engines` and `/api/onnx/speech` (loopback + token, like `platform/openai`). The clip is saved by `openai.SaveClip` (P7's exported wrapper in `platform/openai/clip.go`) in the layout History reads. |
 | `react_ui_backend/core_onnx.go` | Port 3000 routes `GET /api/go-data/onnx/engines`, `POST /api/go-data/onnx/speech` (switch `core-onnx`). |
 | `extcatalog` | `Options.ONNX`; the plan installs the `onnx` platform first (`onnxplatform.go`), installed state of an onnx entry comes from the platform, uninstall removes the model and keeps the platform. |
 | Catalog | One entry in `extensions.json`: `tts_webui_onnx.kitten_nano` with `"requires": ["onnx"]`. The model pin (URL, sha256, size) lives in Go (`pin.go`), not in the catalog. |
@@ -60,4 +60,14 @@ and what was run. **Windows x64 and CPU only.**
 - The espeak-ng data licence (GPL?) was not verified from the model folder.
 - Shared files edited here (also touched by other sessions): `extensions.json` (one entry), `extcatalog` (`catalog.go`,
   `install.go`, `installed.go`, `requires.go`, `uvplatform.go`), `launcher/extensions.go`, `launcher/serverpy.go`,
-  `react-ui/src/routes.tsx`, `react-ui/src/components/Header.tsx`, `platform/openai/clip.go` (new file).
+  `react-ui/src/routes.tsx`, `react-ui/src/components/Header.tsx`.
+
+## After the merge with main (P0-P7), 2026-11-25
+
+Main's side was taken for every conflicted file and the onnx additions were re-applied by hand (launcher `extensions.go`,
+`serverpy.go`, `extcatalog` `catalog.go`, `install.go`, `installed.go`, `requires.go`, `uvplatform.go`, `Header.tsx`, `routes.tsx`).
+Re-run on a fresh scratch folder from the merged tree (Windows, launcher `--start --no-browser`, no Python installed by hand):
+onnx install through the launcher API, generate (4.5 s clip, listed by History), cancel (no process, no clip), remove (platform kept);
+audio.cpp: Pocket TTS CPU installed and a 3.0 s clip generated; Kokoro (P6 own-venv engine, CPU row): installed and `open` started it,
+and its Gradio config answered through the router on port 7770. A Kokoro clip was **not** generated (the model download was not run).
+The page clicks were not repeated after the merge; the API calls the page makes were.

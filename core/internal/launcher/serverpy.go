@@ -58,6 +58,7 @@ type serverPy struct {
 	coreURL, coreToken string
 
 	stopRouter context.CancelFunc
+	idleStop   chan struct{} // closed on close: ends the idle-stop loop
 	routerDone chan struct{}
 	closeOnce  sync.Once
 }
@@ -174,7 +175,13 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		Routes:   rt,
 		Token:    token,
 		Logf:     func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+		// D31. Idle stop is off unless asked for; the cap is a soft default.
+		IdleTimeout: engineIdleTimeout(os.Getenv),
+		MaxRunning:  engineMaxRunning(os.Getenv),
 	})
+	rt.SetActivity(mgr.Activity)
+	idleStop := make(chan struct{})
+	go mgr.RunIdleStop(30*time.Second, idleStop)
 	// The launcher's Extensions page removes engines too, with its own store.
 	runningEngines.Store(root.Dir(), mgr)
 
@@ -244,6 +251,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		coreURL:    "http://" + ctlLn.Addr().String(),
 		coreToken:  token,
 		stopRouter: cancel,
+		idleStop:   idleStop,
 		routerDone: make(chan struct{}),
 	}
 	go func() {
@@ -262,6 +270,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 // It is safe to call more than once and from several goroutines.
 func (sp *serverPy) Close() {
 	sp.closeOnce.Do(func() {
+		close(sp.idleStop)
 		sp.mgr.StopAll()
 		runningEngines.CompareAndDelete(sp.root, sp.mgr)
 		sp.stopRouter()

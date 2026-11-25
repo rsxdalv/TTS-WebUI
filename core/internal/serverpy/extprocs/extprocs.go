@@ -77,6 +77,14 @@ type Options struct {
 	ReadyTimeout time.Duration
 	// Logf receives diagnostic lines. May be nil.
 	Logf func(format string, args ...any)
+	// IdleTimeout stops a ready engine that has had no request for this long
+	// and has none in flight (D31). Zero turns idle stop off, which is the
+	// default: most people do not want it.
+	IdleTimeout time.Duration
+	// MaxRunning caps the engines that run at once (D31). When it is reached a
+	// start stops the engine that was used longest ago and is not busy; if all
+	// are busy the start fails with ErrCapReached. Zero means no cap.
+	MaxRunning int
 }
 
 // StartRequest is the body of POST /api/extensions/{pkg}/start.
@@ -112,6 +120,8 @@ type entry struct {
 	errMsg   string
 	exitCode *int
 	stopping bool
+	inflight int           // requests being served through the router
+	lastUsed time.Time     // last request start or end, else the start time
 	dead     bool          // process has exited (set by watcher)
 	exited   chan struct{} // closed after watcher updated state
 }
@@ -179,7 +189,11 @@ func (m *Manager) Start(ctx context.Context, pkg string, req StartRequest) (Star
 	defer m.mu.Unlock()
 
 	if old := m.ents[pkg]; old != nil && !old.dead {
+		old.lastUsed = time.Now()
 		return StartResult{Port: old.port, Pid: old.pid, AlreadyRunning: true}, nil
+	}
+	if err := m.makeRoomLocked(pkg); err != nil {
+		return StartResult{}, err
 	}
 
 	pc, err := m.command(pkg)
@@ -200,7 +214,7 @@ func (m *Manager) Start(ctx context.Context, pkg string, req StartRequest) (Star
 		return StartResult{}, fmt.Errorf("environment of %s: %w", pkg, err)
 	}
 	cctx, cancel := context.WithCancel(context.Background())
-	e := &entry{pkg: pkg, port: port, state: StateStarting, cancel: cancel, proc: &procs.Proc{}, exited: make(chan struct{})}
+	e := &entry{pkg: pkg, port: port, state: StateStarting, lastUsed: time.Now(), cancel: cancel, proc: &procs.Proc{}, exited: make(chan struct{})}
 	args := append(append([]string{}, pc.Args...), harnessArgs...)
 	if err := e.proc.Start(cctx, pc.Program, args, m.opts.Root.Dir(), env); err != nil {
 		cancel()

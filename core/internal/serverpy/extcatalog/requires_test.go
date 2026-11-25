@@ -42,8 +42,8 @@ func TestRealCatalogRequires(t *testing.T) {
 		}
 	}
 	// P6 moves one engine at a time: 20 at the start, +1 for each converted
-	// engine (Kokoro 21st, MMS and Vall-E-X 22nd and 23rd, Chatterbox and StyleTTS2 24th and 25th; ACE-Step, Demucs and Vocos 26th to 28th, RVC, Audio Separator and Resemble Enhance 29th to 31st, AP-BWE, PyRNNoise and Seamless M4T 32nd to 34th, CosyVoice, XTTS and Higgs V2 35th to 37th; F5-TTS needs gradio>=6, see LAB-49).
-	if uv != 37 || host+uv+own != len(g.Entries) || len(g.Entries) < 66 {
+	// engine (Kokoro 21st, MMS and Vall-E-X 22nd and 23rd, Chatterbox and StyleTTS2 24th and 25th; ACE-Step, Demucs and Vocos 26th to 28th, RVC, Audio Separator and Resemble Enhance 29th to 31st, AP-BWE, PyRNNoise and Seamless M4T 32nd to 34th, CosyVoice, XTTS and Higgs V2 35th to 37th, VibeVoice, Kimi Audio and MiMo-Audio 38th to 40th; F5-TTS needs gradio>=6, see LAB-49).
+	if uv != 40 || host+uv+own != len(g.Entries) || len(g.Entries) < 66 {
 		t.Errorf("uv=%d host=%d of %d", uv, host, len(g.Entries))
 	}
 }

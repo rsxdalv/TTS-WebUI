@@ -24,9 +24,44 @@ import time
 from typing import Optional
 
 from huggingface_hub.utils import CacheNotFound, HFCacheInfo, scan_cache_dir
-from huggingface_hub.commands._cli_utils import ANSI, tabulate
-
 from pathlib import Path
+
+try:
+    from huggingface_hub.commands._cli_utils import ANSI, tabulate
+except ImportError:
+    # huggingface_hub 1.x removed the `commands` package, so keep our own copy
+    # of the two small helpers (from huggingface_hub 0.x commands/_cli_utils.py).
+    class ANSI:
+        _bold = "\u001b[1m"
+        _gray = "\u001b[90m"
+        _red = "\u001b[31m"
+        _reset = "\u001b[0m"
+
+        @classmethod
+        def bold(cls, s: str) -> str:
+            return cls._format(s, cls._bold)
+
+        @classmethod
+        def gray(cls, s: str) -> str:
+            return cls._format(s, cls._gray)
+
+        @classmethod
+        def red(cls, s: str) -> str:
+            return cls._format(s, cls._bold + cls._red)
+
+        @classmethod
+        def _format(cls, s: str, code: str) -> str:
+            return f"{code}{s}{cls._reset}"
+
+    def tabulate(rows: list[list[str | int]], headers: list[str]) -> str:
+        """Render rows as a plain-text table with padded columns."""
+        col_widths = [max(len(str(x)) for x in col) for col in zip(*rows, headers)]
+        row_format = ("{{:{}}} " * len(headers)).format(*col_widths)
+        lines = [row_format.format(*headers)]
+        lines.append(row_format.format(*["-" * w for w in col_widths]))
+        for row in rows:
+            lines.append(row_format.format(*row))
+        return "\n".join(lines)
 
 def get_rows_json(hf_cache_info: HFCacheInfo) -> list[list[str | int | float]]:
     return [

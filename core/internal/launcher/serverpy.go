@@ -109,6 +109,15 @@ func startServerPyOn(root paths.Root, host string, publicPort int, prefix, baseE
 	if err != nil {
 		return nil, fmt.Errorf("port %d is in use (is another TTS WebUI running?): %w", publicPort, err)
 	}
+	// ssl_certfile and ssl_keyfile of config.json: the router serves HTTPS.
+	if cfg, err := appenv.LoadConfig(root.Dir()); err == nil {
+		tlsLn, err := tlsListener(pub, cfg.SSL)
+		if err != nil {
+			_ = pub.Close()
+			return nil, err
+		}
+		pub = tlsLn
+	}
 	ctlLn, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		_ = pub.Close()

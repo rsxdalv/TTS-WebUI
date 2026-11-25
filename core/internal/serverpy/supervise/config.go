@@ -35,6 +35,10 @@ type Config struct {
 	// tree's port today). It is used for readiness, AppLink, the browser URL
 	// and the GRADIO_BACKEND_AUTOMATIC value handed to React. 0 = 7770.
 	PublicPort int
+	// PublicTLS is set when the router serves the public port over TLS (the
+	// readiness probe and the app link then use https). Plan.PublicTLS sets it
+	// for one run.
+	PublicTLS bool
 	// ReactPort is the port the Go front serves the React UI on. 0 = 3000.
 	ReactPort int
 

@@ -95,6 +95,12 @@ func (s *Server) Compute() (Result, error) {
 	for _, k := range droppedOptions {
 		delete(opts, k)
 	}
+	// Gradio is private, behind the router, and speaks plain HTTP there: the
+	// router serves the certificate (ssl_keyfile, ssl_certfile and
+	// ssl_keyfile_password are the router's, see launcher.startServerPyOn).
+	for _, k := range []string{"ssl_keyfile", "ssl_certfile", "ssl_keyfile_password"} {
+		delete(opts, k)
+	}
 	opts["auth"] = authPairs(cfg.Auth)
 	opts["server_name"] = s.opts.GradioHost
 	opts["server_port"] = s.opts.GradioPort
@@ -112,6 +118,9 @@ func (s *Server) Compute() (Result, error) {
 	}
 	if s.opts.Flags.Share {
 		lines = append(lines, "Gradio share mode enabled")
+	}
+	if cfg.SSL.Enabled() {
+		lines = append(lines, "HTTPS enabled on the public port (certificate "+cfg.SSL.CertFile+")")
 	}
 	return Result{Options: opts, Lines: append(lines, describe(opts)...)}, nil
 }

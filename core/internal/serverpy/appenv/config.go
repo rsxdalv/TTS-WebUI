@@ -31,6 +31,22 @@ func (c Credential) Format(f fmt.State, _ rune) {
 	fmt.Fprint(f, c.String())
 }
 
+// SSL is the ssl_keyfile, ssl_certfile and ssl_keyfile_password options. Gradio
+// no longer serves TLS itself (it is private, behind the router); the router
+// does. Formatting it never prints the password.
+type SSL struct {
+	CertFile, KeyFile, KeyPassword string
+}
+
+// Enabled reports whether a certificate and key are named.
+func (s SSL) Enabled() bool { return s.CertFile != "" && s.KeyFile != "" }
+
+func (s SSL) String() string {
+	return "ssl{cert: " + s.CertFile + ", key: " + s.KeyFile + ", password set: " + strconv.FormatBool(s.KeyPassword != "") + "}"
+}
+func (s SSL) GoString() string           { return s.String() }
+func (s SSL) Format(f fmt.State, _ rune) { fmt.Fprint(f, s.String()) }
+
 // Auth is the parsed gradio `auth` option; empty means no authentication.
 type Auth struct {
 	Credentials []Credential
@@ -57,6 +73,7 @@ type Config struct {
 	InBrowser   bool
 	Share       bool
 	Auth        Auth
+	SSL         SSL  // the router serves HTTPS when SSL.Enabled
 	FromDefault bool // no config.json: load_config.py defaults
 }
 
@@ -126,7 +143,29 @@ func ParseConfig(data []byte) (Config, error) {
 	if c.Auth, err = parseAuth(o["auth"]); err != nil {
 		return Config{}, err
 	}
+	if c.SSL, err = parseSSL(o); err != nil {
+		return Config{}, err
+	}
 	return c, nil
+}
+
+// parseSSL reads the three ssl_ options. The launcher refuses a certificate
+// without a key (or the reverse) when it starts the router.
+func parseSSL(o map[string]any) (SSL, error) {
+	var s SSL
+	for _, f := range []struct {
+		key string
+		dst *string
+	}{{"ssl_certfile", &s.CertFile}, {"ssl_keyfile", &s.KeyFile}, {"ssl_keyfile_password", &s.KeyPassword}} {
+		switch v := o[f.key].(type) {
+		case nil:
+		case string:
+			*f.dst = v
+		default:
+			return SSL{}, cfgErr("%s must be a string or null", f.key)
+		}
+	}
+	return s, nil
 }
 
 // pyInt is Python int(x) for JSON values.

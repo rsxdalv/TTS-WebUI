@@ -75,8 +75,11 @@ Really (Go 1.27.4, Python from `installer_files/env`, ports 55055-55057):
 Only in tests (httptest/fakes): WebSocket echo (hand-written handshake and frames),
 incremental SSE, header handling, longest prefix, escaped paths, control auth,
 graceful shutdown; Python bridge against a stub server with fake `main`/`config` modules.
-Not verified: a real proxy extension behind the router, `--docker`, TLS, Windows
-firewall prompts on non-loopback binds.
+Checked in P0 (see `documentation/core-rewrite/P0-BASELINE.md`): a real own-venv extension (Piper)
+behind the router on Windows and Linux, `--docker` on Linux, and TLS. TLS was not wired before P0: the router
+now serves `ssl_certfile`/`ssl_keyfile` (launcher.tlsListener) and Gradio stays plain behind it.
+Not verified: `--docker` on Windows, Windows firewall prompts on non-loopback binds, TLS with a trusted
+certificate in a browser, Docker with TLS.
 
 Run tests:
 

@@ -149,6 +149,7 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		inBrowser := false
 		if c, err := appenv.LoadConfig(root.Dir()); err == nil {
 			plan.PublicPort, inBrowser = appenv.PublicPortFor(c.Port, o.flags()), c.InBrowser
+			plan.PublicTLS = c.SSL.Enabled()
 		}
 		open := inBrowser && !o.noBrowser
 		plan.OpenBrowser = &open

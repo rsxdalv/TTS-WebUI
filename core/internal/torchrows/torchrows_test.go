@@ -85,3 +85,15 @@ func TestDetect(t *testing.T) {
 		t.Errorf("rocm: %v", d)
 	}
 }
+
+func TestCu126RowIsSelectableByNameAndNeverADefault(t *testing.T) {
+	r, err := ByName("cu126", "windows")
+	if err != nil || r.Xformers != "" || !strings.Contains(r.Packages[0], "+cu126") {
+		t.Fatalf("cu126: %+v, %v", r, err)
+	}
+	for _, l := range []gpu.Label{gpu.NVIDIA, gpu.CPU, gpu.AMD, gpu.Intel} {
+		if d, err := Default(l, "linux"); err == nil && d.Name == "cu126" {
+			t.Fatalf("%s defaults to cu126", l)
+		}
+	}
+}

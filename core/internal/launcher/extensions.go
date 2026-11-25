@@ -80,13 +80,16 @@ func (l *Launcher) extensions() (*extHost, error) {
 
 // extItem is one row of the Extensions page.
 type extItem struct {
-	PackageName   string `json:"package_name"`
-	Name          string `json:"name"`
-	Description   string `json:"description"`
-	Website       string `json:"website"`
-	Class         string `json:"extension_class"`
-	Kind          string `json:"kind"` // interface or decorator
-	Proxy         string `json:"proxy"`
+	PackageName string `json:"package_name"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Website     string `json:"website"`
+	Class       string `json:"extension_class"`
+	Kind        string `json:"kind"` // interface or decorator
+	Proxy       string `json:"proxy"`
+	// Validation is "full" when an own-venv engine generated real audio in P6,
+	// "unvalidated" when it only passed the install and start checks, "" otherwise.
+	Validation    string `json:"validation"`
 	Builtin       bool   `json:"builtin"`
 	Installed     bool   `json:"installed"`
 	Disabled      bool   `json:"disabled"`
@@ -167,7 +170,7 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 			ans.Extensions = append(ans.Extensions, extItem{
 				PackageName: pkg, Name: nonEmpty(e.Str("name"), pkg),
 				Description: e.Str("description"), Website: e.Str("website"),
-				Class: e.Str("extension_class"), Kind: kind, Proxy: proxy,
+				Class: e.Str("extension_class"), Kind: kind, Proxy: proxy, Validation: e.Str("validation"),
 				Builtin:       strings.Contains(pkg, "builtin"),
 				Installed:     installed,
 				Disabled:      kind == "interface" && disabled[pkg],

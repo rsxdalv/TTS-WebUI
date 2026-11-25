@@ -158,7 +158,12 @@
                 "license": "MIT",
                 "website": "https://github.com/Plachtaa/VALL-E-X",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.vall_e_x",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "full",
+                "env": {
+                    "TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD": "1"
+                }
             },
             {
                 "package_name": "tts_webui_extension.styletts2",
@@ -173,7 +178,9 @@
                 "license": "MIT",
                 "website": "https://styletts2.github.io/",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.styletts2",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.seamless_m4t",
@@ -188,7 +195,9 @@
                 "license": "MIT",
                 "website": "https://github.com/facebookresearch/seamless_communication",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.seamless_m4t",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.mms",
@@ -203,7 +212,9 @@
                 "license": "MIT",
                 "website": "https://huggingface.co/facebook/mms-tts",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.mms",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "full"
             },
             {
                 "package_name": "tts_webui_extension.f5_tts",
@@ -232,7 +243,9 @@
                 "license": "MIT",
                 "website": "https://github.com/resemble-ai/chatterbox",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.chatterbox",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.kokoro",
@@ -246,7 +259,9 @@
                 "license": "MIT",
                 "website": "https://huggingface.co/hexgrad/Kokoro-82M",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.kokoro",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "full"
             },
             {
                 "package_name": "tts_webui_extension.bark",
@@ -275,7 +290,9 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.xtts_rvc_ui",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.xtts_rvc_ui",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.parler_tts",
@@ -304,7 +321,9 @@
                 "license": "MIT",
                 "website": "https://github.com/FunAudioLLM/CosyVoice",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.cosyvoice",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.mars5",
@@ -423,7 +442,9 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.higgs_v2",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.higgs_v2",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.vibevoice",
@@ -437,7 +458,9 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.vibevoice",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.vibevoice",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.kitten_tts",
@@ -528,7 +551,9 @@
                 "license": "MIT",
                 "website": "https://github.com/ACE-Step/ACE-Step",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.ace_step",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.stable_audio",
@@ -622,7 +647,9 @@
                 "license": "MIT",
                 "website": "https://github.com/charactr-platform/vocos",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.vocos",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.rvc",
@@ -637,7 +664,9 @@
                 "license": "MIT",
                 "website": "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.rvc",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.demucs",
@@ -652,12 +681,14 @@
                 "license": "MIT",
                 "website": "https://github.com/facebookresearch/demucs",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.demucs",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.audio_separator",
                 "name": "Audio Separator",
-                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.audio_separator@main",
+                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.audio_separator@main transformers",
                 "description": "Audio Separator allows separating audio files into multiple audio files.",
                 "extension_type": "interface",
                 "extension_class": "audio-conversion",
@@ -666,7 +697,9 @@
                 "license": "MIT",
                 "website": "https://github.com/nomadkaraoke/python-audio-separator",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.audio_separator",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.resemble_enhance",
@@ -680,7 +713,9 @@
                 "license": "MIT",
                 "website": "https://github.com/resemble-ai/resemble-enhance",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.resemble_enhance",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.ap_bwe",
@@ -694,12 +729,14 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/AP-BWE",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.ap_bwe",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.pyrnnoise",
                 "name": "PyRNNoise",
-                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.pyrnnoise@main",
+                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.pyrnnoise@main librosa",
                 "description": "A template extension for TTS Generation WebUI",
                 "extension_type": "interface",
                 "extension_class": "audio-conversion",
@@ -708,7 +745,9 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.pyrnnoise",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.pyrnnoise",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             }
         ],
         "outputs": [
@@ -925,7 +964,9 @@
                 "license": "MIT",
                 "website": "https://github.com/moonshotai/Kimi-Audio",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.kimi_audio",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.mimo_audio",
@@ -939,7 +980,9 @@
                 "license": "MIT",
                 "website": "https://github.com/XiaomiMiMo/MiMo-Audio",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.mimo_audio",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             }
         ],
         "tutorials": [

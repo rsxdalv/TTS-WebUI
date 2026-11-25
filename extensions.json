@@ -290,7 +290,9 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.xtts_rvc_ui",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.xtts_rvc_ui",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.parler_tts",
@@ -319,7 +321,9 @@
                 "license": "MIT",
                 "website": "https://github.com/FunAudioLLM/CosyVoice",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.cosyvoice",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.mars5",
@@ -438,7 +442,9 @@
                 "license": "MIT",
                 "website": "https://github.com/rsxdalv/tts_webui_extension.higgs_v2",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.higgs_v2",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.vibevoice",

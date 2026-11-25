@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/onnx"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/openai"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"log/slog"
@@ -215,6 +216,9 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		Store: openai.NewStore(root.Dir()), Root: root.Dir(),
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}), token))
+	// The onnx platform: a local engine run by a pinned native runtime, no Python.
+	mux.Handle(onnx.Prefix, onnx.NewHandler(onnx.New(onnx.Options{Root: root}), token,
+		func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) }))
 	mux.Handle("/api/extensions", mgr.Handler())
 	mux.Handle("/api/extensions/", mgr.Handler())
 	ctl := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}

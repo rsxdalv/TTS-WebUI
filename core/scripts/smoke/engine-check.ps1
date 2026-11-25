@@ -14,8 +14,12 @@
 #              Zero modules imported is a FAIL, not a pass.
 #   3 pycheck  `uv pip check` is clean, the venv's Python is the one entry.json recorded, torch
 #              imports, the venv path is under 200 characters.
-#   4 load, 5 inference: not implemented here. They need the weights; run the engine's page by hand
-#              (see HANDOVER-P6-1.md) and set "validation": "full" only after that.
+#   5 inference  (-Tier 5) the same call the engine's React page makes (POST /api/gradio/<name> on the
+#              app port) for the engines in $inferenceCalls below; the answer must carry an audio file and
+#              that file must download with a real size. This downloads the weights (GBs for some) and can be
+#              slow on CPU. Other engines: "not run (no call defined)". Tier 4 (load only) does not exist:
+#              the engines load their model inside the generate call.
+#              Set "validation": "full" in extensions.json only after this passes AND the clip plays in History.
 #
 # Installs run one at a time (the app allows one install at a time, "another install is running").
 # The start and the checks of a batch run together, BatchSize engines at once.
@@ -23,12 +27,13 @@
 param(
     [Parameter(Mandatory)] [string] $Root,
     [Parameter(Mandatory)] [string[]] $Packages,
-    [ValidateRange(1, 3)] [int] $Tier = 3,
+    [ValidateRange(1, 5)] [int] $Tier = 3,
     [int] $BatchSize = 3,
     [string] $Launcher = "http://127.0.0.1:7700",
     [string] $App = "http://127.0.0.1:3000",
     [string] $Router = "http://127.0.0.1:7770",
-    [int] $StartTimeoutSec = 300
+    [int] $StartTimeoutSec = 300,
+    [int] $InferenceTimeoutSec = 1800
 )
 $ErrorActionPreference = "Stop"
 $Root = (Resolve-Path $Root).Path
@@ -144,12 +149,35 @@ function Check-Pycheck($pkg) {
     "pip check clean, python $ver, torch $t, path $($venv.Length)"
 }
 
+# The Vite pages' own calls: package -> api name and the body the page sends with its default settings
+# (initial*Params in react-ui/src/tabs, use_random_seed removed, GPU off because the scratch platform is CPU).
+$inferenceCalls = @{
+    "tts_webui_extension.kokoro"     = @{ Name = "kokoro_generate"; Body = @{ seed = 0; text = "This is a short check of the engine."; voice = "af_heart"; speed = 1.0; model_name = "hexgrad/Kokoro-82M"; use_gpu = $false } }
+    "tts_webui_extension.mms"        = @{ Name = "mms"; Body = @{ seed = 0; text = "This is a short check of the engine."; language = "eng"; speaking_rate = 1.0; noise_scale = 0.667; noise_scale_duration = 0.8 } }
+    "tts_webui_extension.vall_e_x"   = @{ Name = "vall_e_x_generate"; Body = @{ seed = 0; text = "This is a short check of the engine."; prompt = ""; language = "Mix"; accent = "no-accent"; mode = "short" } }
+    "tts_webui_extension.chatterbox" = @{ Name = "chatterbox_tts"; Body = @{ text = "This is a short check of the engine."; exaggeration = 0.5; cfg_weight = 0.5; temperature = 0.8; device = "cpu"; dtype = "float32"; model_name = "just_a_placeholder"; seed = -1; chunked = $false; halve_first_chunk = $false; desired_length = 200; max_length = 300; cpu_offload = $false; initial_forward_pass_backend = "eager"; generate_token_backend = "cudagraphs-manual"; max_new_tokens = 1000; max_cache_len = 1500; language_id = "en" } }
+}
+
+function Check-Inference($pkg) {
+    $c = $inferenceCalls[$pkg]
+    if (-not $c) { return "NOTRUN: no call defined for this engine" }
+    $body = $c.Body | ConvertTo-Json -Compress
+    $r = Invoke-WebRequest -Uri "$App/api/gradio/$($c.Name)" -Method Post -ContentType "application/json" -Body $body -UseBasicParsing -TimeoutSec $InferenceTimeoutSec -Headers @{ Origin = $App }
+    $j = $r.Content | ConvertFrom-Json
+    $url = $j.audio.url
+    if (-not $url) { throw "no audio in the answer: $($r.Content.Substring(0, [Math]::Min(300, $r.Content.Length)))" }
+    $f = Invoke-WebRequest -Uri "$App$url" -UseBasicParsing -TimeoutSec 120
+    $n = $f.RawContentLength
+    if ($f.StatusCode -ne 200 -or $n -lt 5000) { throw "audio file: status $($f.StatusCode), $n bytes" }
+    "PASS: $n bytes of audio from $($c.Name)"
+}
+
 $results = @()
 for ($i = 0; $i -lt $Packages.Count; $i += $BatchSize) {
     $batch = $Packages[$i..([Math]::Min($i + $BatchSize, $Packages.Count) - 1)]
     Write-Host "`n-- batch: $($batch -join ', ') --"
     $row = @{}
-    foreach ($p in $batch) { $row[$p] = [ordered]@{ T1 = $null; T2 = "not run"; T3 = "not run" } }
+    foreach ($p in $batch) { $row[$p] = [ordered]@{ T1 = $null; T2 = "not run"; T3 = "not run"; T5 = "not run" } }
     # installs one at a time
     foreach ($p in $batch) {
         try { $inst = Install-Engine $p } catch { $row[$p].T1 = "FAIL: $($_.Exception.Message)"; continue }
@@ -174,17 +202,24 @@ for ($i = 0; $i -lt $Packages.Count; $i += $BatchSize) {
         if ($Tier -ge 3 -and $row[$p].T2 -like "PASS*") {
             try { $row[$p].T3 = "PASS: " + (Check-Pycheck $p) } catch { $row[$p].T3 = "FAIL: $($_.Exception.Message)" }
         } elseif ($Tier -ge 3) { $row[$p].T3 = "not run (tier 2 failed)" }
+        if ($Tier -ge 5) {
+            try {
+                $r5 = Check-Inference $p
+                $row[$p].T5 = if ($r5 -like "NOTRUN*") { "not run ($($r5.Substring(7).Trim()))" } else { $r5 }
+            } catch { $row[$p].T5 = "FAIL: $($_.Exception.Message)" }
+        }
     }
-    foreach ($p in $batch) { $results += [pscustomobject]@{ Package = $p; Smoke = $row[$p].T1; Import = $row[$p].T2; Pycheck = $row[$p].T3 } }
+    foreach ($p in $batch) { $results += [pscustomobject]@{ Package = $p; Smoke = $row[$p].T1; Import = $row[$p].T2; Pycheck = $row[$p].T3; Inference = $row[$p].T5 } }
 }
 
-Write-Host "`n== result (tier $Tier of 3; tiers 4 load and 5 inference are not implemented here) =="
+Write-Host "`n== result (tier $Tier of 5) =="
 foreach ($r in $results) {
     Write-Host $r.Package
     Write-Host "   1 smoke   : $($r.Smoke)"
     Write-Host "   2 import  : $($r.Import)"
     Write-Host "   3 pycheck : $($r.Pycheck)"
+    if ($Tier -ge 5) { Write-Host "   5 inference: $($r.Inference)" }
 }
-$failed = @($results | Where-Object { "$($_.Smoke)$($_.Import)$($_.Pycheck)" -match "FAIL" })
+$failed = @($results | Where-Object { "$($_.Smoke)$($_.Import)$($_.Pycheck)$($_.Inference)" -match "FAIL" })
 if ($failed.Count) { Write-Host "`nFAIL: $($failed.Count) of $($results.Count) engines failed a tier"; exit 1 }
 Write-Host "`nPASS: $($results.Count) engines through tier $Tier"

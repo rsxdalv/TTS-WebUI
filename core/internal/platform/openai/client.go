@@ -356,6 +356,9 @@ func (c *Client) Test(ctx context.Context, name string) (TestResult, error) {
 		}
 		return TestResult{}, err
 	}
+	if status == http.StatusNotFound || status == http.StatusMethodNotAllowed || status == http.StatusNotImplemented {
+		return TestResult{Message: fmt.Sprintf("The endpoint is there but does not list models (HTTP %d). Set a model and a voice on the endpoint to test with a speech request.", status)}, nil
+	}
 	if status != http.StatusOK {
 		var ue *UpstreamError
 		errors.As(upstreamStatus(ep, key, "/models", status, data), &ue)

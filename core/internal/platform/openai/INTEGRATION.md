@@ -65,11 +65,12 @@ used.**
 | `p5-no-key-leak.sh` | PASS | PASS |
 | UI open to the LAN (`TTS_GO_PROXY_LISTEN=lan`), requests to this machine's LAN address | `PUT`, `DELETE`, test: 403; list and generate: 200; test from 127.0.0.1: 200 | not run |
 | Endpoint list survives a launcher restart | yes | not run |
+| **Second demo**: the `openai_tts_api` extension on port 7778 (Activate API pressed through `gradio_client`), endpoint `local` = `http://127.0.0.1:7778/v1`, model `hexgrad/Kokoro-82M`, voice `af_heart`, no key; generate from the page | Kokoro installed into the gradio-host of the P4 scratch folder through the launcher; two clips (5.1 s and 2.3 s, 487 KB WAV) saved in `outputs/` and listed by the Vite History page; the player URL answered 200 `audio/wav`. First try with model `kokoro` failed with the extension's own error (it passes the name to Hugging Face as a repo id); the page showed it as "the endpoint failed (HTTP 500): ..." | not run (needs the Gradio host and an engine in WSL) |
 
 ### Not run
 
 - **A real remote endpoint** (acceptance line 1): no key was given.
-- **The local `openai_tts_api` extension on port 7778 with a local engine** (line 4; needs the Gradio host and an engine).
+- The local `openai_tts_api` demo on Linux (needs the Gradio host and Kokoro in WSL). The extension binds `0.0.0.0:7778` with no key by default (its own setting, not this code): anyone on the network can use that engine.
 - A second device (the LAN rule was exercised with this machine's own LAN address, whose peer address is not loopback), macOS, a
   remote that streams the WAV with chunked transfer (parsing of a streamed header is unit-tested), an MP3-only endpoint (it is
   refused with "not a WAV file"), clips over 256 MB.

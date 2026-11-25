@@ -515,3 +515,16 @@ func TestControlAPIWantsTheToken(t *testing.T) {
 		}
 	}
 }
+
+func TestTestCallWithoutModelListSaysWhatToDo(t *testing.T) {
+	srv := httptest.NewServer(http.NotFoundHandler())
+	defer srv.Close()
+	cl, st, _ := newClient(t, srv, nil)
+	if _, err := st.Put(Endpoint{Name: "main", URL: srv.URL + "/v1"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	r, err := cl.Test(context.Background(), "main")
+	if err != nil || r.OK || !strings.Contains(r.Message, "Set a model and a voice") {
+		t.Fatalf("%+v %v", r, err)
+	}
+}

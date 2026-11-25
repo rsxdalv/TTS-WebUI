@@ -168,6 +168,10 @@ export const routes: Route[] = [
     text: "OpenAI",
   },
   {
+    href: "/audiocpp",
+    text: "audio.cpp",
+  },
+  {
     href: "/tools",
     text: "Tools",
     subroutes: [

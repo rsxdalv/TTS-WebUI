@@ -174,16 +174,15 @@ func (p *Platform) Command(e *platform.Entry, argv []string) (platform.Command, 
 	if len(argv) == 0 {
 		return platform.Command{}, errors.New("empty command")
 	}
-	var base []string
+	// The launcher's environment (p.env) wins over the inherited one, but the uv
+	// platform's tools (git, ffmpeg) stay first on the one PATH that results: a second
+	// PATH from p.env used to shadow them (a real Kokoro run could not start ffmpeg).
+	var env []string
 	if p.uv != nil {
-		if c, err := p.uv.Command(nil, []string{"uv"}); err == nil {
-			base = c.Env
-		}
+		env = p.uv.EnvWith(p.env)
+	} else {
+		env = append(os.Environ(), p.env...)
 	}
-	if base == nil {
-		base = os.Environ()
-	}
-	env := append(append([]string(nil), base...), p.env...)
 	if c, ok := platform.OwnVenvCommand(p.root.Dir(), e, argv, env); ok {
 		return c, nil
 	}

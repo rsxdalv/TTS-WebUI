@@ -66,6 +66,18 @@ type Router struct {
 
 	mu     sync.RWMutex
 	routes map[string]*route
+
+	// activity, when set, is called for each proxied request with the route's
+	// prefix; the function it returns runs when the response is finished. The
+	// engine manager uses it to know which engine is in use (idle stop, D31).
+	activity func(prefix string) func()
+}
+
+// SetActivity installs the per-request activity hook. Call it before serving.
+func (rt *Router) SetActivity(f func(prefix string) func()) {
+	rt.mu.Lock()
+	rt.activity = f
+	rt.mu.Unlock()
 }
 
 // New returns an empty Router: until routes are added every request is a 404.
@@ -228,6 +240,12 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if rt.log.Enabled(r.Context(), slog.LevelDebug) {
 		rt.log.Debug("proxy", "method", r.Method, "path", r.URL.EscapedPath(), "target", rte.target)
+	}
+	rt.mu.RLock()
+	act := rt.activity
+	rt.mu.RUnlock()
+	if act != nil && rte.prefix != "" {
+		defer act(rte.prefix)()
 	}
 	rte.proxy.ServeHTTP(w, r)
 }

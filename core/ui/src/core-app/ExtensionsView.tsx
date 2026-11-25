@@ -11,6 +11,7 @@ interface Ext {
   extension_class: string;
   kind: "interface" | "decorator" | "host" | "platform";
   proxy: string;
+  validation?: string;
   builtin: boolean;
   installed: boolean;
   disabled: boolean;
@@ -329,6 +330,7 @@ export function ExtensionsView() {
                             : "installed"
                           : "not installed"}
                       {e.proxy === "native" ? " · own venv" : ""}
+                      {e.validation === "unvalidated" ? " · unvalidated (installs and starts; no audio checked)" : ""}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">{e.description}</p>

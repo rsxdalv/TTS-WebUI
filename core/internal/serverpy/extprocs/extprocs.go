@@ -68,6 +68,10 @@ type Options struct {
 	// Go computes for the extension (the resolved decorators). They win over
 	// BaseEnv, so Python cannot override them.
 	ExtraEnv func() ([]string, error)
+	// PackageEnv, when set, is asked at each start for the KEY=VALUE variables
+	// the package's own catalog entry wants (its "env" object). They win over
+	// ExtraEnv and BaseEnv.
+	PackageEnv func(pkg string) ([]string, error)
 	// Routes receives AddRoute/RemoveRoute calls. May be nil.
 	Routes RouteRegistrar
 	// Token is the shared secret for the control API. Empty rejects all calls.
@@ -77,6 +81,14 @@ type Options struct {
 	ReadyTimeout time.Duration
 	// Logf receives diagnostic lines. May be nil.
 	Logf func(format string, args ...any)
+	// IdleTimeout stops a ready engine that has had no request for this long
+	// and has none in flight (D31). Zero turns idle stop off, which is the
+	// default: most people do not want it.
+	IdleTimeout time.Duration
+	// MaxRunning caps the engines that run at once (D31). When it is reached a
+	// start stops the engine that was used longest ago and is not busy; if all
+	// are busy the start fails with ErrCapReached. Zero means no cap.
+	MaxRunning int
 }
 
 // StartRequest is the body of POST /api/extensions/{pkg}/start.
@@ -112,6 +124,8 @@ type entry struct {
 	errMsg   string
 	exitCode *int
 	stopping bool
+	inflight int           // requests being served through the router
+	lastUsed time.Time     // last request start or end, else the start time
 	dead     bool          // process has exited (set by watcher)
 	exited   chan struct{} // closed after watcher updated state
 }
@@ -179,7 +193,11 @@ func (m *Manager) Start(ctx context.Context, pkg string, req StartRequest) (Star
 	defer m.mu.Unlock()
 
 	if old := m.ents[pkg]; old != nil && !old.dead {
+		old.lastUsed = time.Now()
 		return StartResult{Port: old.port, Pid: old.pid, AlreadyRunning: true}, nil
+	}
+	if err := m.makeRoomLocked(pkg); err != nil {
+		return StartResult{}, err
 	}
 
 	pc, err := m.command(pkg)
@@ -200,7 +218,7 @@ func (m *Manager) Start(ctx context.Context, pkg string, req StartRequest) (Star
 		return StartResult{}, fmt.Errorf("environment of %s: %w", pkg, err)
 	}
 	cctx, cancel := context.WithCancel(context.Background())
-	e := &entry{pkg: pkg, port: port, state: StateStarting, cancel: cancel, proc: &procs.Proc{}, exited: make(chan struct{})}
+	e := &entry{pkg: pkg, port: port, state: StateStarting, lastUsed: time.Now(), cancel: cancel, proc: &procs.Proc{}, exited: make(chan struct{})}
 	args := append(append([]string{}, pc.Args...), harnessArgs...)
 	if err := e.proc.Start(cctx, pc.Program, args, m.opts.Root.Dir(), env); err != nil {
 		cancel()
@@ -261,6 +279,16 @@ func (m *Manager) buildEnv(pkg string, port int, req StartRequest, base []string
 			env = setEnv(env, k, v)
 		}
 	}
+	if m.opts.PackageEnv != nil {
+		own, err := m.opts.PackageEnv(pkg)
+		if err != nil {
+			return nil, err
+		}
+		for _, kv := range own {
+			k, v, _ := strings.Cut(kv, "=")
+			env = setEnv(env, k, v)
+		}
+	}
 	// The control token must never reach third-party extension code.
 	env = dropEnv(env, "TTS_CORE_TOKEN")
 	env = dropEnv(env, "TTS_CORE_URL")
@@ -302,6 +330,15 @@ func (m *Manager) watch(e *entry) {
 	e.cancel()
 	close(e.exited)
 	m.logf("extprocs: %s exited code=%d state=%s", e.pkg, code, e.state)
+	if e.state == StateFailed {
+		// The reason is in the engine's own output; without this it is only on the
+		// token-only control API.
+		lines := e.proc.Lines()
+		if len(lines) > 30 {
+			lines = lines[len(lines)-30:]
+		}
+		m.logf("extprocs: %s output before it exited:\n%s", e.pkg, strings.Join(lines, "\n"))
+	}
 }
 
 func (m *Manager) probe(e *entry) {

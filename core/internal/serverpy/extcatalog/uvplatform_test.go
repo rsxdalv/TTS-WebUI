@@ -86,7 +86,7 @@ func TestNativeInstallAsksForTheGPUThenInstallsUVFirst(t *testing.T) {
 		"venv " + venv + " --python 3.10.11 --managed-python --no-python-downloads --allow-existing" + cache,
 		"pip install --python " + py + cache + " torch==2.11.0 torchvision torchaudio==2.11.0",
 		"pip install --python " + py + cache + " torchcodec --index-url=https://download.pytorch.org/whl/cpu",
-		"pip install --python " + py + cache + " git+https://example.com/ext.native@main gradio<=5.49.1 gradio-goodtabs>=0.0.5 gradio-goodtab>=0.0.5 gradio-iconbutton>=0.0.1 ffmpeg-python==0.2.0 matplotlib",
+		"pip install --python " + py + cache + " git+https://example.com/ext.native@main gradio<=5.49.1 gradio-goodtabs>=0.0.5 gradio-goodtab>=0.0.5 gradio-iconbutton>=0.0.1 ffmpeg-python==0.2.0 matplotlib scipy pip",
 	}
 	if len(l) != len(want) {
 		t.Fatalf("commands:\n%s", strings.Join(l, "\n"))

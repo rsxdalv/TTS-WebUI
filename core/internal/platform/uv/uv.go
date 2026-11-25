@@ -326,7 +326,12 @@ func (p *Platform) checkSameVolume(emit platform.Emit) {
 // environ is the environment of every uv command: the inherited one, then the
 // platform's folders (so uv never reads ./pyproject.toml or ~/.cache), then the
 // options' variables.
-func (p *Platform) environ() []string {
+func (p *Platform) environ() []string { return p.EnvWith(nil) }
+
+// EnvWith is environ with more variables layered on top (a caller's own environment, as the
+// Gradio host entry has). The last value of a variable wins, and the tools' folders stay in
+// front of the one PATH that results.
+func (p *Platform) EnvWith(extra []string) []string {
 	env := append(os.Environ(),
 		"UV_NO_CONFIG=1",
 		"UV_CACHE_DIR="+p.CacheDir(),
@@ -336,8 +341,56 @@ func (p *Platform) environ() []string {
 	if p.goos != "darwin" { // APFS clones by default; elsewhere say hardlink out loud
 		env = append(env, "UV_LINK_MODE=hardlink")
 	}
-	env = append(env, p.toolEnv()...)
-	return append(env, p.env...)
+	pathDirs, toolVars := p.toolEnv()
+	env = append(env, toolVars...)
+	env = dedupeEnv(p.goos, append(append(env, p.env...), extra...))
+	return withToolsFirst(p.goos, env, pathDirs)
+}
+
+// withToolsFirst puts the tools' folders in front of the one PATH the command has.
+// Whatever name the inherited variable has ("Path" on Windows), it is replaced, not
+// joined by a second PATH: a child that sees two takes one of them, and a real Kokoro
+// run could not start ffmpeg because it took the one without the tools.
+func withToolsFirst(goos string, env, dirs []string) []string {
+	if len(dirs) == 0 {
+		return env
+	}
+	out := make([]string, 0, len(env)+1)
+	old := ""
+	for _, kv := range env {
+		k, v, _ := strings.Cut(kv, "=")
+		if k == "PATH" || (goos == "windows" && strings.EqualFold(k, "PATH")) {
+			old = v
+			continue
+		}
+		out = append(out, kv)
+	}
+	return append(out, "PATH="+strings.Join(append(append([]string(nil), dirs...), old), string(os.PathListSeparator)))
+}
+
+// dedupeEnv keeps one entry per variable, the last one. On Windows names compare
+// without case: the inherited environment has "Path" and the tools add "PATH", and a
+// child that sees both may take the first, so the tools' PATH (ffmpeg, git) would
+// not be found (found by a real Kokoro run: its Save Ogg decorator could not start ffmpeg).
+func dedupeEnv(goos string, env []string) []string {
+	key := func(kv string) string {
+		k, _, _ := strings.Cut(kv, "=")
+		if goos == "windows" {
+			k = strings.ToUpper(k)
+		}
+		return k
+	}
+	last := map[string]int{}
+	for i, kv := range env {
+		last[key(kv)] = i
+	}
+	out := make([]string, 0, len(env))
+	for i, kv := range env {
+		if last[key(kv)] == i {
+			out = append(out, kv)
+		}
+	}
+	return out
 }
 
 // Command resolves a logical program: "uv" is the pinned uv; "python" of an

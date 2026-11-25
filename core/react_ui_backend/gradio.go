@@ -39,6 +39,7 @@ func init() {
 		Handler: func(d Deps) http.Handler {
 			return &gradioRoute{
 				backend:   d.GradioBackend,
+				core:      d.Core,
 				auth:      d.GradioAuth,
 				publicDir: filepath.Join(d.Root, "react-ui", "public"),
 			}
@@ -48,6 +49,8 @@ func init() {
 
 type gradioRoute struct {
 	backend   string
+	engine    string // set on a per-call copy: the package whose process answers
+	core      *Core  // for engines that own an api name (gradio_engines.go)
 	auth      string
 	publicDir string
 }
@@ -83,7 +86,23 @@ func (g *gradioRoute) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Like Node, the call to Gradio keeps running if the browser leaves.
-	call := &gradioCall{route: g, ctx: context.WithoutCancel(r.Context())}
+	route := g
+	if pkg, owned := engineOwners[name]; owned {
+		backend, err := engineBackend(context.WithoutCancel(r.Context()), g.core, pkg, true)
+		switch {
+		case err == nil:
+			cp := *g
+			cp.backend, cp.engine = backend, pkg
+			route = &cp
+		case errors.Is(err, errNotEngine), errors.Is(err, errNoCore):
+			// Not converted: the Gradio host still has the tab.
+		default:
+			slog.Warn("gradio route: engine", "name", name, "pkg", pkg, "err", err)
+			writeNextJSON(w, r, http.StatusBadGateway, obj("data", obj("error", err.Error())))
+			return
+		}
+	}
+	call := &gradioCall{route: route, ctx: context.WithoutCancel(r.Context())}
 	result, err := fn(call, parsed)
 	switch {
 	case err == nil:
@@ -358,7 +377,7 @@ func (c *gradioCall) gradioPredict(endpoint string, data any) (any, error) {
 	if outcome != nil {
 		return nil, outcome
 	}
-	return proxyGradioFilesInResult(result, c.route.backend)
+	return proxyGradioFilesInResult(result, c.route.backend, c.route.engine)
 }
 
 // gradioSubmitAll is gradioSubmit followed by Array__fromAsync: every data
@@ -393,7 +412,7 @@ func (c *gradioCall) gradioSubmitAll(endpoint string, data any) ([]any, error) {
 }
 
 // proxyGradioFilesInResult rewrites Gradio file URLs to /api/gradio-file-proxy/.
-func proxyGradioFilesInResult(result any, backend string) (any, error) {
+func proxyGradioFilesInResult(result any, backend, engine string) (any, error) {
 	view, err := objectView(result)
 	if err != nil {
 		return nil, err
@@ -405,7 +424,7 @@ func proxyGradioFilesInResult(result any, backend string) (any, error) {
 	}
 	mapped := make([]any, len(data))
 	for i, d := range data {
-		if mapped[i], err = proxyGradioFile(d, backend); err != nil {
+		if mapped[i], err = proxyGradioFile(d, backend, engine); err != nil {
 			return nil, err
 		}
 	}
@@ -415,7 +434,7 @@ func proxyGradioFilesInResult(result any, backend string) (any, error) {
 
 // proxyGradioFile is backend-utils/proxyGradioFile.tsx. typeof null is
 // "object", so a null entry throws when .url is read.
-func proxyGradioFile(d any, backend string) (any, error) {
+func proxyGradioFile(d any, backend, engine string) (any, error) {
 	switch d.(type) {
 	case nil:
 		return nil, typeError("Cannot read properties of null (reading 'url')")
@@ -433,7 +452,11 @@ func proxyGradioFile(d any, backend string) (any, error) {
 	}
 	copied, _ := objectView(d)
 	copied = copied.clone()
-	copied.set("url", strings.Replace(s, backend, "/api/gradio-file-proxy/", 1))
+	prefix := "/api/gradio-file-proxy/"
+	if engine != "" {
+		prefix += engineFilePrefix + engine + "/"
+	}
+	copied.set("url", strings.Replace(s, backend, prefix, 1))
 	return copied, nil
 }
 
@@ -874,7 +897,7 @@ func tortoise(c *gradioCall, params any) (any, error) {
 		if t, _ := prop(e, "type"); t != "data" {
 			continue
 		}
-		proxied, err := proxyGradioFilesInResult(e, c.route.backend)
+		proxied, err := proxyGradioFilesInResult(e, c.route.backend, c.route.engine)
 		if err != nil {
 			return nil, err
 		}

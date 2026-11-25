@@ -70,8 +70,20 @@ func (s *Store) RequiresGraph(ctx context.Context) (requires.Graph, error) {
 		}
 	}
 	s.addHost(ctx, &g)
+	if s.opts.ONNX != nil {
+		if g.Installable == nil {
+			g.Installable = map[string]string{}
+		}
+		g.Installable["onnx"] = onnxWould
+		if s.opts.ONNX.Status(ctx).Ready {
+			g.Provided["onnx"] = "onnx"
+		}
+	}
 	if s.opts.UV != nil {
-		g.Installable = map[string]string{"uv": uvWould}
+		if g.Installable == nil {
+			g.Installable = map[string]string{}
+		}
+		g.Installable["uv"] = uvWould
 		if s.opts.UV.Status(ctx).Ready {
 			g.Provided["uv"] = "uv"
 		}

@@ -40,11 +40,11 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 		s.fail(w, err)
 		return
 	}
-	if op == "check-dependencies" && s.hostActive() && !s.opts.Platform.Status(r.Context()).Ready && entry.Str("proxy") != "native" {
+	if op == "check-dependencies" && s.hostActive() && !s.opts.Platform.Status(r.Context()).Ready && entry.Str("proxy") != "native" && !s.isONNX(pkg) {
 		s.fail(w, invalidf("%s runs in the Gradio host, which is not installed: install it first", pkg))
 		return
 	}
-	native := entry.Str("proxy") == "native"
+	native := entry.Str("proxy") == "native" || s.isONNX(pkg)
 	if op == "check-dependencies" && native {
 		s.fail(w, invalidf("%s runs in its own venv: there is no dependency check for it", pkg))
 		return
@@ -127,7 +127,9 @@ func (s *Store) runSteps(ctx context.Context, pl plan, entry *Obj, emit func(str
 		}
 		say(step)
 		var ok bool
-		if e.Str("proxy") == "native" {
+		if s.isONNX(e.Str("package_name")) {
+			ok = s.onnxCreate(ctx, e, emit)
+		} else if e.Str("proxy") == "native" {
 			ok = s.venvSetup(ctx, e, emit)
 		} else {
 			ok = s.pipInstall(ctx, e, false, emit)
@@ -259,6 +261,9 @@ func (s *Store) pipInstallTokens(ctx context.Context, entry *Obj, toks []string,
 // uninstall removes an entry: its venv when it runs in one, otherwise pip
 // uninstall in the main env.
 func (s *Store) uninstall(ctx context.Context, entry *Obj, emit func(string)) bool {
+	if s.isONNX(entry.Str("package_name")) {
+		return s.onnxRemove(ctx, entry, emit)
+	}
 	if entry.Str("proxy") != "native" {
 		return s.pipUninstall(ctx, entry.Str("package_name"), emit)
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/gradiohost"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/onnx"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/requires"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"log/slog"
@@ -64,7 +65,7 @@ func newExtHost(root paths.Root, systemPython bool, appRunning func() bool) (*ex
 		root: root, token: token, cfg: cfg,
 		cat: extcatalog.New(extcatalog.Options{
 			Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
-			Platform: p, UV: uv.New(uv.Options{Root: root}), Host: detect.Host(p), AppRunning: appRunning, Logf: logf,
+			Platform: p, UV: uv.New(uv.Options{Root: root}), ONNX: onnx.New(onnx.Options{Root: root}), Host: detect.Host(p), AppRunning: appRunning, Logf: logf,
 			StopEngine: func(pkg string) bool { return stopRunningEngine(root.Dir(), pkg) },
 		}),
 		pip: pip, platform: p,

@@ -330,6 +330,15 @@ func (m *Manager) watch(e *entry) {
 	e.cancel()
 	close(e.exited)
 	m.logf("extprocs: %s exited code=%d state=%s", e.pkg, code, e.state)
+	if e.state == StateFailed {
+		// The reason is in the engine's own output; without this it is only on the
+		// token-only control API.
+		lines := e.proc.Lines()
+		if len(lines) > 30 {
+			lines = lines[len(lines)-30:]
+		}
+		m.logf("extprocs: %s output before it exited:\n%s", e.pkg, strings.Join(lines, "\n"))
+	}
 }
 
 func (m *Manager) probe(e *entry) {

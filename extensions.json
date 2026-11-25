@@ -654,7 +654,9 @@
                 "license": "MIT",
                 "website": "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.rvc",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.demucs",
@@ -676,7 +678,7 @@
             {
                 "package_name": "tts_webui_extension.audio_separator",
                 "name": "Audio Separator",
-                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.audio_separator@main",
+                "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.audio_separator@main transformers",
                 "description": "Audio Separator allows separating audio files into multiple audio files.",
                 "extension_type": "interface",
                 "extension_class": "audio-conversion",
@@ -685,7 +687,9 @@
                 "license": "MIT",
                 "website": "https://github.com/nomadkaraoke/python-audio-separator",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.audio_separator",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.resemble_enhance",
@@ -699,7 +703,9 @@
                 "license": "MIT",
                 "website": "https://github.com/resemble-ai/resemble-enhance",
                 "extension_website": "https://github.com/rsxdalv/tts_webui_extension.resemble_enhance",
-                "extension_platform_version": "0.0.1"
+                "extension_platform_version": "0.0.1",
+                "proxy": "native",
+                "validation": "unvalidated"
             },
             {
                 "package_name": "tts_webui_extension.ap_bwe",

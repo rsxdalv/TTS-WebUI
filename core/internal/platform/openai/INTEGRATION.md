@@ -74,3 +74,32 @@ used.**
 - A second device (the LAN rule was exercised with this machine's own LAN address, whose peer address is not loopback), macOS, a
   remote that streams the WAV with chunked transfer (parsing of a streamed header is unit-tested), an MP3-only endpoint (it is
   refused with "not a WAV file"), clips over 256 MB.
+
+## Not verified: real remote endpoint
+
+Acceptance line 1 of P5 ("point it at a real remote endpoint and generate; the clip is in History") was **not run**. Rob accepted
+it as not run (2026-11-25); the gap stays open here until someone closes it.
+
+**Unverified:** every call to a real third-party OpenAI-style server, in particular:
+
+- the key sent as `Authorization: Bearer <key>` and accepted by a real provider (the stand-in only compared the string);
+- a WAV sent chunked or streamed (the header parser handles size 0 and 0xFFFFFFFF in a unit test, never a real stream);
+- an MP3-only reply (refused with "not a WAV file" in a test; a real server that ignores `response_format: wav` was not met);
+- an endpoint with no model list (`/models` 404 is handled and tested against a stand-in, and the local `openai_tts_api`
+  does answer 404 there);
+- TLS to a real host (`https://` to a real certificate; only a refused https-to-http-port and an unknown host were seen).
+
+**Verified instead:** the local `openai_tts_api` extension on port 7778 with Kokoro, from the page, on Windows (two clips
+saved and listed in History); wrong key, wrong path, unknown host, https to an http port and a closed port each give a clear
+error, on Windows (the wrong key also on Linux); no route or file returns the key (`p5-no-key-leak.sh`, Windows and Linux,
+and the Go tests); the LAN rule with `TTS_GO_PROXY_LISTEN=lan`.
+
+**To close it** (Rob types the key; nobody else stores one):
+
+1. In a scratch folder or an install, run `tts-webui.exe --no-browser --start` and open `http://127.0.0.1:3000/openai`.
+2. Add an endpoint: the provider's base URL (for OpenAI `https://api.openai.com/v1`), a model and a voice (`tts-1`, `alloy`),
+   and the key in the Key field. Click Test, then Generate with some text.
+3. Check that the clip plays on the page, that it is listed at `/outputs/outputs` (History), and that a deliberately wrong
+   key shows "refused the key (HTTP 401)".
+4. Run `core/scripts/smoke/p5-no-key-leak.sh http://127.0.0.1:3000 <install root>`: it must print PASS.
+5. Tick the criterion: `board task edit LAB-43.6 --check-ac 1`, and add what was seen to the table above.

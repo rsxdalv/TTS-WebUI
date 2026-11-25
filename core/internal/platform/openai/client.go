@@ -162,6 +162,7 @@ func (c *Client) fetchWav(ctx context.Context, ep Endpoint, key, model, voice, i
 }
 
 // do sends one request and reads the whole answer (capped).
+// Never run against a real third-party server: see "Not verified: real remote endpoint" in INTEGRATION.md.
 func (c *Client) do(ctx context.Context, ep Endpoint, key, method, path string, payload []byte) (int, string, []byte, error) {
 	var body io.Reader
 	if payload != nil {

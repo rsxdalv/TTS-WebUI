@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/gradiohost"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/requires"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"log/slog"
@@ -46,7 +47,7 @@ type extHost struct {
 	platform platform.Platform
 }
 
-func newExtHost(root paths.Root, systemPython bool) (*extHost, error) {
+func newExtHost(root paths.Root, systemPython bool, appRunning func() bool) (*extHost, error) {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
 		return nil, fmt.Errorf("generating the extension token: %w", err)
@@ -63,7 +64,7 @@ func newExtHost(root paths.Root, systemPython bool) (*extHost, error) {
 		root: root, token: token, cfg: cfg,
 		cat: extcatalog.New(extcatalog.Options{
 			Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
-			Platform: p, UV: uv.New(uv.Options{Root: root}), Logf: logf,
+			Platform: p, UV: uv.New(uv.Options{Root: root}), Host: detect.Host(p), AppRunning: appRunning, Logf: logf,
 			StopEngine: func(pkg string) bool { return stopRunningEngine(root.Dir(), pkg) },
 		}),
 		pip: pip, platform: p,
@@ -73,7 +74,7 @@ func newExtHost(root paths.Root, systemPython bool) (*extHost, error) {
 // extensions builds the stores on first use, so a launcher that never opens the
 // Extensions page never touches them.
 func (l *Launcher) extensions() (*extHost, error) {
-	l.extOnce.Do(func() { l.ext, l.extErr = newExtHost(l.root, l.systemPython) })
+	l.extOnce.Do(func() { l.ext, l.extErr = newExtHost(l.root, l.systemPython, l.sup.Running) })
 	return l.ext, l.extErr
 }
 
@@ -133,6 +134,15 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 	disabled := map[string]bool{}
 	for _, n := range lists.Disabled {
 		disabled[n] = true
+	}
+	if h.cat.HostActive() && gerr == nil {
+		// The Gradio host is an entry of its own: it is not in extensions.json.
+		ans.Extensions = append(ans.Extensions, extItem{
+			PackageName: gradiohost.Name, Name: gradiohost.Title,
+			Description: "The Gradio web interface and the tabs that run inside it. Optional: the Go pages, the engines and the OpenAI-style endpoints work without it.",
+			Class:       "host", Kind: "host", Installed: graph.Entries[gradiohost.Name].Installed,
+			Requires: graph.Entries[gradiohost.Name].Requires, RequirementsState: graph.State(gradiohost.Name),
+		})
 	}
 	for _, kind := range []string{"interface", "decorator"} {
 		entries, err := h.cat.List(kind)

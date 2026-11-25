@@ -16,12 +16,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/procs"
 	"github.com/rsxdalv/TTS-WebUI/core/react_ui_backend"
 )
@@ -64,9 +63,6 @@ type ProcessStatus struct {
 	ExitCode *int     `json:"exit_code,omitempty"`
 	Error    string   `json:"error,omitempty"`
 	LogTail  []string `json:"log_tail,omitempty"`
-	// Warning is something the run carries on despite (for example a missing
-	// GPU label). Set on the gradio entry.
-	Warning string `json:"warning,omitempty"`
 }
 
 // runner is the part of *procs.Proc the supervisor uses. A runner that also
@@ -134,7 +130,6 @@ type Supervisor struct {
 	cur    []*managed // current generation, in start order; nil before first Start
 	pub    int        // public port of the current run; 0 = cfg.PublicPort
 	pubTLS bool       // the current run serves the public port over TLS
-	warn   string     // warning of the current run, shown on the gradio status
 
 	// supCtx/supCancel is supervisor-owned; it is never an HTTP request
 	// context, which would kill the app when the handler returned.
@@ -222,19 +217,6 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	// the Go core (front, control API, services) runs alone.
 	st := s.cfg.Platform.Status(setupCtx)
 	pyOK, pyMsg := st.Ready, st.Detail
-	// The GPU label is checked here and nowhere else in Start. A missing or
-	// invalid one is a warning, not a stop (Config.StrictGPULabel makes it
-	// one again).
-	warn, err := s.checkGPULabel(pyOK)
-	if err != nil {
-		return err
-	}
-	s.mu.Lock()
-	s.warn = warn
-	s.mu.Unlock()
-	if warn != "" {
-		slog.Warn(warn)
-	}
 	var plan Plan
 	if s.cfg.Prepare != nil {
 		var err error
@@ -353,7 +335,11 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 			slog.Warn("gradio not started: " + pyMsg)
 			continue
 		}
-		pc, err := c.Platform.Command(nil, d.args)
+		var pc platform.Command
+		var err error
+		if !d.static { // the Go front is not a program
+			pc, err = c.Platform.Command(nil, d.args)
+		}
 		if err == nil {
 			err = r.Start(ctx, pc.Program, pc.Args, cwd, d.env)
 		}
@@ -540,16 +526,21 @@ func (s *Supervisor) openBrowsers(ctx context.Context, gen []*managed, pubURL st
 			slog.Warn("could not open browser", "url", url, "err", err)
 		}
 	}
+	noGradio := false
 	for _, m := range gen {
 		switch m.name {
 		case NameGradio:
-			// A Gradio that is not coming (no Python, died) does not keep the
-			// React tab from opening: the Go core is the app.
+			// A Gradio that is not coming (not installed, died) does not keep the
+			// React tab from opening: the Go core is the app. Then the Vite UI is
+			// the only page there is, so it opens even where the launcher would
+			// otherwise leave it out.
 			if wait(m) {
 				open(pubURL)
+			} else {
+				noGradio = true
 			}
 		case NameReact:
-			if !reactTab || !wait(m) {
+			if !(reactTab || noGradio) || !wait(m) {
 				return
 			}
 			open(fmt.Sprintf("http://127.0.0.1:%d", reactPort))
@@ -601,11 +592,6 @@ func (s *Supervisor) statusesLocked() []ProcessStatus {
 			st.LogTail = tail(m.r.Lines(), logTailLines)
 		}
 		out = append(out, st)
-	}
-	for i := range out {
-		if out[i].Name == NameGradio {
-			out[i].Warning = s.warn
-		}
 	}
 	return out
 }
@@ -693,20 +679,6 @@ func (s *Supervisor) AppLink() string {
 	return url
 }
 
-// readGPULabel mirrors the launcher: the .gpu marker written by the GPU step
-// must exist and parse; there is no auto-detect fallback.
-func readGPULabel(c Config) (string, error) {
-	data, err := os.ReadFile(c.Root.MarkerFile(".gpu"))
-	if err != nil {
-		return "", fmt.Errorf("GPU label not set: complete the GPU step first (%w)", err)
-	}
-	label, err := gpu.Parse(string(data))
-	if err != nil {
-		return "", fmt.Errorf("invalid GPU label in .gpu file: %w", err)
-	}
-	return string(label), nil
-}
-
 // releaseCore closes the Go side of an earlier run that is still held (its
 // Gradio died or never started, and nothing else is alive), so a new Start can
 // bind the same ports.
@@ -728,24 +700,4 @@ func (s *Supervisor) releaseCore() {
 	case <-hold.finished:
 	case <-time.After(5 * time.Second):
 	}
-}
-
-// checkGPULabel is the one place the GPU label is checked. Nothing started by
-// Start needs the label (Gradio, the Go side and the native extension
-// processes do not read it); only installing a native extension's torch does,
-// and that says so itself. So a missing or invalid label is a warning that the
-// status shows, and the run goes on without a label. With StrictGPULabel it is
-// an error as it was. Not checked when the check is skipped or Gradio cannot
-// start (nothing then depends on the label).
-func (s *Supervisor) checkGPULabel(pythonOK bool) (warning string, err error) {
-	if s.cfg.SkipGPUCheck || !pythonOK {
-		return "", nil
-	}
-	if _, rerr := readGPULabel(s.cfg); rerr != nil {
-		if s.cfg.StrictGPULabel {
-			return "", fmt.Errorf("determining GPU: %w", rerr)
-		}
-		return fmt.Sprintf("%v. Carrying on without a GPU label: Gradio and the Go core do not use it; installing a native extension's torch needs it and will say so", rerr), nil
-	}
-	return "", nil
 }

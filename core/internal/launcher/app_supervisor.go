@@ -72,7 +72,14 @@ func (b badSup) SubscribeStatus() (<-chan string, func()) {
 // Option configures New.
 type Option func(*options)
 
-type options struct{ noBrowser, share, docker, systemPython, noReact bool }
+type options struct {
+	noBrowser, share, docker, systemPython, noReact bool
+	launcherPort                                    int
+}
+
+// WithLauncherPort tells the app where this launcher listens, so the Vite UI can
+// link to the launcher's Extensions page (the Gradio host is installed there).
+func WithLauncherPort(port int) Option { return func(o *options) { o.launcherPort = port } }
 
 // WithNoBrowser stops the supervisor from opening the app in a browser.
 func WithNoBrowser() Option { return func(o *options) { o.noBrowser = true } }

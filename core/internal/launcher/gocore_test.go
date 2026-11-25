@@ -107,17 +107,26 @@ func startCore(t *testing.T, root paths.Root, reactPort int, mutate func(*superv
 }
 
 func TestCoreBootsWithNoPythonEnvironment(t *testing.T) {
-	root, _, reactPort := coreInstall(t)
+	root, publicPort, reactPort := coreInstall(t)
 	sup := startCore(t, root, reactPort, nil) // no .gpu either
 	if err := sup.Start(context.Background()); err != nil {
 		t.Fatalf("Start with no Python env must succeed: %v", err)
 	}
-	if g := gradioState(t, sup); g.State != supervise.StateFailed || !strings.Contains(g.Error, "no Python environment") {
+	if g := gradioState(t, sup); g.State != supervise.StateFailed || !strings.Contains(g.Error, "Gradio host is not installed") {
 		t.Fatalf("gradio: %+v", g)
 	}
 	base := fmt.Sprintf("http://127.0.0.1:%d", reactPort)
 	if code, body := httpGet(t, base+"/"); code != 200 || !strings.Contains(body, "TTS WebUI") {
 		t.Fatalf("front: %d %q", code, body)
+	}
+	// The public port has no Gradio behind it: "/" says so (it is not a 502) and
+	// the extension pages the Vite UI links to are still served there.
+	pub := fmt.Sprintf("http://127.0.0.1:%d", publicPort)
+	if code, body := httpGet(t, pub+"/"); code != 200 || !strings.Contains(body, "Gradio pages are not installed") {
+		t.Fatalf("public /: %d %q", code, body)
+	}
+	if code, _ := httpGet(t, pub+"/healthz"); code != 200 {
+		t.Fatalf("public /healthz: %d", code)
 	}
 	// Routes backed by the real control API and services, with no Python.
 	if code, body := httpGet(t, base+"/api/go-data/logs/files"); code != 200 || strings.TrimSpace(body) != "[]" {
@@ -178,8 +187,9 @@ func TestControlAPIStaysUpWhenGradioDies(t *testing.T) {
 	}
 }
 
-// No .gpu marker with a Python that can start: Start goes on, the status says so.
-func TestMissingGPULabelIsOnlyAWarning(t *testing.T) {
+// No .gpu marker with a Python that can start: nothing looks for it any more
+// (D29: the GPU choice belongs to the uv platform), so Start goes on without a word.
+func TestNoGPULabelIsNotLookedFor(t *testing.T) {
 	root, _, reactPort := coreInstall(t) // no installer_scripts/.gpu
 	sup := startCore(t, root, reactPort, func(c *supervise.Config) {
 		c.Platform = legacyenv.New(legacyenv.Options{Root: c.Root, Prefix: []string{os.Args[0], "-test.run=^TestGradioExitsAtOnce$", "--"}})
@@ -188,7 +198,7 @@ func TestMissingGPULabelIsOnlyAWarning(t *testing.T) {
 	if err := sup.Start(context.Background()); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
-	if g := gradioState(t, sup); !strings.Contains(g.Warning, "GPU label not set") {
+	if g := gradioState(t, sup); strings.Contains(g.Error, "GPU") {
 		t.Fatalf("gradio status: %+v", g)
 	}
 	base := fmt.Sprintf("http://127.0.0.1:%d", reactPort)

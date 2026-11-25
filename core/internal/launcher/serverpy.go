@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"log/slog"
 	"net"
@@ -105,9 +106,20 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		return nil, err
 	}
 
-	rt := router.New(router.Options{Token: token})
-	if err := rt.AddRoute("/", "http://"+net.JoinHostPort(gradioHost, strconv.Itoa(gradioPort))); err != nil {
-		return nil, err
+	// The public port's "/" is Gradio. Without the Gradio host there is nothing
+	// to send it to: it answers a page that says so (not a 502) and points at the
+	// Vite UI. The port stays open: engine pages and the extension pages use it.
+	st := p.Status(context.Background())
+	noHost := detect.Host(p) != nil && !st.Ready
+	var home http.Handler
+	if noHost {
+		home = noHostPage(st.Detail)
+	}
+	rt := router.New(router.Options{Token: token, Home: home})
+	if !noHost {
+		if err := rt.AddRoute("/", "http://"+net.JoinHostPort(gradioHost, strconv.Itoa(gradioPort))); err != nil {
+			return nil, err
+		}
 	}
 	// Bind before any child starts, so a running app on the same port is an
 	// error here, not a crashed child later.
@@ -147,6 +159,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 	ext := extcatalog.New(extcatalog.Options{
 		Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
 		Platform: p, UV: uv.New(uv.Options{Root: root}),
+		Host: detect.Host(p), AppRunning: func() bool { return true },
 		StopEngine: func(pkg string) bool { return mgr.StopIfRunning(pkg) },
 		Logf:       func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	})
@@ -192,6 +205,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}).Handler())
 	// The Vite engine page starts an installed own-venv engine on open (D31).
+	mux.Handle(hostStatusPath, hostStatusHandler(p, token, root.Dir()))
 	mux.Handle(engines.Prefix, engines.New(engines.Options{
 		Cat: ext, Procs: mgr, Token: token, PublicPort: tcpPort(pub.Addr()),
 	}))

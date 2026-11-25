@@ -11,8 +11,9 @@ import (
 	"strings"
 )
 
-// reserved are the names no entry may take: platforms, and the Gradio host,
-// which is an entry of its own from P3.
+// reserved are the names no catalog entry may take: platforms, and the Gradio
+// host, which the caller adds to the graph as an entry of its own when it can be
+// installed (Graph.Entries); otherwise the text here is why it cannot be.
 var reserved = map[string]string{
 	"openai":     "the openai platform is not available in this version",
 	"uv":         "the uv platform is not installed",
@@ -120,18 +121,18 @@ func (g Graph) one(n string) Req {
 	if what, ok := g.Installable[n]; ok {
 		return Req{Name: n, Kind: "platform", State: "missing", Would: what, Installable: true}
 	}
-	if why, ok := reserved[n]; ok {
-		kind := "platform"
-		if n == "gradio-host" {
-			kind = "entry"
+	d, isEntry := g.Entries[n]
+	if !isEntry {
+		if why, ok := reserved[n]; ok {
+			kind := "platform"
+			if n == "gradio-host" {
+				kind = "entry"
+			}
+			return Req{Name: n, Kind: kind, State: "missing", Would: why}
 		}
-		return Req{Name: n, Kind: kind, State: "missing", Would: why}
-	}
-	d, ok := g.Entries[n]
-	switch {
-	case !ok:
 		return Req{Name: n, Kind: "entry", State: "missing", Would: "not in the catalog"}
-	case d.Installed:
+	}
+	if d.Installed {
 		return Req{Name: n, Kind: "entry", State: "ready", Via: n}
 	}
 	return Req{Name: n, Kind: "entry", State: "missing", Would: "would install " + n}

@@ -98,7 +98,6 @@ func newSup(t *testing.T, mutate func(*Config), extraEnv ...string) (*Supervisor
 		Root:          root,
 		PublicPort:    e.gradioPort,
 		ReactPort:     e.reactPort,
-		SkipGPUCheck:  true,
 		Platform:      prefixPlatform(root, []string{fakeBin}),
 		Opener:        e.op.open,
 		ProbeInterval: 20 * time.Millisecond,
@@ -260,6 +259,11 @@ func TestChildArgsAndEnv(t *testing.T) {
 
 func TestDefaultsAndForwardedFlagsDedup(t *testing.T) {
 	root, _ := paths.New(t.TempDir())
+	// An install with the legacy env is on legacy-env; a folder without it is on
+	// the Gradio host (see TestNewFolderIsOnTheGradioHost).
+	if err := os.MkdirAll(filepath.Join(root.InstallerFiles(), "env"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	s, err := New(Config{Root: root})
 	if err != nil {
 		t.Fatal(err)
@@ -513,6 +517,21 @@ func TestBrowserNoReactAndDisabledAndFailure(t *testing.T) {
 			t.Errorf("opened %v, want only %s", got, want)
 		}
 	})
+	t.Run("no gradio, and the launcher leaves the React tab out", func(t *testing.T) {
+		// The launcher sets SkipReactTab because Gradio's page is the one it
+		// opens. With no Gradio host that page does not exist: the Vite UI opens.
+		s, e := newSup(t, func(c *Config) { c.OpenBrowser, c.SkipReactTab = true, true }, "FAKE_GRADIO_EXIT=1")
+		if err := s.Start(ctx()); err != nil {
+			t.Fatal(err)
+		}
+		waitState(t, s, NameGradio, StateExited)
+		waitState(t, s, NameReact, StateReady)
+		time.Sleep(200 * time.Millisecond)
+		want := fmt.Sprintf("http://127.0.0.1:%d", e.reactPort)
+		if got := e.op.get(); len(got) != 1 || got[0] != want {
+			t.Errorf("opened %v, want only %s", got, want)
+		}
+	})
 }
 
 func TestStopRestartAndOwnedContext(t *testing.T) {
@@ -610,60 +629,6 @@ func TestAppLinkUsesConfiguredPort(t *testing.T) {
 	if got := s.AppLink(); got != "" {
 		t.Errorf("AppLink after close = %q", got)
 	}
-}
-
-// The GPU label is a warning, not a gate (Rob's decision): a missing or invalid
-// .gpu does not stop Start, and the status carries the warning. StrictGPULabel
-// brings the old hard errors back.
-func TestGPULabelIsAWarning(t *testing.T) {
-	s, e := newSup(t, func(c *Config) { c.SkipGPUCheck = false; c.NoReact = true })
-	warned := func(want string) {
-		t.Helper()
-		if err := s.Start(ctx()); err != nil {
-			t.Fatalf("Start must not stop on the label: %v", err)
-		}
-		waitState(t, s, NameGradio, StateReady)
-		w := status(s, NameGradio).Warning
-		if want == "" && w != "" || want != "" && !strings.Contains(w, want) {
-			t.Fatalf("warning %q, want %q", w, want)
-		}
-		s.Stop()
-	}
-	warned("GPU label not set")
-	if err := os.MkdirAll(e.root.InstallerScripts(), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(e.root.MarkerFile(".gpu"), []byte("bogus\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	warned("invalid GPU label")
-	if err := os.WriteFile(e.root.MarkerFile(".gpu"), []byte("CPU\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	warned("")
-}
-
-func TestStrictGPULabelStopsStart(t *testing.T) {
-	s, e := newSup(t, func(c *Config) { c.SkipGPUCheck = false; c.StrictGPULabel = true; c.NoReact = true })
-	if err := s.Start(ctx()); err == nil || !strings.Contains(err.Error(), "GPU label not set") {
-		t.Fatalf("strict, missing .gpu: %v", err)
-	}
-	if err := os.MkdirAll(e.root.InstallerScripts(), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(e.root.MarkerFile(".gpu"), []byte("bogus\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Start(ctx()); err == nil || !strings.Contains(err.Error(), "invalid GPU label") {
-		t.Fatalf("strict, bad .gpu: %v", err)
-	}
-	if err := os.WriteFile(e.root.MarkerFile(".gpu"), []byte("CPU\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Start(ctx()); err != nil {
-		t.Fatalf("strict, valid .gpu: %v", err)
-	}
-	waitState(t, s, NameGradio, StateReady)
 }
 
 // prefixPlatform is the legacy-env platform with a fake child in front of every

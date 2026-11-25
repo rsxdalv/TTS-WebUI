@@ -332,6 +332,14 @@ func TestHelperProcess(t *testing.T) {
 		fmt.Fprintln(f, strings.Join(args, " "))
 		f.Close()
 	}
+	if len(args) > 1 && args[0] == "venv" { // what uv leaves: a python in the venv
+		bin, exe := "bin", "python"
+		if os.PathSeparator == '\\' {
+			bin, exe = "Scripts", "python.exe"
+		}
+		_ = os.MkdirAll(filepath.Join(args[1], bin), 0o755)
+		_ = os.WriteFile(filepath.Join(args[1], bin, exe), []byte("fake"), 0o755)
+	}
 	fmt.Println("out: " + strings.Join(args[:min(2, len(args))], " "))
 	fmt.Fprintln(os.Stderr, "err: progress\rmore")
 	for _, a := range args {

@@ -110,3 +110,4 @@ tts-webui-installer.zip
 # Neutralino
 .tmp
 neutralinojs.log
+/platforms/

@@ -6,7 +6,7 @@ the engine's behaviour that was not run is marked *(not run)*.
 
 ## Pick
 
-**Runtime: sherpa-onnx v2.0.3 (k2-fsa), the prebuilt command-line program `sherpa-onnx-offline-tts`.
+**Runtime: sherpa-onnx v1.13.8 (k2-fsa), the prebuilt command-line program `sherpa-onnx-offline-tts`.
 First engine: KittenTTS nano 0.8, int8 (`kitten-nano-en-v0_8-int8`), English, run on CPU.**
 
 Why this is a platform and not a `uv` entry: the runtime is a native program and onnxruntime comes inside the archive
@@ -17,7 +17,7 @@ What was read (2026-11-25, GitHub API and the files themselves):
 
 | Fact | Source |
 |---|---|
-| Latest release `v2.0.3`, 2026-11-22; the Windows `shared-MT-Release` archive (32,180,449 bytes) has digest `sha256:1d2414ac...fbf8182`, and a download hashed to the same value | `api.github.com/repos/k2-fsa/sherpa-onnx/releases/latest`, own `sha256sum` |
+| **Pinned `v1.13.8` (2026-09-10)**, Windows `shared-MT-Release` archive, 24,805,859 bytes, digest `sha256:6dffdc71...58f6e8df`; a download hashed to the same value. **Not v2.0.3 (the latest):** it dropped espeak-ng, and both the Kitten and the Piper model packages fail there ("No lexicon available" / "phoneme_codepoints is empty", run 2026-11-25). Moving to 2.x needs a lexicon and a phonemizer: a later change | release API, own `sha256sum`, own runs |
 | The archive's `bin/` holds `sherpa-onnx-offline-tts.exe`, `onnxruntime.dll`, `onnxruntime_providers_shared.dll` (and ASR tools we do not use) | extracted listing |
 | Runtime licence Apache-2.0 | `LICENSE` of the repo |
 | Model `kitten-nano-en-v0_8-int8.tar.bz2`, 31,220,690 bytes, digest `sha256:6fa5be85...a83af2fd` (own download hashed the same). Holds `model.int8.onnx`, `voices.bin`, `tokens.txt`, `espeak-ng-data/`, `LICENSE`, `README.md` | `.../releases/tags/tts-models`, extracted listing |
@@ -68,9 +68,10 @@ Python/torch engine; the new one is a second route to the same model family and 
 
 Not in P8: GPU runtime, other OSes, a second model, streaming, voice cloning.
 
-## Open decision for Rob
+## Run on 2026-11-25 (v1.13.8, Windows, CPU, 2 threads)
 
-Running this needs a **downloaded program from GitHub (k2-fsa/sherpa-onnx, checksummed above) to be executed on this
-machine**. I downloaded the runtime archive and the model into `%TEMP%\onnxr` while researching (about 63 MB, hashes
-matched the release digests) and the first execution was denied. The plan needs real runs. Say whether I may run that
-binary, from the scratch folder only.
+Kitten nano 0.8 int8, "Hello from the ONNX platform.": 63,007 samples, wav written, RTF 0.47 (one process, model load included in the wall time). Piper amy-low int8 also generated (35,584 samples). Both from a scratch folder, not through the core yet.
+
+## Decision (answered)
+
+Rob allowed running the checksummed binary from a scratch folder only (2026-11-25).

@@ -21,7 +21,9 @@ func TestExtensionListIsReadOnly(t *testing.T) {
 		}
 	}
 	got := f.requests()
-	if len(got) != 2 || !strings.HasPrefix(got[0], "GET /api/extcatalog/list?kind=interface") {
+	// The map above is walked in random order, so only the set is checked.
+	all := strings.Join(got, "\n")
+	if len(got) != 2 || !strings.Contains(all, "GET /api/extcatalog/list?kind=interface") || !strings.Contains(all, "GET /api/extcatalog/list?kind=decorator") {
 		t.Fatalf("forwarded: %v", got)
 	}
 }

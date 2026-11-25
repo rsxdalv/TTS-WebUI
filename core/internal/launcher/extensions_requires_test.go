@@ -95,11 +95,39 @@ func TestExtensionsListLegacyInstallShowsRequirementsMet(t *testing.T) {
 		t.Fatal(err)
 	}
 	rows := listRequires(t, root, srv, token)
-	for name, want := range map[string]string{"extension_native": "uv", "extension_beta": "gradio-host", "extension_deco": "gradio-host"} {
+	for name, want := range map[string]string{"extension_beta": "gradio-host", "extension_deco": "gradio-host"} {
 		r := rows[name]
 		if len(r.RequirementsState) != 1 || r.RequirementsState[0].Name != want ||
 			r.RequirementsState[0].State != "ready" || r.RequirementsState[0].Via != "legacy-env" {
 			t.Errorf("%s: %+v", name, r)
 		}
+	}
+	// uv is no longer the main env's: an engine on a legacy install is told the
+	// uv platform would be installed, and nothing about legacy-env.
+	nat := rows["extension_native"]
+	if len(nat.RequirementsState) != 1 || nat.RequirementsState[0].State != "missing" ||
+		!strings.Contains(nat.RequirementsState[0].Would, "install the uv platform") {
+		t.Errorf("extension_native: %+v", nat)
+	}
+	// Once the uv platform is installed the same row is ready via uv.
+	if err := os.MkdirAll(filepath.Join(root.Dir(), "platforms", "uv", "python"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root.Dir(), "platforms", "uv", "platform.json"), []byte("{\"name\":\"uv\",\"uv_version\":\"0.13.6\",\"python\":\"3.10.11\",\"gpu\":\"CPU\"}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	uvName := "uv"
+	if runtime.GOOS == "windows" {
+		uvName = "uv.exe"
+	}
+	if err := os.MkdirAll(filepath.Join(root.Dir(), "platforms", "uv", "bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root.Dir(), "platforms", "uv", "bin", uvName), []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	nat = listRequires(t, root, srv, token)["extension_native"]
+	if len(nat.RequirementsState) != 1 || nat.RequirementsState[0].State != "ready" || nat.RequirementsState[0].Via != "uv" {
+		t.Errorf("extension_native after the platform install: %+v", nat)
 	}
 }

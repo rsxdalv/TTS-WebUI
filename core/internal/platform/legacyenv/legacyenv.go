@@ -62,7 +62,7 @@ func (p *Platform) WithEnv(env []string) platform.Platform {
 }
 
 func (p *Platform) Name() string       { return Name }
-func (p *Platform) Provides() []string { return []string{"gradio-host", "uv"} }
+func (p *Platform) Provides() []string { return []string{"gradio-host"} }
 
 // Status says whether Python can be started: the prefix's program exists and,
 // for `micromamba -p <env> run`, so does the env.

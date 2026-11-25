@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/requires"
 )
 
@@ -60,6 +61,12 @@ func (s *Store) RequiresGraph(ctx context.Context) (requires.Graph, error) {
 			g.Entries[pkg] = requires.Entry{Name: pkg, Requires: req, Installed: installed}
 		}
 	}
+	if s.opts.UV != nil {
+		g.Installable = map[string]string{"uv": uvWould}
+		if s.opts.UV.Status(ctx).Ready {
+			g.Provided["uv"] = "uv"
+		}
+	}
 	if s.opts.Platform != nil && s.opts.Platform.Status(ctx).Ready {
 		p := s.opts.Platform
 		g.Provided[p.Name()] = p.Name()
@@ -79,17 +86,26 @@ func blockedMessage(name string, blocked []requires.Req) string {
 	return fmt.Sprintf("%s requires %s", name, strings.Join(parts, ", "))
 }
 
-// planInstall resolves what installing pkg takes. A requirement that is a
-// platform and is not there refuses the install, saying what would be needed.
-func (s *Store) planInstall(ctx context.Context, g requires.Graph, pkg string) ([]string, error) {
-	plan, err := g.Resolve(pkg)
+// plan is what an install takes: platforms first, then entries in order, the
+// requested one last. Total counts all of them.
+type plan struct {
+	Platforms []string
+	Steps     []string
+	Total     int
+	GPU       gpu.Label // the choice for the uv platform, when it is in Platforms
+}
+
+// planInstall resolves what installing pkg takes. A requirement that is not
+// there and cannot be installed refuses the install, saying what it needs.
+func (s *Store) planInstall(ctx context.Context, g requires.Graph, pkg string) (plan, error) {
+	p, err := g.Resolve(pkg)
 	if err != nil {
-		return nil, invalidf("%v", err)
+		return plan{}, invalidf("%v", err)
 	}
-	if len(plan.Blocked) > 0 {
-		return nil, invalidf("%s", blockedMessage(pkg, plan.Blocked))
+	if len(p.Blocked) > 0 {
+		return plan{}, invalidf("%s", blockedMessage(pkg, p.Blocked))
 	}
-	return plan.Steps, nil
+	return plan{Platforms: p.Platforms, Steps: p.Steps, Total: len(p.Platforms) + len(p.Steps)}, nil
 }
 
 // refuseIfRequired refuses the removal of an entry that installed entries need.
@@ -103,14 +119,14 @@ func refuseIfRequired(g requires.Graph, pkg string) error {
 // planPasted plans the install of an entry the caller handed over: its
 // requirements are looked up in the catalog, and the pasted entry stands in for
 // a catalog entry of the same name.
-func (s *Store) planPasted(ctx context.Context, entry *Obj) ([]string, error) {
+func (s *Store) planPasted(ctx context.Context, entry *Obj) (plan, error) {
 	g, err := s.RequiresGraph(ctx)
 	if err != nil {
-		return nil, invalidf("%v", err)
+		return plan{}, invalidf("%v", err)
 	}
 	req, err := entryRequires(entry)
 	if err != nil {
-		return nil, invalidf("entry: %v", err)
+		return plan{}, invalidf("entry: %v", err)
 	}
 	name := entry.Str("package_name")
 	g.Entries[name] = requires.Entry{Name: name, Requires: req}

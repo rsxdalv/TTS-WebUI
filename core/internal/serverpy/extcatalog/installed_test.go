@@ -3,8 +3,6 @@ package extcatalog
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appconfig"
@@ -30,9 +28,7 @@ func TestInstallsOf(t *testing.T) {
 		{Name: "tts-webui-extension.mms", Version: "1.2.3"},
 		{Name: "Some_Other.Pkg", Version: "4"},
 	}}
-	if err := os.MkdirAll(filepath.Join(root, ".venvs", "native.ext"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	finishedVenv(t, root, "native.ext")
 	in := s.Installs(context.Background())
 	for _, c := range []struct {
 		pkg, proxy string
@@ -62,9 +58,7 @@ func TestResolveSaysInstalledAndVersion(t *testing.T) {
 	s := resolveStore(t, fakeConfig{})
 	fp := &fakePip{pkgs: []piplist.Package{{Name: "base.tts", Version: "0.9"}}}
 	s.opts.Pip = fp
-	if err := os.MkdirAll(filepath.Join(s.opts.Root, ".venvs", "base.tool"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	finishedVenv(t, s.opts.Root, "base.tool")
 	tts, err := s.Resolve("interface", "text-to-speech")
 	if err != nil {
 		t.Fatal(err)

@@ -1,6 +1,6 @@
 // ExtensionsView manages extensions with the app stopped. It calls only
 // /api/ext/*, which the launcher serves from the same Go code the app uses.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { client } from "./client";
 
 interface Ext {
@@ -25,13 +25,24 @@ interface Requirement {
   state: "ready" | "missing";
   via?: string;
   would?: string;
+  installable?: boolean;
+}
+
+// GPUAsk is the answer to an install that needs the uv platform before the user
+// has chosen the GPU (409, needs: gpu_choice). Nothing was installed.
+interface GPUAsk {
+  proposed: string;
+  reason: string;
+  choices: { label: string; row: string; approx_mb: number }[];
 }
 
 // blocker is the first requirement that installing this entry cannot satisfy:
-// a platform (or the Gradio host) that is not there.
+// a platform (or the Gradio host) that is not there and cannot be installed
+// from here. A platform that can be installed (uv) is installed first.
 function blocker(e: Ext): Requirement | undefined {
   return e.requirements_state.find(
-    (r) => r.state === "missing" && !(r.would ?? "").startsWith("would install"),
+    (r) =>
+      r.state === "missing" && !r.installable && !(r.would ?? "").startsWith("would install"),
   );
 }
 
@@ -67,11 +78,14 @@ async function runOp(
   op: Op,
   packageName: string,
   onLine: (line: string) => void,
-): Promise<boolean> {
+  gpu?: string,
+  signal?: AbortSignal,
+): Promise<boolean | GPUAsk> {
   const r = await client(`/api/ext/op/${op}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ package_name: packageName }),
+    body: JSON.stringify(gpu ? { package_name: packageName, gpu } : { package_name: packageName }),
+    signal,
   });
   if (op === "latest-version") {
     const body = await r.json();
@@ -80,6 +94,7 @@ async function runOp(
   }
   if (!r.ok || !r.body) {
     const body = await r.json().catch(() => ({}));
+    if (r.status === 409 && body.needs === "gpu_choice") return body as GPUAsk;
     onLine(`Error: ${body.error ?? `HTTP ${r.status}`}`);
     return false;
   }
@@ -129,18 +144,40 @@ export function ExtensionsView() {
     load();
   }, [load]);
 
-  const run = async (ext: Ext, op: Op) => {
+  const [ask, setAsk] = useState<{ ext: Ext; ask: GPUAsk; pick: string } | null>(null);
+  const abort = useRef<AbortController | null>(null);
+
+  const run = async (ext: Ext, op: Op, gpu?: string) => {
     setBusy(ext.package_name);
-    setLog([`> ${op} ${ext.package_name}`]);
+    setAsk(null);
+    setLog([`> ${op} ${ext.package_name}${gpu ? ` (GPU: ${gpu})` : ""}`]);
+    abort.current = new AbortController();
     try {
-      const ok = await runOp(op, ext.package_name, (l) =>
-        setLog((prev) => [...prev, l]),
+      const res = await runOp(
+        op,
+        ext.package_name,
+        (l) => setLog((prev) => [...prev, l]),
+        gpu,
+        abort.current.signal,
       );
+      if (typeof res === "object") {
+        // The uv platform is installed first and needs the GPU choice.
+        setLog((prev) => [...prev, "The uv platform must be installed first: choose the GPU."]);
+        setAsk({ ext, ask: res, pick: res.proposed });
+        return;
+      }
       if (op === "install" || op === "uninstall") setChanged(true);
-      setLog((prev) => [...prev, ok ? "Done." : "Failed."]);
+      setLog((prev) => [...prev, res ? "Done." : "Failed."]);
     } catch (e: unknown) {
-      setLog((prev) => [...prev, `Error: ${e instanceof Error ? e.message : String(e)}`]);
+      const cancelled = e instanceof DOMException && e.name === "AbortError";
+      setLog((prev) => [
+        ...prev,
+        cancelled
+          ? "Cancelled. Install again to continue; downloads are kept."
+          : `Error: ${e instanceof Error ? e.message : String(e)}`,
+      ]);
     } finally {
+      abort.current = null;
       setBusy(null);
       await load();
     }
@@ -300,6 +337,43 @@ export function ExtensionsView() {
           ))}
         </section>
       ))}
+      {ask && (
+        <div className="p-3 rounded-lg border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950 text-sm flex flex-col gap-2">
+          <strong>Which GPU is this for?</strong>
+          <p className="text-gray-700 dark:text-gray-300">
+            {ask.ext.name} runs on the uv platform, which is installed first: uv, Python and torch
+            for the GPU you choose. Proposed: <strong>{ask.ask.proposed}</strong> ({ask.ask.reason}).
+            Every engine on the same torch build shares its files; another build is a separate
+            download.
+          </p>
+          <select
+            className="px-2 py-1 rounded border border-gray-300 dark:border-gray-700 bg-transparent"
+            value={ask.pick}
+            onChange={(e) => setAsk({ ...ask, pick: e.target.value })}
+          >
+            {ask.ask.choices.map((c) => (
+              <option key={c.label} value={c.label}>
+                {c.label} (torch {c.row}, about {(c.approx_mb / 1000).toFixed(1)} GB)
+              </option>
+            ))}
+          </select>
+          <div className="flex gap-2">
+            <button className={btnPrimary} onClick={() => run(ask.ext, "install", ask.pick)}>
+              Install uv and {ask.ext.name}
+            </button>
+            <button className={btn} onClick={() => setAsk(null)}>
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
+      {busy && (
+        <div>
+          <button className={btn} onClick={() => abort.current?.abort()}>
+            Cancel
+          </button>
+        </div>
+      )}
       {log.length > 0 && (
         <pre className="p-3 rounded-lg bg-gray-900 text-gray-100 text-xs overflow-auto max-h-72 whitespace-pre-wrap">
           {log.join("\n")}

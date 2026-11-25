@@ -6,9 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
-	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/legacyenv"
 )
 
 // The extensions.json of the repository: every entry gets a requires, derived
@@ -80,25 +77,6 @@ func TestBadRequiresIsALoadErrorNamingEntryAndName(t *testing.T) {
 	}
 }
 
-// A folder with no platform: an install says what is missing and runs nothing.
-func TestInstallWithNoPlatformSaysWhatWouldBeInstalled(t *testing.T) {
-	root := t.TempDir()
-	pr, _ := paths.New(root)
-	s := New(Options{Root: root, Token: "tok", Platform: legacyenv.New(legacyenv.Options{Root: pr})})
-	writeFile(t, root, "extensions.json", `{"tabs":[`+entry("eng", "Eng", `"proxy":"native"`)+`,`+entry("tab", "Tab")+`]}`)
-	code, body := call(t, s.Handler(), "POST", Prefix+"install", `{"package_name":"eng"}`, "tok")
-	if code != 400 || !strings.Contains(body, "eng requires uv (the uv platform is not available in this version)") {
-		t.Fatalf("native: %d %s", code, body)
-	}
-	code, body = call(t, s.Handler(), "POST", Prefix+"install", `{"package_name":"tab"}`, "tok")
-	if code != 400 || !strings.Contains(body, "tab requires gradio-host") {
-		t.Fatalf("tab: %d %s", code, body)
-	}
-	if _, err := os.Stat(filepath.Join(root, ".venvs")); err == nil {
-		t.Error("a refused install made .venvs")
-	}
-}
-
 // An entry that requires another entry installs it first, in order; removing
 // the required one is refused while the other is installed.
 func TestInstallsRequiredEntriesFirstAndRefusesRemovingThem(t *testing.T) {
@@ -120,10 +98,10 @@ func TestInstallsRequiredEntriesFirstAndRefusesRemovingThem(t *testing.T) {
 
 	// Removal: both own-venv entries, installed (their venv directories exist).
 	writeFile(t, root, "extensions.json", `{"tabs":[`+entry("top", "Top", `"proxy":"native","requires":["base"]`)+`,`+entry("base", "Base", `"proxy":"native"`)+`]}`)
+	s.opts.UV = uvStandIn(t, root)
+	markUVInstalled(t, root, "CPU")
 	for _, d := range []string{"top", "base"} {
-		if err := os.MkdirAll(filepath.Join(root, ".venvs", d), 0o755); err != nil {
-			t.Fatal(err)
-		}
+		finishedVenv(t, root, d)
 	}
 	code, body = call(t, s.Handler(), "POST", Prefix+"uninstall", `{"package_name":"base"}`, "tok")
 	if code != 400 || !strings.Contains(body, "cannot remove base: required by top") {

@@ -14,6 +14,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/system"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"os"
 	"path/filepath"
 	"sort"
@@ -34,6 +35,13 @@ type Options struct {
 	Token string // required; requests without it get 403
 	// Platform is the runtime installs run on (the main env's python and uv).
 	Platform platform.Platform
+	// UV is the platform own-venv entries (proxy: native) run on. Nil means
+	// there is none: such an entry cannot be installed.
+	UV *uv.Platform
+	// StopEngine stops the running process of an own-venv engine before its venv
+	// is removed (Windows will not delete a running python.exe). It returns true
+	// when it stopped one. Nil means nothing runs engines in this process.
+	StopEngine func(pkg string) bool
 	// Config supplies the disabled and autostart lists for Resolve (appconfig.Store).
 	Config ConfigSource
 	// Pip lists the main env's distributions for Resolve's installed and

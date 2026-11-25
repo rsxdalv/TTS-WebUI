@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"log/slog"
 	"net"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appconfig"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appenv"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/engines"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extcatalog"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extprocs"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extui"
@@ -40,10 +42,11 @@ const gradioHost = "127.0.0.1"
 // proxy tree's job), the extension processes, and the control API both of them
 // serve to the gradio child.
 type serverPy struct {
-	rt  *router.Router
-	mgr *extprocs.Manager
-	ctl *http.Server
-	ui  *http.Server
+	root string // install folder, the key in runningEngines
+	rt   *router.Router
+	mgr  *extprocs.Manager
+	ctl  *http.Server
+	ui   *http.Server
 
 	// publicAddr is where the router listens (the address users open).
 	publicAddr string
@@ -140,13 +143,15 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		Platform: p,
 		Logf:     func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	})
+	var mgr *extprocs.Manager
 	ext := extcatalog.New(extcatalog.Options{
 		Root: root.Dir(), Token: token, Config: cfg, Pip: pip,
-		Platform: p,
-		Logf:     func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+		Platform: p, UV: uv.New(uv.Options{Root: root}),
+		StopEngine: func(pkg string) bool { return mgr.StopIfRunning(pkg) },
+		Logf:       func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	})
 
-	mgr := extprocs.New(extprocs.Options{
+	mgr = extprocs.New(extprocs.Options{
 		Root:     root,
 		Platform: p,
 		// Extension processes get no control token, so they receive the
@@ -156,6 +161,8 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		Token:    token,
 		Logf:     func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	})
+	// The launcher's Extensions page removes engines too, with its own store.
+	runningEngines.Store(root.Dir(), mgr)
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/routes", rt.ControlHandler())
@@ -184,6 +191,10 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		Root: root.Dir(), Token: token,
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}).Handler())
+	// The Vite engine page starts an installed own-venv engine on open (D31).
+	mux.Handle(engines.Prefix, engines.New(engines.Options{
+		Cat: ext, Procs: mgr, Token: token, PublicPort: tcpPort(pub.Addr()),
+	}))
 	mux.Handle("/api/extensions", mgr.Handler())
 	mux.Handle("/api/extensions/", mgr.Handler())
 	ctl := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
@@ -200,6 +211,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 
 	ctx, cancel := context.WithCancel(context.Background())
 	sp := &serverPy{
+		root:       root.Dir(),
 		rt:         rt,
 		mgr:        mgr,
 		ctl:        ctl,
@@ -231,6 +243,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 func (sp *serverPy) Close() {
 	sp.closeOnce.Do(func() {
 		sp.mgr.StopAll()
+		runningEngines.CompareAndDelete(sp.root, sp.mgr)
 		sp.stopRouter()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -304,4 +317,25 @@ func commandEnv(p platform.Platform) []string {
 		return os.Environ()
 	}
 	return c.Env
+}
+
+// tcpPort is the port of a TCP address, 0 for any other kind.
+func tcpPort(a net.Addr) int {
+	if t, ok := a.(*net.TCPAddr); ok {
+		return t.Port
+	}
+	return 0
+}
+
+// runningEngines maps an install folder to the extension process manager of the
+// app running on it. The launcher's Extensions page has its own catalog store,
+// which uses this to stop an engine before removing its venv.
+var runningEngines sync.Map // string -> *extprocs.Manager
+
+// stopRunningEngine stops pkg in the app running on root, if there is one.
+func stopRunningEngine(root, pkg string) bool {
+	if m, ok := runningEngines.Load(root); ok {
+		return m.(*extprocs.Manager).StopIfRunning(pkg)
+	}
+	return false
 }

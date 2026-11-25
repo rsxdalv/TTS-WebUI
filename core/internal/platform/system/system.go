@@ -54,7 +54,7 @@ func (p *Platform) WithEnv(env []string) platform.Platform {
 }
 
 func (p *Platform) Name() string       { return Name }
-func (p *Platform) Provides() []string { return []string{"gradio-host", "uv"} }
+func (p *Platform) Provides() []string { return []string{"gradio-host"} }
 
 // Status says whether python can be started.
 func (p *Platform) Status(context.Context) platform.Status {

@@ -171,10 +171,11 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		Platform: p,
 		// Extension processes get no control token, so they receive the
 		// resolved decorators instead of asking for them.
-		ExtraEnv: ext.DecoratorEnv,
-		Routes:   rt,
-		Token:    token,
-		Logf:     func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+		ExtraEnv:   ext.DecoratorEnv,
+		PackageEnv: ext.EngineEnv,
+		Routes:     rt,
+		Token:      token,
+		Logf:       func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 		// D31. Idle stop is off unless asked for; the cap is a soft default.
 		IdleTimeout: engineIdleTimeout(os.Getenv),
 		MaxRunning:  engineMaxRunning(os.Getenv),

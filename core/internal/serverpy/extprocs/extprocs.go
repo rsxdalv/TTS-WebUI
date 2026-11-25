@@ -68,6 +68,10 @@ type Options struct {
 	// Go computes for the extension (the resolved decorators). They win over
 	// BaseEnv, so Python cannot override them.
 	ExtraEnv func() ([]string, error)
+	// PackageEnv, when set, is asked at each start for the KEY=VALUE variables
+	// the package's own catalog entry wants (its "env" object). They win over
+	// ExtraEnv and BaseEnv.
+	PackageEnv func(pkg string) ([]string, error)
 	// Routes receives AddRoute/RemoveRoute calls. May be nil.
 	Routes RouteRegistrar
 	// Token is the shared secret for the control API. Empty rejects all calls.
@@ -271,6 +275,16 @@ func (m *Manager) buildEnv(pkg string, port int, req StartRequest, base []string
 			return nil, err
 		}
 		for _, kv := range extra {
+			k, v, _ := strings.Cut(kv, "=")
+			env = setEnv(env, k, v)
+		}
+	}
+	if m.opts.PackageEnv != nil {
+		own, err := m.opts.PackageEnv(pkg)
+		if err != nil {
+			return nil, err
+		}
+		for _, kv := range own {
 			k, v, _ := strings.Cut(kv, "=")
 			env = setEnv(env, k, v)
 		}

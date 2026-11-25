@@ -25,6 +25,8 @@ call GET /api/go-data/host-status
 call GET /openai
 call DELETE /api/go-data/openai/endpoints/leakcheck
 cat "$out"
+if ! grep -q "has_key\":true.*[200]" "$out"; then echo "FAIL: the endpoint was not stored (is the app up at $FRONT?)"; fail=1; fi
+if ! grep -q "GET /api/go-data/openai/endpoints -> .*leakcheck" "$out"; then echo "FAIL: the list does not show the endpoint"; fail=1; fi
 if grep -q "$KEY" "$out"; then echo "FAIL: a route returned the key"; fail=1; fi
 # While the endpoint existed the key was in keys.json; it is deleted now, so no file may hold it.
 hits="$(grep -rl --exclude-dir=node_modules --exclude-dir=.git "$KEY" "$ROOT" 2>/dev/null || true)"

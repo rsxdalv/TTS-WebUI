@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/audiocpp"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/openai"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
@@ -215,6 +216,8 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		Store: openai.NewStore(root.Dir()), Root: root.Dir(),
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}), token))
+	// The audiocpp platform: the audio.cpp server and its models (see platform/audiocpp).
+	mux.Handle(audiocpp.Prefix, audiocpp.NewHandler(root, token, func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) }))
 	mux.Handle("/api/extensions", mgr.Handler())
 	mux.Handle("/api/extensions/", mgr.Handler())
 	ctl := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
@@ -263,6 +266,9 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 func (sp *serverPy) Close() {
 	sp.closeOnce.Do(func() {
 		sp.mgr.StopAll()
+		if r, err := paths.New(sp.root); err == nil {
+			audiocpp.ServerFor(r).Stop()
+		}
 		runningEngines.CompareAndDelete(sp.root, sp.mgr)
 		sp.stopRouter()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

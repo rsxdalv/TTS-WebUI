@@ -198,7 +198,7 @@ func (s *Store) installable(kind string) ([]*Obj, error) {
 	}
 	var out []*Obj
 	for _, x := range list {
-		if !strings.Contains(x.Str("package_name"), "builtin") {
+		if !platform.BuiltinTab(x.Str("package_name"), x.Str("proxy")) {
 			out = append(out, x)
 		}
 	}

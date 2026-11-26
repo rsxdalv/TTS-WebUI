@@ -37,6 +37,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appconfig"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extcatalog"
 )
@@ -282,7 +283,7 @@ func (h *Handler) list(r *http.Request, kind string) (List, error) {
 		}
 		ans.Entries = append(ans.Entries, Entry{
 			PackageName: pkg, Name: name, Description: e.Str("description"), Website: e.Str("website"),
-			Class: e.Str("extension_class"), Proxy: proxy, Builtin: strings.Contains(pkg, "builtin"),
+			Class: e.Str("extension_class"), Proxy: proxy, Builtin: platform.BuiltinTab(pkg, proxy),
 			Installed: ok, Version: version, Disabled: disabled[pkg],
 		})
 	}

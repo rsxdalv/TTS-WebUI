@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -412,23 +413,31 @@ func TestFormatSizeAndTimeSince(t *testing.T) {
 }
 
 func TestCacheDirFollowsHuggingFaceOrder(t *testing.T) {
-	root := filepath.Join(string(filepath.Separator), "app")
 	home := t.TempDir()
 	base := []string{"HOME=" + home}
-	abs := func(p string) string { return filepath.Join(string(filepath.Separator), p) }
+	// An absolute path on every OS: on Windows it needs a drive ("\app" is not absolute there).
+	abs := func(p string) string { return filepath.Join(filepath.VolumeName(home)+string(filepath.Separator), p) }
+	root := abs("app")
+	// "~" is the user's home: HOME everywhere but Windows, where the cache code ignores HOME.
+	tildeHome := home
+	if runtime.GOOS == "windows" {
+		if h, err := os.UserHomeDir(); err == nil {
+			tildeHome = h
+		}
+	}
 	cases := []struct {
 		name string
 		env  []string
 		want string
 	}{
-		{"default", base, filepath.Join(home, ".cache", "huggingface", "hub")},
+		{"default", base, filepath.Join(tildeHome, ".cache", "huggingface", "hub")},
 		{"xdg", append(base, "XDG_CACHE_HOME="+abs("xdg")), filepath.Join(abs("xdg"), "huggingface", "hub")},
 		{"hf home", append(base, "HF_HOME="+abs("hfhome"), "XDG_CACHE_HOME="+abs("xdg")), filepath.Join(abs("hfhome"), "hub")},
 		{"legacy hub cache beats hf home", append(base, "HF_HOME="+abs("hfhome"), "HUGGINGFACE_HUB_CACHE="+abs("legacy")), abs("legacy")},
 		{"hf hub cache beats both", append(base, "HF_HOME="+abs("hfhome"), "HUGGINGFACE_HUB_CACHE="+abs("legacy"), "HF_HUB_CACHE="+abs("new")), abs("new")},
 		{"empty is unset", append(base, "HF_HUB_CACHE=", "HUGGINGFACE_HUB_CACHE=  ", "HF_HOME="+abs("hfhome")), filepath.Join(abs("hfhome"), "hub")},
 		{"relative is under the app root", append(base, "HF_HUB_CACHE=models/hf"), filepath.Join(root, "models", "hf")},
-		{"tilde", append(base, "HF_HUB_CACHE=~/hubcache"), filepath.Join(home, "hubcache")},
+		{"tilde", append(base, "HF_HUB_CACHE=~/hubcache"), filepath.Join(tildeHome, "hubcache")},
 		{"variable", append(base, "MYDIR="+abs("m"), "HF_HUB_CACHE=$MYDIR/hub"), filepath.Join(abs("m"), "hub")},
 		{"last one wins", append(base, "HF_HUB_CACHE="+abs("a"), "HF_HUB_CACHE="+abs("b")), abs("b")},
 	}

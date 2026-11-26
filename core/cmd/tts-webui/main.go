@@ -3,6 +3,7 @@
 //
 //	tts-webui [launch] [--root DIR] [--port N] [--no-browser] [--share] [--docker]
 //	          [--start] [--system-python] [--no-react]
+//	tts-webui mcp [--backend URL] [--http ADDR]
 //	tts-webui --version
 package main
 
@@ -28,6 +29,15 @@ func main() {
 		fmt.Fprintf(os.Stderr, "tts-webui: could not switch to the downloaded launcher (%v); running the old one\n", err)
 	} else if handled {
 		os.Exit(code)
+	}
+	if len(args) > 0 && args[0] == "mcp" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		if err := runMCP(ctx, args[1:]); err != nil {
+			fmt.Fprintf(os.Stderr, "tts-webui mcp: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 	if len(args) > 0 && args[0] == "launch" { // accepted for compatibility
 		args = args[1:]

@@ -1,7 +1,7 @@
 # MCP server (spec)
 
 Written 2026-11-26. Replaces the Python stub in PR #597 (a stdio JSON-RPC placeholder whose tools returned canned
-text). **Status: draft, minimal first version.** Anything not run is marked *(not run)*.
+text). **Status: v1 built (`core/internal/mcp`, `tts-webui mcp`), unit-tested and smoke-tested against a fake backend; not run against a real engine.** Anything not run is marked *(not run)*.
 
 ## Goal
 
@@ -53,8 +53,8 @@ scope for v1 (the local extension has none).
 - HTTP: refuses to start unless `ADDR` is a loopback address and a token is set (no token, no listener). The token is a
   secret the user chooses (at least 16 characters), compared in constant time. It is **separate from the per-run
   control token** and opens only `/mcp`.
-- `Host` must be the bound loopback address or `localhost`; a request with a non-matching `Origin` header gets 403
-  (the spec's Streamable HTTP rule). Requests without `Origin` (non-browser clients) pass this check and still need the
+- The SDK rejects a non-loopback `Host` on a loopback listener (DNS rebinding) and the standard library's
+  `http.CrossOriginProtection` rejects a cross-origin browser request with 403 (the spec's Streamable HTTP rule). Requests without `Origin` (non-browser clients) pass this check and still need the
   token.
 - No LAN mode in v1. Remote use goes through the user's own tunnel or reverse proxy, which is their decision.
 - The server never logs request text or tokens.
@@ -67,10 +67,17 @@ that are likely wanted are `transcribe` and an `outputs` resource.
 
 ## Tests
 
-Unit tests with `httptest` standing in for the backend: tool listing, a successful `generate_speech`, an oversize
-answer, a non-WAV answer, backend down, cancellation; HTTP mode: no token (401), wrong token (401), bad `Origin` (403),
-bad `Host`, non-loopback bind refused. In-memory SDK transports are used for the protocol round trips.
-**Not run against a real engine** until someone starts the extension on 7778 and records it.
+`core/internal/mcp/mcp_test.go`, with `httptest` standing in for the backend and the SDK's in-memory transports for the
+protocol: tool listing, `list_models`, a successful `generate_speech` (request body checked), empty and oversize text,
+a non-WAV answer, a backend 500, an oversize answer, backend down, cancellation reaching the backend, backend URL
+validation, the loopback and token checks, and over HTTP: no token (401), wrong token (401), foreign `Origin` (403),
+rebound `Host` (403). `go test -race` passes.
+
+Smoke run of the built binary on 2026-11-26 against a fake OpenAI server: stdio `initialize`, `tools/list`,
+`tools/call list_models` and `generate_speech` answered correctly; HTTP mode answered 401 without the token, 200 with
+it, 403 for a foreign `Origin`; `--http 0.0.0.0:...` and a missing token were refused with exit 1.
+**Not run against a real engine** (nothing was listening on 7778 here) and **not run with a real MCP client** (Claude
+Desktop, an IDE).
 
 ## Open questions
 

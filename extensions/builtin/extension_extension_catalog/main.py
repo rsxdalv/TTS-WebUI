@@ -86,18 +86,14 @@ def ui():
             """,
         )
 
+        # Parse and preview only. Adding to extensions.external.json and running
+        # the installer both execute code from the received JSON, so they stay
+        # behind the explicit "Add to external list" / "Install selected"
+        # buttons rather than firing automatically on a received message.
         json_input_automatic.change(
             fn=_on_parse,
             inputs=[json_input_automatic],
             outputs=[parsed_state, preview_md, parse_info],
-        ).then(
-            fn=_add_to_external,
-            inputs=[parsed_state],
-            outputs=[parse_info, current_json],
-        ).then(
-            fn=_install_selected,
-            inputs=[parsed_state],
-            outputs=[console_html],
         )
 
         parse_btn.click(

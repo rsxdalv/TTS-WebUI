@@ -21,6 +21,22 @@ type Tool struct {
 	Path, Lib []string
 	// Probe is a file of the extracted tool that must exist for it to count as there.
 	Probe string
+	// Env are variables the tool needs on every command, "{dir}" being the tool's
+	// folder (git built for a prefix of its own finds its helpers through them).
+	Env []string
+	// Smoke are programs of the extracted tool run once before it counts as installed:
+	// a build that links the host's libraries must be seen to load here, not found
+	// out by an engine install. Any outcome but "could not start" is a pass.
+	Smoke []Smoke
+	// OnlyIfMissing: the platform fetches the tool only when the machine has none, so
+	// a working system tool is never replaced by one that may not run on this host.
+	OnlyIfMissing bool
+}
+
+// Smoke is one program run and its arguments (the program is relative to the tool).
+type Smoke struct {
+	Prog string
+	Args []string
 }
 
 // ffmpeg is a BtbN FFmpeg-Builds "shared" build of the 2026-10-31 monthly
@@ -34,6 +50,28 @@ const (
 	gitVersion = "2.56.1"
 	gitRelease = "https://github.com/git-for-windows/git/releases/download/v2.56.1.windows.1/"
 )
+
+// dugite-native is the Git Desktop team's build of git for embedding (GPL-2.0, git's
+// licence; git-lfs and Git Credential Manager inside are MIT). Its Linux builds link the
+// host's libc (glibc 2.34 or newer) and libcurl, so they are used only on a machine
+// with no git (OnlyIfMissing) and are run once after unpacking (Smoke). The checksums
+// are those of the release's `.sha256` files and of a real download, 2026-11-26.
+const (
+	dugiteVersion = "2.56.1"
+	dugiteRelease = "https://github.com/desktop/dugite-native/releases/download/v2.56.1/"
+)
+
+var dugiteLinux = func(arch, sum string) Tool {
+	return Tool{Name: "git", Version: dugiteVersion, OnlyIfMissing: true,
+		Archive: Archive{dugiteRelease + "dugite-native-v2.56.1-238326e-ubuntu-" + arch + ".tar.gz", sum},
+		Path:    []string{"bin"}, Probe: "bin/git",
+		Env: []string{"GIT_EXEC_PATH={dir}/libexec/git-core", "GIT_TEMPLATE_DIR={dir}/share/git-core/templates"},
+		Smoke: []Smoke{
+			{Prog: "bin/git", Args: []string{"--version"}},
+			// git clone over https runs this helper, which loads libcurl.
+			{Prog: "libexec/git-core/git-remote-https"},
+		}}
+}
 
 var ffmpegTools = map[string]Tool{
 	"windows/amd64": {Name: "ffmpeg", Version: ffmpegVersion, Strip: 1,
@@ -54,14 +92,16 @@ var gitTools = map[string]Tool{
 	"windows/arm64": {Name: "git", Version: gitVersion,
 		Archive: Archive{gitRelease + "MinGit-2.56.1-arm64.zip", "96571e442e90523a90e5fd8661b4c4e43bc192910f3c6db938816e6955b4cc8c"},
 		Path:    []string{"cmd"}, Probe: "cmd/git.exe"},
+	"linux/amd64": dugiteLinux("x64", "e5bc3e8e80b57a5bcd8da18d59b23f5b39533d19019ac1d50b0bd34f051d111d"),
+	"linux/arm64": dugiteLinux("arm64", "8626f036e1235f5b209d8331c368d85a9790988fb21a443e5f61662a178abcb6"),
 }
 
 // ToolNames are the tools of the platform, in install order.
 var ToolNames = []string{"git", "ffmpeg"}
 
 // ToolFor is the pinned tool for an OS and architecture. ok is false when the
-// platform does not fetch it there: git on Linux and macOS (the system's is
-// used) and ffmpeg on macOS and Windows arm64 (no pinned build).
+// platform does not fetch it there: git on macOS and on Linux other than amd64 and
+// arm64 (the system's is used) and ffmpeg on macOS and Windows arm64 (no pinned build).
 func ToolFor(name, goos, goarch string) (Tool, bool) {
 	key := goos + "/" + goarch
 	switch name {
@@ -90,7 +130,7 @@ func gitInstallHint(goos string) string {
 func systemToolHint(name, goos string) string {
 	switch {
 	case name == "git" && goos == "linux":
-		return "git: not fetched on Linux (there is no official static build); the system's git is used. " + gitInstallHint(goos)
+		return "git: no pinned build for this Linux architecture; the system's git is used. " + gitInstallHint(goos)
 	case name == "git" && goos == "darwin":
 		return "git: not fetched on macOS; the system's git is used. " + gitInstallHint(goos)
 	case name == "ffmpeg" && goos == "darwin":

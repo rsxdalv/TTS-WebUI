@@ -1,8 +1,10 @@
 package uv
 
 import (
+	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -45,14 +47,22 @@ func TestToolPinsAreComplete(t *testing.T) {
 			t.Errorf("%s is pinned nowhere", name)
 		}
 	}
-	// What the plan names: Windows gets both, Linux gets ffmpeg and uses the system's git.
-	for _, c := range []struct{ tool, os, arch string }{{"git", "windows", "amd64"}, {"ffmpeg", "windows", "amd64"}, {"ffmpeg", "linux", "amd64"}, {"ffmpeg", "linux", "arm64"}} {
+	// What the plan names: Windows and Linux (amd64, arm64) get both; macOS uses the system's.
+	for _, c := range []struct{ tool, os, arch string }{{"git", "windows", "amd64"}, {"git", "linux", "amd64"}, {"git", "linux", "arm64"}, {"ffmpeg", "windows", "amd64"}, {"ffmpeg", "linux", "amd64"}, {"ffmpeg", "linux", "arm64"}} {
 		if _, ok := ToolFor(c.tool, c.os, c.arch); !ok {
 			t.Errorf("no pin for %s on %s/%s", c.tool, c.os, c.arch)
 		}
 	}
-	if _, ok := ToolFor("git", "linux", "amd64"); ok {
-		t.Error("git on Linux is the system's: nothing is fetched")
+	if _, ok := ToolFor("git", "darwin", "arm64"); ok {
+		t.Error("git on macOS is the system's: nothing is fetched")
+	}
+	// The Linux git links the host's libc and libcurl: never replace a git that works,
+	// and run it once before it counts.
+	for _, arch := range []string{"amd64", "arm64"} {
+		g, _ := ToolFor("git", "linux", arch)
+		if !g.OnlyIfMissing || len(g.Smoke) < 2 || len(g.Env) != 2 || !strings.Contains(g.Archive.URL, "/desktop/dugite-native/releases/download/v"+g.Version+"/") {
+			t.Errorf("linux/%s git pin: %+v", arch, g)
+		}
 	}
 }
 
@@ -224,7 +234,7 @@ func fakeGit(t *testing.T, mode os.FileMode) string {
 func TestCheckGit(t *testing.T) {
 	gitReq := []string{"foo==1", "git+https://github.com/a/b.git@main"}
 	p := toolPlatform(t, httptest.NewTLSServer(http.NotFoundHandler()), nil)
-	p.goos = "linux"
+	p.goos, p.goarch = "linux", "riscv64" // no pinned git for it
 
 	t.Setenv("PATH", t.TempDir()) // no git
 	err := p.CheckGit("Kitten", gitReq)
@@ -256,8 +266,12 @@ func TestCheckGit(t *testing.T) {
 	if err := p.CheckGit("Kitten", gitReq); err != nil {
 		t.Errorf("a pinned git is fetched by the install: %v", err)
 	}
-	p.goos = "darwin"
 	p.tools = nil
+	p.goarch = "amd64" // the pinned Linux git
+	if err := p.CheckGit("Kitten", gitReq); err != nil {
+		t.Errorf("linux/amd64 has a pinned git: %v", err)
+	}
+	p.goos, p.goarch = "darwin", "arm64"
 	if err := p.CheckGit("Kitten", gitReq); err == nil || !strings.Contains(err.Error(), "xcode-select --install") {
 		t.Errorf("macOS: %v", err)
 	}
@@ -293,5 +307,192 @@ func TestCreateWithoutGitFetchesNothing(t *testing.T) {
 	}
 	if c := f.calls(); len(c) != 0 {
 		t.Errorf("uv was run: %v", c)
+	}
+}
+
+type tarMember struct {
+	name, body, link string
+	mode             int64
+	typ              byte
+}
+
+func toolTarGz(t *testing.T, members []tarMember) ([]byte, string) {
+	t.Helper()
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	for _, m := range members {
+		typ := m.typ
+		if typ == 0 {
+			typ = tar.TypeReg
+		}
+		h := &tar.Header{Name: m.name, Typeflag: typ, Mode: m.mode, Linkname: m.link}
+		if typ == tar.TypeReg {
+			h.Size = int64(len(m.body))
+		}
+		if err := tw.WriteHeader(h); err != nil {
+			t.Fatal(err)
+		}
+		if typ == tar.TypeReg {
+			tw.Write([]byte(m.body))
+		}
+	}
+	tw.Close()
+	gz.Close()
+	sum := sha256.Sum256(buf.Bytes())
+	return buf.Bytes(), hex.EncodeToString(sum[:])
+}
+
+// fakeGitTar is laid out like dugite-native's Linux archive: members start with "./",
+// no top folder, a symlink among the helpers, programs that are shell scripts.
+func fakeGitTar(t *testing.T, remoteHTTPS string) ([]byte, string) {
+	return toolTarGz(t, []tarMember{
+		{name: "./", typ: tar.TypeDir, mode: 0o755},
+		{name: "./bin/", typ: tar.TypeDir, mode: 0o755},
+		{name: "./bin/git", body: "#!/bin/sh\necho git version fake\n", mode: 0o755},
+		{name: "./libexec/git-core/", typ: tar.TypeDir, mode: 0o755},
+		{name: "./libexec/git-core/git-remote-https", body: remoteHTTPS, mode: 0o755},
+		{name: "./libexec/git-core/git-add", typ: tar.TypeSymlink, link: "../../bin/git", mode: 0o777},
+		{name: "./share/git-core/templates/description", body: "x", mode: 0o644},
+	})
+}
+
+const okRemoteHTTPS = "#!/bin/sh\necho 'error: remote-curl: usage: git remote-curl <remote> [<url>]' >&2\nexit 1\n"
+
+func fakeGitTool(url, sum string) Tool {
+	return Tool{Name: "git", Version: "9", OnlyIfMissing: true, Archive: Archive{url + "/git.tar.gz", sum},
+		Path: []string{"bin"}, Probe: "bin/git",
+		Env:   []string{"GIT_EXEC_PATH={dir}/libexec/git-core", "GIT_TEMPLATE_DIR={dir}/share/git-core/templates"},
+		Smoke: []Smoke{{Prog: "bin/git", Args: []string{"--version"}}, {Prog: "libexec/git-core/git-remote-https"}}}
+}
+
+func TestExtractTarGz(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks and modes")
+	}
+	data, _ := fakeGitTar(t, okRemoteHTTPS)
+	arch := filepath.Join(t.TempDir(), "a.tar.gz")
+	os.WriteFile(arch, data, 0o644)
+	dest := filepath.Join(t.TempDir(), "d")
+	os.MkdirAll(dest, 0o755)
+	if err := extractTarGz(arch, dest, 0); err != nil {
+		t.Fatal(err)
+	}
+	if st, err := os.Stat(filepath.Join(dest, "bin", "git")); err != nil || st.Mode().Perm()&0o111 == 0 {
+		t.Fatalf("bin/git: %v %v", st, err)
+	}
+	if l, err := os.Readlink(filepath.Join(dest, "libexec", "git-core", "git-add")); err != nil || l != "../../bin/git" {
+		t.Fatalf("symlink: %q %v", l, err)
+	}
+	if _, err := os.Stat(filepath.Join(dest, "share", "git-core", "templates", "description")); err != nil {
+		t.Fatal(err)
+	}
+	for name, ms := range map[string][]tarMember{
+		"dotdot":            {{name: "../evil", body: "x", mode: 0o644}},
+		"absolute symlink":  {{name: "l", typ: tar.TypeSymlink, link: "/etc/passwd"}},
+		"escaping symlink":  {{name: "a/l", typ: tar.TypeSymlink, link: "../../out"}},
+		"link not in there": {{name: "h", typ: tar.TypeLink, link: "missing"}},
+	} {
+		data, _ := toolTarGz(t, ms)
+		arch := filepath.Join(t.TempDir(), "b.tar.gz")
+		os.WriteFile(arch, data, 0o644)
+		d := filepath.Join(t.TempDir(), "d")
+		os.MkdirAll(d, 0o755)
+		if err := extractTarGz(arch, d, 0); err == nil {
+			t.Errorf("%s was extracted", name)
+		}
+	}
+}
+
+func TestPinnedGitIsFetchedOnlyWhenTheMachineHasNone(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell scripts")
+	}
+	data, sum := fakeGitTar(t, okRemoteHTTPS)
+	hits := 0
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { hits++; w.Write(data) }))
+	defer srv.Close()
+	tl := fakeGitTool(srv.URL, sum)
+
+	// A machine with a git: nothing is fetched and nothing is made.
+	t.Setenv("PATH", fakeGit(t, 0o755))
+	p := toolPlatform(t, srv, []Tool{tl})
+	var lines []string
+	emit := func(l string) { lines = append(lines, l) }
+	if err := p.installTools(context.Background(), emit); err != nil || hits != 0 {
+		t.Fatalf("with a git: err=%v downloads=%d", err, hits)
+	}
+	if _, err := os.Stat(p.ToolsDir()); err == nil || !strings.Contains(strings.Join(lines, "\n"), "git is on this machine") {
+		t.Fatalf("with a git: tools folder made or not said: %v", lines)
+	}
+
+	// A machine without: fetched, smoke-tested, on PATH, with its variables.
+	t.Setenv("PATH", t.TempDir())
+	p = toolPlatform(t, srv, []Tool{tl})
+	if err := p.installTools(context.Background(), emit); err != nil || hits != 1 {
+		t.Fatalf("without a git: err=%v downloads=%d", err, hits)
+	}
+	dir := filepath.Join(p.ToolsDir(), "git")
+	c, _ := p.Command(&platform.Entry{Package: "x"}, []string{"uv", "--version"})
+	env := map[string]string{}
+	for _, kv := range c.Env {
+		if k, v, ok := strings.Cut(kv, "="); ok {
+			env[k] = v
+		}
+	}
+	if !strings.HasPrefix(env["PATH"], filepath.Join(dir, "bin")+string(os.PathListSeparator)) {
+		t.Errorf("PATH: %s", env["PATH"])
+	}
+	if env["GIT_EXEC_PATH"] != filepath.ToSlash(filepath.Join(dir, "libexec", "git-core")) || env["GIT_TEMPLATE_DIR"] != filepath.ToSlash(filepath.Join(dir, "share", "git-core", "templates")) {
+		t.Errorf("git variables: %q %q", env["GIT_EXEC_PATH"], env["GIT_TEMPLATE_DIR"])
+	}
+	if !p.gitAvailable() {
+		t.Error("the fetched git is not found on the platform's PATH")
+	}
+	if err := p.CheckGit("G", []string{"git+https://x/y"}); err != nil {
+		t.Error(err)
+	}
+	// Again: already there, no second download.
+	if err := p.installTools(context.Background(), emit); err != nil || hits != 1 {
+		t.Fatalf("again: err=%v downloads=%d", err, hits)
+	}
+}
+
+func TestPinnedGitRefusedForABadChecksumOrABuildThatCannotRun(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell scripts")
+	}
+	t.Setenv("PATH", t.TempDir())
+	good, _ := fakeGitTar(t, okRemoteHTTPS)
+	broken, brokenSum := fakeGitTar(t, "#!/bin/sh\necho 'git-remote-https: error while loading shared libraries: libcurl.so.4: cannot open shared object file' >&2\nexit 127\n")
+	old, oldSum := toolTarGz(t, []tarMember{
+		{name: "./bin/git", body: "#!/bin/sh\necho \"git: /lib/libc.so.6: version \\`GLIBC_2.34' not found\" >&2\nexit 1\n", mode: 0o755},
+		{name: "./libexec/git-core/git-remote-https", body: okRemoteHTTPS, mode: 0o755},
+	})
+	for _, c := range []struct {
+		name, want string
+		data       []byte
+		sum        string
+	}{
+		{"wrong checksum", "checksum mismatch", good, strings.Repeat("0", 64)},
+		{"no libcurl", "libcurl.so.4", broken, brokenSum},
+		{"old glibc", "GLIBC_2.34", old, oldSum},
+	} {
+		srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.Write(c.data) }))
+		p := toolPlatform(t, srv, []Tool{fakeGitTool(srv.URL, c.sum)})
+		err := p.installTools(context.Background(), func(string) {})
+		srv.Close()
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Fatalf("%s: got %v", c.name, err)
+		}
+		if c.name != "wrong checksum" && !strings.Contains(err.Error(), "cannot run on this machine") {
+			t.Errorf("%s: message: %v", c.name, err)
+		}
+		if len(p.ToolsInstalled()) != 0 {
+			t.Errorf("%s: counts as installed", c.name)
+		}
+		if left, _ := os.ReadDir(p.ToolsDir()); len(left) != 0 {
+			t.Errorf("%s: left in the tools folder: %v", c.name, left)
+		}
 	}
 }

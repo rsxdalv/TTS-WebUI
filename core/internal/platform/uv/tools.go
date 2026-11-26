@@ -1,7 +1,9 @@
 package uv
 
 import (
+	"archive/tar"
 	"archive/zip"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -97,6 +99,10 @@ func (p *Platform) installTools(ctx context.Context, emit platform.Emit) error {
 			emit(fmt.Sprintf("%s %s is already there", t.Name, t.Version))
 			continue
 		}
+		if t.OnlyIfMissing && t.Name == "git" && p.gitAvailable() {
+			emit("git is on this machine: the platform's own is not fetched")
+			continue
+		}
 		if err := p.fetchTool(ctx, t, emit); err != nil {
 			return fmt.Errorf("%s: %w", t.Name, err)
 		}
@@ -116,8 +122,10 @@ func (p *Platform) fetchTool(ctx context.Context, t Tool, emit platform.Emit) er
 		return err
 	}
 	ext := ".zip"
-	if strings.HasSuffix(t.Archive.URL, ".tar.xz") {
-		ext = ".tar.xz"
+	for _, e := range []string{".tar.xz", ".tar.gz"} {
+		if strings.HasSuffix(t.Archive.URL, e) {
+			ext = e
+		}
 	}
 	arch := filepath.Join(p.ToolsDir(), t.Name+"-archive"+ext)
 	emit(fmt.Sprintf("Downloading %s %s from %s", t.Name, t.Version, t.Archive.URL))
@@ -144,9 +152,12 @@ func (p *Platform) fetchTool(ctx context.Context, t Tool, emit platform.Emit) er
 		return err
 	}
 	emit(fmt.Sprintf("Unpacking %s into %s", t.Name, dir))
-	if strings.HasSuffix(arch, ".zip") {
+	switch ext {
+	case ".zip":
 		err = extractZip(arch, tmp, t.Strip)
-	} else {
+	case ".tar.gz":
+		err = extractTarGz(arch, tmp, t.Strip)
+	default:
 		err = p.extractTarXZ(ctx, arch, tmp, t.Strip)
 	}
 	if err != nil {
@@ -156,6 +167,10 @@ func (p *Platform) fetchTool(ctx context.Context, t Tool, emit platform.Emit) er
 	if _, err := os.Stat(filepath.Join(tmp, filepath.FromSlash(t.Probe))); err != nil {
 		_ = removeAll(tmp)
 		return fmt.Errorf("%s is not in the %s archive", t.Probe, t.Name)
+	}
+	if err := smokeTool(ctx, t, tmp); err != nil {
+		_ = removeAll(tmp)
+		return err
 	}
 	st := toolState{Name: t.Name, Version: t.Version, SHA256: t.Archive.SHA256, InstalledAt: time.Now().UTC().Format(time.RFC3339)}
 	b, _ := json.MarshalIndent(st, "", "  ")
@@ -229,6 +244,118 @@ func extractZip(archive, dest string, strip int) error {
 		}
 	}
 	return nil
+}
+
+// extractTarGz unpacks a .tar.gz into dest, dropping strip leading components. Symlinks
+// are kept when they stay inside dest; anything that would land outside is an error.
+func extractTarGz(archive, dest string, strip int) error {
+	f, err := os.Open(archive)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+	defer gz.Close()
+	root, err := filepath.Abs(dest)
+	if err != nil {
+		return err
+	}
+	inside := func(p string) bool { return p == root || strings.HasPrefix(p, root+string(filepath.Separator)) }
+	tr := tar.NewReader(gz)
+	for {
+		h, err := tr.Next()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		rel, ok, err := stripName(h.Name, strip)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			continue
+		}
+		target := filepath.Join(root, filepath.FromSlash(rel))
+		if !inside(target) {
+			return fmt.Errorf("%q would be written outside the tool folder", h.Name)
+		}
+		switch h.Typeflag {
+		case tar.TypeDir:
+			err = os.MkdirAll(target, 0o755)
+		case tar.TypeReg:
+			if err = os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+				return err
+			}
+			var out *os.File
+			if out, err = os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, h.FileInfo().Mode().Perm()|0o644); err != nil {
+				return err
+			}
+			_, err = io.Copy(out, tr)
+			if cerr := out.Close(); err == nil {
+				err = cerr
+			}
+		case tar.TypeSymlink:
+			if path.IsAbs(h.Linkname) || filepath.IsAbs(h.Linkname) || !inside(filepath.Join(filepath.Dir(target), filepath.FromSlash(h.Linkname))) {
+				return fmt.Errorf("%q links outside the tool folder", h.Name)
+			}
+			if err = os.MkdirAll(filepath.Dir(target), 0o755); err == nil {
+				err = os.Symlink(h.Linkname, target)
+			}
+		case tar.TypeLink:
+			var from string
+			if from, ok, err = stripName(h.Linkname, strip); err != nil || !ok {
+				return fmt.Errorf("%q is a link to %q, which is not in the archive", h.Name, h.Linkname)
+			}
+			err = os.Link(filepath.Join(root, filepath.FromSlash(from)), target)
+		default: // devices, fifos: not part of a tool
+		}
+		if err != nil {
+			return err
+		}
+	}
+}
+
+// smokeTool runs the tool's smoke programs from dir (the unpacked, not yet installed
+// folder). A program that cannot start, is killed, or says its libraries are missing
+// fails the install with the program's own words: that is a build this host cannot run.
+func smokeTool(ctx context.Context, t Tool, dir string) error {
+	for _, sm := range t.Smoke {
+		cmd := exec.CommandContext(ctx, filepath.Join(dir, filepath.FromSlash(sm.Prog)), sm.Args...)
+		cmd.Env = append(os.Environ(), toolVars(t, dir)...)
+		out, err := cmd.CombinedOutput()
+		text := strings.TrimSpace(string(out))
+		var ee *exec.ExitError
+		bad := false
+		switch {
+		case err == nil:
+		case errors.As(err, &ee):
+			c := ee.ExitCode()
+			bad = c < 0 || c == 126 || c == 127 || strings.Contains(text, "error while loading shared libraries") || strings.Contains(text, "GLIBC_")
+		default:
+			bad = true
+		}
+		if bad {
+			if text == "" && err != nil {
+				text = err.Error()
+			}
+			return fmt.Errorf("the downloaded %s %s cannot run on this machine (%s %s: %s). It needs glibc 2.34 or newer and libcurl; install %s with your package manager instead", t.Name, t.Version, sm.Prog, strings.Join(sm.Args, " "), text, t.Name)
+		}
+	}
+	return nil
+}
+
+// toolVars is the tool's Env with {dir} replaced.
+func toolVars(t Tool, dir string) []string {
+	var out []string
+	for _, kv := range t.Env {
+		out = append(out, strings.ReplaceAll(kv, "{dir}", filepath.ToSlash(dir)))
+	}
+	return out
 }
 
 // stripName drops strip leading components of an archive member name. ok is false
@@ -331,6 +458,7 @@ func (p *Platform) toolEnv() (pathDirs []string, env []string) {
 		for _, d := range t.Lib {
 			lib = append(lib, filepath.Join(p.toolDir(t), filepath.FromSlash(d)))
 		}
+		env = append(env, toolVars(t, p.toolDir(t))...)
 	}
 	if len(lib) > 0 && p.goos == "linux" {
 		env = append(env, "LD_LIBRARY_PATH="+strings.Join(append(lib, os.Getenv("LD_LIBRARY_PATH")), ":"))

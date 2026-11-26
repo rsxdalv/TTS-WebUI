@@ -254,9 +254,10 @@ func TestRealBridgeStartsAndStopsExtension(t *testing.T) {
 // bridge.extensions: Go picks the venv's python, the process listens, the
 // router serves /<package>/, and stop removes the route. It downloads torch.
 //
-// Opt-in: EnvRealRoot (a throwaway copy: .venvs is created in it),
+// Opt-in: EnvRealRoot (a throwaway copy: .venvs, platforms and cache are created in it),
 // LAUNCHER_REAL_PYTHON and LAUNCHER_REAL_NATIVE_PKG, for example
-// tts_webui_extension.piper_tts. installer_scripts/.gpu must exist.
+// tts_webui_extension.piper_tts, and optionally LAUNCHER_REAL_GPU (the GPU choice for
+// the uv platform, default CPU).
 func TestRealNativeExtensionInstallAndStart(t *testing.T) {
 	root := realRoot(t)
 	py, pkg := os.Getenv("LAUNCHER_REAL_PYTHON"), os.Getenv("LAUNCHER_REAL_NATIVE_PKG")
@@ -280,6 +281,18 @@ func TestRealNativeExtensionInstallAndStart(t *testing.T) {
 		return string(out)
 	}
 
+	// Since P2 an engine needs the uv platform, whose install asks for the GPU row and which
+	// the Python bridge cannot give (it answers 409). So the platform and the engine are
+	// installed through the control API with the row of LAUNCHER_REAL_GPU (default CPU); the
+	// bridge install below then runs on an install that has them.
+	gpuChoice := os.Getenv("LAUNCHER_REAL_GPU")
+	if gpuChoice == "" {
+		gpuChoice = "CPU"
+	}
+	if code, body := postStream(t, env["TTS_CORE_URL"]+"/api/extcatalog/install", env["TTS_CORE_TOKEN"],
+		map[string]any{"package_name": pkg, "gpu": gpuChoice}); code != http.StatusOK || !strings.Contains(body, `"ok":true`) {
+		t.Fatalf("install of the uv platform and %s through the control API = %d\n%s", pkg, code, tail(body, 40))
+	}
 	install := run("import sys\n" +
 		"from tts_webui.core_bridge import bridge\n" +
 		"last = ''\n" +
@@ -309,6 +322,26 @@ func TestRealNativeExtensionInstallAndStart(t *testing.T) {
 	if out := run("import sys\nfrom tts_webui.core_bridge import bridge\nbridge.extensions.stop(sys.argv[1])\nprint([s['state'] for s in bridge.extensions.status()])\n"); !strings.Contains(out, "exited") {
 		t.Errorf("after stop: %s", out)
 	}
+}
+
+// postStream sends body and reads the whole answer, for an install that streams NDJSON
+// for minutes.
+func postStream(t *testing.T, url, token string, body any) (int, string) {
+	t.Helper()
+	b, _ := json.Marshal(body)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(extprocs.TokenHeader, token)
+	resp, err := (&http.Client{Timeout: 25 * time.Minute}).Do(req)
+	if err != nil {
+		t.Fatalf("POST %s: %v", url, err)
+	}
+	defer resp.Body.Close()
+	out, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, string(out)
 }
 
 // tail returns the last n lines of s.

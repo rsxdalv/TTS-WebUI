@@ -225,6 +225,7 @@ const Endpoints = ({
 }) => {
   const [form, setForm] = React.useState(emptyForm);
   const [editing, setEditing] = React.useState(false);
+  const [preset, setPreset] = React.useState("");
   const [message, setMessage] = React.useState<{ ok: boolean; text: string }>();
   const [busy, setBusy] = React.useState("");
   const set =
@@ -255,6 +256,7 @@ const Endpoints = ({
       if (form.key !== "") body.key = form.key;
       await goSendJson("PUT", `${EP}/${encodeURIComponent(form.name)}`, body);
       setForm(emptyForm);
+      setPreset("");
       setEditing(false);
       setMessage({ ok: true, text: `Saved ${form.name}.` });
       await reload();
@@ -326,6 +328,7 @@ const Endpoints = ({
                     voice: e.voice ?? "",
                     key: "",
                   });
+                  setPreset("");
                   setEditing(true);
                 }}
               >
@@ -357,8 +360,9 @@ const Endpoints = ({
           Preset
           <select
             className={field}
-            value=""
+            value={preset}
             onChange={(e) => {
+              setPreset(e.target.value);
               const p = PRESETS.find((x) => x.label === e.target.value);
               if (p) setForm({ ...p.form, key: "" });
             }}
@@ -440,6 +444,7 @@ const Endpoints = ({
             className={button}
             onClick={() => {
               setForm(emptyForm);
+              setPreset("");
               setEditing(false);
             }}
           >

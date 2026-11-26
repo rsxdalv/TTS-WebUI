@@ -1,3 +1,4 @@
+import html
 from . import transport
 from .gradio_resolve import resolve
 
@@ -17,7 +18,7 @@ class SubBridge:
 
     STREAM is a POST whose answer is a stream of output lines (an install). The
     operation is a generator that yields the console HTML so far (lines joined
-    with ``<br />``) after each line, so Gradio treats it as a streaming handler.
+    with ``<br />``, each line HTML-escaped) after each line, so Gradio treats it as a streaming handler.
 
     Go answers with exactly the value the caller needs, and Gradio markers in
     it come back as components. There is no Python fallback: without the core
@@ -59,7 +60,10 @@ class SubBridge:
                 lines = []
                 for rec in transport.stream(path, body=fields_of(args, kwargs)):
                     if "line" in rec:
-                        lines.append(rec["line"])
+                        # The lines are text (pip's output, an extension's own
+                        # name), and the result goes into a gr.HTML, which does
+                        # not escape. An extension's JSON is attacker-controlled.
+                        lines.append(html.escape(str(rec["line"])))
                         yield "<br />".join(lines)
 
         else:

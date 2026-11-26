@@ -30,11 +30,17 @@ ENV PATH="/root/.cargo/bin:$PATH"
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir setuptools torch==$TORCH_VERSION torchvision torchaudio==$TORCH_VERSION xformers==0.0.35 --index-url https://download.pytorch.org/whl/cu128
 
+# The app runs as this user, not as root (docker/entrypoint.sh drops root at start).
+# The container publishes network services and runs model code, and docker-compose
+# bind-mounts host folders into it: a compromise as root would write to them as root.
+RUN useradd --create-home --uid 1000 appuser
+
 # Set working directory
 WORKDIR /app
+RUN mkdir -p /app/tts-webui && chown appuser:appuser /app/tts-webui
 
 # The sources of the commit being built (the archive of D32 is the same files), not a fresh clone of main.
-COPY . /app/tts-webui
+COPY --chown=appuser:appuser . /app/tts-webui
 WORKDIR /app/tts-webui
 
 # Install all requirements
@@ -45,10 +51,19 @@ RUN pip install "tts-webui-extension.styletts2>=0.1.0" --extra-index-url https:/
 
 
 # The React UI export built above
-COPY --from=react /src/react-ui/out /app/tts-webui/react-ui/out
+COPY --from=react --chown=appuser:appuser /src/react-ui/out /app/tts-webui/react-ui/out
 
 # The launcher starts the app on 0.0.0.0:7770 with the image's own Python
 COPY --from=launcher /out/tts-webui /usr/local/bin/tts-webui
+
+# Starts as root only to hand root-owned files in the bind-mounted folders to appuser (an
+# update from an image that ran as root), then runs the launcher as appuser. It chains
+# the base image's own entrypoint. TTS_WEBUI_RUN_AS_ROOT=1 keeps the old behaviour.
+# pip falls back to a user install (~/.local) for the extensions installed at run time.
+COPY docker/entrypoint.sh /usr/local/bin/tts-docker-entrypoint
+RUN chmod 0755 /usr/local/bin/tts-docker-entrypoint
+ENV PATH="/home/appuser/.local/bin:$PATH"
+ENTRYPOINT ["/opt/nvidia/nvidia_entrypoint.sh", "/usr/local/bin/tts-docker-entrypoint"]
 
 # Run the server
 CMD ["tts-webui", "launch", "--root", "/app/tts-webui", "--docker", "--start", "--system-python", "--no-browser"]

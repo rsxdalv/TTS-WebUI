@@ -16,6 +16,10 @@ jobs:
         with:
           ref: main
           fetch-depth: 0 # This ensures we get the full git history
+          # Do not write the job token into .git/config: the archive carries .git and is
+          # published. Nothing after this step needs git credentials (the release steps
+          # pass secrets.GITHUB_TOKEN to the GitHub API themselves).
+          persist-credentials: false
 
       - name: Clear git settings
         run: |
@@ -78,9 +82,30 @@ jobs:
           cat archive.json
           cp archive.json tts-webui-installer.json
 
+      - name: Refuse to publish credentials in .git
+        run: |
+          set -eu
+          # The archive carries .git (the launcher updates with `git pull`, which needs
+          # the origin remote in .git/config), and it is published. Fail the job, rather
+          # than publish, if anything the job authenticated with is in there.
+          bad=0
+          if git config --local --list | grep -qiE 'extraheader|authorization|x-access-token|ghs_|ghp_|github_pat_|includeif'; then
+            echo "::error::.git/config carries credentials or a credential include"
+            bad=1
+          fi
+          # Everything of .git except the object store (binary, and content is public).
+          if grep -rIlE -i 'x-access-token|authorization: *(basic|bearer)|ghs_[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}' --exclude-dir=objects .git; then
+            echo "::error::a credential is in the .git folder that goes into the archive"
+            bad=1
+          fi
+          [ "$bad" = 0 ] || exit 1
+          echo "No credentials in .git"
+
       - name: Create zip file with full git history
         run: |
-          # The repository including .git, the launchers, react-ui/out and archive.json.
+          # The repository including .git (with .git/config: the launcher updates with
+          # git pull, which needs the origin remote), the launchers, react-ui/out and
+          # archive.json.
           # Not the Node dependencies of the build, nor the published copy of archive.json.
           zip -r tts-webui-installer.zip . -x "react-ui/node_modules/*" "tts-webui-installer.json"
 

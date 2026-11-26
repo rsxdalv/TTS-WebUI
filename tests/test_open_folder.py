@@ -26,7 +26,13 @@ def root(tmp_path):
 
 @pytest.mark.parametrize(
     "rel",
-    ["outputs", "outputs/gen1", "favorites/gen2", "collections/mine", "collections/mine/gen3"],
+    [
+        "outputs",
+        "outputs/gen1",
+        "favorites/gen2",
+        "collections/mine",
+        "collections/mine/gen3",
+    ],
 )
 def test_collection_folders_open(root, opened, rel):
     of.open_collection_folder(rel, root)
@@ -71,7 +77,9 @@ def test_non_strings_are_refused(root, opened):
     assert opened == []
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need privileges on Windows")
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="symlinks need privileges on Windows"
+)
 def test_a_symlink_out_of_a_collection_is_refused(root, opened, tmp_path_factory):
     outside = tmp_path_factory.mktemp("outside")
     os.symlink(outside, os.path.join(root, "outputs", "escape"))
@@ -80,7 +88,9 @@ def test_a_symlink_out_of_a_collection_is_refused(root, opened, tmp_path_factory
     assert opened == []
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need privileges on Windows")
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="symlinks need privileges on Windows"
+)
 def test_a_collection_root_may_itself_be_a_link(root, opened, tmp_path_factory):
     # outputs/ on another disk is a supported setup.
     other = tmp_path_factory.mktemp("disk2")

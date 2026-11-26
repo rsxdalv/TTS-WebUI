@@ -1,1 +1,0 @@
-# Conda Storage Optimizer Extension

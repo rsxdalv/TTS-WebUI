@@ -871,6 +871,33 @@ class ExtensionLoadingTest(unittest.TestCase):
             labels, ["Alpha", "Alpha (!)", "[Disabled] Beta", "Gamma", "Gamma (!)"]
         )
 
+    def test_a_class_with_no_extensions_is_not_a_tab_group(self):
+        # "tutorials" lost its only extension; the group must not be a page
+        # that says "select a tab" with nothing to select.
+        from tts_webui.gradio import all_tabs as at
+
+        handled = []
+        with (
+            mock.patch.object(
+                at,
+                "resolve_extension_class",
+                side_effect=lambda cls: [] if cls == "tutorials" else [cls],
+            ),
+            mock.patch.object(
+                at,
+                "handle_extension_class",
+                side_effect=lambda cls, exts: handled.append(cls),
+            ),
+            mock.patch.object(at, "prestart_openai_api_server"),
+            gr.Blocks() as demo,
+        ):
+            at.all_tabs({})
+        labels = [b.label for b in demo.blocks.values() if isinstance(b, gr.Tab)]
+        self.assertNotIn("📚 Tutorials", labels)
+        self.assertIn("🔧 Tools", labels)
+        self.assertNotIn("tutorials", handled)
+        self.assertIn("tools", handled)
+
     def test_installed_and_version_come_from_go(self):
         import inspect
 
@@ -881,6 +908,11 @@ class ExtensionLoadingTest(unittest.TestCase):
         self.assertEqual(label(X("a.one", "A")), "Unknown")
         self.assertEqual(label(X("a.one", "A", proxy="native")), "")
         self.assertEqual(label(X("x.builtin.a", "A")), "")
+        # a built-in tab is part of the host; a built-in entry that is native
+        # runs in its own venv and gets the management UI like any native one
+        self.assertTrue(ie._is_builtin_tab(X("x.builtin.a", "A")))
+        self.assertFalse(ie._is_builtin_tab(X("x.builtin.a", "A", proxy="native")))
+        self.assertFalse(ie._is_builtin_tab(X("a.one", "A")))
         src = inspect.getsource(ie)
         for gone in ("find_spec", "importlib.metadata", "os.path.exists", ".venvs"):
             self.assertNotIn(gone, src)

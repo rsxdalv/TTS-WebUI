@@ -21,7 +21,6 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
@@ -186,7 +185,7 @@ func (h *extHost) list(ctx context.Context, appRunning bool) (extListAnswer, err
 				PackageName: pkg, Name: nonEmpty(e.Str("name"), pkg),
 				Description: e.Str("description"), Website: e.Str("website"),
 				Class: e.Str("extension_class"), Kind: kind, Proxy: proxy, Validation: e.Str("validation"),
-				Builtin:       strings.Contains(pkg, "builtin"),
+				Builtin:       platform.BuiltinTab(pkg, proxy),
 				Installed:     installed,
 				Disabled:      kind == "interface" && disabled[pkg],
 				CanBeDisabled: kind == "interface",

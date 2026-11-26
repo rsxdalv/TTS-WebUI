@@ -126,7 +126,7 @@ All pages are in the Tools menu (Header.tsx).
 
 ## Left alone
 
-- `conda_storage_optimizer`: undecided (likely does nothing on a micromamba install). Not converted.
+- `conda_storage_optimizer`: removed (see [EXT-D.md](EXT-D.md)); it had no replacement because `conda clean --all` means nothing on the uv platform.
 - `model_downloader`, `huggingface_cache_manager`, `demucs`, `vocos`: class C, native extensions stay.
 - The launcher and supervisor were changed for the Go core to boot without Gradio (see the baseline section).
 

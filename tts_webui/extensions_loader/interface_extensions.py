@@ -9,9 +9,16 @@ from tts_webui.extensions_loader.setup_proxy_extension import setup_proxy_extens
 from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
 
 
+def _is_builtin_tab(ext):
+    """A built-in tab is part of the host. A built-in entry that is "native"
+    (extension_model_downloader) has its code in the checkout but runs in its
+    own venv, which is installed and updated like any other native entry."""
+    return "builtin" in ext["package_name"] and ext["proxy"] != "native"
+
+
 def _version_label(ext):
     """What the Manage accordion shows: Go reads the version from the main env."""
-    if ext["proxy"] == "native" or "builtin" in ext["package_name"]:
+    if ext["proxy"] == "native" or _is_builtin_tab(ext):
         return ""
     return f"v{ext['version']}" if ext.get("version") else "Unknown"
 
@@ -62,7 +69,7 @@ def _handle_package(ext):
         try:
             with gr.Tab(title_name) as tab:
                 autostart = ext["autostart"]
-                if "builtin" in package_name:
+                if _is_builtin_tab(ext):
                     pass
                 else:
                     install_trigger = _extension_management_ui(
@@ -260,9 +267,15 @@ def _extension_management_ui(
             return install_trigger
 
 
-def handle_extension_class(extension_class):
+def resolve_extension_class(extension_class):
     """Go lists the extensions of the class in tab order, with their state."""
-    for ext in bridge.extcatalog.resolve("interface", extension_class)["extensions"]:
+    return bridge.extcatalog.resolve("interface", extension_class)["extensions"]
+
+
+def handle_extension_class(extension_class, extensions=None):
+    if extensions is None:
+        extensions = resolve_extension_class(extension_class)
+    for ext in extensions:
         _handle_package(ext)
 
 

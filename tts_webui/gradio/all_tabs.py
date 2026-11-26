@@ -2,6 +2,7 @@ import gradio as gr
 
 from tts_webui.extensions_loader.interface_extensions import (
     handle_extension_class,
+    resolve_extension_class,
 )
 
 
@@ -32,9 +33,14 @@ def all_tabs(config):
         ("⚙️ Settings", "settings"),
         ("📚 Tutorials", "tutorials"),
     ]:
+        extensions = resolve_extension_class(extension_class)
+        if not extensions and extension_class != "extensions":
+            # No tab to show (e.g. "tutorials" now that its only extension is
+            # retired): skip the group instead of a page that says "select a tab".
+            continue
         with gr.Tab(name), gr.Tabs():
             if not extension_class == "extensions":
                 with gr.Tab("Main"):
                     gr.Markdown(f"## {name}")
                     gr.Markdown("Select a tab to start.")
-            handle_extension_class(extension_class)
+            handle_extension_class(extension_class, extensions)

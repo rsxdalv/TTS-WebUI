@@ -18,7 +18,7 @@ shows one.
 
 | File | Written by | Exact content | Read by |
 |---|---|---|---|
-| `.gpu` | `initializeApp.js:146,253`; Go `handleGPU` (`handlers.go:154`) | The label, no newline. One of `NVIDIA GPU`, `AMD GPU (ROCM, Linux only)`, `Apple M Series Chip`, `Intel GPU (XPU)`, `CPU`, `Custom (Manual torch install)` | `initializeApp.js:145,247`, `diagnostic.bat`, `diagnostic_inner.sh`, `readGPULabel` (`supervisor.go:268`, trims) |
+| `.gpu` | `initializeApp.js:146,253`; Go `handleGPU` (`handlers.go:154`) | The label, no newline. One of `NVIDIA GPU`, `AMD GPU (ROCM, Linux only)`, `Apple M Series Chip`, `Intel GPU (XPU)`, `CPU`, `Custom (Manual torch install)`. The uv platform also knows `NVIDIA GPU, older than Turing (GTX 10xx, 9xx, Volta)` (torch cu126); `handleGPU` refuses it, the legacy installer has no such choice | `initializeApp.js:145,247`, `diagnostic.bat`, `diagnostic_inner.sh`, `readGPULabel` (`supervisor.go:268`, trims) |
 | `.preflight_ok` | Go only, `preflight.WriteMarker` (`preflight.go:115`) | `ok\n`. The legacy flow never writes it | Existence only (`steps.go:48`) |
 | `.git_version` | `init_app.js:52,114`, last step of a successful install | `git rev-parse HEAD`, trimmed, no newline | `init_app.js:68` (raw compare); existence means install done (`steps.go:67`) |
 | `.major_version` | `initializeApp.js:91,142`, after torch installs | `1.0.0`, no newline | `initializeApp.js:141,261` (raw compare), diagnostics |

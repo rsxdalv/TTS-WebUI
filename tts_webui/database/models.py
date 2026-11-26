@@ -467,7 +467,7 @@ class ApiKey:
         return execute_query(query, (user_id,))
 
     @staticmethod
-    def revoke(key_id: int) -> int:
-        """Revoke an API key."""
-        query = "UPDATE api_keys SET is_active = 0 WHERE id = ?"
-        return execute_query(query, (key_id,))
+    def revoke(key_id: int, user_id: int = 1) -> int:
+        """Revoke an API key belonging to *user_id*."""
+        query = "UPDATE api_keys SET is_active = 0 WHERE id = ? AND user_id = ?"
+        return execute_query(query, (key_id, user_id))

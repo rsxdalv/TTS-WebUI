@@ -13,7 +13,13 @@ services:
       - ./outputs:/app/tts-webui/outputs
       - ./favorites:/app/tts-webui/favorites
       # - ./voices:/app/tts-webui/voices
-    # environment:
+    environment:
+      # The React UI on port 3000 listens on loopback inside the container unless LAN mode is on (D17, D20), so
+      # the published port needs it. The Host check then accepts only this machine's own addresses and these
+      # names: add the name or address you open the UI with, e.g. TTS_ALLOWED_HOSTS=localhost,127.0.0.1,my-server
+      TTS_GO_PROXY_LISTEN: lan
+      TTS_GO_PROXY_ALLOWED_HOSTS: ${TTS_ALLOWED_HOSTS:-localhost,127.0.0.1}
+    # Optional:
     #   # Disable hard requirements for CUDA version ("requirement error: unsatisfied condition [...]")
     #   # This might still lead to errors but allows to run some models even if CUDA version is not met
     #   # https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/docker-specialized.html#nvidia-disable-require-environment-variable

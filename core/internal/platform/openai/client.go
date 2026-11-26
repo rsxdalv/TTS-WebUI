@@ -50,7 +50,12 @@ func NewClient(o Options) *Client {
 	if o.Logf == nil {
 		o.Logf = func(string, ...any) {}
 	}
-	hc := o.HTTP
+	return &Client{o: o, http: noRedirect(o.HTTP)}
+}
+
+// noRedirect is hc (or the default client) with redirects reported, never followed:
+// a redirect would carry the request (and a key) somewhere the user did not enter.
+func noRedirect(hc *http.Client) *http.Client {
 	if hc == nil {
 		hc = &http.Client{
 			Timeout: 10 * time.Minute,
@@ -62,11 +67,9 @@ func NewClient(o Options) *Client {
 			},
 		}
 	}
-	// A redirect would carry the request (and a key) somewhere the user did not
-	// enter; it is reported instead.
 	c := *hc
 	c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	return &Client{o: o, http: &c}
+	return &c
 }
 
 // SpeechRequest is the body of a generation. Empty Model and Voice use the

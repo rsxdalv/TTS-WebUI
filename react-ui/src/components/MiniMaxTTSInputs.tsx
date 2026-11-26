@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "./ui/card";
 import { SelectWithLabel } from "./component/SelectWithLabel";
+import { MiniMaxKeyCard } from "./MiniMaxKeyCard";
 
 const MINIMAX_MODELS = [
   { label: "speech-2.8-hd (High Quality)", value: "speech-2.8-hd" },
@@ -86,28 +87,7 @@ export const MiniMaxTTSInputs = ({
           />
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle>API Configuration</CardTitle>
-          <CardDescription>
-            Optional if MINIMAX_API_KEY environment variable is set.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <input
-            type="password"
-            name="api_key"
-            placeholder="Enter MiniMax API key..."
-            value={minimaxTTSParams.api_key || ""}
-            onChange={(e) =>
-              handleChange({
-                target: { name: "api_key", value: e.target.value },
-              })
-            }
-            className="w-full p-2 border rounded bg-background text-foreground"
-          />
-        </CardContent>
-      </Card>
+      <MiniMaxKeyCard />
     </div>
     <div className="flex flex-col gap-4">
       {output}

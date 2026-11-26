@@ -117,6 +117,8 @@ All pages are in the Tools menu (Header.tsx).
    the whole ffprobe document instead of an error.
 10. **minimax: not converted.** A Go handler was written and then dropped (Rob: MiniMax is not part of the core). The
     Python extension and the React page that calls it through Gradio are as they were; it works only while Gradio runs.
+    Later: a Go backend for the page was written on its own branch, outside the platform packages; see `EXT-MINIMAX.md`
+    (draft; the Python extension and the Gradio tab are unchanged there too).
 11. **simple_remixer.** Same rule as the extension (mix each column, join the columns), mono; the rate is the browser
     AudioContext's (the extension used the highest rate of its slots). Output is 16-bit WAV.
 12. **youtube_tutorials** uses `youtube-nocookie.com`. No CSP is set by the Go server (nothing in front of it checked).

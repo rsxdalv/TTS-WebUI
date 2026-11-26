@@ -260,9 +260,15 @@ def _extension_management_ui(
             return install_trigger
 
 
-def handle_extension_class(extension_class):
+def resolve_extension_class(extension_class):
     """Go lists the extensions of the class in tab order, with their state."""
-    for ext in bridge.extcatalog.resolve("interface", extension_class)["extensions"]:
+    return bridge.extcatalog.resolve("interface", extension_class)["extensions"]
+
+
+def handle_extension_class(extension_class, extensions=None):
+    if extensions is None:
+        extensions = resolve_extension_class(extension_class)
+    for ext in extensions:
         _handle_package(ext)
 
 

@@ -6,7 +6,11 @@ package launcher
 
 import (
 	"context"
+	"fmt"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"os"
+	"strconv"
+	"strings"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appenv"
@@ -14,6 +18,20 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/switches"
 	"github.com/rsxdalv/TTS-WebUI/core/react_ui_backend"
 )
+
+// reactPortFromEnv is the Vite UI's port: REACT_UI_PORT in the launcher's
+// environment, else 0 (supervise then uses its default, 3000).
+func reactPortFromEnv() (int, error) {
+	v := strings.TrimSpace(os.Getenv("REACT_UI_PORT"))
+	if v == "" {
+		return 0, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 1 || n > 65535 {
+		return 0, fmt.Errorf("REACT_UI_PORT=%q is not a port", v)
+	}
+	return n, nil
+}
 
 // noopBrowser makes Python's webbrowser.open fail quietly in the gradio
 // child: the launcher opens the tab, so Gradio must not.
@@ -159,6 +177,13 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 			plan.PublicPort, inBrowser = appenv.PublicPortFor(c.Port, o.flags()), c.InBrowser
 			plan.PublicTLS = c.SSL.Enabled()
 		}
+		// REACT_UI_PORT in the launcher's environment moves the Vite UI off 3000
+		// (two launchers on one machine, or something else holding 3000).
+		n, err := reactPortFromEnv()
+		if err != nil {
+			return supervise.Plan{}, err
+		}
+		plan.ReactPort = n
 		open := inBrowser && !o.noBrowser
 		plan.OpenBrowser = &open
 		// The launcher opens the tab; Gradio must not open a second one.

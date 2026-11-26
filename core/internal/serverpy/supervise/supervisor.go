@@ -229,6 +229,9 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	if plan.PublicPort != 0 {
 		c.PublicPort = plan.PublicPort
 	}
+	if plan.ReactPort != 0 {
+		c.ReactPort = plan.ReactPort
+	}
 	if plan.PublicTLS {
 		c.PublicTLS = true
 	}

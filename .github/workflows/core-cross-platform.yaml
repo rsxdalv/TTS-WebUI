@@ -87,7 +87,7 @@ jobs:
           before=$(cat core/internal/webui/assets/bundle.hash)
           f=core/ui/src/core-app/ExtensionsView.tsx
           awk '{ printf "%s\r\n", $0 }' "$f" > "$f.crlf" && mv "$f.crlf" "$f"
-          grep -c $'\r' "$f"
+          echo "CR bytes in $f: $(tr -cd '\r' < "$f" | wc -c)"
           bash core/scripts/bundle-hash.sh
           after=$(cat core/internal/webui/assets/bundle.hash)
           echo "before=$before"

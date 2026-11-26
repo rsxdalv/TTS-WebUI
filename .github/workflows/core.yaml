@@ -33,6 +33,10 @@ jobs:
         run: go vet ./...
       - name: go test
         run: go test ./...
+      - name: go test -race
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race ./...
 
   build:
     needs: test

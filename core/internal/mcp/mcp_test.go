@@ -120,6 +120,8 @@ func TestGenerateSpeechErrors(t *testing.T) {
 		want    string
 	}{
 		{"empty text", nil, map[string]any{"text": "  "}, "text is required"},
+		{"speed too high", nil, map[string]any{"text": "x", "speed": 9.0}, "speed must be"},
+		{"voice too long", nil, map[string]any{"text": "x", "voice": strings.Repeat("v", 201)}, "limited to"},
 		{"too long", nil, map[string]any{"text": huge}, "limit is"},
 		{"not wav", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("<html>")) }, map[string]any{"text": "x"}, "not with a WAV"},
 		{"upstream 500", func(w http.ResponseWriter, _ *http.Request) { http.Error(w, "boom", 500) }, map[string]any{"text": "x"}, "answered 500"},

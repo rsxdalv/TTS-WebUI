@@ -13,11 +13,18 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/version"
 )
 
+// Bounds on the free-form inputs (the speed range is the one the OpenAI API documents).
+const (
+	maxNameLen = 200
+	minSpeed   = 0.25
+	maxSpeed   = 4.0
+)
+
 type speechArgs struct {
 	Text  string  `json:"text" jsonschema:"the text to speak (at most 5000 characters)"`
 	Model string  `json:"model,omitempty" jsonschema:"model id from list_models; the backend default if empty"`
 	Voice string  `json:"voice,omitempty" jsonschema:"voice name; the backend default if empty"`
-	Speed float64 `json:"speed,omitempty" jsonschema:"speaking speed, 1 is normal"`
+	Speed float64 `json:"speed,omitempty" jsonschema:"speaking speed from 0.25 to 4, 1 is normal"`
 }
 
 type noArgs struct{}
@@ -50,6 +57,12 @@ func New(b *Backend) *sdk.Server {
 		}
 		if n := utf8.RuneCountInString(a.Text); n > MaxTextChars {
 			return failure(fmt.Errorf("text is %d characters; the limit is %d", n, MaxTextChars)), nil, nil
+		}
+		if len(a.Model) > maxNameLen || len(a.Voice) > maxNameLen {
+			return failure(fmt.Errorf("model and voice names are limited to %d bytes", maxNameLen)), nil, nil
+		}
+		if a.Speed != 0 && (a.Speed < minSpeed || a.Speed > maxSpeed) {
+			return failure(fmt.Errorf("speed must be between %g and %g", minSpeed, maxSpeed)), nil, nil
 		}
 		wav, err := b.Speak(ctx, SpeechRequest{Text: a.Text, Model: a.Model, Voice: a.Voice, Speed: a.Speed})
 		if err != nil {

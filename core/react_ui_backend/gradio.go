@@ -1145,7 +1145,6 @@ var gradioEndpoints = map[string]endpointFn{
 	"stable_audio_generate":            stableAudioGenerate,
 	"stable_audio_inpaint":             passThrough("/stable_audio_inpaint"),
 	"stable_audio_get_models":          resolvedPassThrough("/stable_audio_get_models", extractChoicesTuple),
-	"load_ffmpeg_metadata":             resolvedPassThrough("/load_ffmpeg_metadata", firstOf),
 
 	"ace_step_infer": aceStepInfer,
 

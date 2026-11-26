@@ -1,9 +1,9 @@
 package react_ui_backend
 
-// FFMPEG Metadata (extension_ffmpeg_metadata): the JSON that a generation
+// FFMPEG Metadata (the retired Gradio extension_ffmpeg_metadata): the JSON that a generation
 // stored in the "comment" tag of an ogg or flac file, read with ffprobe.
 //
-// Same logic as load_ffmpeg_metadata in the extension:
+// Same logic as load_ffmpeg_metadata had in the extension:
 //   - ogg (extension .ogg or format_name "ogg"): the comment tag of stream 0;
 //   - flac (extension .flac or format_name "flac"): the comment tag of the format;
 //   - anything else: the whole ffprobe document.

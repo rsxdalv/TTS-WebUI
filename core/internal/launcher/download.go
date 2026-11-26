@@ -50,6 +50,8 @@ func downloadAndExtract(ctx context.Context, url, destDir string, lg *Log) error
 	written, err := copyWithProgress(ctx, f, resp.Body, total, lg)
 	f.Close()
 	if err != nil {
+		// Do not leave half an archive in the install folder.
+		_ = os.Remove(zipPath)
 		return fmt.Errorf("writing zip: %w", err)
 	}
 	lg.AddLine(fmt.Sprintf("Download complete (%d bytes)", written))
@@ -57,6 +59,7 @@ func downloadAndExtract(ctx context.Context, url, destDir string, lg *Log) error
 	// --- Extract ---
 	lg.AddLine("Extracting archive...")
 	if err := extractZip(ctx, zipPath, destDir, lg); err != nil {
+		_ = os.Remove(zipPath)
 		return fmt.Errorf("extracting: %w", err)
 	}
 	if err := os.Remove(zipPath); err != nil {
@@ -135,7 +138,22 @@ func extractZip(ctx context.Context, zipPath, destDir string, lg *Log) error {
 	// Detect the common prefix (strip the top-level zip directory).
 	prefix := commonTopDir(r.File)
 
+	// archive.json says which commit the files are. It is written last, so an
+	// extraction that stops half way (a killed launcher, a full disk) leaves the old
+	// commit and the update step keeps offering the update (found by killing the
+	// launcher mid-update: with archive.json first, it said "up to date" over mixed files).
+	files := make([]*zip.File, 0, len(r.File))
+	var marker []*zip.File
 	for _, f := range r.File {
+		if strings.TrimPrefix(f.Name, prefix) == archiveMarker {
+			marker = append(marker, f)
+			continue
+		}
+		files = append(files, f)
+	}
+	files = append(files, marker...)
+
+	for _, f := range files {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}

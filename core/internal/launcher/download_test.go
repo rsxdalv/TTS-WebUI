@@ -98,3 +98,47 @@ func TestDownloadAndExtract_IntoRootRemovesZip(t *testing.T) {
 		t.Error("release.zip not removed")
 	}
 }
+
+// archive.json names the commit the files belong to, so it is written after every
+// other file: an extraction that fails half way must not leave the new commit over old files.
+func TestExtractZip_ArchiveMarkerIsWrittenLast(t *testing.T) {
+	dir := t.TempDir()
+	zp := filepath.Join(dir, "a.zip")
+	writeZip(t, zp, []string{"archive.json", "README.md", "../escape.txt", "later.txt"})
+	dest := filepath.Join(dir, "out")
+	if err := extractZip(context.Background(), zp, dest, newLog()); err == nil {
+		t.Fatal("the zip-slip entry was accepted")
+	}
+	if exists(filepath.Join(dest, "archive.json")) {
+		t.Error("archive.json was written before the extraction failed")
+	}
+	if !exists(filepath.Join(dest, "README.md")) {
+		t.Error("the entries before the bad one should be extracted")
+	}
+	// A complete extraction writes it.
+	good := filepath.Join(dir, "b.zip")
+	writeZip(t, good, []string{"archive.json", "README.md"})
+	if err := extractZip(context.Background(), good, dest, newLog()); err != nil {
+		t.Fatal(err)
+	}
+	if !exists(filepath.Join(dest, "archive.json")) {
+		t.Error("archive.json missing after a complete extraction")
+	}
+}
+
+// A download that ends early (the connection drops) leaves no half archive in the install folder.
+func TestDownloadAndExtract_CutDownloadLeavesNoZip(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "1000000")
+		_, _ = w.Write([]byte("PK-not-the-whole-file"))
+		// Returning with less than Content-Length makes the server drop the connection.
+	}))
+	defer srv.Close()
+	dest := filepath.Join(t.TempDir(), "root")
+	if err := downloadAndExtract(context.Background(), srv.URL, dest, newLog()); err == nil {
+		t.Fatal("a cut download was accepted")
+	}
+	if exists(filepath.Join(dest, "release.zip")) {
+		t.Error("release.zip left behind")
+	}
+}

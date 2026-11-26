@@ -147,6 +147,12 @@ func (p *Platform) Status(context.Context) platform.Status {
 	return platform.Status{Ready: true}
 }
 
+// Supported reports whether this OS and architecture have a pinned runtime to install.
+func (p *Platform) Supported() bool {
+	_, err := p.archive()
+	return err == nil
+}
+
 func (p *Platform) archive() (Archive, error) {
 	if p.runtime != nil {
 		return *p.runtime, nil

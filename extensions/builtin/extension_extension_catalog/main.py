@@ -1,3 +1,5 @@
+import html
+
 import gradio as gr
 
 from tts_webui.core_bridge import bridge
@@ -9,13 +11,16 @@ EXTENSION_CATALOG_IFRAME_ID = "extension-catalog"
 def _on_parse(text: str):
     # Go validates the pasted JSON and builds the preview table.
     res = bridge.extcatalog.parse(text)
-    return res["entries"], res["preview"], res["info"]
+    # info goes into a gr.HTML, which does not escape, and can carry text from
+    # the pasted JSON.
+    return res["entries"], res["preview"], html.escape(res["info"])
 
 
 def _add_to_external(entries):
     # Go is the only writer of extensions.external.json.
     res = bridge.extcatalog.add(entries)
-    return res["status"], res["json"]
+    # status lists the package names of the pasted JSON and goes into a gr.HTML.
+    return html.escape(res["status"]), res["json"]
 
 
 def _install_selected(entries):

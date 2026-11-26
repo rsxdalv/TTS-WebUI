@@ -505,6 +505,49 @@ class ExtCatalogTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             list(bridge.extcatalog.install_entry({"package_name": "a"}, "b"))
 
+    def test_install_lines_are_escaped_before_they_become_html(self):
+        # An extension's own JSON names what pip prints, and the console is a
+        # gr.HTML, which does not escape.
+        hostile = [
+            {"line": "Collecting <img src=x onerror=alert(1)>"},
+            {"line": "pkg<2.0 & >=1.0"},
+            {"done": True, "ok": True},
+        ]
+        with mock.patch.dict(STREAMS, {"install": hostile}):
+            out = list(bridge.extcatalog.install("a.one"))
+        self.assertEqual(
+            out[-1],
+            "Collecting &lt;img src=x onerror=alert(1)&gt;<br />"
+            "pkg&lt;2.0 &amp; &gt;=1.0",
+        )
+        self.assertNotIn("<img", out[-1])
+        # Only the join is markup.
+        self.assertEqual(out[-1].count("<br />"), 1)
+
+    def test_installer_tabs_escape_what_goes_into_gr_html(self):
+        import importlib
+
+        payload = "<script>alert(1)</script>"
+        answers = {
+            ("POST", "parse"): {
+                "entries": [],
+                "preview": {"__gradio__": "Markdown", "props": {"value": ""}},
+                "info": "Issues: " + payload,
+            },
+            ("POST", "add"): {"status": "Saved | Added: " + payload, "json": "{}"},
+        }
+        for mod in (
+            "extensions.builtin.extension_custom_extensions_installer.main",
+            "extensions.builtin.extension_extension_catalog.main",
+        ):
+            m = importlib.import_module(mod)
+            with mock.patch.dict(ANSWERS, answers):
+                info = m._on_parse("{}")[2]
+                status = m._add_to_external([])[0]
+            for shown in (info, status):
+                self.assertNotIn("<script>", shown, mod)
+                self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", shown, mod)
+
     def test_errors_before_the_stream_raise(self):
         with self.assertRaises(CoreBridgeError) as cm:
             list(bridge.extcatalog.install("missing"))

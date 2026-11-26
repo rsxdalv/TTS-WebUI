@@ -11,7 +11,7 @@ from tts_webui.history_tab.save_to_favorites import (
     save_to_collection,
     save_to_favorites,
 )
-from tts_webui.utils.open_folder import open_folder
+from tts_webui.utils.open_folder import open_collection_folder
 
 
 def _get_row_index(evt: gr.SelectData):
@@ -67,7 +67,7 @@ def history_content(directory, history_tab, show_collections):
                 )
                 reload_button = gr.Button(value="Refresh", variant="secondary")
             button_output.click(
-                lambda x: open_folder(x),
+                lambda x: open_collection_folder(x),
                 inputs=[directory_dropdown],
                 api_name=directory == "favorites" and "open_folder" or None,
             )
@@ -108,7 +108,7 @@ def history_content(directory, history_tab, show_collections):
                 open_folder_button = gr.Button(
                     value="Open folder", variant="secondary", visible=False
                 )
-                open_folder_button.click(open_folder, inputs=folder_root)
+                open_folder_button.click(open_collection_folder, inputs=folder_root)
 
                 save_to_favorites_history.click(
                     fn=save_to_favorites,

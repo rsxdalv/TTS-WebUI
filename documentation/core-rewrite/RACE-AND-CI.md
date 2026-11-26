@@ -178,7 +178,14 @@ Trade-offs to be aware of:
 
 - The GitHub Actions workflows themselves: the edited `core.yaml` has only been
   parsed as YAML and its check logic simulated locally. It has not run on GitHub.
-- Windows and macOS: no `go test` or UI build on either. The Windows CRLF explanation
-  is inferred from reproducing the hashes, not observed on the author's machine.
+- Windows and macOS: no `go test` or UI build was **executed** on either. What was done
+  instead, from Linux with `CGO_ENABLED=0`: `go vet ./...` (which also type-checks the
+  test files and the `_windows`/`_darwin`-tagged code) for `windows/amd64`,
+  `windows/arm64`, `darwin/amd64`, `darwin/arm64` and `linux/arm64`: all clean. The
+  existing CI matrix also cross-builds those six targets (green on this PR). Wine 9.0
+  (Ubuntu `wine64`) installs here but aborts with `free(): invalid pointer` while
+  creating a prefix, with or without Xvfb, so the Windows test binaries could not be
+  run; macOS cannot be emulated at all. The Windows CRLF explanation is inferred from
+  reproducing the hashes, not observed on the author's machine.
 - `*_REAL_ROOT` tests, GPU and API-key paths, the board tool.
 - `go test -race` with `GOOS=windows`/`darwin` (not possible from here).

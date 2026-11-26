@@ -80,7 +80,7 @@ func (s *Store) RequiresGraph(ctx context.Context) (requires.Graph, error) {
 			g.Provided["uv"] = "uv"
 		}
 	}
-	if s.opts.ONNX != nil {
+	if s.opts.ONNX != nil && s.opts.ONNX.Supported() {
 		if g.Installable == nil {
 			g.Installable = map[string]string{}
 		}

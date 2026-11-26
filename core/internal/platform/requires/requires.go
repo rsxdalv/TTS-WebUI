@@ -18,7 +18,7 @@ var reserved = map[string]string{
 	"openai":     "the openai platform is not available in this version",
 	"uv":         "the uv platform is not installed",
 	"audiocpp":   "the audiocpp platform is not available here (this version pins only Windows x64 builds)",
-	"onnx":       "the onnx platform is not available in this version",
+	"onnx":       "the onnx platform is not available here (this version pins only Windows x64 builds)",
 	"legacy-env": "legacy-env is the existing install's own Python env: it is adopted, never installed",
 	"system":     "system is the Python on PATH (--system-python): it is not installed by this app",
 	"gradio-host": "the Gradio host is not available as an installable entry in this version" +

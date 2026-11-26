@@ -27,7 +27,7 @@ import (
 
 const noPyToken = "no-python-token"
 
-const newRouteNames = "core-pip,core-logs,core-model-locations,core-settings,core-extensions,go-gpu-info,go-ffmpeg-metadata"
+const newRouteNames = "core-pip,core-logs,core-model-locations,core-settings,core-extensions,go-gpu-info,go-ffmpeg-metadata,go-hf-cache"
 
 // realCore starts the real loopback services of the launcher over root, with
 // a command prefix whose program and env do not exist.
@@ -132,6 +132,10 @@ func TestRoutesWithoutPythonAndGradio(t *testing.T) {
 	if code, got := call(t, "GET", front+"/api/go-data/extensions/interface", ""); code != 200 || !strings.HasPrefix(strings.TrimSpace(got), "[") {
 		t.Errorf("extensions: %d %q", code, got)
 	}
+	// HF cache: a scan of a cache that is not there is an empty list, no Python or Gradio involved.
+	t.Setenv("HF_HUB_CACHE", filepath.Join(root, "no-hf-cache"))
+	expect("GET", "/api/go-data/hf-cache/scan", "", 200, `"rows":[]`)
+	expect("POST", "/api/go-data/hf-cache/delete", `{"commit_hash":"../../x"}`, 400, "not a commit hash")
 	// The pages themselves are static files.
 	for _, p := range []string{"/tools/pip_list", "/tools/log_viewer", "/tools/gpu_info", "/tools/simple_remixer"} {
 		expect("GET", p, "", 200, "")

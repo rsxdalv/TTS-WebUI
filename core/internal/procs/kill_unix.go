@@ -3,6 +3,7 @@
 package procs
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"syscall"
@@ -20,9 +21,14 @@ func newPlatformState(cmd *exec.Cmd) (*platformState, error) {
 }
 
 // assign captures the process group ID after cmd.Start().
-// With Setpgid=true the pgid equals the child PID.
+// With Setpgid=true the pgid equals the child PID. A command that already ended
+// gives ESRCH on macOS (a zombie still has a group on Linux): that is
+// ErrProcessExited, not a failure.
 func (ps *platformState) assign(cmd *exec.Cmd) error {
 	pgid, err := syscall.Getpgid(cmd.Process.Pid)
+	if errors.Is(err, syscall.ESRCH) {
+		return ErrProcessExited
+	}
 	if err != nil {
 		return fmt.Errorf("getpgid: %w", err)
 	}

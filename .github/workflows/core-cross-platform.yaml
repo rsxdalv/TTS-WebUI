@@ -1,0 +1,95 @@
+name: Core cross-platform check (manual)
+
+# One-off / on-demand: runs the Go tests and the core UI build on Windows and
+# macOS runners. Not part of the normal checks (core.yaml). Start it from the
+# Actions tab ("Run workflow") or with:
+#   gh workflow run core-cross-platform.yaml --ref <branch>
+# It also runs on a pull request that edits this file, so the first run happens
+# on the PR that introduces it.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/core-cross-platform.yaml"
+
+jobs:
+  go:
+    name: go test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    defaults:
+      run:
+        working-directory: core
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache-dependency-path: core/go.mod
+      - name: Environment
+        run: |
+          go version
+          go env GOOS GOARCH CGO_ENABLED
+          git config --show-origin --get-all core.autocrlf || echo "core.autocrlf unset"
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - name: go vet
+        if: always()
+        run: go vet ./...
+      - name: go test
+        if: always()
+        run: go test ./... -count=1
+      - name: go test -race
+        if: always()
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race ./... -count=1
+
+  ui:
+    name: core UI build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: core/ui/package-lock.json
+      - name: Build core entry
+        run: bash core/scripts/build-webui.sh
+      - name: Committed assets match a fresh build on this OS
+        run: |
+          if [ -n "$(git status --porcelain --untracked-files=all -- core/internal/webui/assets)" ]; then
+            echo "committed assets differ from a fresh build on ${{ matrix.os }}:"
+            git status --short --untracked-files=all -- core/internal/webui/assets
+            git --no-pager diff --stat -- core/internal/webui/assets
+            exit 1
+          fi
+          echo "assets identical"
+      - name: bundle.hash ignores CRLF in the working tree
+        run: |
+          # Simulates an editor writing CRLF into a source file, as on the
+          # author's Windows machine. The hash must not change.
+          before=$(cat core/internal/webui/assets/bundle.hash)
+          f=core/ui/src/core-app/ExtensionsView.tsx
+          awk '{ printf "%s\r\n", $0 }' "$f" > "$f.crlf" && mv "$f.crlf" "$f"
+          echo "CR bytes in $f: $(tr -cd '\r' < "$f" | wc -c)"
+          bash core/scripts/bundle-hash.sh
+          after=$(cat core/internal/webui/assets/bundle.hash)
+          echo "before=$before"
+          echo "after =$after"
+          [ "$before" = "$after" ]

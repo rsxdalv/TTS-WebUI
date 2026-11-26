@@ -13,6 +13,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/torchrows"
 )
 
 // TestMain makes the test binary a fake uv when GH_FAKE_UV is set: it stops at
@@ -113,6 +114,17 @@ func TestInstallNeedsTheUVPlatform(t *testing.T) {
 	}
 }
 
+// cpuTorchPin is the torch pin of the CPU install row: the "cpu" row on Windows
+// and Linux, and the PyPI wheel (no +cpu local version) on macOS, which has no
+// other row.
+func cpuTorchPin() string {
+	pin := "torch==" + torchrows.TorchVersion
+	if runtime.GOOS != "darwin" {
+		pin += "+cpu"
+	}
+	return pin
+}
+
 func TestInstallMakesTheVenvAndHoldsTorch(t *testing.T) {
 	f := newFixture(t, true)
 	if err := f.p.Install(context.Background(), f.emit); err != nil {
@@ -122,7 +134,7 @@ func TestInstallMakesTheVenvAndHoldsTorch(t *testing.T) {
 		t.Fatalf("not ready after install: %+v", st)
 	}
 	calls := strings.Join(f.calls(t), "\n")
-	for _, want := range []string{"venv", "-r requirements.txt", "pip ", "torch==2.11.0+cpu"} {
+	for _, want := range []string{"venv", "-r requirements.txt", "pip ", cpuTorchPin()} {
 		if !strings.Contains(calls, want) {
 			t.Errorf("uv was not run with %q:\n%s", want, calls)
 		}
@@ -131,7 +143,7 @@ func TestInstallMakesTheVenvAndHoldsTorch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), "torch==2.11.0+cpu") || !strings.Contains(string(b), "torchaudio==2.11.0") {
+	if !strings.Contains(string(b), cpuTorchPin()) || !strings.Contains(string(b), "torchaudio==2.11.0") {
 		t.Fatalf("constraints = %q", b)
 	}
 	c, err := f.p.Command(nil, []string{"python", "server_core.py", "--no-react"})

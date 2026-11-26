@@ -33,6 +33,10 @@ jobs:
         run: go vet ./...
       - name: go test
         run: go test ./...
+      - name: go test -race
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race ./...
 
   build:
     needs: test
@@ -87,20 +91,22 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: core/ui/package-lock.json
       - name: Build core entry
         run: bash core/scripts/build-webui.sh
       - name: Check committed assets match fresh build
         run: |
-          # Recompute source hash and compare to the committed bundle.hash.
-          # A mismatch means TypeScript sources changed without running build-webui.sh.
-          bash core/scripts/bundle-hash.sh
-          FRESH=$(cat core/internal/webui/assets/bundle.hash)
-          COMMITTED=$(git show HEAD:core/internal/webui/assets/bundle.hash 2>/dev/null || echo "missing")
-          if [ "$FRESH" != "$COMMITTED" ]; then
-            echo "ERROR: bundle.hash differs — run core/scripts/build-webui.sh and commit the result."
+          # build-webui.sh above wiped core/internal/webui/assets and rebuilt it
+          # (index.html, assets/*, bundle.hash). Any difference from what is
+          # committed -- a changed file, a missing file, or a leftover/untracked
+          # one -- means the committed bundle is stale for these sources.
+          if [ -n "$(git status --porcelain --untracked-files=all -- core/internal/webui/assets)" ]; then
+            echo "ERROR: committed core/internal/webui/assets differ from a fresh build."
+            echo "Run 'bash core/scripts/build-webui.sh' (Node >= 22) and commit the result."
+            git status --short --untracked-files=all -- core/internal/webui/assets
+            git --no-pager diff --stat -- core/internal/webui/assets
             exit 1
           fi
-          echo "Bundle hash matches committed hash."
+          echo "Committed assets match a fresh build."

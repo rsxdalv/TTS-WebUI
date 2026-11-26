@@ -23,7 +23,9 @@ const ensurePythonVersion = async () => {
       const pythonPackage = `python=${pythonVersion}`;
       const conda = "micromamba";
 
-      await $(`${conda} install -y -k -c conda-forge ${pythonPackage}`);
+      // -k is conda's --insecure: it disables TLS verification for package
+      // downloads that are then executed. Left off deliberately.
+      await $(`${conda} install -y -c conda-forge ${pythonPackage}`);
     }
   } catch (error) {
     displayError("Failed to check/install python version");

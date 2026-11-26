@@ -1,0 +1,57 @@
+diff -ru src-base/core/internal/platform/audiocpp/audiocpp.go src-remap/core/internal/platform/audiocpp/audiocpp.go
+--- src-base/core/internal/platform/audiocpp/audiocpp.go
++++ src-remap/core/internal/platform/audiocpp/audiocpp.go
+@@ -64,7 +64,7 @@
+ 		p.models = Models
+ 	}
+ 	if p.goos == "" {
+-		p.goos = runtime.GOOS
++		p.goos = "windows"
+ 	}
+ 	if p.goarch == "" {
+ 		p.goarch = runtime.GOARCH
+diff -ru src-base/core/internal/platform/audiocpp/handler.go src-remap/core/internal/platform/audiocpp/handler.go
+--- src-base/core/internal/platform/audiocpp/handler.go
++++ src-remap/core/internal/platform/audiocpp/handler.go
+@@ -9,7 +9,6 @@
+ 	"mime"
+ 	"net"
+ 	"net/http"
+-	"runtime"
+ 	"strings"
+ 	"time"
+ 
+@@ -106,7 +105,7 @@
+ func Status(ctx context.Context, root paths.Root) StatusAnswer {
+ 	p := New(Options{Root: root})
+ 	st := p.Status(ctx)
+-	_, err := ArchiveFor(runtime.GOOS, runtime.GOARCH, RowCPU)
++	_, err := ArchiveFor("windows", "amd64", RowCPU)
+ 	a := StatusAnswer{Supported: err == nil, Ready: st.Ready, Detail: st.Detail, Version: Version, Rows: Rows,
+ 		Models: []ModelInfo{}, Server: ServerFor(root).Info()}
+ 	if err != nil {
+diff -ru src-base/core/internal/platform/onnx/onnx.go src-remap/core/internal/platform/onnx/onnx.go
+--- src-base/core/internal/platform/onnx/onnx.go
++++ src-remap/core/internal/platform/onnx/onnx.go
+@@ -66,7 +66,7 @@
+ 	p := &Platform{root: o.Root, env: append([]string(nil), o.Env...), runtime: o.Runtime, models: o.Models,
+ 		client: o.Client, program: o.Program, threads: o.Threads, goos: o.GOOS, goarch: o.GOARCH}
+ 	if p.goos == "" {
+-		p.goos = runtime.GOOS
++		p.goos = "windows"
+ 	}
+ 	if p.goarch == "" {
+ 		p.goarch = runtime.GOARCH
+diff -ru src-base/core/internal/platform/uv/toolspin.go src-remap/core/internal/platform/uv/toolspin.go
+--- src-base/core/internal/platform/uv/toolspin.go
++++ src-remap/core/internal/platform/uv/toolspin.go
+@@ -51,6 +51,9 @@
+ 	"windows/amd64": {Name: "git", Version: gitVersion,
+ 		Archive: Archive{gitRelease + "MinGit-2.56.1-64-bit.zip", "4a92850b6e917da4fd010669b614b55dccf5b0ec333a534cc4be4700dfefdafd"},
+ 		Path:    []string{"cmd"}, Probe: "cmd/git.exe"},
++	"linux/amd64": {Name: "git", Version: gitVersion,
++		Archive: Archive{gitRelease + "MinGit-2.56.1-64-bit.zip", "4a92850b6e917da4fd010669b614b55dccf5b0ec333a534cc4be4700dfefdafd"},
++		Path:    []string{"cmd"}, Probe: "cmd/git.exe"},
+ 	"windows/arm64": {Name: "git", Version: gitVersion,
+ 		Archive: Archive{gitRelease + "MinGit-2.56.1-arm64.zip", "96571e442e90523a90e5fd8661b4c4e43bc192910f3c6db938816e6955b4cc8c"},
+ 		Path:    []string{"cmd"}, Probe: "cmd/git.exe"},

@@ -1,0 +1,502 @@
+
+######## mock mode 404 for kitten-nano-en ########
+Installing the onnx platform (step 1 of 2)
+Downloading sherpa-onnx v1.13.8 from mock://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/sherpa-onnx-v1.13.8-win-x64-shared-MT-Release.tar.bz2
+  (18 progress lines, 5% steps, left out)
+Checksum matches 6dffdc715a4465b989446a6105265d2cb345e7101591a17d35534b6758f6e8df
+The onnx platform is installed (CPU)
+Installing tts_webui_onnx.kitten_nano (step 2 of 2)
+Downloading Kitten TTS nano 0.8 (ONNX) from mock://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kitten-nano-en-v0_8-int8.tar.bz2
+Failed to install Kitten TTS nano 0.8 (ONNX): download mock://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kitten-nano-en-v0_8-int8.tar.bz2: HTTP 404
+Stopped: step 2 of 2 (tts_webui_onnx.kitten_nano) failed
+## http 200, ok=False
+--- after 404: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/onnx/
+  platforms/onnx/models/
+  platforms/onnx/runtime/
+  platforms/onnx/platform.json  (98 B)
+  (41 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after 404: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after 404: /api/ext/list says: installed=False requirements_state=[{"name": "onnx", "kind": "platform", "state": "ready", "via": "onnx"}] ---
+
+######## mock mode cut for kitten-nano-en ########
+Downloading Kitten TTS nano 0.8 (ONNX) from mock://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kitten-nano-en-v0_8-int8.tar.bz2
+  (7 progress lines, 5% steps, left out)
+Failed to install Kitten TTS nano 0.8 (ONNX): download mock://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kitten-nano-en-v0_8-int8.tar.bz2: the transfer broke after 12488276 of 31220690 bytes: unexpected EOF
+## http 200, ok=False
+--- after cut: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/onnx/
+  platforms/onnx/models/
+  platforms/onnx/runtime/
+  platforms/onnx/platform.json  (98 B)
+  (41 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after cut: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after cut: /api/ext/list says: installed=False requirements_state=[{"name": "onnx", "kind": "platform", "state": "ready", "via": "onnx"}] ---
+
+######## mock mode cut-chunked for kitten-nano-en ########
+Downloading Kitten TTS nano 0.8 (ONNX) from mock://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kitten-nano-en-v0_8-int8.tar.bz2
+Failed to install Kitten TTS nano 0.8 (ONNX): download mock://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kitten-nano-en-v0_8-int8.tar.bz2: the transfer broke after 12488276 bytes: unexpected EOF
+## http 200, ok=False
+--- after cut-chunked: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/onnx/
+  platforms/onnx/models/
+  platforms/onnx/runtime/
+  platforms/onnx/platform.json  (98 B)
+  (41 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after cut-chunked: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after cut-chunked: /api/ext/list says: installed=False requirements_state=[{"name": "onnx", "kind": "platform", "state": "ready", "via": "onnx"}] ---
+
+######## mock mode reset for kitten-nano-en ########
+Downloading Kitten TTS nano 0.8 (ONNX) from mock://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kitten-nano-en-v0_8-int8.tar.bz2
+  (6 progress lines, 5% steps, left out)
+Failed to install Kitten TTS nano 0.8 (ONNX): download mock://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kitten-nano-en-v0_8-int8.tar.bz2: the transfer broke after 10202888 of 31220690 bytes: read tcp <client>-><mock>: read: connection reset by peer
+## http 200, ok=False
+--- after reset: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/onnx/
+  platforms/onnx/models/
+  platforms/onnx/runtime/
+  platforms/onnx/platform.json  (98 B)
+  (41 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after reset: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after reset: /api/ext/list says: installed=False requirements_state=[{"name": "onnx", "kind": "platform", "state": "ready", "via": "onnx"}] ---
+
+######## mock mode short for kitten-nano-en ########
+Downloading Kitten TTS nano 0.8 (ONNX) from mock://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kitten-nano-en-v0_8-int8.tar.bz2
+  (16 progress lines, 5% steps, left out)
+Failed to install Kitten TTS nano 0.8 (ONNX): checksum mismatch for mock://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kitten-nano-en-v0_8-int8.tar.bz2: got 2183ca6e7b146bef7d73eefb00cd0aff087395c0999691efb66126734b0c4280, want 6fa5be852612ce761094ba74ee6123b4fc4acfefa79bf64dc63acae4a83af2fd
+## http 200, ok=False
+--- after short: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/onnx/
+  platforms/onnx/models/
+  platforms/onnx/runtime/
+  platforms/onnx/platform.json  (98 B)
+  (41 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after short: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after short: /api/ext/list says: installed=False requirements_state=[{"name": "onnx", "kind": "platform", "state": "ready", "via": "onnx"}] ---
+
+######## mock mode empty for kitten-nano-en ########
+Downloading Kitten TTS nano 0.8 (ONNX) from mock://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kitten-nano-en-v0_8-int8.tar.bz2
+Failed to install Kitten TTS nano 0.8 (ONNX): checksum mismatch for mock://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kitten-nano-en-v0_8-int8.tar.bz2: got e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855, want 6fa5be852612ce761094ba74ee6123b4fc4acfefa79bf64dc63acae4a83af2fd
+## http 200, ok=False
+--- after empty: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/onnx/
+  platforms/onnx/models/
+  platforms/onnx/runtime/
+  platforms/onnx/platform.json  (98 B)
+  (41 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after empty: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after empty: /api/ext/list says: installed=False requirements_state=[{"name": "onnx", "kind": "platform", "state": "ready", "via": "onnx"}] ---
+
+######## mock mode ok (the retry) ########
+Downloading Kitten TTS nano 0.8 (ONNX) from mock://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kitten-nano-en-v0_8-int8.tar.bz2
+  (19 progress lines, 5% steps, left out)
+Checksum matches 6fa5be852612ce761094ba74ee6123b4fc4acfefa79bf64dc63acae4a83af2fd
+Kitten TTS nano 0.8 (ONNX) is installed
+## http 200, ok=True
+--- after the retry: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/onnx/
+  platforms/onnx/models/
+  platforms/onnx/runtime/
+  platforms/onnx/platform.json  (98 B)
+  platforms/onnx/models/kitten-nano/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/
+  platforms/onnx/models/kitten-nano/LICENSE  (11358 B)
+  platforms/onnx/models/kitten-nano/README.md  (796 B)
+  platforms/onnx/models/kitten-nano/entry.json  (109 B)
+  platforms/onnx/models/kitten-nano/model.int8.onnx  (24370878 B)
+  platforms/onnx/models/kitten-nano/tokens.txt  (1064 B)
+  platforms/onnx/models/kitten-nano/voices.bin  (3276800 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/af_dict  (121473 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/am_dict  (63878 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/an_dict  (6691 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ar_dict  (478165 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/as_dict  (5005 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/az_dict  (43773 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ba_dict  (2098 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/be_dict  (2652 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/bg_dict  (87051 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/bn_dict  (89979 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/bpy_dict  (5226 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/bs_dict  (47068 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ca_dict  (45566 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/chr_dict  (2859 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/cmn_dict  (1566335 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/cs_dict  (49645 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/cv_dict  (1344 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/cy_dict  (43130 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/da_dict  (245287 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/de_dict  (68276 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/el_dict  (72841 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/en_dict  (166944 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/eo_dict  (4666 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/es_dict  (49252 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/et_dict  (44263 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/eu_dict  (48841 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/fa_dict  (292423 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/fi_dict  (43928 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/fr_dict  (63727 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ga_dict  (52673 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/gd_dict  (49121 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/gn_dict  (3248 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/grc_dict  (3433 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/gu_dict  (82480 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/hak_dict  (3335 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/haw_dict  (2443 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/he_dict  (6963 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/hi_dict  (92143 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/hr_dict  (49388 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ht_dict  (1803 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/hu_dict  (153785 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/hy_dict  (62263 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ia_dict  (331275 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/id_dict  (43458 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/intonations  (2040 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/io_dict  (2165 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/is_dict  (44354 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/it_dict  (152889 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ja_dict  (47652 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/jbo_dict  (2243 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ka_dict  (87775 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/kk_dict  (1859 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/kl_dict  (2838 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/kn_dict  (87828 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ko_dict  (47523 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/kok_dict  (6394 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ku_dict  (2265 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ky_dict  (64977 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/la_dict  (3806 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lb_dict  (687931 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lfn_dict  (2793 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lt_dict  (49890 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lv_dict  (66337 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/mi_dict  (1346 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/mk_dict  (63859 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ml_dict  (92345 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/mr_dict  (87391 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ms_dict  (53541 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/mt_dict  (4384 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/mto_dict  (3960 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/my_dict  (95948 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/nci_dict  (1534 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ne_dict  (95377 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/nl_dict  (65979 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/no_dict  (4178 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/nog_dict  (3294 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/om_dict  (2302 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/or_dict  (89246 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/pa_dict  (79953 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/pap_dict  (2128 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/phondata  (550424 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/phondata-manifest  (21821 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/phonindex  (39074 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/phontab  (55796 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/piqd_dict  (1710 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/pl_dict  (76730 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/pt_dict  (67817 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/py_dict  (2409 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/qdb_dict  (3028 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/qu_dict  (1919 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/quc_dict  (1450 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/qya_dict  (1939 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ro_dict  (68538 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ru_dict  (8532392 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/sd_dict  (59928 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/shn_dict  (88172 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/si_dict  (85384 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/sjn_dict  (1783 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/sk_dict  (50002 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/sl_dict  (45047 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/smj_dict  (35095 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/sq_dict  (45003 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/sr_dict  (46832 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/sv_dict  (47836 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/sw_dict  (47804 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ta_dict  (209553 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/te_dict  (94837 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/th_dict  (2301 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/tk_dict  (20868 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/tn_dict  (3072 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/tr_dict  (46793 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/tt_dict  (2121 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ug_dict  (2070 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/uk_dict  (3492 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/ur_dict  (133556 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/uz_dict  (2540 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/vi_dict  (52608 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/yue_dict  (563571 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/aav/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/art/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/azc/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/bat/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/bnt/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/ccs/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/cel/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/cus/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/dra/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/esx/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmq/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmw/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/grk/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/inc/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/ine/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/ira/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/iro/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/itc/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/jpx/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/map/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/miz/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/myn/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/poz/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/roa/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/sai/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/sem/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/sit/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/tai/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/trk/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/urj/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zle/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zls/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zlw/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/eu  (54 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/ko  (51 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/qu  (88 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/aav/vi  (111 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/aav/vi-VN-x-central  (143 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/aav/vi-VN-x-south  (142 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/art/eo  (41 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/art/ia  (29 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/art/io  (50 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/art/jbo  (69 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/art/lfn  (135 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/art/piqd  (56 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/art/py  (140 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/art/qdb  (57 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/art/qya  (173 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/art/sjn  (175 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/azc/nci  (114 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/bat/lt  (28 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/bat/ltg  (312 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/bat/lv  (229 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/bnt/sw  (41 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/bnt/tn  (42 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/ccs/ka  (124 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/cel/cy  (37 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/cel/ga  (66 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/cel/gd  (51 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/cus/om  (39 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/dra/kn  (55 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/dra/ml  (57 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/dra/ta  (51 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/dra/te  (70 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/esx/kl  (30 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmq/da  (43 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmq/is  (27 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmq/nb  (87 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmq/sv  (25 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmw/af  (123 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmw/de  (42 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmw/en  (140 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmw/en-029  (335 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmw/en-GB-scotland  (295 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmw/en-GB-x-gbclan  (238 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmw/en-GB-x-gbcwmd  (188 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmw/en-GB-x-rp  (249 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmw/en-US  (257 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmw/en-US-nyc  (271 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmw/lb  (31 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/gmw/nl  (23 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/grk/el  (23 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/grk/grc  (99 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/inc/as  (42 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/inc/bn  (25 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/inc/bpy  (39 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/inc/gu  (42 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/inc/hi  (23 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/inc/kok  (26 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/inc/mr  (41 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/inc/ne  (37 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/inc/or  (39 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/inc/pa  (25 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/inc/sd  (66 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/inc/si  (55 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/inc/ur  (94 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/ine/hy  (61 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/ine/hyw  (365 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/ine/sq  (103 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/ira/fa  (90 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/ira/fa-Latn  (269 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/ira/ku  (40 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/iro/chr  (569 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/itc/la  (297 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/jpx/ja  (52 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/map/haw  (42 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/miz/mto  (183 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/myn/quc  (210 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/poz/id  (134 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/poz/mi  (367 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/poz/ms  (430 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/roa/an  (27 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/roa/ca  (25 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/roa/es  (63 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/roa/es-419  (167 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/roa/fr  (79 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/roa/fr-BE  (84 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/roa/fr-CH  (86 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/roa/ht  (140 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/roa/it  (109 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/roa/pap  (62 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/roa/pt  (95 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/roa/pt-BR  (109 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/roa/ro  (26 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/sai/gn  (47 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/sem/am  (41 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/sem/ar  (50 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/sem/he  (40 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/sem/mt  (41 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/sit/cmn  (686 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/sit/cmn-Latn-pinyin  (161 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/sit/hak  (128 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/sit/my  (56 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/sit/yue  (194 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/sit/yue-Latn-jyutping  (213 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/tai/shn  (92 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/tai/th  (37 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/trk/az  (45 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/trk/ba  (25 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/trk/cv  (40 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/trk/kk  (40 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/trk/ky  (43 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/trk/nog  (39 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/trk/tk  (25 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/trk/tr  (25 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/trk/tt  (23 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/trk/ug  (24 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/trk/uz  (39 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/urj/et  (237 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/urj/fi  (237 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/urj/hu  (73 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/urj/smj  (45 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zle/be  (52 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zle/ru  (57 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zle/ru-LV  (280 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zle/ru-cl  (91 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zle/uk  (97 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zls/bg  (111 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zls/bs  (230 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zls/hr  (262 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zls/mk  (28 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zls/sl  (43 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zls/sr  (250 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zlw/cs  (23 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zlw/pl  (38 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/lang/zlw/sk  (24 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Alex  (128 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Alicia  (474 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Andrea  (357 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Andy  (320 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Annie  (315 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/AnxiousAndy  (361 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Demonic  (3858 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Denis  (305 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Diogo  (379 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Gene  (281 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Gene2  (283 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Henrique  (381 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Hugo  (378 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Jacky  (267 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Lee  (338 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Marco  (467 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Mario  (270 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Michael  (270 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Mike  (112 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Mr serious  (3193 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Nguyen  (280 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Reed  (202 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/RicishayMax  (233 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/RicishayMax2  (435 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/RicishayMax3  (435 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Storm  (420 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/Tweaky  (3189 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/UniRobot  (417 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/adam  (75 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/anika  (493 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/anikaRobot  (512 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/announcer  (300 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/antonio  (381 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/aunty  (358 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/belinda  (340 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/benjamin  (201 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/boris  (224 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/caleb  (57 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/croak  (93 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/david  (112 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/ed  (287 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/edward  (151 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/edward2  (152 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/f1  (324 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/f2  (357 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/f3  (375 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/f4  (350 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/f5  (432 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/fast  (149 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/grandma  (263 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/grandpa  (256 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/gustave  (253 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/ian  (3168 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/iven  (261 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/iven2  (279 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/iven3  (262 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/iven4  (261 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/john  (3186 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/kaukovalta  (361 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/klatt  (38 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/klatt2  (38 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/klatt3  (39 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/klatt4  (39 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/klatt5  (39 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/klatt6  (39 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/linda  (350 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/m1  (335 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/m2  (264 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/m3  (300 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/m4  (290 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/m5  (262 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/m6  (188 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/m7  (254 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/m8  (284 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/marcelo  (251 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/max  (225 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/michel  (404 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/miguel  (382 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/mike2  (188 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/norbert  (3189 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/pablo  (3142 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/paul  (284 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/pedro  (352 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/quincy  (354 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/rob  (265 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/robert  (274 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/robosoft  (451 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/robosoft2  (454 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/robosoft3  (455 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/robosoft4  (447 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/robosoft5  (445 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/robosoft6  (287 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/robosoft7  (410 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/robosoft8  (243 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/sandro  (530 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/shelby  (280 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/steph  (364 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/steph2  (367 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/steph3  (377 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/travis  (383 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/victor  (253 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/whisper  (186 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/whisperf  (392 B)
+  platforms/onnx/models/kitten-nano/espeak-ng-data/voices/!v/zac  (275 B)
+  (440 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after the retry: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after the retry: /api/ext/list says: installed=True requirements_state=[{"name": "onnx", "kind": "platform", "state": "ready", "via": "onnx"}] ---

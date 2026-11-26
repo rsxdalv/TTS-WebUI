@@ -1,0 +1,24 @@
+== wrong-uv vs the control copy
+-	"linux/amd64":   {release("x86_64-unknown-linux-gnu.tar.gz"), "f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645"},
++	"linux/amd64":   {release("x86_64-unknown-linux-gnu.tar.gz"), "129c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645"},
+== wrong-ffmpeg vs the control copy
+-		Archive: Archive{ffmpegRelease + "ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz", "202fe67679a0860b155817a0907ffcc5c1ea82e186acaa21cb87d307f54fd59a"},
++		Archive: Archive{ffmpegRelease + "ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz", "102fe67679a0860b155817a0907ffcc5c1ea82e186acaa21cb87d307f54fd59a"},
+== wrong-git vs the control copy
+-		Archive: Archive{gitRelease + "MinGit-2.56.1-64-bit.zip", "4a92850b6e917da4fd010669b614b55dccf5b0ec333a534cc4be4700dfefdafd"},
++		Archive: Archive{gitRelease + "MinGit-2.56.1-64-bit.zip", "1a92850b6e917da4fd010669b614b55dccf5b0ec333a534cc4be4700dfefdafd"},
+== wrong-audiocpp vs the control copy
+-	"windows/amd64/cpu":    {release("windows-x64-cpu.zip"), "9f4d9956400e9510b0ca48ce4fe576c887673ad6f6feeadc82ee679f27d794f7", 35341052},
++	"windows/amd64/cpu":    {release("windows-x64-cpu.zip"), "1f4d9956400e9510b0ca48ce4fe576c887673ad6f6feeadc82ee679f27d794f7", 35341052},
+== wrong-gguf vs the control copy
+-				"3f71cf6a51f93c2f2e554e98970a3f49fb9a98d0c64bed5a815e65be3d2ff588", 127867968},
++				"1f71cf6a51f93c2f2e554e98970a3f49fb9a98d0c64bed5a815e65be3d2ff588", 127867968},
+== wrong-embedding vs the control copy
+-				"69c32db63ca56843d994f81f343f62e0bf2d73f7e4c9bc73e44bb1110b1d8845", 6194424},
++				"19c32db63ca56843d994f81f343f62e0bf2d73f7e4c9bc73e44bb1110b1d8845", 6194424},
+== wrong-onnx-runtime vs the control copy
+-		SHA256: "6dffdc715a4465b989446a6105265d2cb345e7101591a17d35534b6758f6e8df",
++		SHA256: "1dffdc715a4465b989446a6105265d2cb345e7101591a17d35534b6758f6e8df",
+== wrong-onnx-model vs the control copy
+-		SHA256: "6fa5be852612ce761094ba74ee6123b4fc4acfefa79bf64dc63acae4a83af2fd",
++		SHA256: "1fa5be852612ce761094ba74ee6123b4fc4acfefa79bf64dc63acae4a83af2fd",

@@ -192,6 +192,28 @@ const Generate = ({ endpoints }: { endpoints: Endpoint[] }) => {
   );
 };
 
+/** Fills the Add form; nothing is stored until Save, and the key is always typed by the user. */
+const PRESETS: { label: string; form: Omit<typeof emptyForm, "key"> }[] = [
+  {
+    label: "OpenAI",
+    form: {
+      name: "openai",
+      url: "https://api.openai.com/v1",
+      model: "tts-1",
+      voice: "alloy",
+    },
+  },
+  {
+    label: "OrcaRouter (OpenAI TTS models)",
+    form: {
+      name: "orcarouter",
+      url: "https://api.orcarouter.ai/v1",
+      model: "openai/tts-1",
+      voice: "alloy",
+    },
+  },
+];
+
 const emptyForm = { name: "", url: "", model: "", voice: "", key: "" };
 
 const Endpoints = ({
@@ -330,6 +352,26 @@ const Endpoints = ({
         </div>
       )}
       <h3 className="font-semibold">{editing ? `Edit ${form.name}` : "Add"}</h3>
+      {!editing && (
+        <label className="flex flex-col gap-1">
+          Preset
+          <select
+            className={field}
+            value=""
+            onChange={(e) => {
+              const p = PRESETS.find((x) => x.label === e.target.value);
+              if (p) setForm({ ...p.form, key: "" });
+            }}
+          >
+            <option value="">Custom (fill in below)</option>
+            {PRESETS.map((p) => (
+              <option key={p.label} value={p.label}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1">
           Name

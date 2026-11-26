@@ -13,9 +13,10 @@ RUN npm install && npm run build:static
 # Python 3.10 w/ Nvidia Cuda
 FROM nvidia/cuda:12.8.0-devel-ubuntu22.04 AS env_base
 
-# Install Pre-reqs
+# Install Pre-reqs. python-is-python3: the system platform starts "python" from PATH, and Ubuntu 22.04 only has
+# python3 (without it the launcher says "python was not found on PATH" and Gradio never starts).
 RUN apt-get update && apt-get install --no-install-recommends -y \
-    git vim nano build-essential python3-dev python3-venv python3-pip gcc g++ ffmpeg
+    git vim nano build-essential python3-dev python3-venv python3-pip python-is-python3 gcc g++ ffmpeg
 
 
 # uv, at the version the uv platform pins (core/internal/platform/uv/pin.go): the system

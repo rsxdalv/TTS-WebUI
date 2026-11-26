@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/onnx"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/piplist"
 )
 
@@ -20,6 +21,7 @@ func normalizeDist(s string) string { return platform.NormalizeDist(s) }
 // check_if_package_installed and _get_version answered in Python.
 type Installs struct {
 	root  string
+	onnx  *onnx.Platform    // entries of the onnx platform are answered by it
 	dists map[string]string // normalised distribution name -> version
 	// Err is why pip could not be read. Of then says not installed for an
 	// extension that needs pip, and the caller decides what that means.
@@ -29,7 +31,7 @@ type Installs struct {
 // Installs reads the main env once (cached) and returns the lookup. When pip
 // cannot be read it returns a lookup with Err set, never nil.
 func (s *Store) Installs(ctx context.Context) Installs {
-	in := Installs{root: s.opts.Root, dists: map[string]string{}}
+	in := Installs{root: s.opts.Root, onnx: s.opts.ONNX, dists: map[string]string{}}
 	if s.opts.Pip == nil {
 		return in
 	}
@@ -61,6 +63,9 @@ func isBuiltin(pkg string) bool { return platform.Builtin(pkg) }
 // the main env has the distribution (names compared after normalisation, not
 // by find_spec) and then it has that distribution's version.
 func (in Installs) Of(pkg, proxy string) (installed bool, version string) {
+	if in.onnx != nil && in.onnx.IsOnnxEntry(pkg) {
+		return in.onnx.EntryStatus(context.Background(), platform.Entry{Package: pkg}).Installed, ""
+	}
 	st := platform.InstalledIn(in.root, platform.Entry{Package: pkg, Own: proxy == "native"}, in.dists)
 	return st.Installed, st.Version
 }

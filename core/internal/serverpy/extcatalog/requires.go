@@ -80,6 +80,15 @@ func (s *Store) RequiresGraph(ctx context.Context) (requires.Graph, error) {
 			g.Provided["uv"] = "uv"
 		}
 	}
+	if s.opts.ONNX != nil {
+		if g.Installable == nil {
+			g.Installable = map[string]string{}
+		}
+		g.Installable["onnx"] = onnxWould
+		if s.opts.ONNX.Status(ctx).Ready {
+			g.Provided["onnx"] = "onnx"
+		}
+	}
 	if s.opts.AudioCpp != nil && s.opts.AudioCpp.Supported() {
 		if g.Installable == nil {
 			g.Installable = map[string]string{}

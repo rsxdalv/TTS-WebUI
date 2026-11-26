@@ -478,6 +478,21 @@
                 "proxy": "native"
             },
             {
+                "package_name": "tts_webui_onnx.kitten_nano",
+                "name": "Kitten TTS nano (ONNX, no Python)",
+                "requirements": "builtin",
+                "description": "Kitten TTS nano 0.8 int8 run by the sherpa-onnx runtime on CPU. No Python, torch or venv: the onnx platform downloads a pinned runtime and the model (about 55 MB), both checked against their checksums.",
+                "extension_type": "interface",
+                "extension_class": "text-to-speech",
+                "author": "KittenML",
+                "extension_author": "rsxdalv",
+                "license": "Apache-2.0",
+                "website": "https://github.com/KittenML/KittenTTS",
+                "extension_website": "https://github.com/k2-fsa/sherpa-onnx",
+                "extension_platform_version": "0.0.1",
+                "requires": ["onnx"]
+            },
+            {
                 "package_name": "tts_webui_extension.index_tts",
                 "name": "Index TTS (uv)",
                 "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.index_tts@main",

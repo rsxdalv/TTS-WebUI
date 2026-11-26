@@ -14,6 +14,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/audiocpp"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/onnx"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/system"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 	"os"
@@ -41,6 +42,9 @@ type Options struct {
 	// UV is the platform own-venv entries (proxy: native) run on. Nil means
 	// there is none: such an entry cannot be installed.
 	UV *uv.Platform
+	// ONNX is the platform the entries that require "onnx" run on (P8). Nil means
+	// there is none: such an entry cannot be installed.
+	ONNX *onnx.Platform
 	// AudioCpp is the platform audio.cpp models run on. Nil means there is none: a
 	// model cannot be installed.
 	AudioCpp *audiocpp.Platform

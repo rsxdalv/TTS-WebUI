@@ -109,6 +109,9 @@ func writeStd(w http.ResponseWriter, code int, v any) {
 
 // installPlatform installs a platform of a plan.
 func (s *Store) installPlatform(ctx context.Context, name string, l gpu.Label, emit func(string)) bool {
+	if name == "onnx" {
+		return s.installONNX(ctx, emit)
+	}
 	if name != "uv" || s.opts.UV == nil {
 		emit("Failed: the " + name + " platform cannot be installed here")
 		return false

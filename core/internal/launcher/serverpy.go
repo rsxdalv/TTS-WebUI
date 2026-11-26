@@ -201,7 +201,7 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 	mux.Handle(extcatalog.Prefix, ext.Handler())
 	// The keyword arguments of Gradio's launch(): Python only passes them on.
 	mux.Handle(launchopts.Path, launchopts.New(launchopts.Options{
-		Config: cfg, Token: token, GradioHost: gradioHost, GradioPort: gradioPort, Flags: flags,
+		Config: cfg, Token: token, GradioHost: gradioHost, GradioPort: gradioPort, Root: root.Dir(), Blocked: []string{root.InstallerFiles()}, Flags: flags,
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}).Handler())
 	// .env is rewritten only here (the Model Location tab; see appenv).

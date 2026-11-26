@@ -103,7 +103,7 @@ func TestInitMambaWindowsFullInstall(t *testing.T) {
 	if len(d) != 5 {
 		t.Fatalf("commands: %q", d)
 	}
-	if !strings.HasPrefix(d[1], `sh: call curl -Lk "https://github.com/easydiffusion/easydiffusion/releases/download/v1.1/micromamba.exe" > "`+mamba) {
+	if !strings.HasPrefix(d[1], `sh: call curl -L --fail "https://github.com/easydiffusion/easydiffusion/releases/download/v1.1/micromamba.exe" > "`+mamba) {
 		t.Fatalf("download: %q", d[1])
 	}
 	if d[2] != `sh: call "`+mamba+`" --version` {

@@ -469,7 +469,7 @@ func TestInitAppJSWrongPythonIsReinstalled(t *testing.T) {
 		writeFile(t, s.Root, "installer_scripts/.python_version", "Python 3.11.2\r\n")
 		return Result{}, nil
 	}
-	r.handlers["micromamba install -y -k -c conda-forge python=3.10.11"] = func(context.Context, Command) (Result, error) {
+	r.handlers["micromamba install -y -c conda-forge python=3.10.11"] = func(context.Context, Command) (Result, error) {
 		return Result{ExitCode: -1}, errors.New("micromamba: executable not found on PATH")
 	}
 	if code := run(t, s); code != 0 {

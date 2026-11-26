@@ -12,6 +12,8 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/appenv"
 )
@@ -42,8 +44,14 @@ type Options struct {
 	// describe the public front door.
 	GradioHost string
 	GradioPort int
-	Flags      appenv.Flags
-	Logf       func(format string, args ...any)
+	// Root is the install root, which is also Gradio's working directory.
+	// blocked_paths must be absolute (see blockedPaths), so it is needed.
+	Root string
+	// Blocked are more paths Gradio must not serve, which the caller names
+	// because it owns them (the installer's folder, from the paths package).
+	Blocked []string
+	Flags   appenv.Flags
+	Logf    func(format string, args ...any)
 }
 
 // Result is the answer: the launch() arguments and the lines Python prints.
@@ -71,7 +79,8 @@ func New(o Options) *Server {
 //   - the legacy keys are dropped; server_name and server_port are the private
 //     Gradio address; inbrowser is false (the launcher opens the browser);
 //   - --share forces share; allowed_paths, favicon_path and prevent_thread_lock
-//     are fixed.
+//     are fixed;
+//   - blocked_paths is blockedPaths plus what the file lists, as absolute paths.
 func (s *Server) Compute() (Result, error) {
 	data, err := s.opts.Config.Load()
 	if err != nil {
@@ -109,6 +118,7 @@ func (s *Server) Compute() (Result, error) {
 		opts["share"] = true
 	}
 	opts["allowed_paths"] = []any{"."}
+	opts["blocked_paths"] = s.blocked(opts["blocked_paths"])
 	opts["favicon_path"] = faviconPath
 	opts["prevent_thread_lock"] = true
 
@@ -177,4 +187,65 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, res)
 	}
+}
+
+// blockedPaths are what Gradio's file route must never serve. allowed_paths is
+// "." (an extension may serve a file from any folder of the install), and the
+// install root also holds the credentials: config.json has the Gradio auth
+// password, .env* and env_store.json the provider keys, platforms/openai/
+// keys.json the endpoint keys, data/sqlite the database, .git the history and
+// the remote's credentials. The installer's folder (its profile holds tokens)
+// is named by the caller, in Options.Blocked. Gradio checks blocked_paths before allowed_paths, so
+// listing them here keeps "." from reaching them.
+//
+// They are made absolute (blocked): Gradio lowercases both sides before it
+// compares, so a relative entry is resolved against the real-case working
+// directory and never matches the lowercased request path when that directory
+// has an upper-case letter in it (/home/me/TTS-WebUI). Tried with Gradio
+// 5.49.1: relative entries blocked nothing, absolute ones do.
+var blockedPaths = []string{
+	"config.json",
+	".env", ".env.user", ".env.local", ".env.production", ".env.production.local",
+	"env_store.json",
+	"platforms",
+	"installer_scripts/output.log",
+	"data/sqlite",
+	".git",
+}
+
+// blocked is blockedPaths and Options.Blocked followed by the entries the file adds, all absolute:
+// the file may block more, never less.
+func (s *Server) blocked(fromFile any) []any {
+	root := s.opts.Root
+	if root == "" {
+		root, _ = os.Getwd()
+	}
+	var out []any
+	seen := map[string]bool{}
+	add := func(p string) {
+		if p == "" {
+			return
+		}
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(root, filepath.FromSlash(p))
+		}
+		if !seen[p] {
+			seen[p] = true
+			out = append(out, p)
+		}
+	}
+	for _, p := range blockedPaths {
+		add(p)
+	}
+	for _, p := range s.opts.Blocked {
+		add(p)
+	}
+	if list, ok := fromFile.([]any); ok {
+		for _, v := range list {
+			if p, ok := v.(string); ok {
+				add(p)
+			}
+		}
+	}
+	return out
 }

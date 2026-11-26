@@ -14,6 +14,12 @@ func fileProxyServer(t *testing.T) (*httptest.Server, *[]string) {
 	gradio := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		seen = append(seen, r.Method+" "+r.URL.RequestURI())
 		switch {
+		case strings.HasSuffix(r.URL.Path, ".html"):
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = io.WriteString(w, "<script>alert(1)</script>")
+		case strings.HasSuffix(r.URL.Path, ".svg"):
+			w.Header().Set("Content-Type", "image/svg+xml")
+			_, _ = io.WriteString(w, `<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>`)
 		case strings.HasSuffix(r.URL.Path, ".wav"):
 			w.Header().Set("Content-Type", "audio/wav")
 			w.Header().Set("Content-Disposition", `attachment; filename="a.wav"`)
@@ -96,5 +102,71 @@ func TestGradioFileProxyUsesGet(t *testing.T) {
 	resp.Body.Close()
 	if len(*seen) != 1 || !strings.HasPrefix((*seen)[0], "GET ") {
 		t.Fatalf("upstream saw %v", *seen)
+	}
+}
+
+func TestProxyContentType(t *testing.T) {
+	const octet = "application/octet-stream"
+	for _, c := range []struct{ in, want string }{
+		{"audio/wav", "audio/wav"},
+		{"audio/mpeg", "audio/mpeg"},
+		{"audio/x-wav", "audio/x-wav"},
+		{"video/mp4", "video/mp4"},
+		{"image/png", "image/png"},
+		{"image/webp", "image/webp"},
+		{"application/json", "application/json"},
+		{"application/json; charset=utf-8", "application/json; charset=utf-8"},
+		{"text/plain; charset=utf-8", "text/plain; charset=utf-8"},
+		{"application/ogg", "application/ogg"},
+		{"AUDIO/WAV", "AUDIO/WAV"}, // media types are case-insensitive
+		{"", octet},
+		{"not a type", octet},
+		{"text/html", octet},
+		{"text/html; charset=utf-8", octet},
+		{"application/xhtml+xml", octet},
+		{"image/svg+xml", octet},
+		{"IMAGE/SVG+XML", octet},
+		{"image/svg+xml; charset=utf-8", octet},
+		{"application/javascript", octet},
+		{"text/javascript", octet},
+		{"text/xml", octet},
+		{"application/pdf", octet},
+		{"multipart/x-mixed-replace", octet},
+	} {
+		if got := proxyContentType(c.in); got != c.want {
+			t.Errorf("proxyContentType(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+func TestGradioFileProxyDoesNotServeUpstreamDocumentsAsScript(t *testing.T) {
+	front, _ := fileProxyServer(t)
+	for _, name := range []string{"x.html", "x.svg"} {
+		resp, err := http.Get(front.URL + "/api/gradio-file-proxy/gradio_api/file=outputs/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if ct := resp.Header.Get("Content-Type"); ct != "application/octet-stream" {
+			t.Errorf("%s served as %q", name, ct)
+		}
+		if resp.Header.Get("X-Content-Type-Options") != "nosniff" || resp.Header.Get("Content-Security-Policy") != "sandbox" {
+			t.Errorf("%s: safety headers missing: %v", name, resp.Header)
+		}
+	}
+}
+
+func TestGradioFileProxyKeepsPreviewsAndAddsSafetyHeaders(t *testing.T) {
+	front, _ := fileProxyServer(t)
+	resp, err := http.Get(front.URL + "/api/gradio-file-proxy/gradio_api/file=outputs/a.wav")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.Header.Get("Content-Type") != "audio/wav" {
+		t.Errorf("a preview lost its type: %v", resp.Header)
+	}
+	if resp.Header.Get("X-Content-Type-Options") != "nosniff" {
+		t.Errorf("nosniff missing: %v", resp.Header)
 	}
 }

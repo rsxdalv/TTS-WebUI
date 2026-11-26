@@ -161,13 +161,6 @@ export function ExtensionsView() {
 
   const [ask, setAsk] = useState<{ ext: Ext; ask: GPUAsk; pick: string } | null>(null);
   const abort = useRef<AbortController | null>(null);
-  // The GPU question, Cancel and the log sit below the whole list; bring them
-  // into view when an install starts or asks, or the click seems to do nothing.
-  const statusTop = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (ask || busy) statusTop.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [ask, busy]);
-
   // The audio.cpp build (cpu or vulkan) is chosen for an install that installs the
   // audiocpp platform: the platform itself, or a model while it is missing.
   const [audioRow, setAudioRow] = useState("cpu");
@@ -396,9 +389,16 @@ export function ExtensionsView() {
           ))}
         </section>
       ))}
-      <div ref={statusTop} />
+      {(ask || busy || log.length > 0) && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={ask ? "Choose the GPU" : "Install log"}
+        >
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-auto rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-xl flex flex-col gap-3">
       {ask && (
-        <div className="p-3 rounded-lg border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950 text-sm flex flex-col gap-2">
+        <div className="text-sm flex flex-col gap-2">
           <strong>Which GPU is this for?</strong>
           <p className="text-gray-700 dark:text-gray-300">
             {installsHost(ask.ext)
@@ -427,7 +427,10 @@ export function ExtensionsView() {
                   : `Install uv, the Gradio host and ${ask.ext.name}`
                 : `Install uv and ${ask.ext.name}`}
             </button>
-            <button className={btn} onClick={() => setAsk(null)}>
+            <button className={btn} onClick={() => {
+                setAsk(null);
+                setLog([]);
+              }}>
               Not now
             </button>
           </div>
@@ -444,6 +447,16 @@ export function ExtensionsView() {
         <pre className="p-3 rounded-lg bg-gray-900 text-gray-100 text-xs overflow-auto max-h-72 whitespace-pre-wrap">
           {log.join("\n")}
         </pre>
+      )}
+            {!busy && !ask && (
+              <div>
+                <button className={btn} onClick={() => setLog([])}>
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

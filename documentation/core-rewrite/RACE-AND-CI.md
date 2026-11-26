@@ -10,8 +10,10 @@ Summary:
 - `go vet`, `gofmt -l`, `go test` are clean and not flaky (3 runs).
 - The failing CI check on #749-#755 and on main at `6eba853`, `71ae227`, `f41a69c` and
   `d2c464a` is real and has two causes (below). **main at `b844e0a` is clean.**
-- This branch adds three commits: a robust `bundle-hash.sh`, a stricter CI asset check,
-  and a `-race` CI step.
+- Running the suite on GitHub's Windows and macOS runners (below) found **two real macOS
+  bugs**, now fixed here. Windows was green from the first run.
+- This branch adds: a robust `bundle-hash.sh`, a stricter CI asset check, a `-race` CI
+  step, the two macOS fixes, and a manual-only cross-platform workflow.
 
 ## Task A: Go
 
@@ -59,8 +61,9 @@ All 16 skips are by design here:
   in `internal/launcher`), `AUDIOCPP_REAL_ROOT`, `ONNX_REAL_ROOT`, `UV_REAL_ROOT` (2
   tests), `EXTPROCS_REAL_PYTHON` / `EXTPROCS_REAL_ROOT`.
 
-**Not run:** any of the `*_REAL_ROOT` tests (they download real runtimes and Python
-packages), the Windows-only tests, and anything needing a GPU or API keys. Races in the
+**Not run (on Linux):** any of the `*_REAL_ROOT` tests (they download real runtimes and
+Python packages), the Windows-only tests (they do run on the Windows runner, see the
+Windows and macOS section), and anything needing a GPU or API keys. Races in the
 real subprocess paths those tests cover are therefore unchecked.
 
 ## Task B: CI health
@@ -174,18 +177,54 @@ Trade-offs to be aware of:
   place: no Go code reads it (grep: only `build-webui.sh`, `bundle-hash.sh`, the workflow
   and `core/README.md` mention it), so removing it is a safe follow-up if you want.
 
+### Windows and macOS (GitHub runners)
+
+Linux cannot run these, so `.github/workflows/core-cross-platform.yaml` (manual
+`workflow_dispatch`, plus PRs that edit it) runs gofmt, `go vet`, `go test`,
+`go test -race` and the core UI build on `windows-latest` and `macos-latest`
+(macOS runner is arm64). Three runs on this branch:
+
+| Run | windows go | windows UI | macOS go | macOS UI |
+|---|---|---|---|---|
+| 1 | pass (incl. `-race`) | pass | **2 test failures** | step failed (harness bug) |
+| 2 (macOS fixes) | pass | step failed (harness bug) | pass | pass |
+| 3 (harness fixed) | pass | pass | pass | pass |
+
+Findings:
+
+- **Real bug, macOS: `procs.Tree.Assign` (`internal/procs/kill_unix.go`).** The contract
+  (`tree.go`, relied on by `runner.go` and `proc.go`) is to return `ErrProcessExited`
+  when the child ended before it was attached. The Unix code returned the raw `getpgid`
+  error instead. On macOS `getpgid` of an ended child is `ESRCH` (on Linux a zombie keeps
+  its group), so a short command was reported as `assigning process tree: getpgid: no
+  such process` and the step failed. Seen in
+  `TestCommandThatExitsBeforeAttachIsANormalFinish`. Fixed by mapping `ESRCH` to
+  `ErrProcessExited`; regression test `internal/procs/kill_unix_test.go` (it passes on
+  Linux either way, it is the macOS run that proves the fix).
+- **Wrong test assumption, macOS:** `TestInstallMakesTheVenvAndHoldsTorch` hard-coded
+  `torch==2.11.0+cpu`. The only macOS torch row is PyPI (`torch==2.11.0`), so the product
+  code was right and the test now expects the pin of the platform's row.
+- **No data races on macOS or Windows** (`go test -race` ran on both).
+- **CRLF check:** with 443 CR bytes written into `ExtensionsView.tsx`, `bundle.hash` is
+  unchanged (`32d98955...`) on both Windows and macOS, and a fresh UI build on both
+  matches the committed assets byte for byte. That confirms the LF-normalising hash and
+  shows the Vite output is the same on Linux, Windows and macOS.
+- The first harness failures were mine: BSD `sed -i` on macOS, and MSYS `grep` hiding CR
+  on Windows.
+
+Should this stay? It costs two slower runners per run, so it is manual-only and not in
+`core.yaml`. It found real bugs the Linux checks cannot see; run it before releases or
+after touching process, path or installer code. Dropping the file from the PR is also
+fine; the fixes do not depend on it.
+
 ### Not run
 
-- The GitHub Actions workflows themselves: the edited `core.yaml` has only been
-  parsed as YAML and its check logic simulated locally. It has not run on GitHub.
-- Windows and macOS: no `go test` or UI build was **executed** on either. What was done
-  instead, from Linux with `CGO_ENABLED=0`: `go vet ./...` (which also type-checks the
-  test files and the `_windows`/`_darwin`-tagged code) for `windows/amd64`,
-  `windows/arm64`, `darwin/amd64`, `darwin/arm64` and `linux/arm64`: all clean. The
-  existing CI matrix also cross-builds those six targets (green on this PR). Wine 9.0
-  (Ubuntu `wine64`) installs here but aborts with `free(): invalid pointer` while
-  creating a prefix, with or without Xvfb, so the Windows test binaries could not be
-  run; macOS cannot be emulated at all. The Windows CRLF explanation is inferred from
-  reproducing the hashes, not observed on the author's machine.
+- Nothing about the edited `core.yaml` is unverified any more: it ran green on this PR
+  (test job incl. `-race`, the asset check on Node 22, all six cross-builds).
+- Windows and macOS were run only on GitHub's runners (section above), not on a developer
+  machine. Wine 9.0 crashes here (`free(): invalid pointer` creating a prefix), so there
+  was no local emulation; locally I only ran `go vet` for `windows/*`, `darwin/*` and
+  `linux/arm64`. The `*_REAL_ROOT` and Windows-only tests that need a real install were
+  still skipped on every OS. The CRLF explanation for the stale hashes is inferred from
+  reproducing them, not observed on the author's machine.
 - `*_REAL_ROOT` tests, GPU and API-key paths, the board tool.
-- `go test -race` with `GOOS=windows`/`darwin` (not possible from here).

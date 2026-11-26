@@ -28,6 +28,9 @@ jobs:
       - name: Type check
         working-directory: react-ui
         run: npx tsc --noEmit
+      - name: Unit tests
+        working-directory: react-ui
+        run: npm test
       - name: Build the static export
         working-directory: react-ui
         run: npm run build:static

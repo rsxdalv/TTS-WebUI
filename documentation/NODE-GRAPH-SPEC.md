@@ -1,6 +1,6 @@
 # Node graph ("Chains") — spec
 
-Status: proposal. Replaces the original Next.js prototype in this PR (`nodes-ui/`, Rete + Next + `new Function` nodes), which cannot run on the current architecture (Vite `react-ui` served by the Go core; Next.js removed in D21).
+Status: **M0–M2 implemented** on this branch (see section 12); M3 and M4 are not started. Replaces the original Next.js prototype in this PR (`nodes-ui/`, Rete + Next + `new Function` nodes), which cannot run on the current architecture (Vite `react-ui` served by the Go core; Next.js removed in D21).
 
 ## 1. Problem and scope
 
@@ -169,3 +169,29 @@ v1: localStorage (`chains:<name>`), JSON export/import to file. v2 (needs Go rou
 ## 11. What this replaces
 
 The prototype in this PR added 50 files (15,135 lines) under `nodes-ui/`: a separate Next app on port 3002, Rete, a Next API proxy, 8 nodes (two calling a backend) and an eval-based Custom JS node. None of it is reused except ideas: typed sockets (audio/text/number), tabs of graphs, JSON import/export. The prototype was the previous tip of this branch (`670f1e0`); GitHub keeps it reachable by that SHA for a while, but it is not part of the new history.
+
+## 12. Implementation status and findings (as built)
+
+Everything is in `react-ui/` (no Go, Python or workflow-runtime change; one CI step added).
+
+**Built (M0–M2):** `react-ui/src/chains/` (model, validation, executor, cache, registry, DSP, graph IO, layout, templates, 14 nodes), the canvas under `chains/ui/`, the lazy route `/chains` and a header link. Nodes: Text, Number, Audio file; MMS, Kokoro, OpenAI-style TTS; RVC, Demucs; Gain, Trim, Fade, Join, Mix (Web Audio, no dependency); Preview, Compare A/B, Show text. Three templates.
+
+**Not built yet** (listed in this spec, deliberately left out of this pass):
+- Bark node (its parameter set is large; needs its own form), and a History/outputs clip picker. Audio files are entered as a URL/path.
+- Drop-a-node-on-a-cable to splice, and the keyboard "connect to…" menu. Nodes are focusable and `Delete` works, but wiring still needs the pointer.
+- Persistence beyond localStorage and file export/import (M4 needs a Go route).
+- M3, the extension node-registration seam. `registerNode` exists and is the intended seam; nothing wires `@tts-webui/*` packages to it yet.
+- Per-engine queues beyond one `gradio` lane and one `openai` lane. The spec's open question about reusing a Go-side queue is unchanged.
+
+**Measured:**
+- New route chunk: 98.9 KB gzip JS + 2.7 KB CSS, lazy-loaded. The main `index` chunk is unchanged (79.2 KB gzip before, 79.1 KB after). That is under the 150 KB trigger in section 2, so the canvas stays in main.
+- `@xyflow/react` 13.0.3 plus `vitest` are the only new packages (vitest is dev only). Attribution link is left on.
+
+**Tests:** `npm test` runs 59 Vitest tests (executor, validation, cache, DSP, graph IO, layout, API errors/timeouts). In a browser (Playwright, Chromium) the page was driven through a mock backend for: adding nodes, refusing a type mismatch and a cycle, replacing a cable, autosave and reload, templates, error isolation, Stop, bypass, export/import, refusing a graph containing a `custom.js` node, and upload of browser-made audio before RVC. A second run used a real MMS model (`facebook/mms-tts-eng`, CPU) behind the same `/api/gradio/mms` contract: real 6.5 s speech, Gain of -6.02 dB halved the peak, Trim gave 1.00 s, and a downstream change reused the seeded generation without a second request. **Not tested:** the real Go core and Gradio host, RVC/Demucs/Kokoro/OpenAI with real models or endpoints, screen readers, Safari/Firefox, touch.
+
+**Things learned that change earlier assumptions:**
+1. `react-ui/tailwind.config.js` only scanned `pages`, `components` and `app`. Classes used only under `src/chains/` were silently missing. The chains folder is now in `content`.
+2. React Flow 13.0.3 ignores a numeric `padding` in `fitView` (0.15 behaved as 0 px, so graphs touched the canvas edge and edge auto-pan swallowed drags). Percent strings such as `"12%"` work.
+3. A server-side node cannot read a browser `blob:` URL. Browser nodes output blob URLs; server nodes upload them through the existing `POST /api/upload` first (`toServerUrl`). Uploaded clips accumulate in `file-input-cache/` like any other upload.
+4. The Go gradio route can leave a request unanswered when the Gradio tab does not declare a parameter (see `TestGradioHangsWhereTheOriginalNeverAnswers`). Stop only stops waiting (the Go call keeps running, by design), so every request also has a 15 minute timeout.
+5. Generation nodes default to a random seed, which makes them non-cacheable. Fix the seed to reuse a result.

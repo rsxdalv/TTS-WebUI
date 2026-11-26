@@ -34,7 +34,7 @@ What each tool is, per OS (decided from what was reachable and what a real engin
 
 | Tool | Windows | Linux | macOS |
 |---|---|---|---|
-| git | MinGit 2.56.1 zip (amd64, arm64), checksum from the release asset digest; `cmd/` on PATH | **the system's git.** No official static build exists; a missing git is said at install and, before any venv is started, when an engine needs a `git+` requirement | the system's git (`xcode-select --install`) |
+| git | MinGit 2.56.1 zip (amd64, arm64), checksum from the release asset digest; `cmd/` on PATH | dugite-native 2.56.1 `.tar.gz` (amd64, arm64), **only when the machine has no git**; `bin/` on PATH, `GIT_EXEC_PATH`/`GIT_TEMPLATE_DIR` set (LAB-47, below) | the system's git (`xcode-select --install`); refused before any download when missing |
 | ffmpeg | BtbN FFmpeg-Builds `gpl-shared` 8.1.3 zip (amd64); `bin/` on PATH | same build as `.tar.xz` (amd64, arm64); `bin/` on PATH and `lib/` on `LD_LIBRARY_PATH` | none pinned (BtbN has no macOS builds): the system's (`brew install ffmpeg`) |
 
 Why the **shared** build: the program alone is not enough. Every engine venv gets `torchcodec`, which loads
@@ -50,6 +50,61 @@ that leaves the folder is refused). `Install` fetches the tools; `Create` fetche
 installed before this step upgrades itself on the next engine install. They are first on PATH in `Platform.environ`,
 which every command is built from: `uv` (a `git+https` requirement runs git) and an own-venv engine (extprocs takes the
 platform command's environment).
+
+### Linux git (LAB-47, 2026-11-26)
+
+**Decision (proposal, for the human to confirm): a pinned git for Linux amd64 and arm64 (dugite-native v2.56.1), fetched only
+when the machine has no git; where there is no pin (macOS, other architectures) the system's git, refused before the first
+download.** The first version of this section said no source was trustworthy; that was wrong, dugite-native (the git GitHub
+Desktop embeds) was missed and was found on review.
+
+The failure, reproduced with the real launcher on Ubuntu: `PATH` an empty folder, a fresh root under `/tmp`,
+`POST /api/ext/op/install {"package_name":"tts_webui_extension.kitten_tts","gpu":"CPU"}`. uv (16 MB), Python 3.10.11 and ffmpeg
+(68 MB) were downloaded, then step 2 failed with "installs from a git URL and git is not on this machine". Now the same request, with
+a PATH of basic programs (`sh sed grep ...`) and no git, downloads git 2.56.1 (64 MB), checks it, unpacks it (152 MB; the x64 build
+carries Git Credential Manager, 80 MB), runs it, and installs Kitten TTS (uv) from its `git+https` URL to `{"done":true,"ok":true}`.
+
+The source, read on 2026-11-26 (`desktop/dugite-native`, tag `v2.56.1`, commit 238326e of 2026-11-10; git 2.56.1, the same
+version as the Windows MinGit pin):
+
+| | |
+|---|---|
+| Maker | the GitHub Desktop team; built by the repo's own CI (`script/build-ubuntu.sh`), assets uploaded by `release.yml` |
+| Assets | `dugite-native-v2.56.1-238326e-ubuntu-x64.tar.gz` (64 MB), `...-ubuntu-arm64.tar.gz` (24 MB). No top folder; members start with `./` |
+| Checksums | a `.sha256` file beside each asset; both matched a real download: x64 `e5bc3e8e...111d`, arm64 `8626f036...abcb6`. They sit next to the file, so they catch corruption, not a replaced release: the pin is the defence, as for every tool here |
+| Licence | the repo is GPL-2.0 (git's); git-lfs and Git Credential Manager inside are MIT; `libexec/git-core/NOTICE` lists them |
+| Not signed | no signature on the assets or the checksums. The same trust as ffmpeg (BtbN) and MinGit: a pin of a hash read once |
+| **Not self-contained, despite the README ("no linking to system libraries")** | `readelf`: `bin/git` needs `libz`, `libc` (GLIBC_2.34); `git-remote-https` also needs the **host's `libcurl.so.4`** (and its dependencies). Built on Ubuntu 22.04. So: glibc 2.34 or newer (Ubuntu 22.04+, Debian 12+, RHEL 9+), libcurl installed |
+| Relocatable | only with `GIT_EXEC_PATH` and `GIT_TEMPLATE_DIR` (the prefix is compiled in as `/`; without them: "unable to find remote helper for 'https'"). Both are set in `toolEnv` for every command of the platform. System config (`/etc/gitconfig`) still applies |
+| arm64 | not run (no arm64 machine here); readelf shows the same needs, checksum matches a real download |
+
+Because it links the host's libraries, **the pin is a fallback, not a replacement**: `OnlyIfMissing` fetches it only when git is not
+on the PATH the install would use, so a machine whose git works never gets one that may not. After unpacking, before the folder is
+swapped in, `Smoke` runs `bin/git --version` and `git-remote-https` from the new folder; a program that cannot load (missing
+libcurl, old glibc) fails the install with the program's own words and "install git with your package manager instead", and the
+unpacked folder is removed. A wrong checksum is refused before unpacking (the same `download` as the other tools).
+
+What else was built: the pre-flight for entries with a `git+` requirement (`Platform.CheckGit`, `extcatalog.checkGitForPlan`, also run by
+`Create`): `409 {"needs":"git"}` before anything is downloaded, with the per-distro commands, for macOS and for a Linux
+architecture with no pin. A git file on PATH must be executable. Docker: the image installs `git`. Colab: the notebook starts
+with `!git clone`.
+
+Other sources looked at, and why not:
+
+| Source | Verdict |
+|---|---|
+| git-scm.com / kernel.org | source only |
+| Git for Windows MinGit | Windows only (used there) |
+| Debian/Ubuntu `.deb` | not portable across distros (Ubuntu 24.04 git needs glibc >= 2.38, libcurl3t64-gnutls, pcre2, expat, perl; exec path compiled in) |
+| conda-forge `git` 2.56.1 | needs conda's solver, prefix rewriting and 8 more packages (libcurl, openssl, libexpat, libiconv, libzlib, pcre2, libgcc, perl); two builds of one version differ in checksum |
+| other "static git" repos on GitHub (`darkvertex/static-git`, `EXALAB/git-static`) | not inspected: one maintainer each; dugite-native supersedes them |
+| Homebrew, Nix, Alpine | not researched |
+
+Not built, not run: rewriting `git+https://github.com/<o>/<r>@<ref>` to GitHub's archive URL so uv needs no git (it would not cover
+transitive `git+` requirements, builds that read `.git`, other hosts). macOS has no pinned git (dugite-native has macOS builds;
+not looked at). Found, not fixed: `pythonExe` takes the first output line of `uv python find`, so uv's deprecation warning when
+`UV_NATIVE_TLS` is set (as in this container) is taken as the Python path and a `.tar.xz` unpack (ffmpeg) fails; the real runs here
+unset that variable.
 
 ## Verification (2026-11-24)
 
@@ -73,7 +128,7 @@ platform command's environment).
 
 ## Not done
 
-- Tools: not run on macOS; not run with a Linux machine that has no git (the system git was used); an engine that calls the `ffmpeg` program and not only torchcodec was not run (`shutil.which` and `ffmpeg -version` through the venv's python were); the tools install was not run through the launcher page (only through `Platform.Install`).
+- Tools: not run on macOS; the Linux git pin was run on Ubuntu x64 only (real download, smoke test, a `git+https` install through `TestRealTools` and the Kitten install through the launcher API, with no git on PATH); **not run on arm64, on a host without libcurl or with glibc older than 2.34** (those are covered by fake archives whose programs fail to load), and not through the launcher page in a browser; an engine that calls the `ffmpeg` program and not only torchcodec was not run (`shutil.which` and `ffmpeg -version` through the venv's python were).
 - The GPU choice is fixed at platform install and the page preselects the proposed GPU (LAB-46, **documented, deferred by the human on 2026-11-24**). For later: (1) a detected GPU should be a suggestion, not a preselection one click accepts; (2) the choice must be changeable (upgradable) after the install, which means a second torch row per entry and the extra download shown. Nothing was built for either.
 - uv platform uninstall; clearing the wheel cache.
 - Venv folder name: measured the deepest file of a real torch venv at 138 characters below the venv folder, so the

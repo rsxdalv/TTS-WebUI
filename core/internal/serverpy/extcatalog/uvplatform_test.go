@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -238,4 +239,50 @@ func TestNativeInstallWithoutAUVPlatformIsRefused(t *testing.T) {
 func finishedVenv(t *testing.T, root, pkg string) {
 	t.Helper()
 	writeFile(t, root, ".venvs/"+pkg+"/entry.json", `{"package":"`+pkg+`","platform":"uv"}`)
+}
+
+func TestNativeInstallWithoutGitIsRefusedBeforeAnyStep(t *testing.T) {
+	s, root, log := nativeStore(t)
+	t.Setenv("PATH", t.TempDir()) // a machine with no git
+	// With and without the GPU choice: the git answer comes first, so the page does
+	// not ask for a GPU and then fail.
+	for _, body := range []string{`{"package_name":"ext.native"}`, `{"package_name":"ext.native","gpu":"CPU"}`} {
+		code, got := call(t, s.Handler(), "POST", Prefix+"install", body, "tok")
+		var ans struct{ Error, Needs string }
+		if code != 409 || json.Unmarshal([]byte(got), &ans) != nil || ans.Needs != "git" {
+			t.Fatalf("%s: %d %s", body, code, got)
+		}
+		// The install hint is per operating system (apt on Linux, xcode-select on macOS, a plain
+		// "Install Git" elsewhere); the rest of the message is the same everywhere.
+		hint := map[string]string{"linux": "apt install git", "darwin": "xcode-select --install"}[runtime.GOOS]
+		if hint == "" {
+			hint = "Install Git for your system"
+		}
+		for _, want := range []string{"Native Ext installs from a git URL", "git is not on this machine", hint, "nothing was installed"} {
+			if !strings.Contains(ans.Error, want) {
+				t.Errorf("error lacks %q: %s", want, ans.Error)
+			}
+		}
+	}
+	if _, err := os.Stat(log); err == nil {
+		t.Error("uv was run")
+	}
+	for _, f := range []string{"platforms", ".venvs"} {
+		if _, err := os.Stat(filepath.Join(root, f)); err == nil {
+			t.Errorf("%s was made", f)
+		}
+	}
+	// The same install with a git on PATH is not refused.
+	bin := t.TempDir()
+	name := "git"
+	if os.PathSeparator == '\\' {
+		name = "git.exe"
+	}
+	if err := os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin)
+	if code, got := call(t, s.Handler(), "POST", Prefix+"install", `{"package_name":"ext.native"}`, "tok"); code != 409 || !strings.Contains(got, "gpu_choice") {
+		t.Fatalf("with git: %d %s", code, got)
+	}
 }

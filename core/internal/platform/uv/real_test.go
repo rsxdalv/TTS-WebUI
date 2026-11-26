@@ -3,6 +3,7 @@ package uv
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -62,6 +63,8 @@ func TestRealTools(t *testing.T) {
 	if runtime.GOOS == "windows" { // a machine with no git of its own
 		sys := os.Getenv("SystemRoot")
 		t.Setenv("PATH", filepath.Join(sys, "System32")+string(os.PathListSeparator)+sys)
+	} else if runtime.GOOS == "linux" { // the same: the basic userland (git's scripts need sed and more), no git
+		t.Setenv("PATH", userlandWithoutGit(t))
 	}
 	root, _ := paths.New(dir)
 	p := New(Options{Root: root, GPU: gpu.CPU})
@@ -70,7 +73,7 @@ func TestRealTools(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("tools installed: %v", p.ToolsInstalled())
-	if runtime.GOOS == "windows" && len(p.ToolsInstalled()) != 2 {
+	if _, pinned := ToolFor("git", runtime.GOOS, runtime.GOARCH); pinned && len(p.ToolsInstalled()) != 2 {
 		t.Fatalf("want git and ffmpeg, have %v", p.ToolsInstalled())
 	}
 	venv := filepath.Join(dir, ".venvs", "probe")
@@ -124,3 +127,16 @@ w.writeframes(b"".join(struct.pack("<h", int(3000*math.sin(i/10))) for i in rang
 from torchcodec.decoders import AudioDecoder
 print("decoded", tuple(AudioDecoder(p).get_all_samples().data.shape))
 `
+
+// userlandWithoutGit is a folder of links to the machine's basic programs: what a
+// minimal Linux has when git is not installed.
+func userlandWithoutGit(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	for _, n := range strings.Fields("sh bash sed grep awk cat cp mv rm mkdir rmdir ls ln chmod basename dirname expr tr uname sort uniq wc env readlink id head tail tee date sleep true false test cut find xargs") {
+		if p, err := exec.LookPath(n); err == nil {
+			_ = os.Symlink(p, filepath.Join(dir, n))
+		}
+	}
+	return dir
+}

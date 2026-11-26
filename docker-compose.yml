@@ -2,11 +2,14 @@ services:
   tts-webui:
     image: "ghcr.io/rsxdalv/tts-webui:main"
     restart: unless-stopped
+    # Published on loopback only. These services have no authentication by
+    # default, so binding them to every host interface exposes them to the
+    # local network. Override BIND_HOST=0.0.0.0 if you intend that.
     ports:
-      - ${TTS_PORT:-7770}:7770
+      - ${BIND_HOST:-127.0.0.1}:${TTS_PORT:-7770}:7770
       # include React UI
-      - ${UI_PORT:-3000}:3000
-      - ${OPENAI_API_PORT:-7778}:7778
+      - ${BIND_HOST:-127.0.0.1}:${UI_PORT:-3000}:3000
+      - ${BIND_HOST:-127.0.0.1}:${OPENAI_API_PORT:-7778}:7778
     container_name: tts-webui
     volumes:
       - ./data:/app/tts-webui/data

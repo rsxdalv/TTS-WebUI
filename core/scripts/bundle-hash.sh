@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Compute a deterministic hash of the core-app TypeScript sources and lockfile.
-# CI recomputes this and fails if it differs from the committed bundle.hash,
-# ensuring developers always rebuild after editing TypeScript sources.
+# build-webui.sh writes it next to the built bundle; CI rebuilds and fails if any
+# file under internal/webui/assets differs from the committed one, so developers
+# must rebuild and commit after editing TypeScript sources.
 #
 # Line endings are normalised (CR removed) before hashing. .gitattributes makes
 # git store these files with LF, but a working tree can hold CRLF copies (an

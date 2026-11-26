@@ -41,4 +41,5 @@ CGO_ENABLED=0 go build -trimpath -o bin/tts-webui ./cmd/tts-webui
 
 `go:embed` cannot reach outside its package, so `scripts/build-webui.sh` builds
 `ui/` and copies the result over `internal/webui/assets/`. The built assets are
-committed, and CI fails if `bundle.hash` no longer matches the UI sources.
+committed, and CI fails if a fresh build of the UI sources differs from them in any
+file (`index.html`, `assets/*` or `bundle.hash`).

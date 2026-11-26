@@ -29,7 +29,11 @@ const gradioPrefixes = [
   "/tools/api_config",
 ];
 
+/** Pages under a Gradio prefix that the Go core answers on its own. */
+const goPages = ["/extensions/huggingface_cache_manager"];
+
 export const isGradioPath = (path: string): boolean =>
+  !goPages.includes(path) &&
   gradioPrefixes.some((p) => path === p || path.startsWith(p.endsWith("/") ? p : p + "/"));
 
 /** The launcher's page, on the host the browser used for this one. */

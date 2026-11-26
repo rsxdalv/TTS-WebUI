@@ -1,10 +1,20 @@
 import React from "react";
 import { Button } from "./ui/button";
-import { DeleteIcon, TrashIcon } from "lucide-react";
+import { TrashIcon } from "lucide-react";
+import { errorText, goGetJson, goSendJson } from "../functions/goData";
 
 type HuggingFaceCache = {
   headers: string[];
   rows: Object[];
+  warnings?: string[];
+  cache_dir?: string;
+  exists?: boolean;
+};
+
+type DeleteAnswer = {
+  deleted: unknown[];
+  not_found: unknown[];
+  errors: string[];
 };
 
 export const ExtensionHuggingFaceCacheManager = ({}) => {
@@ -16,15 +26,19 @@ export const ExtensionHuggingFaceCacheManager = ({}) => {
   const [loading, setLoading] = React.useState<boolean>(false);
   const [sortKey, setSortKey] = React.useState<string>("repo_id");
   const [sortDirection, setSortDirection] = React.useState<string>("asc");
+  const [error, setError] = React.useState<string>("");
 
+  // The Go core scans the cache itself (no Gradio host needed).
   const fetchHuggingFaceCache = async () => {
     setLoading(true);
-    const response = await fetch("/api/gradio/scan_huggingface_cache_api", {
-      method: "POST",
-    });
-
-    const result = await response.json();
-    setHuggingFaceCache(result);
+    try {
+      const result = await goGetJson<HuggingFaceCache>(
+        "/api/go-data/hf-cache/scan"
+      );
+      setHuggingFaceCache(result);
+    } catch (e) {
+      setError(errorText(e));
+    }
     setLoading(false);
   };
 
@@ -55,17 +69,26 @@ export const ExtensionHuggingFaceCacheManager = ({}) => {
     "delete",
   ];
 
-  const deleteRevision = async (commit_hash: string) => {
-    const response = await fetch(
-      "/api/gradio/delete_huggingface_cache_revisions",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          commit_hash,
-        }),
-      }
-    );
-    await response.json();
+  const deleteRevision = async (row: any) => {
+    setError("");
+    try {
+      const answer = await goSendJson<DeleteAnswer>(
+        "POST",
+        "/api/go-data/hf-cache/delete",
+        {
+          revisions: [
+            {
+              commit_hash: row["commit_hash"],
+              repo_id: row["repo_id"],
+              repo_type: row["repo_type"],
+            },
+          ],
+        }
+      );
+      if (answer.errors?.length) setError(answer.errors.join("\n"));
+    } catch (e) {
+      setError(errorText(e));
+    }
     fetchHuggingFaceCache();
   };
 
@@ -88,7 +111,7 @@ export const ExtensionHuggingFaceCacheManager = ({}) => {
     }
     if (header === "delete") {
       return (
-        <Button variant="destructive" onClick={() => deleteRevision(row["commit_hash"])}>
+        <Button variant="destructive" onClick={() => deleteRevision(row)}>
           Delete
           <TrashIcon className="ml-2 h-5 w-5 flex-shrink-0" />
         </Button>
@@ -155,6 +178,24 @@ export const ExtensionHuggingFaceCacheManager = ({}) => {
         (For example, when all of the 'facebook/musicgen-small' revisions are
         deleted, the files will be deleted.)
       </p>
+      {error && (
+        <pre className="text-red-600 whitespace-pre-wrap" role="alert">
+          {error}
+        </pre>
+      )}
+      {huggingFaceCache.exists === false && (
+        <p>No cache folder yet: {huggingFaceCache.cache_dir}</p>
+      )}
+      {!!huggingFaceCache.warnings?.length && huggingFaceCache.exists && (
+        <details>
+          <summary>
+            {huggingFaceCache.warnings.length} warning(s) while scanning
+          </summary>
+          <pre className="whitespace-pre-wrap text-xs">
+            {huggingFaceCache.warnings.join("\n")}
+          </pre>
+        </details>
+      )}
       <div className="overflow-x-scroll w-full">
         <div className="align-middle inline-block w-full shadow overflow-hidden sm:rounded-lg border-b border-gray-200">
           <table className="w-full">

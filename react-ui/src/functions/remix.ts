@@ -1,6 +1,6 @@
 /**
  * Simple Remixer logic, in the browser (no backend). Same rule as
- * extension_simple_remixer: the slots of one column are mixed (summed, the
+ * the retired Gradio extension_simple_remixer: the slots of one column are mixed (summed, the
  * shorter ones padded with silence), then the columns are joined one after the
  * other. Empty slots are skipped; nothing to join gives null.
  *

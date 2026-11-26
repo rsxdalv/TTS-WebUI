@@ -1,0 +1,187 @@
+
+######## mock mode 404 for ffmpeg-n8.1.3 ########
+Installing the uv platform (step 1 of 2)
+Downloading uv 0.13.6 from mock://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-unknown-linux-gnu.tar.gz
+  (16 progress lines, 5% steps, left out)
+Checksum matches f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645
+Installing Python 3.10.11 into <scratch>/mock-ffmpeg/platforms/uv/python (uv downloads it)
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Downloading cpython-3.10.11-linux-x86_64-gnu (download) (25.5MiB)
+Downloaded cpython-3.10.11-linux-x86_64-gnu (download)
+Installed Python 3.10.11 in 1.16s
++ cpython-3.10.11-linux-x86_64-gnu
+The wheel cache and the venvs are on one volume: files are shared by hardlink
+Downloading git 2.56.1 from mock://github.com/git-for-windows/git/releases/download/v2.56.1.windows.1/MinGit-2.56.1-64-bit.zip
+  (18 progress lines, 5% steps, left out)
+Checksum matches 4a92850b6e917da4fd010669b614b55dccf5b0ec333a534cc4be4700dfefdafd
+Unpacking git into <scratch>/mock-ffmpeg/platforms/uv/tools/git
+git 2.56.1 is installed
+Downloading ffmpeg 8.1.3 from mock://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz
+Failed to install the uv platform: ffmpeg: download mock://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz: HTTP 404
+Stopped: step 1 of 2 (the uv platform) failed
+## http 200, ok=False
+--- after 404: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/uv/
+  platforms/uv/bin/
+  platforms/uv/python/
+  platforms/uv/tools/
+  platforms/uv/bin/uv  (37784096 B)
+  platforms/uv/tools/git/
+  (2925 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+  (0 entries below .venvs/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after 404: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after 404: /api/ext/list says: installed=False requirements_state=[{"name": "uv", "kind": "platform", "state": "missing", "would": "install the uv platform: uv 0.13.6, Python 3.10.11 and torch for the GPU you choose", "installable": true}] ---
+
+######## mock mode cut for ffmpeg-n8.1.3 ########
+Installing the uv platform (step 1 of 2)
+uv 0.13.6 is already there
+Installing Python 3.10.11 into <scratch>/mock-ffmpeg/platforms/uv/python (uv downloads it)
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Python 3.10.11 is already installed
+The wheel cache and the venvs are on one volume: files are shared by hardlink
+git 2.56.1 is already there
+Downloading ffmpeg 8.1.3 from mock://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz
+  (7 progress lines, 5% steps, left out)
+Failed to install the uv platform: ffmpeg: download mock://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz: the transfer broke after 28812464 of 72031160 bytes: unexpected EOF
+Stopped: step 1 of 2 (the uv platform) failed
+## http 200, ok=False
+--- after cut: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/uv/
+  platforms/uv/bin/
+  platforms/uv/python/
+  platforms/uv/tools/
+  platforms/uv/bin/uv  (37784096 B)
+  platforms/uv/tools/git/
+  (2925 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+  (0 entries below .venvs/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after cut: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after cut: /api/ext/list says: installed=False requirements_state=[{"name": "uv", "kind": "platform", "state": "missing", "would": "install the uv platform: uv 0.13.6, Python 3.10.11 and torch for the GPU you choose", "installable": true}] ---
+
+######## mock mode cut-chunked for ffmpeg-n8.1.3 ########
+Installing the uv platform (step 1 of 2)
+uv 0.13.6 is already there
+Installing Python 3.10.11 into <scratch>/mock-ffmpeg/platforms/uv/python (uv downloads it)
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Python 3.10.11 is already installed
+The wheel cache and the venvs are on one volume: files are shared by hardlink
+git 2.56.1 is already there
+Downloading ffmpeg 8.1.3 from mock://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz
+Failed to install the uv platform: ffmpeg: download mock://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz: the transfer broke after 28812464 bytes: unexpected EOF
+Stopped: step 1 of 2 (the uv platform) failed
+## http 200, ok=False
+--- after cut-chunked: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/uv/
+  platforms/uv/bin/
+  platforms/uv/python/
+  platforms/uv/tools/
+  platforms/uv/bin/uv  (37784096 B)
+  platforms/uv/tools/git/
+  (2925 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+  (0 entries below .venvs/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after cut-chunked: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after cut-chunked: /api/ext/list says: installed=False requirements_state=[{"name": "uv", "kind": "platform", "state": "missing", "would": "install the uv platform: uv 0.13.6, Python 3.10.11 and torch for the GPU you choose", "installable": true}] ---
+
+######## mock mode reset for ffmpeg-n8.1.3 ########
+Installing the uv platform (step 1 of 2)
+uv 0.13.6 is already there
+Installing Python 3.10.11 into <scratch>/mock-ffmpeg/platforms/uv/python (uv downloads it)
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Python 3.10.11 is already installed
+The wheel cache and the venvs are on one volume: files are shared by hardlink
+git 2.56.1 is already there
+Downloading ffmpeg 8.1.3 from mock://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz
+  (7 progress lines, 5% steps, left out)
+Failed to install the uv platform: ffmpeg: download mock://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz: the transfer broke after 26396609 of 72031160 bytes: read tcp <client>-><mock>: read: connection reset by peer
+Stopped: step 1 of 2 (the uv platform) failed
+## http 200, ok=False
+--- after reset: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/uv/
+  platforms/uv/bin/
+  platforms/uv/python/
+  platforms/uv/tools/
+  platforms/uv/bin/uv  (37784096 B)
+  platforms/uv/tools/git/
+  (2925 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+  (0 entries below .venvs/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after reset: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after reset: /api/ext/list says: installed=False requirements_state=[{"name": "uv", "kind": "platform", "state": "missing", "would": "install the uv platform: uv 0.13.6, Python 3.10.11 and torch for the GPU you choose", "installable": true}] ---
+
+######## mock mode short for ffmpeg-n8.1.3 ########
+Installing the uv platform (step 1 of 2)
+uv 0.13.6 is already there
+Installing Python 3.10.11 into <scratch>/mock-ffmpeg/platforms/uv/python (uv downloads it)
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Python 3.10.11 is already installed
+The wheel cache and the venvs are on one volume: files are shared by hardlink
+git 2.56.1 is already there
+Downloading ffmpeg 8.1.3 from mock://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz
+  (18 progress lines, 5% steps, left out)
+Failed to install the uv platform: ffmpeg: checksum mismatch for mock://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz: got 80d7da8e6968e65dee5a2820b50bdf166478a5cd30810db86ee435f3e7efbee7, want 202fe67679a0860b155817a0907ffcc5c1ea82e186acaa21cb87d307f54fd59a
+Stopped: step 1 of 2 (the uv platform) failed
+## http 200, ok=False
+--- after short: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/uv/
+  platforms/uv/bin/
+  platforms/uv/python/
+  platforms/uv/tools/
+  platforms/uv/bin/uv  (37784096 B)
+  platforms/uv/tools/git/
+  (2925 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+  (0 entries below .venvs/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after short: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after short: /api/ext/list says: installed=False requirements_state=[{"name": "uv", "kind": "platform", "state": "missing", "would": "install the uv platform: uv 0.13.6, Python 3.10.11 and torch for the GPU you choose", "installable": true}] ---
+
+######## mock mode empty for ffmpeg-n8.1.3 ########
+Installing the uv platform (step 1 of 2)
+uv 0.13.6 is already there
+Installing Python 3.10.11 into <scratch>/mock-ffmpeg/platforms/uv/python (uv downloads it)
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Python 3.10.11 is already installed
+The wheel cache and the venvs are on one volume: files are shared by hardlink
+git 2.56.1 is already there
+Downloading ffmpeg 8.1.3 from mock://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz
+Failed to install the uv platform: ffmpeg: checksum mismatch for mock://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz: got e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855, want 202fe67679a0860b155817a0907ffcc5c1ea82e186acaa21cb87d307f54fd59a
+Stopped: step 1 of 2 (the uv platform) failed
+## http 200, ok=False
+--- after empty: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/uv/
+  platforms/uv/bin/
+  platforms/uv/python/
+  platforms/uv/tools/
+  platforms/uv/bin/uv  (37784096 B)
+  platforms/uv/tools/git/
+  (2925 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+  (0 entries below .venvs/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after empty: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after empty: /api/ext/list says: installed=False requirements_state=[{"name": "uv", "kind": "platform", "state": "missing", "would": "install the uv platform: uv 0.13.6, Python 3.10.11 and torch for the GPU you choose", "installable": true}] ---
+
+######## mock mode ok (the retry) ########
+Installing the uv platform (step 1 of 2)
+uv 0.13.6 is already there
+Installing Python 3.10.11 into <scratch>/mock-ffmpeg/platforms/uv/python (uv downloads it)
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Python 3.10.11 is already installed
+The wheel cache and the venvs are on one volume: files are shared by hardlink
+git 2.56.1 is already there
+Downloading ffmpeg 8.1.3 from mock://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz
+  (19 progress lines, 5% steps, left out)
+Checksum matches 202fe67679a0860b155817a0907ffcc5c1ea82e186acaa21cb87d307f54fd59a
+Unpacking ffmpeg into <scratch>/mock-ffmpeg/platforms/uv/tools/ffmpeg
+ffmpeg 8.1.3 is installed
+The uv platform is installed
+## http 200, ok=stopped
+--- after the retry: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/uv/
+  platforms/uv/bin/
+  platforms/uv/python/
+  platforms/uv/tools/
+  platforms/uv/platform.json  (125 B)
+  platforms/uv/bin/uv  (37784096 B)
+  platforms/uv/tools/ffmpeg/
+  platforms/uv/tools/git/
+  (3205 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+  .venvs/tts_webui_extension.kokoro/
+  .venvs/tts_webui_extension.kokoro/installing.json  (40 B)
+  (2 entries below .venvs/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after the retry: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after the retry: /api/ext/list says: installed=False requirements_state=[{"name": "uv", "kind": "platform", "state": "ready", "via": "uv"}] ---

@@ -1,0 +1,52 @@
+## launcher wrong-uv (one pinned sha256 edited), install of tts_webui_extension.kokoro {'gpu': 'CPU'}
+Installing the uv platform (step 1 of 2)
+Downloading uv 0.13.6 from https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-unknown-linux-gnu.tar.gz
+  (19 progress lines, 5% steps, left out)
+Failed to install the uv platform: checksum mismatch for https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-unknown-linux-gnu.tar.gz: got f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645, want 129c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645
+Stopped: step 1 of 2 (the uv platform) failed
+## wrong-checksum install: http 200, ok=False, 1s
+--- after the wrong checksum: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/uv/
+  platforms/uv/bin/
+  (2 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after the wrong checksum: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after the wrong checksum: /api/ext/list says: installed=False requirements_state=[{"name": "uv", "kind": "platform", "state": "missing", "would": "install the uv platform: uv 0.13.6, Python 3.10.11 and torch for the GPU you choose", "installable": true}] ---
+## launcher remap (right pins), same folder: install of tts_webui_extension.kokoro again
+Installing the uv platform (step 1 of 2)
+Downloading uv 0.13.6 from https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-unknown-linux-gnu.tar.gz
+  (19 progress lines, 5% steps, left out)
+Checksum matches f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645
+Installing Python 3.10.11 into <scratch>/real-uv/platforms/uv/python (uv downloads it)
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Downloading cpython-3.10.11-linux-x86_64-gnu (download) (25.5MiB)
+Downloaded cpython-3.10.11-linux-x86_64-gnu (download)
+Installed Python 3.10.11 in 1.06s
++ cpython-3.10.11-linux-x86_64-gnu
+The wheel cache and the venvs are on one volume: files are shared by hardlink
+Downloading git 2.56.1 from https://github.com/git-for-windows/git/releases/download/v2.56.1.windows.1/MinGit-2.56.1-64-bit.zip
+  (19 progress lines, 5% steps, left out)
+Checksum matches 4a92850b6e917da4fd010669b614b55dccf5b0ec333a534cc4be4700dfefdafd
+Unpacking git into <scratch>/real-uv/platforms/uv/tools/git
+git 2.56.1 is installed
+Downloading ffmpeg 8.1.3 from https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-shared-8.1.tar.xz
+  (19 progress lines, 5% steps, left out)
+Checksum matches 202fe67679a0860b155817a0907ffcc5c1ea82e186acaa21cb87d307f54fd59a
+Unpacking ffmpeg into <scratch>/real-uv/platforms/uv/tools/ffmpeg
+ffmpeg 8.1.3 is installed
+The uv platform is installed
+## retry: http 200, ok=stopped
+--- after the retry: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/uv/
+  platforms/uv/bin/
+  platforms/uv/python/
+  platforms/uv/tools/
+  platforms/uv/platform.json  (125 B)
+  platforms/uv/bin/uv  (37784096 B)
+  platforms/uv/tools/ffmpeg/
+  platforms/uv/tools/git/
+  (3205 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+  .venvs/tts_webui_extension.kokoro/
+  .venvs/tts_webui_extension.kokoro/installing.json  (40 B)
+  (2 entries below .venvs/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after the retry: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after the retry: /api/ext/list says: installed=False requirements_state=[{"name": "uv", "kind": "platform", "state": "ready", "via": "uv"}] ---

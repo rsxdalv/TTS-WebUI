@@ -64,6 +64,11 @@ real pages, as in P5). Cold downloads from GitHub and Hugging Face.
 - Install checks with a fake archive over TLS (a bad checksum, an archive with no server, a name with `..`, a cancel during the download, a
   repeat that downloads nothing); the catalog flow with a fake model (`extcatalog/audiocpp_test.go`); the browser routes (`core_audiocpp_test.go`).
 
+### Also checked (Linux, 2026-11-26)
+
+A wrong checksum of the zip and of each model file with real downloads, a 404, a cut-off and a truncated download, each with a retry:
+[CHECKSUM-CHECKS.md](../../../../documentation/core-rewrite/CHECKSUM-CHECKS.md). A kept model file is now hashed again, not trusted by its size.
+
 ### Not run
 
 - **Linux, WSL and macOS** (Rob: Windows only for P7). Their builds are not pinned.

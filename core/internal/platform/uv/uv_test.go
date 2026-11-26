@@ -47,10 +47,13 @@ func fakeUV(args []string) int {
 	case "--version":
 		os.Stdout.WriteString("uv " + Version + "\n")
 	case "python":
-		if len(args) > 1 && args[1] == "find" {
-			// A warning comes first, as uv prints UV_NATIVE_TLS's deprecation before its answer.
-			os.Stderr.WriteString("warning: The `UV_NATIVE_TLS` environment variable is deprecated\n")
-			exe, _ := os.Executable()
+		if len(args) > 1 && args[1] == "find" { // a warning first, as uv prints one when UV_NATIVE_TLS is set
+			os.Stdout.WriteString("warning: The `UV_NATIVE_TLS` environment variable is deprecated\n")
+			// The answer is UV_FAKE_PYTHON when a test sets it, else this program itself.
+			exe := os.Getenv("UV_FAKE_PYTHON")
+			if exe == "" {
+				exe, _ = os.Executable()
+			}
 			os.Stdout.WriteString(exe + "\n")
 			return 0
 		}

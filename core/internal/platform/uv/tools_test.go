@@ -498,3 +498,34 @@ func TestPinnedGitRefusedForABadChecksumOrABuildThatCannotRun(t *testing.T) {
 		}
 	}
 }
+
+// uv prints a warning before the path when UV_NATIVE_TLS is set (seen on a cloud
+// runner: the ffmpeg unpack then tried to run the warning as the program).
+func TestPythonExeSkipsUvWarningsBeforeThePath(t *testing.T) {
+	data, sum := fakeArchive(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.Write(data) }))
+	defer srv.Close()
+	py := filepath.Join(t.TempDir(), "python3")
+	if err := os.WriteFile(py, []byte("fake"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	root, _ := paths.New(t.TempDir())
+	p := New(Options{Root: root, GPU: gpu.CPU, SkipPathCheck: true, Archive: &Archive{URL: srv.URL + "/uv.zip", SHA256: sum},
+		Env: []string{"UV_FAKE_PYTHON=" + py}})
+	if err := os.MkdirAll(filepath.Join(p.Dir(), "bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.fetchUV(context.Background(), func(string) {}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := p.pythonExe(context.Background())
+	if err != nil || got != py {
+		t.Fatalf("pythonExe = %q, %v; want %q", got, err, py)
+	}
+	// No path at all is an error that says what uv printed, not an empty program.
+	p = New(Options{Root: root, GPU: gpu.CPU, SkipPathCheck: true, Archive: &Archive{URL: srv.URL + "/uv.zip", SHA256: sum},
+		Env: []string{"UV_FAKE_PYTHON=" + filepath.Join(t.TempDir(), "missing")}})
+	if _, err := p.pythonExe(context.Background()); err == nil || !strings.Contains(err.Error(), "printed no path") {
+		t.Fatalf("want a 'printed no path' error, got %v", err)
+	}
+}

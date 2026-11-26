@@ -68,7 +68,7 @@ func download(ctx context.Context, client *http.Client, url, wantSHA, dest strin
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			return rerr
+			return fmt.Errorf("download %s: the transfer broke after %s: %w", url, received(done, resp.ContentLength), rerr)
 		}
 	}
 	if err := f.Close(); err != nil {
@@ -80,6 +80,14 @@ func download(ctx context.Context, client *http.Client, url, wantSHA, dest strin
 		return fmt.Errorf("checksum mismatch for %s: got %s, want %s", url, got, wantSHA)
 	}
 	return os.Rename(part, dest)
+}
+
+// received says how far a broken download got, for the message ("120 of 300 bytes").
+func received(done, total int64) string {
+	if total > 0 {
+		return fmt.Sprintf("%d of %d bytes", done, total)
+	}
+	return fmt.Sprintf("%d bytes", done)
 }
 
 // extractMember writes the file named want (a base name, at any depth) of a zip

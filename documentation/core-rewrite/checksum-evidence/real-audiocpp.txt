@@ -1,0 +1,50 @@
+## launcher wrong-audiocpp (one pinned sha256 edited), install of audiocpp_pocket_tts_en {'audiocpp_row': 'cpu'}
+Installing the audiocpp platform (step 1 of 2)
+Installing the cpu build
+Downloading audio.cpp v0.9.6 (cpu build) from https://github.com/0xShug0/audio.cpp/releases/download/v0.9.6/audio-v0.9.6-bin-windows-x64-cpu.zip
+  (19 progress lines, 5% steps, left out)
+Failed to install the audiocpp platform: checksum mismatch for https://github.com/0xShug0/audio.cpp/releases/download/v0.9.6/audio-v0.9.6-bin-windows-x64-cpu.zip: got 9f4d9956400e9510b0ca48ce4fe576c887673ad6f6feeadc82ee679f27d794f7, want 1f4d9956400e9510b0ca48ce4fe576c887673ad6f6feeadc82ee679f27d794f7
+Stopped: step 1 of 2 (the audiocpp platform) failed
+## wrong-checksum install: http 200, ok=False, 4s
+--- after the wrong checksum: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/audiocpp/
+  (1 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after the wrong checksum: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after the wrong checksum: /api/ext/list says: installed=False requirements_state=[{"name": "audiocpp", "kind": "platform", "state": "missing", "would": "install the audiocpp platform: audio.cpp v0.9.6 (a build you choose: CPU 34 MB, Vulkan 84 MB), checked against its sha256", "installable": true}] ---
+## launcher remap (right pins), same folder: install of audiocpp_pocket_tts_en again
+Installing the audiocpp platform (step 1 of 2)
+Installing the cpu build
+Downloading audio.cpp v0.9.6 (cpu build) from https://github.com/0xShug0/audio.cpp/releases/download/v0.9.6/audio-v0.9.6-bin-windows-x64-cpu.zip
+  (19 progress lines, 5% steps, left out)
+Checksum matches 9f4d9956400e9510b0ca48ce4fe576c887673ad6f6feeadc82ee679f27d794f7
+The audiocpp platform is installed
+Installing audiocpp_pocket_tts_en (step 2 of 2)
+Downloading pocket-tts-english-q8_0.gguf (file 1 of 4, 121 MB)
+  (19 progress lines, 5% steps, left out)
+Checksum matches 3f71cf6a51f93c2f2e554e98970a3f49fb9a98d0c64bed5a815e65be3d2ff588
+Downloading embeddings/alba.safetensors (file 2 of 4, 5 MB)
+  (19 progress lines, 5% steps, left out)
+Checksum matches 69c32db63ca56843d994f81f343f62e0bf2d73f7e4c9bc73e44bb1110b1d8845
+Downloading embeddings/cosette.safetensors (file 3 of 4, 5 MB)
+  (18 progress lines, 5% steps, left out)
+Checksum matches c4fdc15f5a3a20c44dd0064a37e87d15d25562936e8dbad7e07b9832015a545d
+Downloading embeddings/marius.safetensors (file 4 of 4, 5 MB)
+  (18 progress lines, 5% steps, left out)
+Checksum matches 04f84efcb77a0547ba582c058db496f7ff4920891d49d37b9950d128422582a8
+Pocket TTS (English, audio.cpp) is installed
+## retry: http 200, ok=True
+--- after the retry: files below the install folder (platforms/, .venvs/, cache/ only) ---
+  platforms/audiocpp/
+  platforms/audiocpp/bin/
+  platforms/audiocpp/models/
+  platforms/audiocpp/platform.json  (185 B)
+  platforms/audiocpp/models/pocket-en-q8/
+  platforms/audiocpp/models/pocket-en-q8/embeddings/
+  platforms/audiocpp/models/pocket-en-q8/model.json  (133 B)
+  platforms/audiocpp/models/pocket-en-q8/pocket-tts-english-q8_0.gguf  (127867968 B)
+  platforms/audiocpp/models/pocket-en-q8/embeddings/alba.safetensors  (6194424 B)
+  platforms/audiocpp/models/pocket-en-q8/embeddings/cosette.safetensors  (6194424 B)
+  platforms/audiocpp/models/pocket-en-q8/embeddings/marius.safetensors  (6194424 B)
+  (333 entries below platforms/ in all; what is inside bin/, runtime/, python/ and the unpacked tools is not listed one by one)
+--- after the retry: half-done names (*.part, *.download, *.new, *-archive*, audio.zip): none ---
+--- after the retry: /api/ext/list says: installed=True requirements_state=[{"name": "audiocpp", "kind": "platform", "state": "ready", "via": "audiocpp"}] ---

@@ -349,7 +349,7 @@ func needsGit(reqs []string) bool {
 }
 
 // gitAvailable looks for git on the PATH the install will use (the tools folder
-// first, then the machine's).
+// first, then the machine's). A file that cannot be run does not count.
 func (p *Platform) gitAvailable() bool {
 	pathVar := os.Getenv("PATH")
 	for _, kv := range p.environ() {
@@ -362,9 +362,45 @@ func (p *Platform) gitAvailable() bool {
 		name = "git.exe"
 	}
 	for _, d := range filepath.SplitList(pathVar) {
-		if st, err := os.Stat(filepath.Join(d, name)); err == nil && !st.IsDir() {
+		if d == "" {
+			continue // an empty PATH entry means the current folder to a shell; never look there
+		}
+		if st, err := os.Stat(filepath.Join(d, name)); err == nil && !st.IsDir() && (p.goos == "windows" || st.Mode().Perm()&0o111 != 0) {
 			return true
 		}
 	}
 	return false
+}
+
+// providesGit is whether the platform fetches git on this OS (Windows). Where it
+// does, a git that is not there yet is not a problem: the install brings it.
+func (p *Platform) providesGit() bool {
+	for _, t := range p.pinnedTools() {
+		if t.Name == "git" {
+			return true
+		}
+	}
+	return false
+}
+
+// CheckGit is the pre-flight for an entry whose requirements are installed from a
+// git URL: nil when it needs no git, when git is on the PATH an install would use,
+// or when the platform fetches git itself. Otherwise the error says what is missing
+// and how to fix it. It reads files and downloads nothing, so it can run before
+// the plan's first step (the uv platform, Python and ffmpeg are 100 MB or more).
+func (p *Platform) CheckGit(label string, reqs []string) error {
+	if !needsGit(reqs) || p.providesGit() || p.gitAvailable() {
+		return nil
+	}
+	return &GitMissingError{Label: label, Hint: gitInstallHint(p.goos)}
+}
+
+// GitMissingError is a refused install: the entry needs git and the machine has none.
+type GitMissingError struct {
+	Label string
+	Hint  string
+}
+
+func (e *GitMissingError) Error() string {
+	return fmt.Sprintf("%s installs from a git URL and git is not on this machine. %s. Then install again", e.Label, e.Hint)
 }

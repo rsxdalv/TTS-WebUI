@@ -98,6 +98,11 @@ func (s *Store) failInstall(w http.ResponseWriter, err error) {
 		})
 		return
 	}
+	var git *uv.GitMissingError
+	if errors.As(err, &git) {
+		writeStd(w, http.StatusConflict, map[string]any{"error": git.Error() + " (nothing was installed)", "needs": "git"})
+		return
+	}
 	s.fail(w, err)
 }
 

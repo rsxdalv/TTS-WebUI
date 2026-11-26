@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -203,5 +204,94 @@ func TestACreateThatNeedsGitSaysSoWhenThereIsNone(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(p.root.Dir(), ".venvs", "tts_webui_extension.g")); err == nil {
 		t.Fatal("a venv was started before the check")
+	}
+}
+
+// fakeGit puts a git program in a new folder and returns the folder.
+func fakeGit(t *testing.T, mode os.FileMode) string {
+	t.Helper()
+	dir := t.TempDir()
+	name := "git"
+	if runtime.GOOS == "windows" {
+		name = "git.exe"
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), []byte("#!/bin/sh\n"), mode); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestCheckGit(t *testing.T) {
+	gitReq := []string{"foo==1", "git+https://github.com/a/b.git@main"}
+	p := toolPlatform(t, httptest.NewTLSServer(http.NotFoundHandler()), nil)
+	p.goos = "linux"
+
+	t.Setenv("PATH", t.TempDir()) // no git
+	err := p.CheckGit("Kitten", gitReq)
+	var miss *GitMissingError
+	if !errors.As(err, &miss) {
+		t.Fatalf("no git: %v", err)
+	}
+	for _, want := range []string{"Kitten installs from a git URL", "git is not on this machine", "apt install git", "dnf install git", "install again"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("message lacks %q: %s", want, err)
+		}
+	}
+	if p.CheckGit("Kitten", []string{"foo==1"}) != nil {
+		t.Error("an entry with no git URL was refused")
+	}
+	if runtime.GOOS != "windows" {
+		t.Setenv("PATH", fakeGit(t, 0o644)) // there, but cannot be run
+		if p.CheckGit("Kitten", gitReq) == nil {
+			t.Error("a git that is not executable counted")
+		}
+	}
+	t.Setenv("PATH", fakeGit(t, 0o755))
+	if err := p.CheckGit("Kitten", gitReq); err != nil {
+		t.Errorf("git on PATH: %v", err)
+	}
+	// Where the platform fetches git itself (Windows), a missing one is not a refusal.
+	t.Setenv("PATH", t.TempDir())
+	p.tools = []Tool{{Name: "git", Version: "1"}}
+	if err := p.CheckGit("Kitten", gitReq); err != nil {
+		t.Errorf("a pinned git is fetched by the install: %v", err)
+	}
+	p.goos = "darwin"
+	p.tools = nil
+	if err := p.CheckGit("Kitten", gitReq); err == nil || !strings.Contains(err.Error(), "xcode-select --install") {
+		t.Errorf("macOS: %v", err)
+	}
+}
+
+// A machine with no git is told before anything is fetched: the tools server is
+// never asked, no tools folder is made, and no venv is started.
+func TestCreateWithoutGitFetchesNothing(t *testing.T) {
+	f := installed(t, gpu.CPU)
+	data, sum := toolZip(t, map[string]string{"bin/fftool": "x"})
+	hits := 0
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { hits++; w.Write(data) }))
+	defer srv.Close()
+	f.p.client = srv.Client()
+	f.p.tools = []Tool{{Name: "fftool", Version: "1", Archive: Archive{srv.URL + "/a.zip", sum}, Path: []string{"bin"}, Probe: "bin/fftool"}}
+	f.p.goos = "linux"
+	t.Setenv("PATH", t.TempDir())
+	e := platform.Entry{Package: "tts_webui_extension.g", Own: true, Name: "G", Requirements: []string{"git+https://github.com/a/b.git"}}
+	if f.p.Create(context.Background(), e, f.emit) {
+		t.Fatal("Create passed without git")
+	}
+	if got := strings.Join(*f.out, "\n"); !strings.Contains(got, "git is not on this machine") || !strings.Contains(got, "apt install git") {
+		t.Fatalf("message: %s", got)
+	}
+	if hits != 0 {
+		t.Errorf("the tools server was asked %d times before the git check", hits)
+	}
+	if _, err := os.Stat(f.p.ToolsDir()); err == nil {
+		t.Error("a tools folder was made")
+	}
+	if _, err := os.Stat(filepath.Join(f.root.Dir(), ".venvs", e.Package)); err == nil {
+		t.Error("a venv was started")
+	}
+	if c := f.calls(); len(c) != 0 {
+		t.Errorf("uv was run: %v", c)
 	}
 }

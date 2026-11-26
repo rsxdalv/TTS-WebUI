@@ -92,11 +92,13 @@ func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.E
 	if err := checkVersion(py); err != nil {
 		return fail("Failed: %v", err)
 	}
-	if err := p.installTools(ctx, emit); err != nil {
+	// Before the tools are fetched: a machine with no git says so now, not after
+	// ffmpeg (70 MB) has been downloaded.
+	if err := p.CheckGit(e.Label(), e.Requirements); err != nil {
 		return fail("Failed: %v", err)
 	}
-	if needsGit(e.Requirements) && !p.gitAvailable() {
-		return fail("Failed: %s installs from a git URL and git is not on this machine. %s", e.Label(), systemToolHint("git", p.goos))
+	if err := p.installTools(ctx, emit); err != nil {
+		return fail("Failed: %v", err)
 	}
 	venv := p.venv(e.Package)
 	if _, err := os.Stat(filepath.Join(venv, platform.InstallingFile)); err == nil {

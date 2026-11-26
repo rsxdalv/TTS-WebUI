@@ -75,13 +75,24 @@ func ToolFor(name, goos, goarch string) (Tool, bool) {
 	return Tool{}, false
 }
 
+// gitInstallHint is how to get the system's git, for the OS the platform does not fetch it on.
+func gitInstallHint(goos string) string {
+	switch goos {
+	case "linux":
+		return "Install it with your package manager: apt install git (Debian, Ubuntu), dnf install git (Fedora), pacman -S git (Arch), apk add git (Alpine). In Docker or Colab, install it in the image"
+	case "darwin":
+		return "Install it with xcode-select --install (or brew install git)"
+	}
+	return "Install Git for your system and put it on PATH"
+}
+
 // systemToolHint is what the install says when a tool is not fetched.
 func systemToolHint(name, goos string) string {
 	switch {
 	case name == "git" && goos == "linux":
-		return "git: not fetched on Linux (there is no official static build); the system's git is used: install it with your package manager (apt install git)"
+		return "git: not fetched on Linux (there is no official static build); the system's git is used. " + gitInstallHint(goos)
 	case name == "git" && goos == "darwin":
-		return "git: not fetched on macOS; the system's git is used (xcode-select --install)"
+		return "git: not fetched on macOS; the system's git is used. " + gitInstallHint(goos)
 	case name == "ffmpeg" && goos == "darwin":
 		return "ffmpeg: no pinned build for macOS; engines find the system's (brew install ffmpeg)"
 	}

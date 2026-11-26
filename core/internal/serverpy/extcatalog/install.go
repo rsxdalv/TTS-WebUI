@@ -63,6 +63,10 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 		if err == nil && op == "install" {
 			pl, err = s.planInstall(r.Context(), g, pkg)
 			if err == nil {
+				// Before the GPU question: git missing cannot be answered on the page.
+				err = s.checkGitForPlan(pl, entry)
+			}
+			if err == nil {
 				err = s.chooseGPU(&pl, o.Str("gpu"))
 			}
 			if err == nil {
@@ -409,4 +413,38 @@ func shellSplit(s string) ([]string, error) {
 		out = append(out, cur.String())
 	}
 	return out, nil
+}
+
+// checkGitForPlan refuses a plan, before its first step, when one of its own-venv
+// entries installs from a git URL and the machine has no git (Linux and macOS do
+// not get one from the platform). Without this the uv platform, Python and ffmpeg
+// would be downloaded first and the engine would fail afterwards.
+func (s *Store) checkGitForPlan(pl plan, entry *Obj) error {
+	if s.opts.UV == nil {
+		return nil
+	}
+	for _, step := range pl.Steps {
+		e := entry
+		if entry == nil || step != entry.Str("package_name") {
+			var err error
+			if e, err = s.find(step); err != nil {
+				return nil // runSteps says so when it gets there
+			}
+		}
+		if e.Str("proxy") != "native" || s.isONNX(step) || requiresAudio(e) {
+			continue
+		}
+		toks, err := shellSplit(e.Str("requirements"))
+		if err != nil {
+			continue
+		}
+		name := e.Str("name")
+		if name == "" {
+			name = step
+		}
+		if err := s.opts.UV.CheckGit(name, toks); err != nil {
+			return err
+		}
+	}
+	return nil
 }

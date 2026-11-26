@@ -299,15 +299,19 @@ func (p *Platform) extractTarXZ(ctx context.Context, archive, dest string, strip
 func (p *Platform) pythonExe(ctx context.Context) (string, error) {
 	var out string
 	err := p.runCapture(ctx, func(l string) {
-		if l = strings.TrimSpace(l); out == "" && l != "" {
-			out = l
+		// uv's warnings share the stream (UV_NATIVE_TLS=true prints a deprecation line first):
+		// the answer is the line that is the path of a file that exists.
+		if l = strings.TrimSpace(l); out == "" && filepath.IsAbs(l) {
+			if st, err := os.Stat(l); err == nil && !st.IsDir() {
+				out = l
+			}
 		}
 	}, "python", "find", PythonVersion, "--managed-python", "--no-python-downloads", "--no-config")
 	if err != nil {
 		return "", err
 	}
 	if out == "" {
-		return "", errors.New("uv python find printed nothing")
+		return "", errors.New("uv python find printed no path to a Python")
 	}
 	return out, nil
 }

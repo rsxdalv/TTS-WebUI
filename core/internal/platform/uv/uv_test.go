@@ -47,6 +47,13 @@ func fakeUV(args []string) int {
 	case "--version":
 		os.Stdout.WriteString("uv " + Version + "\n")
 	case "python":
+		if len(args) > 1 && args[1] == "find" {
+			// A warning comes first, as uv prints UV_NATIVE_TLS's deprecation before its answer.
+			os.Stderr.WriteString("warning: The `UV_NATIVE_TLS` environment variable is deprecated\n")
+			exe, _ := os.Executable()
+			os.Stdout.WriteString(exe + "\n")
+			return 0
+		}
 		os.MkdirAll(filepath.Join(os.Getenv("UV_PYTHON_INSTALL_DIR"), "cpython-"+args[2]), 0o755)
 		os.Stdout.WriteString("Installed Python " + args[2] + "\n")
 	case "venv":
@@ -384,5 +391,20 @@ func TestUnpinnedPlatformIsAnError(t *testing.T) {
 		if len(a.SHA256) != 64 || !strings.Contains(a.URL, "/"+Version+"/") {
 			t.Errorf("%s: %+v", k, a)
 		}
+	}
+}
+
+// uv prints warnings on the same stream as its answer; the first line is not the path.
+func TestPythonExeSkipsUvWarnings(t *testing.T) {
+	f := newFixture(t, gpu.CPU)
+	if err := f.p.Install(context.Background(), f.emit); err != nil {
+		t.Fatal(err)
+	}
+	got, err := f.p.pythonExe(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st, err := os.Stat(got); err != nil || !filepath.IsAbs(got) || st.IsDir() {
+		t.Fatalf("pythonExe = %q, not the path of a file", got)
 	}
 }

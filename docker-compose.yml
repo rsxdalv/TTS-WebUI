@@ -2,12 +2,18 @@ services:
   tts-webui:
     image: "ghcr.io/rsxdalv/tts-webui:main"
     restart: unless-stopped
+    # Published on loopback only. These services have no authentication by
+    # default, so binding them to every host interface exposes them to the
+    # local network. Override BIND_HOST=0.0.0.0 if you intend that.
     ports:
-      - ${TTS_PORT:-7770}:7770
+      - ${BIND_HOST:-127.0.0.1}:${TTS_PORT:-7770}:7770
       # include React UI
-      - ${UI_PORT:-3000}:3000
-      - ${OPENAI_API_PORT:-7778}:7778
+      - ${BIND_HOST:-127.0.0.1}:${UI_PORT:-3000}:3000
+      - ${BIND_HOST:-127.0.0.1}:${OPENAI_API_PORT:-7778}:7778
     container_name: tts-webui
+    # The app runs as uid 1000 (appuser), not as root. Files that an older image created as root in
+    # these folders are handed to appuser on the first start. A folder that belongs to another user
+    # has to be writable for uid 1000 (chown 1000:1000 ./data), or set TTS_WEBUI_RUN_AS_ROOT=1 below.
     volumes:
       - ./data:/app/tts-webui/data
       - ./outputs:/app/tts-webui/outputs
@@ -19,6 +25,8 @@ services:
       # names: add the name or address you open the UI with, e.g. TTS_ALLOWED_HOSTS=localhost,127.0.0.1,my-server
       TTS_GO_PROXY_LISTEN: lan
       TTS_GO_PROXY_ALLOWED_HOSTS: ${TTS_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      # Run as root, as the image did before (see the note above the volumes):
+      # TTS_WEBUI_RUN_AS_ROOT: 1
     # Optional:
     #   # Disable hard requirements for CUDA version ("requirement error: unsatisfied condition [...]")
     #   # This might still lead to errors but allows to run some models even if CUDA version is not met

@@ -27,6 +27,26 @@ logger = logging.getLogger(__name__)
 API_PORT = int(os.environ.get("TTS_WEBUI_API_PORT", 7774))
 API_HOST = os.environ.get("TTS_WEBUI_API_HOST", "127.0.0.1")
 
+# Browser origins allowed to make credentialed requests. "*" is deliberately
+# not accepted here: combined with allow_credentials it let any website read
+# and write this database through the user's browser.
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "TTS_WEBUI_API_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000",
+    ).split(",")
+    if origin.strip() and origin.strip() != "*"
+]
+
+# When set, unauthenticated requests are rejected instead of being treated as
+# the default user.
+REQUIRE_API_KEY = os.environ.get("TTS_WEBUI_API_REQUIRE_KEY", "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
 
 # ============================================================================
 # Pydantic Models
@@ -143,6 +163,21 @@ def generate_api_key() -> tuple[str, str, str]:
     return full_key, prefix, key_hash
 
 
+def _require_owner(record, auth: "AuthContext", label: str):
+    """
+    Reject access to a record owned by another user.
+
+    Every id-addressed endpoint previously acted on a bare integer with no
+    ownership check, so any caller could read, modify or delete any row.
+    """
+    if not record:
+        raise HTTPException(status_code=404, detail=f"{label} not found")
+    owner = record.get("user_id")
+    if owner is not None and owner != auth.user_id:
+        raise HTTPException(status_code=404, detail=f"{label} not found")
+    return record
+
+
 class AuthContext:
     """Authentication context for the current request."""
 
@@ -182,8 +217,12 @@ async def get_auth(
                 user_id=key_record["user_id"], is_admin=key_record["is_admin"]
             )
 
-    # Default user for unauthenticated requests
-    return AuthContext(user_id=1, is_admin=True)
+    if REQUIRE_API_KEY:
+        raise HTTPException(status_code=401, detail="API key required")
+
+    # Default user for unauthenticated requests. Never an admin: anonymous
+    # callers must not inherit privileges just because no key was supplied.
+    return AuthContext(user_id=1, is_admin=False)
 
 
 # ============================================================================
@@ -209,10 +248,10 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*", "http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
 
 
@@ -265,7 +304,7 @@ async def list_api_keys(auth: AuthContext = Depends(get_auth)):
 @app.delete("/api/keys/{key_id}", response_model=MessageResponse)
 async def revoke_api_key(key_id: int, auth: AuthContext = Depends(get_auth)):
     """Revoke an API key."""
-    ApiKey.revoke(key_id)
+    ApiKey.revoke(key_id, auth.user_id)
     return MessageResponse(message="Key revoked")
 
 
@@ -290,9 +329,12 @@ async def list_generations(
         model_type=model_type,
         model_name=model_name,
         status=status,
+        user_id=auth.user_id,
     )
 
-    total = Generation.count(model_type=model_type, model_name=model_name)
+    total = Generation.count(
+        model_type=model_type, model_name=model_name, user_id=auth.user_id
+    )
 
     return {
         "generations": generations,
@@ -306,9 +348,7 @@ async def list_generations(
 async def get_generation(generation_id: int, auth: AuthContext = Depends(get_auth)):
     """Get a specific generation."""
     generation = Generation.get_by_id(generation_id)
-    if not generation:
-        raise HTTPException(status_code=404, detail="Generation not found")
-    return generation
+    return _require_owner(generation, auth, "Generation")
 
 
 @app.post("/api/generations", response_model=IdResponse, status_code=201)
@@ -341,6 +381,8 @@ async def update_generation(
     generation_id: int, data: GenerationUpdate, auth: AuthContext = Depends(get_auth)
 ):
     """Update a generation record."""
+    _require_owner(Generation.get_by_id(generation_id), auth, "Generation")
+
     updates = data.model_dump(exclude_unset=True)
     if updates:
         Generation.update(generation_id, **updates)
@@ -350,6 +392,7 @@ async def update_generation(
 @app.delete("/api/generations/{generation_id}", response_model=MessageResponse)
 async def delete_generation(generation_id: int, auth: AuthContext = Depends(get_auth)):
     """Delete a generation record."""
+    _require_owner(Generation.get_by_id(generation_id), auth, "Generation")
     Generation.delete(generation_id)
     return MessageResponse(message="Deleted")
 
@@ -429,9 +472,7 @@ async def list_voice_profiles(
 async def get_voice_profile(profile_id: int, auth: AuthContext = Depends(get_auth)):
     """Get a voice profile."""
     profile = VoiceProfile.get_by_id(profile_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
-    return profile
+    return _require_owner(profile, auth, "Profile")
 
 
 @app.post("/api/voice-profiles", response_model=IdResponse, status_code=201)
@@ -456,6 +497,8 @@ async def update_voice_profile(
     profile_id: int, data: VoiceProfileUpdate, auth: AuthContext = Depends(get_auth)
 ):
     """Update a voice profile."""
+    _require_owner(VoiceProfile.get_by_id(profile_id), auth, "Profile")
+
     updates = data.model_dump(exclude_unset=True)
     if updates:
         VoiceProfile.update(profile_id, **updates)
@@ -465,6 +508,7 @@ async def update_voice_profile(
 @app.delete("/api/voice-profiles/{profile_id}", response_model=MessageResponse)
 async def delete_voice_profile(profile_id: int, auth: AuthContext = Depends(get_auth)):
     """Delete a voice profile."""
+    _require_owner(VoiceProfile.get_by_id(profile_id), auth, "Profile")
     VoiceProfile.delete(profile_id)
     return MessageResponse(message="Deleted")
 

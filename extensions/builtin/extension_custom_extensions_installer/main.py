@@ -1,3 +1,5 @@
+import html
+
 import gradio as gr
 
 from tts_webui.core_bridge import bridge
@@ -6,13 +8,16 @@ from tts_webui.core_bridge import bridge
 def _on_parse(text: str):
     # Go validates and previews: entries, a Markdown preview, an info line.
     res = bridge.extcatalog.parse(text)
-    return res["entries"], res["preview"], res["info"]
+    # info goes into a gr.HTML, which does not escape, and can carry text from
+    # the pasted JSON.
+    return res["entries"], res["preview"], html.escape(res["info"])
 
 
 def _add_to_external(entries):
     # Go is the only writer of extensions.external.json.
     res = bridge.extcatalog.add(entries)
-    return res["status"], res["json"]
+    # status lists the package names of the pasted JSON and goes into a gr.HTML.
+    return html.escape(res["status"]), res["json"]
 
 
 def _install_selected(entries):
@@ -68,18 +73,14 @@ def ui():
         """,
     )
 
+    # Parse and preview only. Adding to extensions.external.json and running
+    # the installer both execute code from the received JSON, so they stay
+    # behind the explicit "Add to external list" / "Install selected"
+    # buttons rather than firing automatically on a received message.
     json_input_automatic.change(
         fn=_on_parse,
         inputs=[json_input_automatic],
         outputs=[parsed_state, preview_md, parse_info],
-    ).then(
-        fn=_add_to_external,
-        inputs=[parsed_state],
-        outputs=[parse_info, current_json],
-    ).then(
-        fn=_install_selected,
-        inputs=[parsed_state],
-        outputs=[console_html],
     )
 
     parse_btn.click(

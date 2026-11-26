@@ -126,7 +126,9 @@ if "%umamba_exists%" == "F" (
     echo "Downloading micromamba from %MICROMAMBA_DOWNLOAD_URL% to %MAMBA_ROOT_PREFIX%\micromamba.exe"
 
     mkdir "%MAMBA_ROOT_PREFIX%"
-    call curl -Lk "%MICROMAMBA_DOWNLOAD_URL%" > "%MAMBA_ROOT_PREFIX%\micromamba.exe"
+    @rem -k/--insecure disables certificate validation. Never use it here:
+    @rem this downloads an executable that is run immediately afterwards.
+    call curl -L --fail "%MICROMAMBA_DOWNLOAD_URL%" > "%MAMBA_ROOT_PREFIX%\micromamba.exe"
 
     if "!ERRORLEVEL!" NEQ "0" (
         echo "There was a problem downloading micromamba. Cannot continue."

@@ -4,6 +4,17 @@ def _get_typed_dict_name(typed_dict: dict) -> str:
     return "Params"
 
 
+# Parameter names whose values must never be printed. Generation kwargs are
+# splatted into the console (and into the saved metadata JSON), and several
+# extensions take a provider credential as an ordinary parameter.
+_SECRET_MARKERS = ("key", "token", "secret", "password", "credential")
+
+
+def _is_secret(name) -> bool:
+    lowered = str(name).lower()
+    return any(marker in lowered for marker in _SECRET_MARKERS)
+
+
 def custom_repr(value):
     if isinstance(value, dict):
         return "dict"
@@ -21,7 +32,9 @@ def StringifyParams(x):
         return True
 
     params = ",\n    ".join(
-        f"{k}={custom_repr(v)}" for k, v in x.items() if filter_keys(k)
+        f"{k}={'***' if _is_secret(k) else custom_repr(v)}"
+        for k, v in x.items()
+        if filter_keys(k)
     )
     return f"{_get_typed_dict_name(x)}(\n    {params}\n)"
 

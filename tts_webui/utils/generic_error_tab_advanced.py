@@ -9,9 +9,11 @@ def generic_error_tab_advanced(
     e: Exception, name="", requirements=None, package_name=None
 ):
     with gr.Tab(name + " (!)"):
+        # The details go to the console only. Rendering the exception and
+        # stack trace in the UI exposed absolute paths, the OS username and the
+        # installed package layout to anyone who could reach the server.
         gr.Markdown(f"Failed to load {name} tab. Please check your configuration.")
-        gr.Markdown(f"Error: {e}")
-        gr.Markdown(f"Stacktrace: {traceback.format_exc()}")
+        gr.Markdown("See the server console for the error and stack trace.")
         print(f"Failed to load {name} tab. Please check your configuration.")
         print(f"Error: {e}")
         print(f"Stacktrace: {traceback.format_exc()}")

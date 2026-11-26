@@ -110,7 +110,10 @@ func initMambaWindows(ctx context.Context, s *Step) (int, error) {
 	if !umambaExists {
 		s.Log(fmt.Sprintf(`"Downloading micromamba from %s to %s"`, downloadURL, umamba))
 		mkdir(mambaRoot)
-		if err := runCmd(Command{Shell: fmt.Sprintf(`call curl -Lk "%s" > "%s"`, downloadURL, umamba)}); err != nil {
+		// No -k: it turns certificate validation off for an executable that is run
+		// right after (same as init_mamba.bat). --fail keeps an error page from
+		// being written out as micromamba.exe.
+		if err := runCmd(Command{Shell: fmt.Sprintf(`call curl -L --fail "%s" > "%s"`, downloadURL, umamba)}); err != nil {
 			return 1, err
 		}
 		if level != 0 {

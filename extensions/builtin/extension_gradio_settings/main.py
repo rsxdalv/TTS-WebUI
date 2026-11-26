@@ -159,13 +159,15 @@ def ui():
 
     save_beacon = gr.Markdown("")
 
-    # Map over the UI elements
-    for i in inputs:
-        i.change(
-            fn=lambda *input_values: save_config_gradio(keys, input_values),
-            inputs=inputs,
-            outputs=[save_beacon],
-        )
+    # Saving is behind an explicit button. Persisting on every .change() meant
+    # a single request could write share=True / auth=None / server_name=0.0.0.0
+    # into config.json, which takes effect on the next start.
+    save_button = gr.Button("Save settings", variant="primary")
+    save_button.click(
+        fn=lambda *input_values: save_config_gradio(keys, input_values),
+        inputs=inputs,
+        outputs=[save_beacon],
+    )
 
     reload_config_and_restart_ui_button = gr.Button(
         # value="Reload config and restart UI",

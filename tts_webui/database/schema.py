@@ -35,10 +35,21 @@ def create_tables():
         )
     """)
 
-    # Create default user if not exists
+    # Create default user if not exists.
+    #
+    # password_hash is set to '!', a value no hashing scheme can produce, so
+    # the row can never authenticate. Leaving it NULL made this a passwordless
+    # admin account waiting for whoever implements login: most verifiers either
+    # raise or compare truthily against NULL.
     cursor.execute("""
-        INSERT OR IGNORE INTO users (id, username, email, is_admin)
-        VALUES (1, 'default', 'default@localhost', 1)
+        INSERT OR IGNORE INTO users (id, username, email, is_admin, password_hash)
+        VALUES (1, 'default', 'default@localhost', 1, '!')
+    """)
+
+    # Existing databases were created before the sentinel was added.
+    cursor.execute("""
+        UPDATE users SET password_hash = '!'
+        WHERE id = 1 AND (password_hash IS NULL OR password_hash = '')
     """)
 
     # API Keys table for REST API authentication

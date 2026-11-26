@@ -7,7 +7,7 @@ from tts_webui.history_tab.collections_directories_atom import (
 )
 from tts_webui.history_tab.delete_generation_cb import delete_generation_cb
 from tts_webui.history_tab.save_to_favorites import save_to_favorites
-from tts_webui.utils.open_folder import open_folder
+from tts_webui.utils.open_folder import open_collection_folder
 
 
 def extension__tts_generation_webui():
@@ -71,7 +71,7 @@ def history_content(directory, show_collections):
                 button_output = gr.Button(value=f"Open collection folder")
                 reload_button = gr.Button(value="Refresh", variant="secondary")
             button_output.click(
-                lambda x: open_folder(x),
+                lambda x: open_collection_folder(x),
                 inputs=[directory_dropdown],
             )
 
@@ -101,7 +101,7 @@ def history_content(directory, show_collections):
                 open_folder_button = gr.Button(
                     value="Open folder", variant="secondary", visible=False
                 )
-                open_folder_button.click(open_folder, inputs=folder_root)
+                open_folder_button.click(open_collection_folder, inputs=folder_root)
 
                 save_to_favorites_history.click(
                     fn=save_to_favorites,

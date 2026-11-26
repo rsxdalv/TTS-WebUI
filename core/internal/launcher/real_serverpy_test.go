@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -288,7 +287,7 @@ func TestRealNativeExtensionInstallAndStart(t *testing.T) {
 		"    last = html\n" +
 		"print(last.replace('<br />', chr(10)))\n")
 	t.Logf("install tail:\n%s", tail(install, 40))
-	venvPython := filepath.Join(root.Dir(), ".venvs", pkg, "Scripts", "python.exe")
+	venvPython := platform.VenvPython(root.Dir(), pkg)
 	if _, err := os.Stat(venvPython); err != nil {
 		t.Fatalf("no venv python after the install: %v", err)
 	}

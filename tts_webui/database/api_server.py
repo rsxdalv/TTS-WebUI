@@ -27,6 +27,26 @@ logger = logging.getLogger(__name__)
 API_PORT = int(os.environ.get("TTS_WEBUI_API_PORT", 7774))
 API_HOST = os.environ.get("TTS_WEBUI_API_HOST", "127.0.0.1")
 
+# Browser origins allowed to make credentialed requests. "*" is deliberately
+# not accepted here: combined with allow_credentials it let any website read
+# and write this database through the user's browser.
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "TTS_WEBUI_API_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000",
+    ).split(",")
+    if origin.strip() and origin.strip() != "*"
+]
+
+# When set, unauthenticated requests are rejected instead of being treated as
+# the default user.
+REQUIRE_API_KEY = os.environ.get("TTS_WEBUI_API_REQUIRE_KEY", "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
 
 # ============================================================================
 # Pydantic Models
@@ -182,8 +202,12 @@ async def get_auth(
                 user_id=key_record["user_id"], is_admin=key_record["is_admin"]
             )
 
-    # Default user for unauthenticated requests
-    return AuthContext(user_id=1, is_admin=True)
+    if REQUIRE_API_KEY:
+        raise HTTPException(status_code=401, detail="API key required")
+
+    # Default user for unauthenticated requests. Never an admin: anonymous
+    # callers must not inherit privileges just because no key was supplied.
+    return AuthContext(user_id=1, is_admin=False)
 
 
 # ============================================================================
@@ -209,10 +233,10 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*", "http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
 
 

@@ -34,7 +34,7 @@ What each tool is, per OS (decided from what was reachable and what a real engin
 
 | Tool | Windows | Linux | macOS |
 |---|---|---|---|
-| git | MinGit 2.56.1 zip (amd64, arm64), checksum from the release asset digest; `cmd/` on PATH | **the system's git.** No official static build exists; a missing git is said at install and, before any venv is started, when an engine needs a `git+` requirement | the system's git (`xcode-select --install`) |
+| git | MinGit 2.56.1 zip (amd64, arm64), checksum from the release asset digest; `cmd/` on PATH | **the system's git** (decision below, LAB-47). A missing git is refused before the first download of the plan | the system's git (`xcode-select --install`) |
 | ffmpeg | BtbN FFmpeg-Builds `gpl-shared` 8.1.3 zip (amd64); `bin/` on PATH | same build as `.tar.xz` (amd64, arm64); `bin/` on PATH and `lib/` on `LD_LIBRARY_PATH` | none pinned (BtbN has no macOS builds): the system's (`brew install ffmpeg`) |
 
 Why the **shared** build: the program alone is not enough. Every engine venv gets `torchcodec`, which loads
@@ -50,6 +50,48 @@ that leaves the folder is refused). `Install` fetches the tools; `Create` fetche
 installed before this step upgrades itself on the next engine install. They are first on PATH in `Platform.environ`,
 which every command is built from: `uv` (a `git+https` requirement runs git) and an own-venv engine (extprocs takes the
 platform command's environment).
+
+### Linux git (LAB-47, 2026-11-26)
+
+**Decision (proposal, for the human to confirm): the system's git, checked before anything is downloaded. No pinned Linux
+git.** Rob had not chosen; this is the lower-risk of the two and is built. The other is described so it can be reversed.
+
+The failure, reproduced with the real launcher on Ubuntu: `PATH` an empty folder, a fresh root under `/tmp`,
+`POST /api/ext/op/install {"package_name":"tts_webui_extension.kitten_tts","gpu":"CPU"}`. Result: uv (16 MB), Python 3.10.11,
+**ffmpeg (68 MB)** were downloaded, then step 2 failed with "installs from a git URL and git is not on this machine". The check
+already existed in `Create`, but after `installTools`, and the message ran into the "not fetched on Linux" hint. After the
+change the same request is answered at once with `409 {"needs": "git", "error": "Kitten TTS (uv) installs from a git URL and git
+is not on this machine. Install it with your package manager: apt install git (Debian, Ubuntu), dnf install git (Fedora), ...
+Then install again (nothing was installed)"}` and the root holds only `extensions.json`. With git on PATH the same request goes on to
+the GPU question as before.
+
+What was built: `Platform.CheckGit` (also used by `Create`, before the tools are fetched, as the backstop for pasted entries);
+`extcatalog.checkGitForPlan` on the plan, before the GPU question, for every own-venv entry of the plan with a `git+`
+requirement; a git file on PATH must be executable. Where the platform fetches git (Windows) a missing git is not a refusal.
+Docker: the image installs `git` (Dockerfile, `apt-get install ... git`). Colab: the notebook starts with `!git clone`, so git is
+there.
+
+Is there a git binary the platform could pin for Linux (amd64, arm64) that is checksummable, relocatable and trustworthy?
+Looked at on 2026-11-26; **none that I would trust**:
+
+| Source | Licence | Checksum | Relocatable, no root | Verdict |
+|---|---|---|---|---|
+| git-scm.com / kernel.org | GPL-2.0 | tarballs signed (source) | source only, no binaries | not a binary |
+| Git for Windows MinGit | GPL-2.0 | yes (used on Windows) | Windows only | not Linux |
+| Distro packages (Debian/Ubuntu `.deb`) | GPL-2.0 | yes (Packages index) | no. The Ubuntu 24.04 `git` here needs glibc >= 2.38, `libcurl3t64-gnutls`, `libpcre2-8`, `libexpat`, `libz`, perl; its exec path is compiled in (`/usr/lib/git-core`; 166 helpers, 11 MB) | not portable across distros; extracting a `.deb` needs `ar` + zstd |
+| conda-forge `git` 2.56.1 (`linux-64`, `linux-aarch64`) | GPL-2.0-or-later and LGPL-2.1-or-later | sha256 on api.anaconda.org | needs conda's prefix rewriting and 8 more packages (libcurl, openssl, libexpat, libiconv, libzlib, pcre2, libgcc, perl); two builds of the same version (`_0`, `_1`) have different checksums | would need micromamba as a second package manager; not one archive |
+| Third-party "static git" repos on GitHub (found: `darkvertex/static-git`, `EXALAB/git-static`) | not checked | not checked | linux-64 only as far as the search page says | **not inspected** (GitHub access of this session is limited to this repository) and unsigned builds from a single maintainer: the platform would run them for every `git+` install. Not trusted |
+| Homebrew, Nix, Alpine builds | | | | not researched: each needs its package manager or a musl userland, and none turned up in the search as a standalone archive |
+
+So adding a Linux row to `gitTools` would mean pinning a build from an individual, or shipping a second package manager. A pin
+here is run on every `git+` install, and "changing one is a reviewed change": that review has nothing upstream to rest on.
+If a trustworthy build appears (an upstream or distro project publishing signed static `git` + `git-remote-https` for both
+architectures), the work is one `gitTools["linux/<arch>"]` row, `Path`, `Probe` and `GIT_EXEC_PATH` (and `GIT_TEMPLATE_DIR`) set in
+`toolEnv` next to `LD_LIBRARY_PATH`; the checksum, wrong-checksum and nothing-partial paths are the ones ffmpeg already uses.
+
+Not built, not run: rewriting `git+https://github.com/<o>/<r>@<ref>` to GitHub's archive URL so uv needs no git at all. It would
+not cover transitive `git+` requirements, builds that read `.git` (setuptools-scm), or other hosts, and `@main` would change what
+is installed. Left as an idea.
 
 ## Verification (2026-11-24)
 
@@ -73,7 +115,7 @@ platform command's environment).
 
 ## Not done
 
-- Tools: not run on macOS; not run with a Linux machine that has no git (the system git was used); an engine that calls the `ffmpeg` program and not only torchcodec was not run (`shutil.which` and `ffmpeg -version` through the venv's python were); the tools install was not run through the launcher page (only through `Platform.Install`).
+- Tools: not run on macOS; the missing-git refusal was run through the real launcher on Ubuntu (see Linux git) but a complete engine install on a machine that then gets git was not repeated (the earlier Linux runs used the system git); an engine that calls the `ffmpeg` program and not only torchcodec was not run (`shutil.which` and `ffmpeg -version` through the venv's python were); the tools install was not run through the launcher page (only through `Platform.Install`).
 - The GPU choice is fixed at platform install and the page preselects the proposed GPU (LAB-46, **documented, deferred by the human on 2026-11-24**). For later: (1) a detected GPU should be a suggestion, not a preselection one click accepts; (2) the choice must be changeable (upgradable) after the install, which means a second torch row per entry and the extra download shown. Nothing was built for either.
 - uv platform uninstall; clearing the wheel cache.
 - Venv folder name: measured the deepest file of a real torch venv at 138 characters below the venv folder, so the

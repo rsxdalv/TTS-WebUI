@@ -34,7 +34,7 @@ What each tool is, per OS (decided from what was reachable and what a real engin
 
 | Tool | Windows | Linux | macOS |
 |---|---|---|---|
-| git | MinGit 2.56.1 zip (amd64, arm64), checksum from the release asset digest; `cmd/` on PATH | **the system's git** (decision below, LAB-47). A missing git is refused before the first download of the plan | the system's git (`xcode-select --install`) |
+| git | MinGit 2.56.1 zip (amd64, arm64), checksum from the release asset digest; `cmd/` on PATH | dugite-native 2.56.1 `.tar.gz` (amd64, arm64), **only when the machine has no git**; `bin/` on PATH, `GIT_EXEC_PATH`/`GIT_TEMPLATE_DIR` set (LAB-47, below) | the system's git (`xcode-select --install`); refused before any download when missing |
 | ffmpeg | BtbN FFmpeg-Builds `gpl-shared` 8.1.3 zip (amd64); `bin/` on PATH | same build as `.tar.xz` (amd64, arm64); `bin/` on PATH and `lib/` on `LD_LIBRARY_PATH` | none pinned (BtbN has no macOS builds): the system's (`brew install ffmpeg`) |
 
 Why the **shared** build: the program alone is not enough. Every engine venv gets `torchcodec`, which loads
@@ -53,45 +53,58 @@ platform command's environment).
 
 ### Linux git (LAB-47, 2026-11-26)
 
-**Decision (proposal, for the human to confirm): the system's git, checked before anything is downloaded. No pinned Linux
-git.** Rob had not chosen; this is the lower-risk of the two and is built. The other is described so it can be reversed.
+**Decision (proposal, for the human to confirm): a pinned git for Linux amd64 and arm64 (dugite-native v2.56.1), fetched only
+when the machine has no git; where there is no pin (macOS, other architectures) the system's git, refused before the first
+download.** The first version of this section said no source was trustworthy; that was wrong, dugite-native (the git GitHub
+Desktop embeds) was missed and was found on review.
 
 The failure, reproduced with the real launcher on Ubuntu: `PATH` an empty folder, a fresh root under `/tmp`,
-`POST /api/ext/op/install {"package_name":"tts_webui_extension.kitten_tts","gpu":"CPU"}`. Result: uv (16 MB), Python 3.10.11,
-**ffmpeg (68 MB)** were downloaded, then step 2 failed with "installs from a git URL and git is not on this machine". The check
-already existed in `Create`, but after `installTools`, and the message ran into the "not fetched on Linux" hint. After the
-change the same request is answered at once with `409 {"needs": "git", "error": "Kitten TTS (uv) installs from a git URL and git
-is not on this machine. Install it with your package manager: apt install git (Debian, Ubuntu), dnf install git (Fedora), ...
-Then install again (nothing was installed)"}` and the root holds only `extensions.json`. With git on PATH the same request goes on to
-the GPU question as before.
+`POST /api/ext/op/install {"package_name":"tts_webui_extension.kitten_tts","gpu":"CPU"}`. uv (16 MB), Python 3.10.11 and ffmpeg
+(68 MB) were downloaded, then step 2 failed with "installs from a git URL and git is not on this machine". Now the same request, with
+a PATH of basic programs (`sh sed grep ...`) and no git, downloads git 2.56.1 (64 MB), checks it, unpacks it (152 MB; the x64 build
+carries Git Credential Manager, 80 MB), runs it, and installs Kitten TTS (uv) from its `git+https` URL to `{"done":true,"ok":true}`.
 
-What was built: `Platform.CheckGit` (also used by `Create`, before the tools are fetched, as the backstop for pasted entries);
-`extcatalog.checkGitForPlan` on the plan, before the GPU question, for every own-venv entry of the plan with a `git+`
-requirement; a git file on PATH must be executable. Where the platform fetches git (Windows) a missing git is not a refusal.
-Docker: the image installs `git` (Dockerfile, `apt-get install ... git`). Colab: the notebook starts with `!git clone`, so git is
-there.
+The source, read on 2026-11-26 (`desktop/dugite-native`, tag `v2.56.1`, commit 238326e of 2026-11-10; git 2.56.1, the same
+version as the Windows MinGit pin):
 
-Is there a git binary the platform could pin for Linux (amd64, arm64) that is checksummable, relocatable and trustworthy?
-Looked at on 2026-11-26; **none that I would trust**:
+| | |
+|---|---|
+| Maker | the GitHub Desktop team; built by the repo's own CI (`script/build-ubuntu.sh`), assets uploaded by `release.yml` |
+| Assets | `dugite-native-v2.56.1-238326e-ubuntu-x64.tar.gz` (64 MB), `...-ubuntu-arm64.tar.gz` (24 MB). No top folder; members start with `./` |
+| Checksums | a `.sha256` file beside each asset; both matched a real download: x64 `e5bc3e8e...111d`, arm64 `8626f036...abcb6`. They sit next to the file, so they catch corruption, not a replaced release: the pin is the defence, as for every tool here |
+| Licence | the repo is GPL-2.0 (git's); git-lfs and Git Credential Manager inside are MIT; `libexec/git-core/NOTICE` lists them |
+| Not signed | no signature on the assets or the checksums. The same trust as ffmpeg (BtbN) and MinGit: a pin of a hash read once |
+| **Not self-contained, despite the README ("no linking to system libraries")** | `readelf`: `bin/git` needs `libz`, `libc` (GLIBC_2.34); `git-remote-https` also needs the **host's `libcurl.so.4`** (and its dependencies). Built on Ubuntu 22.04. So: glibc 2.34 or newer (Ubuntu 22.04+, Debian 12+, RHEL 9+), libcurl installed |
+| Relocatable | only with `GIT_EXEC_PATH` and `GIT_TEMPLATE_DIR` (the prefix is compiled in as `/`; without them: "unable to find remote helper for 'https'"). Both are set in `toolEnv` for every command of the platform. System config (`/etc/gitconfig`) still applies |
+| arm64 | not run (no arm64 machine here); readelf shows the same needs, checksum matches a real download |
 
-| Source | Licence | Checksum | Relocatable, no root | Verdict |
-|---|---|---|---|---|
-| git-scm.com / kernel.org | GPL-2.0 | tarballs signed (source) | source only, no binaries | not a binary |
-| Git for Windows MinGit | GPL-2.0 | yes (used on Windows) | Windows only | not Linux |
-| Distro packages (Debian/Ubuntu `.deb`) | GPL-2.0 | yes (Packages index) | no. The Ubuntu 24.04 `git` here needs glibc >= 2.38, `libcurl3t64-gnutls`, `libpcre2-8`, `libexpat`, `libz`, perl; its exec path is compiled in (`/usr/lib/git-core`; 166 helpers, 11 MB) | not portable across distros; extracting a `.deb` needs `ar` + zstd |
-| conda-forge `git` 2.56.1 (`linux-64`, `linux-aarch64`) | GPL-2.0-or-later and LGPL-2.1-or-later | sha256 on api.anaconda.org | needs conda's prefix rewriting and 8 more packages (libcurl, openssl, libexpat, libiconv, libzlib, pcre2, libgcc, perl); two builds of the same version (`_0`, `_1`) have different checksums | would need micromamba as a second package manager; not one archive |
-| Third-party "static git" repos on GitHub (found: `darkvertex/static-git`, `EXALAB/git-static`) | not checked | not checked | linux-64 only as far as the search page says | **not inspected** (GitHub access of this session is limited to this repository) and unsigned builds from a single maintainer: the platform would run them for every `git+` install. Not trusted |
-| Homebrew, Nix, Alpine builds | | | | not researched: each needs its package manager or a musl userland, and none turned up in the search as a standalone archive |
+Because it links the host's libraries, **the pin is a fallback, not a replacement**: `OnlyIfMissing` fetches it only when git is not
+on the PATH the install would use, so a machine whose git works never gets one that may not. After unpacking, before the folder is
+swapped in, `Smoke` runs `bin/git --version` and `git-remote-https` from the new folder; a program that cannot load (missing
+libcurl, old glibc) fails the install with the program's own words and "install git with your package manager instead", and the
+unpacked folder is removed. A wrong checksum is refused before unpacking (the same `download` as the other tools).
 
-So adding a Linux row to `gitTools` would mean pinning a build from an individual, or shipping a second package manager. A pin
-here is run on every `git+` install, and "changing one is a reviewed change": that review has nothing upstream to rest on.
-If a trustworthy build appears (an upstream or distro project publishing signed static `git` + `git-remote-https` for both
-architectures), the work is one `gitTools["linux/<arch>"]` row, `Path`, `Probe` and `GIT_EXEC_PATH` (and `GIT_TEMPLATE_DIR`) set in
-`toolEnv` next to `LD_LIBRARY_PATH`; the checksum, wrong-checksum and nothing-partial paths are the ones ffmpeg already uses.
+What else was built: the pre-flight for entries with a `git+` requirement (`Platform.CheckGit`, `extcatalog.checkGitForPlan`, also run by
+`Create`): `409 {"needs":"git"}` before anything is downloaded, with the per-distro commands, for macOS and for a Linux
+architecture with no pin. A git file on PATH must be executable. Docker: the image installs `git`. Colab: the notebook starts
+with `!git clone`.
 
-Not built, not run: rewriting `git+https://github.com/<o>/<r>@<ref>` to GitHub's archive URL so uv needs no git at all. It would
-not cover transitive `git+` requirements, builds that read `.git` (setuptools-scm), or other hosts, and `@main` would change what
-is installed. Left as an idea.
+Other sources looked at, and why not:
+
+| Source | Verdict |
+|---|---|
+| git-scm.com / kernel.org | source only |
+| Git for Windows MinGit | Windows only (used there) |
+| Debian/Ubuntu `.deb` | not portable across distros (Ubuntu 24.04 git needs glibc >= 2.38, libcurl3t64-gnutls, pcre2, expat, perl; exec path compiled in) |
+| conda-forge `git` 2.56.1 | needs conda's solver, prefix rewriting and 8 more packages (libcurl, openssl, libexpat, libiconv, libzlib, pcre2, libgcc, perl); two builds of one version differ in checksum |
+| other "static git" repos on GitHub (`darkvertex/static-git`, `EXALAB/git-static`) | not inspected: one maintainer each; dugite-native supersedes them |
+| Homebrew, Nix, Alpine | not researched |
+
+Not built, not run: rewriting `git+https://github.com/<o>/<r>@<ref>` to GitHub's archive URL so uv needs no git (it would not cover
+transitive `git+` requirements, builds that read `.git`, other hosts). macOS has no pinned git (dugite-native has macOS builds;
+not looked at). Found, not fixed: `pythonExe` takes the first output line of `uv python find`, so uv's deprecation warning when
+`UV_NATIVE_TLS` is set (as in this container) is taken as the Python path and a `.tar.xz` unpack (ffmpeg) fails; the real runs here
+unset that variable.
 
 ## Verification (2026-11-24)
 
@@ -115,7 +128,7 @@ is installed. Left as an idea.
 
 ## Not done
 
-- Tools: not run on macOS; the missing-git refusal was run through the real launcher on Ubuntu (see Linux git) but a complete engine install on a machine that then gets git was not repeated (the earlier Linux runs used the system git); an engine that calls the `ffmpeg` program and not only torchcodec was not run (`shutil.which` and `ffmpeg -version` through the venv's python were); the tools install was not run through the launcher page (only through `Platform.Install`).
+- Tools: not run on macOS; the Linux git pin was run on Ubuntu x64 only (real download, smoke test, a `git+https` install through `TestRealTools` and the Kitten install through the launcher API, with no git on PATH); **not run on arm64, on a host without libcurl or with glibc older than 2.34** (those are covered by fake archives whose programs fail to load), and not through the launcher page in a browser; an engine that calls the `ffmpeg` program and not only torchcodec was not run (`shutil.which` and `ffmpeg -version` through the venv's python were).
 - The GPU choice is fixed at platform install and the page preselects the proposed GPU (LAB-46, **documented, deferred by the human on 2026-11-24**). For later: (1) a detected GPU should be a suggestion, not a preselection one click accepts; (2) the choice must be changeable (upgradable) after the install, which means a second torch row per entry and the extra download shown. Nothing was built for either.
 - uv platform uninstall; clearing the wheel cache.
 - Venv folder name: measured the deepest file of a real torch venv at 138 characters below the venv folder, so the

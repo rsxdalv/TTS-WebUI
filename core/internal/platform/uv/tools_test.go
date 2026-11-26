@@ -256,9 +256,11 @@ func TestCheckGit(t *testing.T) {
 			t.Error("a git that is not executable counted")
 		}
 	}
-	t.Setenv("PATH", fakeGit(t, 0o755))
-	if err := p.CheckGit("Kitten", gitReq); err != nil {
-		t.Errorf("git on PATH: %v", err)
+	if runtime.GOOS != "windows" { // the fake git is a shell script: not a program Windows can run
+		t.Setenv("PATH", fakeGit(t, 0o755))
+		if err := p.CheckGit("Kitten", gitReq); err != nil {
+			t.Errorf("git on PATH: %v", err)
+		}
 	}
 	// Where the platform fetches git itself (Windows), a missing one is not a refusal.
 	t.Setenv("PATH", t.TempDir())

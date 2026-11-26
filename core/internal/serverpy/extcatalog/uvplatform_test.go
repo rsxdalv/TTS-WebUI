@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -251,7 +252,13 @@ func TestNativeInstallWithoutGitIsRefusedBeforeAnyStep(t *testing.T) {
 		if code != 409 || json.Unmarshal([]byte(got), &ans) != nil || ans.Needs != "git" {
 			t.Fatalf("%s: %d %s", body, code, got)
 		}
-		for _, want := range []string{"Native Ext installs from a git URL", "git is not on this machine", "apt install git", "nothing was installed"} {
+		// The install hint is per operating system (apt on Linux, xcode-select on macOS, a plain
+		// "Install Git" elsewhere); the rest of the message is the same everywhere.
+		hint := map[string]string{"linux": "apt install git", "darwin": "xcode-select --install"}[runtime.GOOS]
+		if hint == "" {
+			hint = "Install Git for your system"
+		}
+		for _, want := range []string{"Native Ext installs from a git URL", "git is not on this machine", hint, "nothing was installed"} {
 			if !strings.Contains(ans.Error, want) {
 				t.Errorf("error lacks %q: %s", want, ans.Error)
 			}

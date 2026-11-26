@@ -4,12 +4,14 @@ Run on 2026-11-26 from main at `b844e0a` (P0 to P8), on the one machine that has
 the GPU-choice question (LAB-46: the page preselects the proposed GPU, the choice is fixed at platform install) stays
 **documented and deferred**. Card: LAB-53.
 
+**Follow-up (fix, after this run):** the page now has a second NVIDIA choice, "NVIDIA GPU, older than Turing (GTX 10xx, 9xx, Volta)" = torch `cu126` (no xformers), and proposes it when `nvidia-smi --query-gpu=name,compute_cap` reports a capability below 7.5 (fallback when the driver cannot answer `compute_cap`: a name table). On this GTX 1070 the proposal is that choice with the reason "NVIDIA GeForce GTX 1070 (Pascal): cu128 has no kernels for it, so torch cu126 is proposed". Newer cards still get `NVIDIA GPU` = `cu128`. The sections below describe the run before that change; "the page proposes `cu128`" is how it was then. LAB-46 (preselection, change-GPU action) is untouched.
+
 ## Short answer
 
 | Question | Result |
 |---|---|
 | NVIDIA row (`cu128`, what the launcher proposes) on a GTX 1070 | **Does not work.** `torch.cuda.is_available()` says `True`, but the build has no `sm_61` kernels and no cuDNN for it: a matmul fails with "no kernel image", Kokoro on GPU fails. The user sees a generic Gradio error; the real text is only in the engine log. |
-| `cu126` row | **Works.** Arch list has `sm_61`, matmul and a cuDNN LSTM pass, Kokoro, MMS and Vall-E-X generate real audio on the GPU. But **no entry in the shipped `extensions.json` asks for `cu126`** (no entry has a `torch` field), so a GTX 1070 user following the page gets `cu128` and a broken GPU engine. |
+| `cu126` row | **Works.** Arch list has `sm_61`, matmul and a cuDNN LSTM pass, Kokoro, MMS and Vall-E-X generate real audio on the GPU. But **no entry in the shipped `extensions.json` asks for `cu126`** (no entry has a `torch` field), so a GTX 1070 user following the page got `cu128` and a broken GPU engine (fixed afterwards: the page proposes the older-NVIDIA choice, `cu126`, for such cards). |
 | Engine cap (default 4) | Works: the fifth engine stopped the least recently used one. |
 | Idle stop (off by default) | Works: with `TTS_ENGINE_IDLE_MINUTES=1` an idle engine stopped after 1 min and VRAM fell from about 1030 MiB to 305 MiB. Off by default: confirmed. |
 | audio.cpp on Vulkan | Works on the GTX 1070. About **5.3 times faster** than the CPU build (1.35 s against 7.2 s for a 10.6 s clip). Cancel and remove pass. |
@@ -109,7 +111,7 @@ Result: works. Generation through the engines is in the next section.
 `extensions.json` on main has **no `torch` field on any entry**, so the only way to reach `cu126` is a catalog edit. The
 P6 notes say "Chatterbox (GPU via the opt-in cu126 row)": that was a scratch edit, not shipped. Consequences for a Pascal
 (`sm_61`) or Maxwell card on the default flow: the page proposes NVIDIA, installs `cu128`, and every GPU-using engine fails with
-the generic error above. This is the LAB-46 area (the page should suggest, not preselect, and a card that `cu128` does not
+the generic error above. Fixed afterwards by option (a) below (for `cu126`; the CPU alternative stays a manual choice). This is the LAB-46 area (the page should suggest, not preselect, and a card that `cu128` does not
 carry should say so). Options for later, none built: (a) detect compute capability below 7.5 in the GPU panel and
 propose `cu126` or CPU; (b) a catalog `torch` field set on the engines that are known to work; (c) make an engine's own
 `torch.cuda.is_available()` check also test the arch list. `torch.cuda.get_arch_list()` is the cheap check.
@@ -232,7 +234,7 @@ carries `sm_61` kernels was not checked. Because that is a new download outside 
 
 ## Found, not fixed
 
-1. **Default flow on a Pascal card ends in a generic error** (section 1). Documented; the fix belongs with LAB-46.
+1. **Default flow on a Pascal card ended in a generic error** (section 1). Fixed afterwards: compute capability below 7.5 proposes the `cu126` choice. A card whose `nvidia-smi` is missing or unreadable is still proposed nothing and the user is asked.
 2. **No catalog entry uses `torch: "cu126"`**, although the table has the row.
 3. **The launcher ignores `REACT_UI_PORT`.** `appenv.PortPlan` reads it, but `superviseConfig` (`launcher/app_supervisor.go`) never
    passes a React port, so the UI always binds 3000 and a second launcher on the machine collides. The scratch run used a patch.
@@ -248,7 +250,7 @@ carries `sm_61` kernels was not checked. Because that is a new download outside 
 - Kokoro, MMS or Vall-E-X on the `cu128` row other than Kokoro (MMS and Vall-E-X were installed on `cu126` only).
 - A CPU against GPU speed comparison for the torch engines; Vall-E-X warm timing.
 - Cap with every engine busy; idle stop of a busy engine; the cap or idle stop with audio.cpp (one process, not under the cap).
-- `cu126` through the page's GPU panel (the row is not offered there).
+- The `cu126` choice through the page's GPU panel in a browser: the proposal was checked from the Go detector on the GTX 1070 and in tests, and no install was run.
 - onnx on a GPU runtime; audio.cpp CUDA build; Linux, WSL, macOS; a second GPU.
 - Kokoro/MMS/Vall-E-X clips were checked for amplitude and duration, not listened to.
 

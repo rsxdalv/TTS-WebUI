@@ -36,3 +36,20 @@ func TestParse(t *testing.T) {
 		}
 	}
 }
+
+func TestOlderThanTuring(t *testing.T) {
+	for cap, want := range map[string]bool{"6.1": true, "5.2": true, "7.0": true, "7.5": false, "8.9": false, "12.0": false, "": false, "x": false} {
+		if gpu.ComputeCapBelowCU128(cap) != want {
+			t.Errorf("cap %q", cap)
+		}
+	}
+	for name, want := range map[string]bool{"NVIDIA GeForce GTX 1070": true, "NVIDIA GeForce GTX 980 Ti": true, "Tesla P100-PCIE": true,
+		"NVIDIA GeForce GTX 1660 Ti": false, "NVIDIA GeForce RTX 3060": false, "NVIDIA GeForce GTX 1650": false} {
+		if gpu.NameBelowCU128(name) != want {
+			t.Errorf("name %q", name)
+		}
+	}
+	if _, err := gpu.Parse(string(gpu.NVIDIALegacy)); err != nil {
+		t.Error(err)
+	}
+}

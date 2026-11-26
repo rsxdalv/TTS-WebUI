@@ -55,8 +55,10 @@ var rows = []Row{
 	{
 		// The last CUDA build that still carries Pascal (sm_61; Maxwell and Volta too).
 		// A GTX 1070 reports the cu128 build as unsupported; torch 2.11.0+cu126 ran a
-		// matrix multiply on it (P6). Not a GPU choice's default: an entry asks for it
-		// with "torch": "cu126" in extensions.json. No xformers: its wheel is for cu128.
+		// matrix multiply on it (P6). It is the default of the gpu.NVIDIALegacy choice
+		// (cards below compute capability 7.5, which Detect proposes for them), and an
+		// entry can ask for it with "torch": "cu126" in extensions.json. No xformers:
+		// its wheel is for cu128.
 		Name: "cu126",
 		Packages: []string{"torch==" + TorchVersion + "+cu126", "torchvision",
 			"torchaudio==" + TorchVersion + "+cu126"},
@@ -136,6 +138,8 @@ func Default(l gpu.Label, goos string) (Row, error) {
 	switch l {
 	case gpu.NVIDIA:
 		name = CUDATag
+	case gpu.NVIDIALegacy:
+		name = "cu126"
 	case gpu.CPU:
 		name = "cpu"
 		if goos == "darwin" {
@@ -160,7 +164,7 @@ func Default(l gpu.Label, goos string) (Row, error) {
 // Choices are the GPU choices that have a default row on an OS.
 func Choices(goos string) []gpu.Label {
 	var out []gpu.Label
-	for _, l := range []gpu.Label{gpu.NVIDIA, gpu.AMD, gpu.Apple, gpu.Intel, gpu.CPU, gpu.Custom} {
+	for _, l := range []gpu.Label{gpu.NVIDIA, gpu.NVIDIALegacy, gpu.AMD, gpu.Apple, gpu.Intel, gpu.CPU, gpu.Custom} {
 		if _, err := Default(l, goos); err == nil {
 			out = append(out, l)
 		}
@@ -194,10 +198,8 @@ func Detect(ctx context.Context, goos, goarch string, look func(string) (string,
 		return Detected{gpu.Apple, "Apple silicon"}
 	}
 	if p, err := look("nvidia-smi"); err == nil {
-		if out, err := exec.CommandContext(ctx, p, "--query-gpu=name", "--format=csv,noheader").Output(); err == nil {
-			if name := strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0]); name != "" {
-				return Detected{gpu.NVIDIA, name}
-			}
+		if d, ok := detectNVIDIA(ctx, p); ok {
+			return d
 		}
 	}
 	if goos == "linux" {
@@ -206,6 +208,43 @@ func Detect(ctx context.Context, goos, goarch string, look func(string) (string,
 		}
 	}
 	return Detected{gpu.CPU, "no supported GPU found"}
+}
+
+// smiQuery runs nvidia-smi with a --query-gpu list; a var so tests can stand in.
+var smiQuery = func(ctx context.Context, smi, fields string) (string, error) {
+	out, err := exec.CommandContext(ctx, smi, "--query-gpu="+fields, "--format=csv,noheader").Output()
+	return string(out), err
+}
+
+// detectNVIDIA reads the first GPU. It decides "older than Turing" from the
+// compute capability nvidia-smi reports (compute_cap, drivers since about 2022);
+// when the driver is too old to answer, from the card's name.
+func detectNVIDIA(ctx context.Context, smi string) (Detected, bool) {
+	if out, err := smiQuery(ctx, smi, "name,compute_cap"); err == nil {
+		line := strings.TrimSpace(strings.SplitN(out, "\n", 2)[0])
+		if i := strings.LastIndex(line, ","); i > 0 {
+			name, cap := strings.TrimSpace(line[:i]), strings.TrimSpace(line[i+1:])
+			if name != "" {
+				if gpu.ComputeCapBelowCU128(cap) {
+					return legacy(name, gpu.Family(cap)), true
+				}
+				return Detected{gpu.NVIDIA, name}, true
+			}
+		}
+	}
+	if out, err := smiQuery(ctx, smi, "name"); err == nil {
+		if name := strings.TrimSpace(strings.SplitN(out, "\n", 2)[0]); name != "" {
+			if gpu.NameBelowCU128(name) {
+				return legacy(name, "older than Turing"), true
+			}
+			return Detected{gpu.NVIDIA, name}, true
+		}
+	}
+	return Detected{}, false
+}
+
+func legacy(name, family string) Detected {
+	return Detected{gpu.NVIDIALegacy, fmt.Sprintf("%s (%s): cu128 has no kernels for it, so torch cu126 is proposed", name, family)}
 }
 
 // DetectHere is Detect for this machine.

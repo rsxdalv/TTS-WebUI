@@ -908,6 +908,11 @@ class ExtensionLoadingTest(unittest.TestCase):
         self.assertEqual(label(X("a.one", "A")), "Unknown")
         self.assertEqual(label(X("a.one", "A", proxy="native")), "")
         self.assertEqual(label(X("x.builtin.a", "A")), "")
+        # a built-in tab is part of the host; a built-in entry that is native
+        # runs in its own venv and gets the management UI like any native one
+        self.assertTrue(ie._is_builtin_tab(X("x.builtin.a", "A")))
+        self.assertFalse(ie._is_builtin_tab(X("x.builtin.a", "A", proxy="native")))
+        self.assertFalse(ie._is_builtin_tab(X("a.one", "A")))
         src = inspect.getsource(ie)
         for gone in ("find_spec", "importlib.metadata", "os.path.exists", ".venvs"):
             self.assertNotIn(gone, src)

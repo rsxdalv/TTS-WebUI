@@ -114,6 +114,13 @@ func OwnVenvExists(root, pkg string) bool {
 // Builtin reports whether a package name is a built-in extension.
 func Builtin(pkg string) bool { return strings.Contains(pkg, "builtin") }
 
+// BuiltinTab reports whether an entry is a built-in tab: part of the Gradio
+// host, never installed or removed on its own. A built-in entry with
+// "proxy": "native" is not: its code is in the checkout (nothing to pip
+// install) but it runs in its own venv, which is installed and removed like
+// any other own-venv entry (extension_model_downloader).
+func BuiltinTab(pkg, proxy string) bool { return Builtin(pkg) && proxy != "native" }
+
 // OwnVenvCommand resolves "python" of an own-venv entry to the venv's python,
 // run directly (no shell, no prefix). ok is false for anything else, which is
 // then the platform's own business.

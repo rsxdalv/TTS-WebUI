@@ -137,3 +137,19 @@ func TestOwnVenvCommand(t *testing.T) {
 		t.Fatal("no entry, no venv")
 	}
 }
+
+func TestBuiltinTabIsNotANativeBuiltin(t *testing.T) {
+	for _, c := range []struct {
+		pkg, proxy string
+		want       bool
+	}{
+		{"extensions.builtin.x", "", true},
+		{"extensions.builtin.x", "native", false},
+		{"tts_webui_extension.kokoro", "native", false},
+		{"tts_webui_extension.bark", "", false},
+	} {
+		if got := BuiltinTab(c.pkg, c.proxy); got != c.want {
+			t.Errorf("BuiltinTab(%q, %q) = %v, want %v", c.pkg, c.proxy, got, c.want)
+		}
+	}
+}

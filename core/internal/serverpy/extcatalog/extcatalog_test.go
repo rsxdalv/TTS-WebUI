@@ -463,3 +463,23 @@ func TestOneInstallAtATime(t *testing.T) {
 	}
 	s.install.Unlock()
 }
+
+// A built-in entry with "proxy": "native" has its code in the checkout and its
+// dependencies in its own venv: it is installable (extension_model_downloader).
+// A plain built-in tab still is not.
+func TestNativeBuiltinEntryIsInstallable(t *testing.T) {
+	s, root := newStore(t)
+	writeFile(t, root, "extensions.json", `{"tabs":[`+
+		entry("extensions.builtin.tab", "Tab")+`,`+
+		entry("extensions.builtin.native", "Native", `"proxy":"native"`)+`]}`)
+	c, err := s.Choices("interface")
+	if err != nil || strings.Join(c, ",") != "extensions.builtin.native" {
+		t.Fatalf("choices: %v %v", c, err)
+	}
+	if _, err := s.find("extensions.builtin.native"); err != nil {
+		t.Errorf("native built-in entry not found: %v", err)
+	}
+	if _, err := s.find("extensions.builtin.tab"); err == nil {
+		t.Error("a built-in tab became installable")
+	}
+}

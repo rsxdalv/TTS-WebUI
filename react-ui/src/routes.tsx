@@ -168,6 +168,7 @@ export const AppRoutes = () => (
       <Route path="/tools/api_config" element={<ToolsApiConfig />} />
       <Route path="/tools/pip_list" element={<ToolsPipList />} />
       <Route path="/openai" element={<OpenAIEndpoints />} />
+      <Route path="/minimax" element={<MinimaxTts />} />
       <Route path="/audiocpp" element={<AudioCppPage />} />
       <Route path="/onnx" element={<OnnxEngines />} />
       <Route path="/engines" element={<EnginesIndex />} />

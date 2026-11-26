@@ -76,7 +76,7 @@ func (p *jsProcess) ensurePythonVersion(ctx context.Context) error {
 			p.displayMessage("Python version is not " + pythonVersion + ". Reinstalling...")
 			pythonPackage := "python=" + pythonVersion
 			conda := "micromamba"
-			err := p.dollar(ctx, conda+" install -y -k -c conda-forge "+pythonPackage)
+			err := p.dollar(ctx, conda+" install -y -c conda-forge "+pythonPackage)
 			// The environment changed, so capture its activation again.
 			p.s.ResetActivated()
 			return err

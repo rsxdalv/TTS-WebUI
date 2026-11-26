@@ -5,7 +5,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -28,8 +30,21 @@ func config(extra string) string {
 	return `{"gradio_interface_options":{` + base + `},"extensions":{}}`
 }
 
+// testRoot has upper-case letters on purpose: Gradio lowercases both sides of
+// its blocklist comparison, which is what broke relative blocked_paths.
+var testRoot, _ = filepath.Abs(filepath.Join("install-root", "TTS-WebUI"))
+
+// blockedAt is blockedPaths under testRoot, as Compute makes them.
+func blockedAt(extra ...string) []any {
+	var out []any
+	for _, p := range append(append([]string{}, blockedPaths...), extra...) {
+		out = append(out, filepath.Join(testRoot, filepath.FromSlash(p)))
+	}
+	return out
+}
+
 func server(doc string, f appenv.Flags) *Server {
-	return New(Options{Config: loader{doc: doc}, Token: "tok", GradioHost: "127.0.0.1", GradioPort: 27700, Flags: f})
+	return New(Options{Config: loader{doc: doc}, Token: "tok", GradioHost: "127.0.0.1", GradioPort: 27700, Root: testRoot, Flags: f})
 }
 
 func compute(t *testing.T, doc string, f appenv.Flags) Result {
@@ -63,6 +78,7 @@ func TestPlainOptions(t *testing.T) {
 		"ssl_verify": true,
 		"quiet":      true, "show_api": true, "_frontend": true,
 		"allowed_paths": []any{"."}, "favicon_path": "./react-ui/public/favicon.ico", "prevent_thread_lock": true,
+		"blocked_paths": blockedAt(),
 	}
 	if got := roundTrip(t, r); !reflect.DeepEqual(got, want) {
 		t.Errorf("options:\n got %v\nwant %v", got, want)
@@ -186,13 +202,13 @@ func TestDescribeFormat(t *testing.T) {
 		`  • Server   > server_name: "127.0.0.1", server_port: 27700, max_threads: 40, prevent_thread_lock: True, quiet: True`,
 		`  • Display  > inline: False, inbrowser: False, width: "100%", height: 500, favicon_path: "./react-ui/public...", show_api: True`,
 		`  • Access   > share: False, auth_message: "a message that is..."`,
-		`  • Security > ssl_verify: True, allowed_paths: ['.']`,
+		"  • Security > ssl_verify: True, allowed_paths: ['.'], blocked_paths: " + pyList(blockedAt()),
 		`  • Debug    > debug: False, show_error: False`,
 	}
 	if !reflect.DeepEqual(r.Lines, want) {
 		t.Errorf("lines:\n%s\nwant:\n%s", strings.Join(r.Lines, "\n"), strings.Join(want, "\n"))
 	}
-	open := New(Options{Config: loader{doc: config("")}, GradioHost: "0.0.0.0", GradioPort: 7767})
+	open := New(Options{Config: loader{doc: config("")}, GradioHost: "0.0.0.0", GradioPort: 7767, Root: testRoot})
 	res, _ := open.Compute()
 	last := res.Lines[len(res.Lines)-2:]
 	if last[0] != "Notice: Server is open to the internet" || last[1] != "Gradio server will be available on http://localhost:7767" {
@@ -254,5 +270,74 @@ func TestHTTP(t *testing.T) {
 	bad.ServeHTTP(w, r)
 	if w.Code != http.StatusInternalServerError {
 		t.Errorf("bad config: %d", w.Code)
+	}
+}
+
+// formatValue's way of printing a list of strings.
+func pyList(l []any) string {
+	var parts []string
+	for _, v := range l {
+		parts = append(parts, "'"+v.(string)+"'")
+	}
+	return "[" + strings.Join(parts, ", ") + "]"
+}
+
+// allowed_paths is "." so the install root's secrets must be blocked by name,
+// and by absolute path: Gradio's comparison lowercases both sides, so a relative
+// entry never matches under /home/me/TTS-WebUI.
+func TestTheInstallRootsSecretsAreBlockedByAbsolutePath(t *testing.T) {
+	m := roundTrip(t, compute(t, config(""), appenv.Flags{}))
+	blocked, _ := m["blocked_paths"].([]any)
+	for _, b := range blocked {
+		if !filepath.IsAbs(b.(string)) {
+			t.Errorf("%v is not absolute: Gradio would not match it", b)
+		}
+	}
+	for _, must := range []string{
+		"config.json",    // the Gradio auth password
+		".env",           // provider keys
+		".env.user",      //
+		"env_store.json", //
+		"platforms",      // platforms/openai/keys.json
+		"data/sqlite",
+		".git",
+	} {
+		if !slices.Contains(blocked, any(filepath.Join(testRoot, filepath.FromSlash(must)))) {
+			t.Errorf("%s is not blocked: %v", must, blocked)
+		}
+	}
+}
+
+func TestTheFileMayBlockMoreButNeverLess(t *testing.T) {
+	abs := filepath.Join(testRoot, "elsewhere")
+	doc := config(`"blocked_paths":["mine","","config.json",5,` + strconvQuote(abs) + `]`)
+	m := roundTrip(t, compute(t, doc, appenv.Flags{}))
+	blocked, _ := m["blocked_paths"].([]any)
+	mine := filepath.Join(testRoot, "mine")
+	if !slices.Contains(blocked, any(mine)) || !slices.Contains(blocked, any(abs)) || !slices.Contains(blocked, any(filepath.Join(testRoot, ".env"))) {
+		t.Errorf("blocked_paths = %v, want ours plus %s and %s", blocked, mine, abs)
+	}
+	if n := len(blocked); n != len(blockedPaths)+2 {
+		t.Errorf("%d entries, want %d (no duplicate, no empty, no number): %v", n, len(blockedPaths)+2, blocked)
+	}
+	// An option of the file cannot empty the list.
+	m = roundTrip(t, compute(t, config(`"blocked_paths":[]`), appenv.Flags{}))
+	if b, _ := m["blocked_paths"].([]any); len(b) != len(blockedPaths) {
+		t.Errorf("an empty list in the file changed ours: %v", b)
+	}
+}
+
+func strconvQuote(s string) string { b, _ := json.Marshal(s); return string(b) }
+
+func TestTheCallersBlockedPathsAreAdded(t *testing.T) {
+	own := filepath.Join(testRoot, "private-dir")
+	srv := New(Options{Config: loader{doc: config("")}, Token: "tok", GradioHost: "127.0.0.1", GradioPort: 27700, Root: testRoot, Blocked: []string{own, "rel-dir"}})
+	res, err := srv.Compute()
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocked, _ := roundTrip(t, res)["blocked_paths"].([]any)
+	if !slices.Contains(blocked, any(own)) || !slices.Contains(blocked, any(filepath.Join(testRoot, "rel-dir"))) {
+		t.Errorf("the caller's paths are missing (absolute, relative made absolute): %v", blocked)
 	}
 }

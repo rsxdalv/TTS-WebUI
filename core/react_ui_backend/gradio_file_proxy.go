@@ -9,6 +9,9 @@ package react_ui_backend
 //   - the upstream is fetched with GET whatever the method of the request;
 //   - GRADIO_AUTH is not sent (the original's auth code is commented out);
 //   - only Content-Type, Content-Length and Content-Disposition are passed on;
+//     Content-Type only for the types the UI renders (proxyContentType): the
+//     response is served from the UI's own origin, so an upstream text/html or
+//     image/svg+xml would run as script there;
 //   - the whole body is read before anything is sent, as the original does with
 //     arrayBuffer(), so an upstream failure half way gives a 500 and not a
 //     truncated file;
@@ -20,6 +23,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -86,11 +90,11 @@ func newGradioFileProxy(deps Deps) http.Handler {
 			return
 		}
 		h := w.Header()
-		if v := resp.Header.Get("Content-Type"); v != "" {
-			h.Set("Content-Type", v)
-		} else {
-			h.Set("Content-Type", "application/octet-stream") // what res.send(Buffer) defaults to
-		}
+		h.Set("Content-Type", proxyContentType(resp.Header.Get("Content-Type")))
+		// Never sniff a type of our own choosing into something else, and never
+		// let a document that does get through run scripts.
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Content-Security-Policy", "sandbox")
 		if v := resp.Header.Get("Content-Length"); v != "" && !resp.Uncompressed {
 			h.Set("Content-Length", v)
 		} else {
@@ -104,6 +108,30 @@ func newGradioFileProxy(deps Deps) http.Handler {
 			_, _ = w.Write(body)
 		}
 	})
+}
+
+// proxyContentType is the Content-Type to serve for the upstream's: the UI's
+// previews (audio, video, images other than SVG, JSON, plain text) keep theirs,
+// parameters included; anything else, and a missing or unparsable type, is
+// application/octet-stream, which browsers download and never run. A missing
+// type was octet-stream before too (what res.send(Buffer) defaults to).
+func proxyContentType(upstream string) string {
+	const fallback = "application/octet-stream"
+	mt, _, err := mime.ParseMediaType(upstream)
+	if err != nil {
+		return fallback
+	}
+	switch {
+	case mt == "image/svg+xml":
+		return fallback // an image type that is a document with script
+	case strings.HasPrefix(mt, "audio/"), strings.HasPrefix(mt, "video/"), strings.HasPrefix(mt, "image/"):
+		return upstream
+	}
+	switch mt {
+	case "application/json", "text/plain", "application/ogg", fallback:
+		return upstream
+	}
+	return fallback
 }
 
 func gradioFileFailed(w http.ResponseWriter) {

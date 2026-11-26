@@ -12,6 +12,7 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/dltest"
 )
 
 // TestRealInstall installs the pinned uv and Python from the internet into the
@@ -139,4 +140,32 @@ func userlandWithoutGit(t *testing.T) string {
 		}
 	}
 	return dir
+}
+
+// TestRealEveryPinMatchesItsDownload downloads every pinned uv archive and tool
+// (all operating systems; about 600 MB, streamed and hashed, nothing is stored) and
+// compares what the server serves with the pin. Skipped unless UV_REAL_PINS is set.
+func TestRealEveryPinMatchesItsDownload(t *testing.T) {
+	if os.Getenv("UV_REAL_PINS") == "" {
+		t.Skip("UV_REAL_PINS is not set")
+	}
+	check := func(name string, a Archive) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got, size := dltest.RealSHA256(t, a.URL)
+			t.Logf("%s: %d bytes, sha256 %s", a.URL, size, got)
+			if got != a.SHA256 {
+				t.Errorf("pin %s, download %s", a.SHA256, got)
+			}
+		})
+	}
+	for key, a := range archives {
+		check("uv/"+key, a)
+	}
+	for key, tl := range ffmpegTools {
+		check("ffmpeg/"+key, tl.Archive)
+	}
+	for key, tl := range gitTools {
+		check("git/"+key, tl.Archive)
+	}
 }

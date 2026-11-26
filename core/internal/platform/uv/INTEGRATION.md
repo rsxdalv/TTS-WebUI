@@ -126,6 +126,10 @@ unset that variable.
 | `TestRealTools` (`UV_REAL_ROOT`, `UV_REAL_ENGINE_PYTHON`): install with the tools into a fresh folder; with PATH limited to the Windows system folders, uv installs `git+https://github.com/pypa/sampleproject.git`; the venv's python finds the pinned ffmpeg; the Kitten venv's torchcodec decodes a wav | pass (git from `tools/git`, ffmpeg 8.1.3) | pass (ffmpeg from the tar.xz; **git was the system's**, so git was not tested as removed) |
 | Negative control: the same torchcodec decode without the platform's tools | fails (Could not load libtorchcodec_core4.dll) | fails (libtorchcodec_core4.so) |
 
+## Checksum refusals
+
+A wrong checksum of uv, ffmpeg and git with real downloads, a 404, a cut-off and a truncated download, each with a retry, and the pin of every archive against its server: [CHECKSUM-CHECKS.md](../../../../documentation/core-rewrite/CHECKSUM-CHECKS.md) (Linux, 2026-11-26). It found that `uv python find` warnings broke the ffmpeg unpack; fixed.
+
 ## Not done
 
 - Tools: not run on macOS; the Linux git pin was run on Ubuntu x64 only (real download, smoke test, a `git+https` install through `TestRealTools` and the Kitten install through the launcher API, with no git on PATH); **not run on arm64, on a host without libcurl or with glibc older than 2.34** (those are covered by fake archives whose programs fail to load), and not through the launcher page in a browser; an engine that calls the `ffmpeg` program and not only torchcodec was not run (`shutil.which` and `ffmpeg -version` through the venv's python were).

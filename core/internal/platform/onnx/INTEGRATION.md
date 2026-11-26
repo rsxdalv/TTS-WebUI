@@ -52,7 +52,7 @@ and what was run. **Windows x64 and CPU only.**
 
 - Linux, WSL, macOS: the pin refuses them ("Windows x64 only in this version"). Not run.
 - GPU runtimes (CUDA, DirectML): not built, not run.
-- A wrong checksum against the real downloads (only in the unit tests, with fake archives).
+- A wrong checksum against the real downloads: run on 2026-11-26 on Linux through a remapped pin, see [CHECKSUM-CHECKS.md](../../../../documentation/core-rewrite/CHECKSUM-CHECKS.md) (not run on Windows).
 - The Cancel button of the `/onnx` page (the same request abort was done with `curl`).
 - The Generate button was not tried with a speed value, and voices other than 0 were only run from the command line
   (sid 0, 3, 7, 8, 15, 99 gave clips).

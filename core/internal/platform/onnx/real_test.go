@@ -10,6 +10,7 @@ import (
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/dltest"
 )
 
 // TestRealInstallAndGenerate downloads the pinned runtime and the Kitten model
@@ -75,5 +76,30 @@ func TestRealInstallAndGenerate(t *testing.T) {
 	}
 	if !p.Remove(ctx, e, emit) || p.EntryStatus(ctx, e).Installed {
 		t.Fatal("remove failed")
+	}
+}
+
+// TestRealEveryPinMatchesItsDownload downloads the pinned runtime and every pinned
+// model (about 56 MB, streamed and hashed, nothing is stored) and compares what the
+// server serves with the pin and its size. Skipped unless ONNX_REAL_PINS is set.
+func TestRealEveryPinMatchesItsDownload(t *testing.T) {
+	if os.Getenv("ONNX_REAL_PINS") == "" {
+		t.Skip("ONNX_REAL_PINS is not set")
+	}
+	check := func(name string, a Archive) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got, n := dltest.RealSHA256(t, a.URL)
+			t.Logf("%s: %d bytes, sha256 %s", a.URL, n, got)
+			if got != a.SHA256 || (a.Size > 0 && n != a.Size) {
+				t.Errorf("pin %s (%d bytes), download %s (%d bytes)", a.SHA256, a.Size, got, n)
+			}
+		})
+	}
+	for key, a := range runtimes {
+		check("runtime/"+key, a)
+	}
+	for _, m := range Models() {
+		check(m.Package, m.Archive)
 	}
 }

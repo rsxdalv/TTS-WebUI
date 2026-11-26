@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/dltest"
 )
 
 // The opt-in real run: AUDIOCPP_REAL_ROOT is an empty scratch folder (never an
@@ -52,6 +53,33 @@ func TestRealWrongChecksumIsRefused(t *testing.T) {
 	for _, f := range []string{"bin", "audio.zip", "audio.zip.part", "platform.json"} {
 		if _, err := os.Stat(filepath.Join(p.Dir(), f)); err == nil {
 			t.Errorf("%s exists after a refused download", f)
+		}
+	}
+}
+
+// TestRealEveryPinMatchesItsDownload downloads both pinned zips and every model file
+// (about 290 MB, streamed and hashed, nothing is stored) and compares what the
+// server serves with the pin and its size. Skipped unless AUDIOCPP_REAL_PINS is set.
+func TestRealEveryPinMatchesItsDownload(t *testing.T) {
+	if os.Getenv("AUDIOCPP_REAL_PINS") == "" {
+		t.Skip("AUDIOCPP_REAL_PINS is not set")
+	}
+	check := func(name, url, want string, size int64) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got, n := dltest.RealSHA256(t, url)
+			t.Logf("%s: %d bytes, sha256 %s", url, n, got)
+			if got != want || (size > 0 && n != size) {
+				t.Errorf("pin %s (%d bytes), download %s (%d bytes)", want, size, got, n)
+			}
+		})
+	}
+	for key, a := range archives {
+		check(key, a.URL, a.SHA256, a.Size)
+	}
+	for _, m := range Models {
+		for _, f := range m.Files {
+			check(m.Package+"/"+f.Rel, f.URL, f.SHA256, f.Size)
 		}
 	}
 }

@@ -422,14 +422,17 @@ func (p *Platform) extractTarXZ(ctx context.Context, archive, dest string, strip
 	return nil
 }
 
-// pythonExe is the pinned Python uv downloaded.
+// pythonExe is the pinned Python uv downloaded. uv prints the path on stdout, but
+// the lines of stdout and stderr are merged and uv may warn first (for example that
+// UV_NATIVE_TLS is deprecated), so the first line is not the path: it is the last
+// line that is an absolute path of a file.
 func (p *Platform) pythonExe(ctx context.Context) (string, error) {
 	var out string
+	var seen []string
 	err := p.runCapture(ctx, func(l string) {
-		// uv's warnings share the stream (UV_NATIVE_TLS=true prints a deprecation line first):
-		// the answer is the line that is the path of a file that exists.
-		if l = strings.TrimSpace(l); out == "" && filepath.IsAbs(l) {
-			if st, err := os.Stat(l); err == nil && !st.IsDir() {
+		if l = strings.TrimSpace(l); l != "" {
+			seen = append(seen, l)
+			if st, err := os.Stat(l); err == nil && filepath.IsAbs(l) && !st.IsDir() {
 				out = l
 			}
 		}
@@ -438,7 +441,7 @@ func (p *Platform) pythonExe(ctx context.Context) (string, error) {
 		return "", err
 	}
 	if out == "" {
-		return "", errors.New("uv python find printed no path to a Python")
+		return "", fmt.Errorf("uv python find printed no path to a Python (it printed: %s)", strings.Join(seen, " | "))
 	}
 	return out, nil
 }

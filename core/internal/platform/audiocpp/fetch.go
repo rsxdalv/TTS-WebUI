@@ -64,7 +64,7 @@ func download(ctx context.Context, client *http.Client, url, wantSHA, dest strin
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			return rerr
+			return fmt.Errorf("download %s: the transfer broke after %s: %w", url, received(done, resp.ContentLength), rerr)
 		}
 	}
 	if err := f.Close(); err != nil {
@@ -76,6 +76,28 @@ func download(ctx context.Context, client *http.Client, url, wantSHA, dest strin
 		return fmt.Errorf("checksum mismatch for %s: got %s, want %s", url, got, wantSHA)
 	}
 	return os.Rename(part, dest)
+}
+
+// received says how far a broken download got, for the message ("120 of 300 bytes").
+func received(done, total int64) string {
+	if total > 0 {
+		return fmt.Sprintf("%d of %d bytes", done, total)
+	}
+	return fmt.Sprintf("%d bytes", done)
+}
+
+// fileMatches reports whether the file at path has the sha256 want.
+func fileMatches(path, want string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return false
+	}
+	return strings.EqualFold(hex.EncodeToString(h.Sum(nil)), want)
 }
 
 // extractZip unpacks a zip into dest. A member that would land outside dest, or

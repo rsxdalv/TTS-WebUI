@@ -38,9 +38,10 @@ func (p *Platform) modelFor(pkg string) (Model, bool) {
 }
 
 // Create downloads a model's files, each checked against its sha256, then writes
-// model.json. Files that are already there with the right size are kept (a file
-// gets its final name only after its checksum matched), so a cancelled install
-// continues where it stopped.
+// model.json. Files that are already there are kept when their checksum matches (a
+// file gets its final name only after its checksum matched), so a cancelled install
+// continues where it stopped; a file of the right size with another content is
+// downloaded again.
 func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.Emit) bool {
 	fail := func(format string, a ...any) bool { emit("Failed: " + fmt.Sprintf(format, a...)); return false }
 	m, ok := p.modelFor(e.Package)
@@ -58,8 +59,12 @@ func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.E
 	for i, f := range m.Files {
 		dest := filepath.Join(dir, filepath.FromSlash(f.Rel))
 		if st, err := os.Stat(dest); err == nil && st.Size() == f.Size {
-			emit(fmt.Sprintf("%s: already there (file %d of %d)", f.Rel, i+1, len(m.Files)))
-			continue
+			if fileMatches(dest, f.SHA256) {
+				emit(fmt.Sprintf("%s: already there, checksum matches (file %d of %d)", f.Rel, i+1, len(m.Files)))
+				continue
+			}
+			// The right size is not the right file: a damaged copy is fetched again.
+			emit(fmt.Sprintf("%s: the file there does not match its checksum, downloading it again", f.Rel))
 		}
 		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 			return fail("%v", err)

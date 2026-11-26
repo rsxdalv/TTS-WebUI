@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/cloud/minimax"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/audiocpp"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/detect"
@@ -223,6 +224,11 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 	// The openai platform: named remote endpoints, keys kept by Go (see platform/openai).
 	mux.Handle(openai.Prefix, openai.NewHandler(openai.NewClient(openai.Options{
 		Store: openai.NewStore(root.Dir()), Root: root.Dir(),
+		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
+	}), token))
+	// MiniMax Cloud TTS: one HTTPS call, the key kept by Go (see cloud/minimax).
+	mux.Handle(minimax.Prefix, minimax.NewHandler(minimax.NewClient(minimax.Options{
+		Store: minimax.NewStore(root.Dir(), nil), Root: root.Dir(),
 		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
 	}), token))
 	// The audiocpp platform: the audio.cpp server and its models (see platform/audiocpp).

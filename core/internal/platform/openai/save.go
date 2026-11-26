@@ -47,6 +47,11 @@ type meta struct {
 	// Label replaces "openai_<endpoint>" in the folder name when another platform
 	// saves a clip (SaveClip).
 	Label string
+	// Version replaces the metadata's "_version" ("0.0.1") when set.
+	Version string
+	// Fields, when set, are the request fields between "text" and "outputs" in
+	// the metadata, instead of endpoint, model, voice, speed and response_format.
+	Fields orderedJSON
 }
 
 // saveGeneration writes the clip, its metadata and its waveform into
@@ -79,14 +84,24 @@ func saveGeneration(root string, now time.Time, m meta, wavBytes []byte, w wavIn
 	sum := sha256.Sum256(w.data)
 	// The fields, in the order of the legacy file: version, hash version, the
 	// request, outputs, date, hash (decorator_save_metadata._add_metadata).
-	doc := orderedJSON{
-		{"_version", "0.0.1"}, {"_hash_version", "0.0.2"},
-		{"text", m.Text}, {"endpoint", m.Endpoint}, {"model", m.Model}, {"voice", m.Voice},
-		{"speed", m.Speed}, {"response_format", m.ResponseFormat},
-		{"outputs", nil},
-		{"date", now.Format("2006-01-02 15:04:05.000000")},
-		{"hash", hex.EncodeToString(sum[:])},
+	version := "0.0.1"
+	if m.Version != "" {
+		version = m.Version
 	}
+	fields := m.Fields
+	if fields == nil {
+		fields = orderedJSON{
+			{"endpoint", m.Endpoint}, {"model", m.Model}, {"voice", m.Voice},
+			{"speed", m.Speed}, {"response_format", m.ResponseFormat},
+		}
+	}
+	doc := orderedJSON{{"_version", version}, {"_hash_version", "0.0.2"}, {"text", m.Text}}
+	doc = append(doc, fields...)
+	doc = append(doc,
+		kv{"outputs", nil},
+		kv{"date", now.Format("2006-01-02 15:04:05.000000")},
+		kv{"hash", hex.EncodeToString(sum[:])},
+	)
 	metaBytes, err := doc.marshal()
 	if err != nil {
 		return saved{}, err
@@ -110,7 +125,9 @@ func saveGeneration(root string, now time.Time, m meta, wavBytes []byte, w wavIn
 
 // orderedJSON is an object that keeps its field order, indented by two spaces
 // like json.dump(indent=2) in the legacy decorator.
-type orderedJSON []struct {
+type orderedJSON []kv
+
+type kv = struct {
 	K string
 	V any
 }

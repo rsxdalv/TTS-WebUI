@@ -72,19 +72,23 @@ export function CoreApp() {
         <main className={`${page === "extensions" ? "max-w-4xl" : "max-w-2xl"} mx-auto px-4 py-8`}>
           <Notice />
           {page === "extensions" && <ExtensionsView />}
-          {page === "setup" && error && (
-            <div className="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm">
-              Cannot reach Go core: {error}. Is the binary running?
-            </div>
-          )}
-          {page === "setup" && statuses === null && !error && (
-            <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Detecting installation state…
-            </p>
-          )}
-          {page === "setup" && statuses !== null && (
-            <StepList statuses={statuses} onRefresh={fetchStatus} />
-          )}
+          {/* Setup stays mounted while Extensions shows, so the Launch WebUI
+              state (running processes, diagnostic output) survives the switch. */}
+          <div hidden={page !== "setup"}>
+            {error && (
+              <div className="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm">
+                Cannot reach Go core: {error}. Is the binary running?
+              </div>
+            )}
+            {statuses === null && !error && (
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
+                Detecting installation state…
+              </p>
+            )}
+            {statuses !== null && (
+              <StepList statuses={statuses} onRefresh={fetchStatus} />
+            )}
+          </div>
         </main>
       </div>
     </DarkThemeProvider>

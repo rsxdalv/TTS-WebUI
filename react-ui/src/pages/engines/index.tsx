@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Template } from "../../components/Template";
 import { errorText, goGetJson } from "../../functions/goData";
+import { LauncherExtensionsLink } from "../../components/LauncherExtensionsLink";
 
 type Engine = { package: string; name: string; description: string };
 
@@ -25,8 +26,8 @@ const EnginesPage = () => {
         {error && <div className="text-red-600">{error}</div>}
         {engines && engines.length === 0 && (
           <p>
-            No engine is installed. Install one from the Extensions page of the
-            launcher (port 7700).
+            No engine is installed. Install one from the{" "}
+            <LauncherExtensionsLink />.
           </p>
         )}
         <ul className="flex flex-col gap-2">

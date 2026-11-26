@@ -102,7 +102,7 @@ func (g *gradioRoute) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	call := &gradioCall{route: route, ctx: context.WithoutCancel(r.Context())}
+	call := &gradioCall{route: route, ctx: context.WithoutCancel(r.Context()), selfHost: r.Host}
 	result, err := fn(call, parsed)
 	switch {
 	case err == nil:
@@ -328,6 +328,9 @@ func sendNextError(w http.ResponseWriter, code int, message string) {
 type gradioCall struct {
 	route *gradioRoute
 	ctx   context.Context
+	// selfHost is the Host of the request: the origin the UI was served from.
+	// getFile may fetch it (see gradio_fetch_guard.go).
+	selfHost string
 }
 
 func (c *gradioCall) connect() (*gradioClient, error) {
@@ -511,7 +514,7 @@ func (c *gradioCall) readFromURL(raw string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := gradioHTTP.Do(req)
+	resp, err := fileFetchClient(c.selfHost, c.route.backend).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("fetch failed: %w", err)
 	}

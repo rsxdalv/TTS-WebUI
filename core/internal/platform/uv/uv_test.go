@@ -74,6 +74,14 @@ func fakeUV(args []string) int {
 			os.Stderr.WriteString("error: no matching distribution\n")
 			return 1
 		}
+		if len(args) > 1 && args[1] == "compile" { // the pins of the prefetch
+			for i, a := range args {
+				if a == "-o" && i+1 < len(args) {
+					os.WriteFile(args[i+1], []byte("numpy==2.0.0\ntorch==2.14.1\nnvidia-cublas-cu12==12.4\nscipy==1.15.3\n"), 0o644)
+				}
+			}
+			return 0
+		}
 		os.Stdout.WriteString("Installed packages\n")
 	}
 	return 0

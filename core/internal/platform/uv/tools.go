@@ -92,19 +92,35 @@ func (p *Platform) ToolsInstalled() []string {
 // said once, and a pinned one that fails stops the install: the engine would fail
 // later with a worse message. It can be run again after a cancel.
 func (p *Platform) installTools(ctx context.Context, emit platform.Emit) error {
+	emit = lockedEmit(emit)
 	fetched := map[string]bool{}
+	var tasks []func(context.Context) error
 	for _, t := range p.pinnedTools() {
 		fetched[t.Name] = true
 		if p.toolThere(t) {
 			emit(fmt.Sprintf("%s %s is already there", t.Name, t.Version))
+			report(ctx, t.Name, platform.StepSkipped, "")
 			continue
 		}
 		if t.OnlyIfMissing && t.Name == "git" && p.gitAvailable() {
 			emit("git is on this machine: the platform's own is not fetched")
+			report(ctx, t.Name, platform.StepSkipped, "git is on this machine")
 			continue
 		}
-		if err := p.fetchTool(ctx, t, emit); err != nil {
-			return fmt.Errorf("%s: %w", t.Name, err)
+		// The tools do not depend on each other: they are fetched together.
+		tasks = append(tasks, func(ctx context.Context) error {
+			report(ctx, t.Name, platform.StepRunning, "downloading")
+			if err := p.fetchTool(ctx, t, emit); err != nil {
+				report(ctx, t.Name, platform.StepFailed, err.Error())
+				return fmt.Errorf("%s: %w", t.Name, err)
+			}
+			report(ctx, t.Name, platform.StepDone, "checksum matches")
+			return nil
+		})
+	}
+	if len(tasks) > 0 {
+		if err := runParallel(ctx, tasks...); err != nil {
+			return err
 		}
 	}
 	if p.tools == nil && p.fetchesPinned() {
@@ -130,7 +146,9 @@ func (p *Platform) fetchTool(ctx context.Context, t Tool, emit platform.Emit) er
 	arch := filepath.Join(p.ToolsDir(), t.Name+"-archive"+ext)
 	emit(fmt.Sprintf("Downloading %s %s from %s", t.Name, t.Version, t.Archive.URL))
 	last := -1
+	progress := downloadProgress(ctx, t.Name)
 	err := download(ctx, p.client, t.Archive.URL, t.Archive.SHA256, arch, func(done, total int64) {
+		progress(done, total)
 		if pc := int(done * 100 / total); pc != last {
 			last = pc
 			emit(fmt.Sprintf("%s: %d%% of %d MB", t.Name, pc, total>>20))
@@ -152,6 +170,7 @@ func (p *Platform) fetchTool(ctx context.Context, t Tool, emit platform.Emit) er
 		return err
 	}
 	emit(fmt.Sprintf("Unpacking %s into %s", t.Name, dir))
+	report(ctx, t.Name, platform.StepRunning, "unpacking")
 	switch ext {
 	case ".zip":
 		err = extractZip(arch, tmp, t.Strip)

@@ -106,6 +106,49 @@ not looked at). Found, not fixed: `pythonExe` takes the first output line of `uv
 `UV_NATIVE_TLS` is set (as in this container) is taken as the Python path and a `.tar.xz` unpack (ffmpeg) fails; the real runs here
 unset that variable.
 
+## Install steps and parallel fetches (LAB-58, 2026-11-27)
+
+An install is a text stream, and a long uv step (torch is 2.4 GB) printed nothing for ten minutes, because uv draws
+progress bars only on a terminal. Now the stream carries the steps too.
+
+- `platform.Reporter` (`platform/events.go`) travels in the context: `Plan` announces the steps, `Step` changes one
+  (state, bytes or packages done/total, a detail line). With no Reporter every call does nothing.
+- The install answer of `/api/ext/op/install` is NDJSON: `{"line"}` as before, plus `{"plan": [{id, label}]}` first and
+  `{"step": {id, state, done, total, unit, estimated, detail}}` as steps change. A client that only reads `line` and
+  `done` is not affected. Ids: `uv`, `python`, `git`, `ffmpeg` for the platform; `<package>:venv`, `:torch`, `:wheels`,
+  `:requirements` for a venv; the package name for any other install.
+- Progress: the platform's own downloads report bytes. uv's torch step has no numbers: the cache folder's growth is
+  measured (the folders with a top-level `torch/`, in `archive-v0/` and in the `.tmpXXXX` folder uv unpacks into),
+  against a guess of the unpacked size (`torchUnpackedBytes`: the row's `ApproxMB` times 4/3), so the bar says "about".
+  uv writes its biggest files (torch_cuda.dll, 1 GB) in one go at the end, so the bar moves in jumps. The requirements
+  step counts uv's own `Downloading` / `Downloaded` lines (packages).
+- The Extensions page shows them in a dialog (`InstallProgress`); `core/ui/mock-install.html` plays a made-up install
+  for looking at it with `npx vite` (no launcher needed).
+
+Parallel (`parallel.go`, `prefetch.go`):
+
+- `Install` runs the Python install and the tool downloads (git, ffmpeg) at the same time; the tools also run beside
+  each other. The first error cancels the rest. `emit` is wrapped (`lockedEmit`) because callers keep a log slice.
+- `Create` fetches the requirements' wheels into the cache while torch downloads (`uv pip compile`, the torch family cut
+  out of the pins, `uv pip install --no-deps --target <scratch>`), and the requirements step then finds them there.
+  Failure is a log line, never a failed install. `TTS_PREFETCH_WHEELS=0` turns it off; a stand-in uv (tests) does not
+  prefetch unless `Options.Prefetch`.
+
+Measured on the Windows 10 machine (CPU row, then the cu126 row), real downloads:
+
+| | before (serial) | now |
+|---|---|---|
+| step 1: Python + git + ffmpeg (CPU row run) | 46 s | 52 s (CPU row), 38 s (cu126 run) |
+| requirements step | 1 m 54 s | 25 s (prefetched, 157 wheels in 2 m 18 s) |
+| torch, CPU row (530 MB) | 1 m 07 s | 2 m 34 s, while the prefetch ran |
+| whole install, CPU row | 3 m 51 s | 3 m 56 s |
+
+The CPU row gains nothing: the downloads share the link, so what the prefetch saves in the requirements step it costs
+torch. For the cu126 row the whole install took 15 m 57 s (torch 14 m 46 s, the prefetch done after 2 m 32 s); the
+serial install earlier the same day took torch 9 m 22 s, but the link was slower in this run (the rate after the
+prefetch had ended was 4.5 MB/s against 7.3 MB/s), so **no A/B was run at the same time and the gain of the prefetch on a
+big torch is not shown**. `TTS_PREFETCH_WHEELS=0` is there to compare.
+
 ## Verification (2026-11-24)
 
 | Line | Windows | Linux (WSL) |

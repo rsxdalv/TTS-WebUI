@@ -2,6 +2,7 @@
 // /api/ext/*, which the launcher serves from the same Go code the app uses.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { client } from "./client";
+import { PlatformRows } from "./PlatformRows";
 import { InstallProgress } from "./InstallDialog";
 import { applyStepMessage, type StepInfo, type StepMessage } from "./install-steps";
 
@@ -300,6 +301,7 @@ export function ExtensionsView() {
         placeholder="Filter extensions"
         className="px-3 py-2 text-sm rounded border border-gray-300 dark:border-gray-700 bg-transparent"
       />
+      <PlatformRows installing={!!busy} onChanged={load} />
       {groups.map(([group, list]) => (
         <section key={group} className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">

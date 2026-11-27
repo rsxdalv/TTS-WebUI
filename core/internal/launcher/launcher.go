@@ -162,6 +162,7 @@ func (l *Launcher) Register(srv *server.Server) {
 
 	// Extensions page: list, install, uninstall, enable and disable, with the app stopped.
 	l.registerExtensions(srv)
+	l.registerStorage(srv)
 
 	// Diagnostic: runs installer_scripts/tools/diagnostic.{bat,sh}.
 	srv.Handle("POST /api/app/diagnostic", l.handleAppDiagnostic())

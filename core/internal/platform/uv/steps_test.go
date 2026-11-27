@@ -2,6 +2,7 @@ package uv
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -137,7 +138,7 @@ func TestCreatePlanIDs(t *testing.T) {
 	for _, it := range items {
 		ids = append(ids, it.ID)
 	}
-	if strings.Join(ids, ",") != "pkg:venv,pkg:torch,pkg:requirements" {
+	if strings.Join(ids, ",") != "pkg:venv,pkg:torch,pkg:wheels,pkg:requirements" {
 		t.Errorf("ids = %v", ids)
 	}
 }
@@ -173,11 +174,18 @@ func TestUVLinesCountsPackages(t *testing.T) {
 
 func TestWatchCacheReportsTheGrowthOfTheCache(t *testing.T) {
 	cache := t.TempDir()
-	dir := filepath.Join(cache, "archive-v0", "abc")
+	dir := filepath.Join(cache, "archive-v0", "abc", "torch")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// Something already in the cache is not part of this install.
+	// Another wheel's folder is not torch's, and something already in the
+	// cache is not part of this install.
+	if err := os.MkdirAll(filepath.Join(cache, "archive-v0", "other", "numpy"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cache, "archive-v0", "other", "numpy", "x.bin"), make([]byte, 9000), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(dir, "old.bin"), make([]byte, 5000), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -211,5 +219,103 @@ func TestDownloadProgressReportsBytes(t *testing.T) {
 	downloadProgress(platform.WithReporter(context.Background(), rec), "git")(5<<20, 38<<20)
 	if len(rec.steps) != 1 || rec.steps[0] != (platform.StepEvent{ID: "git", State: platform.StepRunning, Done: 5 << 20, Total: 38 << 20}) {
 		t.Errorf("events = %+v", rec.steps)
+	}
+}
+
+func TestRunParallelRunsTogetherAndTheFirstErrorCancelsTheRest(t *testing.T) {
+	started := make(chan struct{}, 2)
+	var wasCancelled bool
+	err := runParallel(context.Background(),
+		func(ctx context.Context) error {
+			started <- struct{}{}
+			<-ctx.Done() // waits for the other task's failure
+			wasCancelled = true
+			return ctx.Err()
+		},
+		func(ctx context.Context) error {
+			started <- struct{}{}
+			// Both tasks are running at once: the first has started too.
+			for i := 0; i < 2; i++ {
+				select {
+				case <-started:
+				case <-time.After(5 * time.Second):
+					return errors.New("the other task did not start")
+				}
+			}
+			return errors.New("boom")
+		},
+	)
+	if err == nil || err.Error() != "boom" {
+		t.Fatalf("err = %v, want the first error", err)
+	}
+	if !wasCancelled {
+		t.Error("the other task was not cancelled")
+	}
+}
+
+func TestRequirementLines(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "requirements.txt"), []byte("numpy\n\ngradio==5 # note\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	lines, ok := requirementLines(root, []string{"pip", "-r", "requirements.txt", "scipy"})
+	if !ok || strings.Join(lines, "|") != "pip|numpy||gradio==5 # note|scipy" {
+		t.Errorf("lines = %q, ok = %v", lines, ok)
+	}
+	if _, ok := requirementLines(root, []string{"--extra-index-url", "https://x", "numpy"}); ok {
+		t.Error("an option must make the set unhandled")
+	}
+	if _, ok := requirementLines(root, []string{"-r", "missing.txt"}); ok {
+		t.Error("a missing file must make the set unhandled")
+	}
+}
+
+func TestPrefetchPinsLeaveOutTheTorchFamily(t *testing.T) {
+	got := prefetchPins("# header\nnumpy==2.0\ntorch==2.14.1\ntorchaudio==2.1\ntorchcodec==0.1\nnvidia-cublas-cu12==12\ntriton==3\nxformers==0.0.35\ntorchmetrics==1.0\nscipy==1.2\n")
+	if strings.Join(got, ",") != "numpy==2.0,torchmetrics==1.0,scipy==1.2" {
+		t.Errorf("pins = %v", got)
+	}
+}
+
+func TestCreatePrefetchesTheWheelsBesideTorchAndTheRequirementsStillRun(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("the NVIDIA row does not exist on macOS")
+	}
+	f := installed(t, gpu.NVIDIA)
+	f.p.prefetch = true
+	rec := &recorder{}
+	ctx := platform.WithReporter(context.Background(), rec)
+	e := platform.Entry{Package: "tts_webui_extension.bark", Name: "Bark", Own: true, Requirements: []string{"numpy", "scipy"}}
+	if !f.p.Create(ctx, e, f.emit) {
+		t.Fatalf("create failed:\n%s", strings.Join(*f.out, "\n"))
+	}
+	calls := strings.Join(f.calls(), "\n")
+	for _, want := range []string{"pip compile ", "--no-deps --target "} {
+		if !strings.Contains(calls, want) {
+			t.Errorf("uv was not asked for %q:\n%s", want, calls)
+		}
+	}
+	last, _ := rec.states()
+	if last[e.Package+":wheels"] != platform.StepDone || last[e.Package+":requirements"] != platform.StepDone {
+		t.Errorf("states = %v", last)
+	}
+	// The prefetch left nothing behind in the cache folder.
+	if m, _ := filepath.Glob(filepath.Join(f.p.CacheDir(), ".prefetch-*")); len(m) != 0 {
+		t.Errorf("left %v", m)
+	}
+}
+
+func TestCreateWithoutPrefetchSaysSo(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("the NVIDIA row does not exist on macOS")
+	}
+	f := installed(t, gpu.NVIDIA)
+	rec := &recorder{}
+	e := platform.Entry{Package: "tts_webui_extension.bark", Name: "Bark", Own: true, Requirements: []string{"numpy"}}
+	if !f.p.Create(platform.WithReporter(context.Background(), rec), e, f.emit) {
+		t.Fatalf("create failed:\n%s", strings.Join(*f.out, "\n"))
+	}
+	if last, _ := rec.states(); last[e.Package+":wheels"] != platform.StepSkipped {
+		t.Errorf("wheels: %v", last)
 	}
 }

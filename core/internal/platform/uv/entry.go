@@ -66,6 +66,7 @@ func (p *Platform) Check(_ context.Context, e platform.Entry, emit platform.Emit
 // the row, torchcodec, xformers when the row has it, then the requirements.
 // Cancelling stops uv; running it again reuses the cache and finishes.
 func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.Emit) bool {
+	emit = lockedEmit(emit) // the prefetch below talks from its own goroutine
 	emit(fmt.Sprintf("Setting up virtual environment and installing dependencies for %s...", e.Label()))
 	fail := func(format string, a ...any) bool {
 		emit(fmt.Sprintf(format, a...))
@@ -153,6 +154,18 @@ func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.E
 	// The plan is the caller's; a caller that made none is shown the steps as
 	// they come (the page adds an unknown id).
 	platform.Step(ctx, platform.StepEvent{ID: id("torch"), Label: fmt.Sprintf("Install torch %s (%s)", torchrows.TorchVersion, row.Name)})
+	// While torch downloads, the requirements' wheels are fetched into the cache
+	// (prefetch.go); the requirements step waits for that to end.
+	wheels := id("wheels")
+	var prefetched chan struct{}
+	stopPrefetch := func() {}
+	endPrefetch := func() {
+		if prefetched != nil {
+			<-prefetched
+			prefetched = nil
+		}
+	}
+	defer func() { stopPrefetch(); endPrefetch() }()
 	cur := ""
 	closeGroup := func(state, detail string) {
 		if cur != "" {
@@ -169,6 +182,23 @@ func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.E
 				"requirements": "resolving",
 			}[cur]
 			report(ctx, id(cur), platform.StepRunning, detail)
+			switch cur {
+			case "torch":
+				if !p.prefetchEnabled() {
+					report(ctx, wheels, platform.StepSkipped, "off")
+					break
+				}
+				pctx, cancel := context.WithCancel(ctx)
+				stopPrefetch = cancel
+				prefetched = make(chan struct{})
+				toks := append(append([]string{}, e.Requirements...), strings.Fields(compatibility)...)
+				go func(done chan struct{}) {
+					defer close(done)
+					p.prefetchWheels(pctx, wheels, e.Package, toks, pyExe, emit)
+				}(prefetched)
+			case "requirements":
+				endPrefetch() // the wheels are in the cache before they are asked for
+			}
 		}
 		// The requirements are many small packages, so uv's own lines give their
 		// progress; torch is one big wheel, measured from the cache folder below.

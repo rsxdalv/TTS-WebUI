@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -40,6 +41,7 @@ func CreatePlan(pkg, label string) []platform.PlanItem {
 	return []platform.PlanItem{
 		{ID: pkg + ":venv", Label: "Create the " + label + " environment"},
 		{ID: pkg + ":torch", Label: "Install torch"},
+		{ID: pkg + ":wheels", Label: "Fetch the " + label + " wheels (alongside torch)"},
 		{ID: pkg + ":requirements", Label: "Install the " + label + " requirements"},
 	}
 }
@@ -110,20 +112,33 @@ func (u *uvLines) observe(line string) {
 	platform.Step(u.ctx, ev)
 }
 
-// cacheBytes is the size of what uv has unpacked into its cache so far. uv
-// unpacks a wheel while it downloads it, so the folder's growth follows the
-// download of a wheel it prints no progress for (torch is 2.4 GB of it).
+// cacheBytes is the size of the torch wheel uv has unpacked into its cache so
+// far: the archive folders that have a top-level torch/ in them. uv unpacks a
+// wheel while it downloads it, so the growth follows the download of a wheel it
+// prints no progress for (torch is 2.4 GB of it). Other wheels (the prefetch
+// fills the cache with them at the same time) are not counted.
 func cacheBytes(cacheDir string) int64 {
+	root := filepath.Join(cacheDir, "archive-v0")
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return 0
+	}
 	var n int64
-	_ = filepath.WalkDir(filepath.Join(cacheDir, "archive-v0"), func(_ string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+	for _, e := range entries {
+		dir := filepath.Join(root, e.Name())
+		if fi, err := os.Stat(filepath.Join(dir, "torch")); err != nil || !fi.IsDir() {
+			continue
+		}
+		_ = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
+			}
+			if info, err := d.Info(); err == nil {
+				n += info.Size()
+			}
 			return nil
-		}
-		if info, err := d.Info(); err == nil {
-			n += info.Size()
-		}
-		return nil
-	})
+		})
+	}
 	return n
 }
 

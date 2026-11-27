@@ -92,7 +92,9 @@ func (p *Platform) ToolsInstalled() []string {
 // said once, and a pinned one that fails stops the install: the engine would fail
 // later with a worse message. It can be run again after a cancel.
 func (p *Platform) installTools(ctx context.Context, emit platform.Emit) error {
+	emit = lockedEmit(emit)
 	fetched := map[string]bool{}
+	var tasks []func(context.Context) error
 	for _, t := range p.pinnedTools() {
 		fetched[t.Name] = true
 		if p.toolThere(t) {
@@ -105,12 +107,21 @@ func (p *Platform) installTools(ctx context.Context, emit platform.Emit) error {
 			report(ctx, t.Name, platform.StepSkipped, "git is on this machine")
 			continue
 		}
-		report(ctx, t.Name, platform.StepRunning, "downloading")
-		if err := p.fetchTool(ctx, t, emit); err != nil {
-			report(ctx, t.Name, platform.StepFailed, err.Error())
-			return fmt.Errorf("%s: %w", t.Name, err)
+		// The tools do not depend on each other: they are fetched together.
+		tasks = append(tasks, func(ctx context.Context) error {
+			report(ctx, t.Name, platform.StepRunning, "downloading")
+			if err := p.fetchTool(ctx, t, emit); err != nil {
+				report(ctx, t.Name, platform.StepFailed, err.Error())
+				return fmt.Errorf("%s: %w", t.Name, err)
+			}
+			report(ctx, t.Name, platform.StepDone, "checksum matches")
+			return nil
+		})
+	}
+	if len(tasks) > 0 {
+		if err := runParallel(ctx, tasks...); err != nil {
+			return err
 		}
-		report(ctx, t.Name, platform.StepDone, "checksum matches")
 	}
 	if p.tools == nil && p.fetchesPinned() {
 		for _, n := range ToolNames {

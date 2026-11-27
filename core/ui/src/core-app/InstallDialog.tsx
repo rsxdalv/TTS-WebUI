@@ -45,8 +45,10 @@ function Icon({ state }: { state: StepInfo["state"] }) {
 }
 
 function Bar({ s }: { s: StepInfo }) {
-  const known = !!s.total && s.total > 0 && s.done !== undefined;
-  const pct = known ? Math.min(100, Math.round((s.done! * 100) / s.total!)) : 0;
+  // The launcher leaves out a done of 0, so a total alone is "0 of total".
+  const known = !!s.total && s.total > 0;
+  const done = s.done ?? 0;
+  const pct = known ? Math.min(100, Math.round((done * 100) / s.total!)) : 0;
   return (
     <div className="mt-1 ml-7 flex items-center gap-2">
       <div
@@ -68,8 +70,8 @@ function Bar({ s }: { s: StepInfo }) {
       {known && (
         <span className="w-52 text-right text-xs tabular-nums text-gray-600 dark:text-gray-400">
           {s.unit
-            ? `${s.done} of ${s.total} ${s.unit}`
-            : `${s.estimated ? "about " : ""}${pct}% · ${humanBytes(s.done!)} of ${s.estimated ? "about " : ""}${humanBytes(s.total!)}`}
+            ? `${done} of ${s.total} ${s.unit}`
+            : `${s.estimated ? "about " : ""}${pct}% · ${humanBytes(done)} of ${s.estimated ? "about " : ""}${humanBytes(s.total!)}`}
         </span>
       )}
     </div>

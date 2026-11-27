@@ -47,6 +47,9 @@ type Options struct {
 	// Prefix replaces the pinned uv program (and its arguments) with a stand-in:
 	// tests point it at a fake. The platform then downloads nothing.
 	Prefix []string
+	// Prefetch turns the prefetch of the requirements' wheels on with a Prefix
+	// stand-in too (it is on by default for the real uv).
+	Prefetch bool
 	// GOOS and GOARCH default to the running machine.
 	GOOS, GOARCH string
 	// SkipPathCheck turns off the Windows path-length check of a new venv (tests
@@ -64,6 +67,7 @@ type Platform struct {
 	env           []string
 	archive       *Archive
 	prefix        []string
+	prefetch      bool // prefetch the requirements' wheels even with a stand-in uv (tests)
 	client        *http.Client
 	goos, goarch  string
 	skipPathCheck bool
@@ -74,7 +78,7 @@ var _ platform.Platform = (*Platform)(nil)
 
 // New returns the platform for one install folder.
 func New(o Options) *Platform {
-	p := &Platform{root: o.Root, gpu: o.GPU, env: append([]string(nil), o.Env...), archive: o.Archive, prefix: o.Prefix,
+	p := &Platform{root: o.Root, gpu: o.GPU, env: append([]string(nil), o.Env...), archive: o.Archive, prefix: o.Prefix, prefetch: o.Prefetch,
 		client: o.Client, goos: o.GOOS, goarch: o.GOARCH, skipPathCheck: o.SkipPathCheck, tools: o.Tools}
 	if p.goos == "" {
 		p.goos = runtime.GOOS
@@ -191,21 +195,30 @@ func (p *Platform) Install(ctx context.Context, emit platform.Emit) error {
 	if err := p.fetchUV(ctx, emit); err != nil {
 		return err
 	}
-	emit(fmt.Sprintf("Installing Python %s into %s (uv downloads it)", PythonVersion, p.PythonDir()))
 	if err := os.MkdirAll(p.PythonDir(), 0o755); err != nil {
 		return err
 	}
-	report(ctx, StepPython, platform.StepRunning, "uv downloads it (about 35 MB)")
-	if err := p.run(ctx, emit, "python", "install", PythonVersion, "--no-bin", "--no-registry"); err != nil {
-		report(ctx, StepPython, platform.StepFailed, err.Error())
-		return fmt.Errorf("uv python install %s: %w", PythonVersion, err)
-	}
-	report(ctx, StepPython, platform.StepDone, "")
 	if err := os.MkdirAll(p.CacheDir(), 0o755); err != nil {
 		return err
 	}
+	emit = lockedEmit(emit)
 	p.checkSameVolume(emit)
-	if err := p.installTools(ctx, emit); err != nil {
+	// Python (which uv downloads) and the tools (git, ffmpeg) have nothing to do
+	// with each other: they are fetched at the same time.
+	err := runParallel(ctx,
+		func(ctx context.Context) error {
+			emit(fmt.Sprintf("Installing Python %s into %s (uv downloads it)", PythonVersion, p.PythonDir()))
+			report(ctx, StepPython, platform.StepRunning, "uv downloads it (about 35 MB)")
+			if err := p.run(ctx, emit, "python", "install", PythonVersion, "--no-bin", "--no-registry"); err != nil {
+				report(ctx, StepPython, platform.StepFailed, err.Error())
+				return fmt.Errorf("uv python install %s: %w", PythonVersion, err)
+			}
+			report(ctx, StepPython, platform.StepDone, "")
+			return nil
+		},
+		func(ctx context.Context) error { return p.installTools(ctx, emit) },
+	)
+	if err != nil {
 		return err
 	}
 	st := State{Name: Name, UVVersion: Version, Python: PythonVersion, GPU: string(p.gpu),

@@ -4,7 +4,7 @@ A single exe that sets up and runs TTS WebUI: it serves a local setup page,
 runs the install steps (download, pre-flight, micromamba, GPU choice, install),
 then starts and stops the app.
 
-**Rule: pure Go, `CGO_ENABLED=0`, no third-party dependencies.**
+**Rule: pure Go, `CGO_ENABLED=0`. Third-party dependencies need a recorded decision** (so far: `golang.org/x/sys`, and the official MCP SDK, D22).
 
 ## Run
 
@@ -12,7 +12,28 @@ then starts and stops the app.
 tts-webui launch            # serves http://127.0.0.1:7700, uses the exe's folder as the install root
 tts-webui launch --root D:\tts --port 7700 --no-browser
 tts-webui --version
+tts-webui mcp               # MCP server on stdio, see below
 ```
+
+## MCP server
+
+`tts-webui mcp` lets an MCP client (Claude Desktop, an IDE, an agent) list models and generate speech. It calls the
+OpenAI-compatible API, so start that extension first (default `http://127.0.0.1:7778/v1`; change it with
+`--backend URL` or `TTS_MCP_BACKEND`).
+
+stdio, for a client that starts the server itself:
+
+```json
+{ "mcpServers": { "tts-webui": { "command": "/path/to/tts-webui", "args": ["mcp"] } } }
+```
+
+HTTP, opt-in, loopback only, bearer token required (at least 16 characters):
+
+```sh
+TTS_MCP_TOKEN=<your secret> tts-webui mcp --http 127.0.0.1:7779
+```
+
+The client then connects to `http://127.0.0.1:7779/` with `Authorization: Bearer <your secret>`.
 
 ## Build and test (from `core/`)
 
@@ -25,7 +46,8 @@ CGO_ENABLED=0 go build -trimpath -o bin/tts-webui ./cmd/tts-webui
 
 ## Layout
 
-- `cmd/tts-webui/` - entry point (the exe only launches; no other commands)
+- `cmd/tts-webui/` - entry point (`launch`, the default, and `mcp`)
+- `internal/mcp/` - the MCP server: two tools over the OpenAI-compatible API ([spec](../documentation/core-rewrite/MCP.md))
 - `internal/launcher/` - the setup steps and the app supervisor
 - `react_ui_backend/` - the Go server for the React UI on port 3000: serves the static export (`react-ui/out`, built by Vite with `npm run build:static`) and answers the API routes (`TTS_GO_ROUTES` picks which; `TTS_GO_PROXY=0` is an error now that Next.js is gone)
 - `installer_scripts/` - Go ports of `installer_scripts/*`

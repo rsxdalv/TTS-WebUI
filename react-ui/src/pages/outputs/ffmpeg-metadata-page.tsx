@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Template } from "../../components/Template";
 import { AudioInput } from "../../components/AudioComponents";
 import {
@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { BarkMetadataDisplay } from "../../components/BarkMetadataDisplay";
-import { goGetJson } from "../../functions/goData";
+import { errorText, goGetJson } from "../../functions/goData";
 import { launcherUrl, type HostStatus } from "../../functions/hostStatus";
 
 const FFMPEGMetadataPage = () => {
@@ -17,23 +17,46 @@ const FFMPEGMetadataPage = () => {
   const [missing, setMissing] = useState(false);
   const [launcher, setLauncher] = useState("");
 
-  const loadMetadata = async (x: string) => {
+  const request = useRef<AbortController | null>(null);
+
+  useEffect(() => () => request.current?.abort(), []);
+
+  const loadMetadata = async (x: string, signal: AbortSignal) => {
     // x is /file-input-cache/<name>; the Go core reads that uploaded file.
     const name = decodeURIComponent(x.split("/").pop() ?? "");
     const response = await fetch("/api/go-data/ffmpeg-metadata", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
+      signal,
     });
     const data = await response.json();
-    setMetadata(response.ok ? data : { error: data.error ?? response.statusText });
+    if (signal.aborted) return;
+    setMetadata(response.ok ? data : { error: data?.error ?? response.statusText });
     if (response.status === 503) {
       // ffprobe is missing: the uv platform fetches ffmpeg; the launcher installs it.
       setMissing(true);
-      goGetJson<HostStatus>("/api/go-data/host-status")
-        .then((s) => setLauncher(launcherUrl(s)))
-        .catch(() => setLauncher(""));
+      const status = await goGetJson<HostStatus>("/api/go-data/host-status", signal)
+        .catch(() => undefined);
+      if (!signal.aborted) setLauncher(launcherUrl(status));
     }
+  };
+
+  const selectAudio = (file?: string) => {
+    request.current?.abort();
+    request.current = null;
+    setAudioUrl(file);
+    setMetadata(null);
+    setMissing(false);
+    setLauncher("");
+    if (!file) return;
+
+    const controller = new AbortController();
+    request.current = controller;
+    const { signal } = controller;
+    loadMetadata(file, signal).catch((error) => {
+      if (!signal.aborted) setMetadata({ error: errorText(error) });
+    });
   };
 
   return (
@@ -47,13 +70,7 @@ const FFMPEGMetadataPage = () => {
             <AudioInput
               className="w-full"
               url={audioUrl}
-              callback={(file) => {
-                setAudioUrl(file);
-                setMetadata(null);
-                setMissing(false);
-                if (!file) return;
-                loadMetadata(file);
-              }}
+              callback={selectAudio}
             />
           </CardContent>
         </Card>

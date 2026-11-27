@@ -50,7 +50,7 @@ Two loops, run side by side:
 
 ```sh
 # Go: rebuild and restart the launcher on every Go change (port 7700, install root = the repo).
-pwsh core/scripts/dev.ps1                    # finds a Go new enough for go.mod, installs air if missing, runs it
+pwsh -NoProfile -File core/scripts/dev.ps1                    # finds a Go new enough for go.mod, installs air if missing, runs it
 
 # Setup page (core/ui): hot reload against that launcher.
 cd core/ui && npm run dev                    # open http://127.0.0.1:5173/

@@ -34,8 +34,10 @@ function launcherDev(): Plugin {
     name: "launcher-dev",
     apply: "serve",
     configureServer(server) {
-      // Before the proxy: make sure there is a token to send.
+      // Before the proxy: make sure there is a token to send. The page is
+      // core.html, so open it at "/" too.
       server.middlewares.use(async (req, _res, next) => {
+        if (req.url === "/" || req.url?.startsWith("/?")) req.url = "/core.html" + req.url.slice(1);
         if (req.url?.startsWith("/api/") && !launcherToken) await readLauncherToken();
         next();
       });

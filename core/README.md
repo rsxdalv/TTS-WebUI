@@ -50,12 +50,13 @@ Two loops, run side by side:
 
 ```sh
 # Go: rebuild and restart the launcher on every Go change (port 7700, install root = the repo).
-go install github.com/air-verse/air@latest   # once
-cd core && air
+pwsh -NoProfile -File core/scripts/dev.ps1                    # finds a Go new enough for go.mod, installs air if missing, runs it
 
 # Setup page (core/ui): hot reload against that launcher.
-cd core/ui && npm run dev                    # open http://127.0.0.1:5173/core.html
+cd core/ui && npm run dev                    # open http://127.0.0.1:5173/
 ```
+
+`dev.ps1` exists because an old Go earlier on PATH, or a stale `GOROOT=C:\Go` in a session that started before the Go upgrade, fails with "package cmp is not in std" and rewrites `go.mod`/`go.sum`; the script puts a matching Go first, resets `GOROOT` and sets `GOFLAGS=-mod=readonly`. On Linux/macOS run `cd core && air` with a current Go.
 
 `npm run dev` proxies `/api` to `LAUNCHER_URL` (default `http://127.0.0.1:7700`),
 fixes the Host and Origin headers and adds the launcher's per-run token, which it reads

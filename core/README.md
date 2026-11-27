@@ -54,8 +54,10 @@ go install github.com/air-verse/air@latest   # once
 cd core && air
 
 # Setup page (core/ui): hot reload against that launcher.
-cd core/ui && npm run dev                    # open http://127.0.0.1:5173/core.html
+cd core/ui && npm run dev                    # open http://127.0.0.1:5173/
 ```
+
+Air needs Go 1.27 first on PATH (`go version`); an old Go fails with "cannot find module providing package cmp" and rewrites `go.mod`/`go.sum`.
 
 `npm run dev` proxies `/api` to `LAUNCHER_URL` (default `http://127.0.0.1:7700`),
 fixes the Host and Origin headers and adds the launcher's per-run token, which it reads

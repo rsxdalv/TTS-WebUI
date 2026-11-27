@@ -1,6 +1,15 @@
 // ExtensionsView manages extensions with the app stopped. It calls only
 // /api/ext/*, which the launcher serves from the same Go code the app uses.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createMemo,
+  createSignal,
+  createStore,
+  Errored,
+  For,
+  Loading,
+  refresh,
+  Show,
+} from "solid-js";
 import { client } from "./client";
 
 interface Ext {
@@ -61,6 +70,13 @@ function requirementText(r: Requirement): string {
   return `${r.name}: ${r.would ?? "missing"}`;
 }
 
+// The state of the "which GPU is this for?" prompt, once an install says it needs one.
+interface AskState {
+  ext: Ext;
+  ask: GPUAsk;
+  pick: string;
+}
+
 interface ListAnswer {
   extensions: Ext[];
   app_running: boolean;
@@ -81,6 +97,16 @@ const btnPrimary =
 function title(s: string) {
   return s.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+// The list is a read: a failure throws, and the <Errored> boundary shows it.
+async function fetchList(): Promise<ListAnswer> {
+  const r = await client("/api/ext/list");
+  const body = await r.json();
+  if (!r.ok) throw new Error(body.error ?? `HTTP ${r.status}`);
+  return body;
+}
+
+const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 // runOp streams an install-style operation. Output arrives as NDJSON:
 // {"line": "..."} per line, then {"done": true, "ok": bool}.
@@ -136,76 +162,60 @@ async function runOp(
 }
 
 export function ExtensionsView() {
-  const [data, setData] = useState<ListAnswer | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState("");
-  const [busy, setBusy] = useState<string | null>(null);
-  const [log, setLog] = useState<string[]>([]);
-  const [changed, setChanged] = useState(false);
+  // One GET on mount, and again after every operation. A failure throws to the
+  // <Errored> boundary below, which replaces the view until a read succeeds.
+  const list = createMemo(fetchList);
+  const [filter, setFilter] = createSignal("");
+  const [busy, setBusy] = createSignal<string | null>(null);
+  const [log, setLog] = createStore<string[]>([]);
+  const [changed, setChanged] = createSignal(false);
+  const [ask, setAsk] = createSignal<AskState | null>(null);
+  let abort: AbortController | null = null;
 
-  const load = useCallback(async () => {
-    try {
-      const r = await client("/api/ext/list");
-      const body = await r.json();
-      if (!r.ok) throw new Error(body.error ?? `HTTP ${r.status}`);
-      setData(body);
-      setError(null);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const [ask, setAsk] = useState<{ ext: Ext; ask: GPUAsk; pick: string } | null>(null);
-  const abort = useRef<AbortController | null>(null);
+  const addLog = (line: string) =>
+    setLog((lines) => {
+      lines.push(line);
+    });
+  const resetLog = (...lines: string[]) => setLog(() => lines);
 
   // The audio.cpp build (cpu or vulkan) is chosen for an install that installs the
   // audiocpp platform: the platform itself, or a model while it is missing.
-  const [audioRow, setAudioRow] = useState("cpu");
+  const [audioRow, setAudioRow] = createSignal("cpu");
   const installsAudio = (e: Ext) =>
     e.package_name === "audiocpp" ||
     e.requirements_state.some((r) => r.name === "audiocpp" && r.state === "missing");
 
+  // Operations stream their output into the log while they run, so they are
+  // plain async handlers: inside an action, writes would only land at the end.
   const run = async (ext: Ext, op: Op, gpu?: string) => {
     setBusy(ext.package_name);
     setAsk(null);
-    const row = op === "install" && installsAudio(ext) ? audioRow : undefined;
-    setLog([
+    const row = op === "install" && installsAudio(ext) ? audioRow() : undefined;
+    resetLog(
       `> ${op} ${ext.package_name}${gpu ? ` (GPU: ${gpu})` : ""}${row ? ` (audio.cpp build: ${row})` : ""}`,
-    ]);
-    abort.current = new AbortController();
+    );
+    abort = new AbortController();
     try {
-      const res = await runOp(
-        op,
-        ext.package_name,
-        (l) => setLog((prev) => [...prev, l]),
-        gpu,
-        abort.current.signal,
-        row,
-      );
+      const res = await runOp(op, ext.package_name, addLog, gpu, abort.signal, row);
       if (typeof res === "object") {
         // The uv platform is installed first and needs the GPU choice.
-        setLog((prev) => [...prev, "The uv platform must be installed first: choose the GPU."]);
+        addLog("The uv platform must be installed first: choose the GPU.");
         setAsk({ ext, ask: res, pick: res.proposed });
         return;
       }
       if (op === "install" || op === "uninstall") setChanged(true);
-      setLog((prev) => [...prev, res ? "Done." : "Failed."]);
+      addLog(res ? "Done." : "Failed.");
     } catch (e: unknown) {
       const cancelled = e instanceof DOMException && e.name === "AbortError";
-      setLog((prev) => [
-        ...prev,
+      addLog(
         cancelled
           ? "Cancelled. Install again to continue; downloads are kept."
-          : `Error: ${e instanceof Error ? e.message : String(e)}`,
-      ]);
+          : `Error: ${errorText(e)}`,
+      );
     } finally {
-      abort.current = null;
+      abort = null;
       setBusy(null);
-      await load();
+      refresh(list);
     }
   };
 
@@ -220,19 +230,19 @@ export function ExtensionsView() {
       const body = await r.json();
       if (!r.ok) throw new Error(body.error ?? `HTTP ${r.status}`);
       setChanged(true);
-      setLog([`${ext.disabled ? "Enabled" : "Disabled"} ${ext.package_name}`]);
+      resetLog(`${ext.disabled ? "Enabled" : "Disabled"} ${ext.package_name}`);
     } catch (e: unknown) {
-      setLog([`Error: ${e instanceof Error ? e.message : String(e)}`]);
+      resetLog(`Error: ${errorText(e)}`);
     } finally {
       setBusy(null);
-      await load();
+      refresh(list);
     }
   };
 
-  const groups = useMemo(() => {
-    const q = filter.trim().toLowerCase();
+  const groups = createMemo(() => {
+    const q = filter().trim().toLowerCase();
     const out = new Map<string, Ext[]>();
-    for (const e of data?.extensions ?? []) {
+    for (const e of list().extensions) {
       if (q && !`${e.name} ${e.package_name} ${e.description}`.toLowerCase().includes(q)) continue;
       const key =
         e.kind === "host"
@@ -246,198 +256,219 @@ export function ExtensionsView() {
                 : title(e.extension_class || "other");
       out.set(key, [...(out.get(key) ?? []), e]);
     }
-    for (const list of out.values()) {
-      list.sort(
+    for (const exts of out.values()) {
+      exts.sort(
         (a, b) => Number(b.installed) - Number(a.installed) || a.name.localeCompare(b.name),
       );
     }
     const rank = (g: string) => (g === "Gradio host" || g === "Platforms" ? 0 : g === "Decorators" ? 2 : 1);
     return [...out.entries()].sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b));
-  }, [data, filter]);
-
-  if (error) {
-    return (
-      <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm">
-        {error}
-      </div>
-    );
-  }
-  if (!data) return <p className="text-gray-500 dark:text-gray-400 text-sm">Reading extensions…</p>;
+  });
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 text-sm">
-        Runs on: <strong>{data.platform}</strong>
-        {data.platform_ready ? "" : ` — not available: ${data.platform_detail ?? ""}`}
-      </div>
-      {data.requires_error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm">
-          {data.requires_error}
+    <Errored
+      fallback={(err) => (
+        <div class="p-4 rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm">
+          {errorText(err())}
         </div>
       )}
-      {data.warning && (
-        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-200 text-sm">
-          {data.warning}
-        </div>
-      )}
-      {(changed || data.app_running) && (
-        <div className="p-3 rounded-lg bg-sky-50 dark:bg-sky-950 text-sky-800 dark:text-sky-200 text-sm">
-          {data.app_running
-            ? "The app is running: changes apply after you restart it."
-            : "Changes apply the next time the app starts."}
-        </div>
-      )}
-      <input
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        placeholder="Filter extensions"
-        className="px-3 py-2 text-sm rounded border border-gray-300 dark:border-gray-700 bg-transparent"
-      />
-      {data.extensions.some((e) => e.package_name === "audiocpp" && !e.installed) && (
-        <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm flex items-center gap-2">
-          <label htmlFor="audio-row">audio.cpp build to install:</label>
-          <select
-            id="audio-row"
-            className="px-2 py-1 rounded border border-gray-300 dark:border-gray-700 bg-transparent"
-            value={audioRow}
-            onChange={(e) => setAudioRow(e.target.value)}
-          >
-            <option value="cpu">CPU (34 MB, runs anywhere)</option>
-            <option value="vulkan">Vulkan (84 MB, needs a GPU driver with Vulkan)</option>
-          </select>
-        </div>
-      )}
-      {groups.map(([group, list]) => (
-        <section key={group} className="flex flex-col gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            {group}
-          </h2>
-          {list.map((e) => (
-            <div
-              key={e.package_name}
-              className="p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-medium">
-                    {e.name}{" "}
-                    <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
-                      {e.builtin
-                        ? "built-in"
-                        : e.installed
-                          ? e.disabled
-                            ? "installed, disabled"
-                            : "installed"
-                          : "not installed"}
-                      {e.proxy === "native" ? " · own venv" : ""}
-                      {e.validation === "unvalidated" ? " · unvalidated (installs and starts; no audio checked)" : ""}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{e.description}</p>
-                  {e.requires.length > 0 && !e.builtin && (
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      Requires: {e.requirements_state.map(requirementText).join(", ")}
-                    </p>
+    >
+      <Loading
+        fallback={<p class="text-gray-500 dark:text-gray-400 text-sm">Reading extensions…</p>}
+      >
+        <div class="flex flex-col gap-4">
+          <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 text-sm">
+            Runs on: <strong>{list().platform}</strong>
+            {list().platform_ready ? "" : ` — not available: ${list().platform_detail ?? ""}`}
+          </div>
+          <Show when={list().requires_error}>
+            {(message) => (
+              <div class="p-3 rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm">
+                {message()}
+              </div>
+            )}
+          </Show>
+          <Show when={list().warning}>
+            {(message) => (
+              <div class="p-3 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-200 text-sm">
+                {message()}
+              </div>
+            )}
+          </Show>
+          <Show when={changed() || list().app_running}>
+            <div class="p-3 rounded-lg bg-sky-50 dark:bg-sky-950 text-sky-800 dark:text-sky-200 text-sm">
+              {list().app_running
+                ? "The app is running: changes apply after you restart it."
+                : "Changes apply the next time the app starts."}
+            </div>
+          </Show>
+          <input
+            value={filter()}
+            onInput={(e) => setFilter(e.currentTarget.value)}
+            placeholder="Filter extensions"
+            class="px-3 py-2 text-sm rounded border border-gray-300 dark:border-gray-700 bg-transparent"
+          />
+          <Show when={list().extensions.some((e) => e.package_name === "audiocpp" && !e.installed)}>
+            <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm flex items-center gap-2">
+              <label for="audio-row">audio.cpp build to install:</label>
+              <select
+                id="audio-row"
+                class="px-2 py-1 rounded border border-gray-300 dark:border-gray-700 bg-transparent"
+                onChange={(e) => setAudioRow(e.currentTarget.value)}
+              >
+                <option value="cpu" selected={audioRow() === "cpu"}>
+                  CPU (34 MB, runs anywhere)
+                </option>
+                <option value="vulkan" selected={audioRow() === "vulkan"}>
+                  Vulkan (84 MB, needs a GPU driver with Vulkan)
+                </option>
+              </select>
+            </div>
+          </Show>
+          <For each={groups()} keyed={([group]) => group}>
+            {(entry) => (
+              <section class="flex flex-col gap-2">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  {entry()[0]}
+                </h2>
+                <For each={entry()[1]} keyed={(e) => e.package_name}>
+                  {(e) => (
+                    <div class="p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+                      <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                          <div class="font-medium">
+                            {e().name}{" "}
+                            <span class="text-xs font-normal text-gray-500 dark:text-gray-400">
+                              {e().builtin
+                                ? "built-in"
+                                : e().installed
+                                  ? e().disabled
+                                    ? "installed, disabled"
+                                    : "installed"
+                                  : "not installed"}
+                              {e().proxy === "native" ? " · own venv" : ""}
+                              {e().validation === "unvalidated"
+                                ? " · unvalidated (installs and starts; no audio checked)"
+                                : ""}
+                            </span>
+                          </div>
+                          <p class="text-sm text-gray-600 dark:text-gray-400">{e().description}</p>
+                          <Show when={e().requires.length > 0 && !e().builtin}>
+                            <p class="text-xs text-gray-600 dark:text-gray-400">
+                              Requires: {e().requirements_state.map(requirementText).join(", ")}
+                            </p>
+                          </Show>
+                          <p class="text-xs text-gray-500 dark:text-gray-500">
+                            {e().package_name}
+                            <Show when={e().website}>
+                              {(website) => (
+                                <>
+                                  {" · "}
+                                  <a class="underline" href={website()} target="_blank" rel="noreferrer">
+                                    website
+                                  </a>
+                                </>
+                              )}
+                            </Show>
+                          </p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 justify-end shrink-0">
+                          <Show when={!e().builtin && !e().installed}>
+                            <button
+                              class={btnPrimary}
+                              disabled={!!busy() || !!blocker(e())}
+                              title={blocker(e()) ? requirementText(blocker(e())!) : undefined}
+                              onClick={() => void run(e(), "install")}
+                            >
+                              Install
+                            </button>
+                          </Show>
+                          <Show when={!e().builtin && e().installed}>
+                            <Show when={e().kind !== "host" && e().kind !== "platform"}>
+                              <button
+                                class={btn}
+                                disabled={!!busy()}
+                                onClick={() => void run(e(), "latest-version")}
+                              >
+                                Check update
+                              </button>
+                              <button class={btn} disabled={!!busy()} onClick={() => void run(e(), "install")}>
+                                Update
+                              </button>
+                            </Show>
+                            <button class={btn} disabled={!!busy()} onClick={() => void run(e(), "uninstall")}>
+                              Uninstall
+                            </button>
+                          </Show>
+                          <Show when={e().can_be_disabled && e().installed}>
+                            <button class={btn} disabled={!!busy()} onClick={() => void toggle(e())}>
+                              {e().disabled ? "Enable" : "Disable"}
+                            </button>
+                          </Show>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                  <p className="text-xs text-gray-500 dark:text-gray-500">
-                    {e.package_name}
-                    {e.website && (
-                      <>
-                        {" · "}
-                        <a className="underline" href={e.website} target="_blank" rel="noreferrer">
-                          website
-                        </a>
-                      </>
+                </For>
+              </section>
+            )}
+          </For>
+          <Show when={ask()}>
+            {(a) => (
+              <div class="p-3 rounded-lg border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950 text-sm flex flex-col gap-2">
+                <strong>Which GPU is this for?</strong>
+                <p class="text-gray-700 dark:text-gray-300">
+                  {installsHost(a().ext)
+                    ? `${a().ext.name} needs the Gradio host, which is installed first on the uv platform: uv, Python, torch for the GPU you choose and the app's requirements.`
+                    : `${a().ext.name} runs on the uv platform, which is installed first: uv, Python and torch for the GPU you choose.`}{" "}
+                  Proposed: <strong>{a().ask.proposed}</strong> ({a().ask.reason}).
+                  Every engine on the same torch build shares its files; another build is a separate
+                  download.
+                </p>
+                <select
+                  class="px-2 py-1 rounded border border-gray-300 dark:border-gray-700 bg-transparent"
+                  onChange={(e) => {
+                    const pick = e.currentTarget.value;
+                    setAsk((prev) => prev && { ...prev, pick });
+                  }}
+                >
+                  <For each={a().ask.choices} keyed={(c) => c.label}>
+                    {(c) => (
+                      <option value={c().label} selected={c().label === a().pick}>
+                        {c().label} (torch {c().row}, about {(c().approx_mb / 1000).toFixed(1)} GB)
+                      </option>
                     )}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2 justify-end shrink-0">
-                  {!e.builtin && !e.installed && (
-                    <button
-                      className={btnPrimary}
-                      disabled={!!busy || !!blocker(e)}
-                      title={blocker(e) ? requirementText(blocker(e)!) : undefined}
-                      onClick={() => run(e, "install")}
-                    >
-                      Install
-                    </button>
-                  )}
-                  {!e.builtin && e.installed && (
-                    <>
-                      {e.kind !== "host" && e.kind !== "platform" && (
-                        <>
-                          <button className={btn} disabled={!!busy} onClick={() => run(e, "latest-version")}>
-                            Check update
-                          </button>
-                          <button className={btn} disabled={!!busy} onClick={() => run(e, "install")}>
-                            Update
-                          </button>
-                        </>
-                      )}
-                      <button className={btn} disabled={!!busy} onClick={() => run(e, "uninstall")}>
-                        Uninstall
-                      </button>
-                    </>
-                  )}
-                  {e.can_be_disabled && e.installed && (
-                    <button className={btn} disabled={!!busy} onClick={() => toggle(e)}>
-                      {e.disabled ? "Enable" : "Disable"}
-                    </button>
-                  )}
+                  </For>
+                </select>
+                <div class="flex gap-2">
+                  <button class={btnPrimary} onClick={() => void run(a().ext, "install", a().pick)}>
+                    {installsHost(a().ext)
+                      ? a().ext.kind === "host"
+                        ? "Install uv and the Gradio host"
+                        : `Install uv, the Gradio host and ${a().ext.name}`
+                      : `Install uv and ${a().ext.name}`}
+                  </button>
+                  <button class={btn} onClick={() => setAsk(null)}>
+                    Not now
+                  </button>
                 </div>
               </div>
+            )}
+          </Show>
+          <Show when={busy()}>
+            <div>
+              <button class={btn} onClick={() => abort?.abort()}>
+                Cancel
+              </button>
             </div>
-          ))}
-        </section>
-      ))}
-      {ask && (
-        <div className="p-3 rounded-lg border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950 text-sm flex flex-col gap-2">
-          <strong>Which GPU is this for?</strong>
-          <p className="text-gray-700 dark:text-gray-300">
-            {installsHost(ask.ext)
-              ? `${ask.ext.name} needs the Gradio host, which is installed first on the uv platform: uv, Python, torch for the GPU you choose and the app's requirements.`
-              : `${ask.ext.name} runs on the uv platform, which is installed first: uv, Python and torch for the GPU you choose.`}{" "}
-            Proposed: <strong>{ask.ask.proposed}</strong> ({ask.ask.reason}).
-            Every engine on the same torch build shares its files; another build is a separate
-            download.
-          </p>
-          <select
-            className="px-2 py-1 rounded border border-gray-300 dark:border-gray-700 bg-transparent"
-            value={ask.pick}
-            onChange={(e) => setAsk({ ...ask, pick: e.target.value })}
-          >
-            {ask.ask.choices.map((c) => (
-              <option key={c.label} value={c.label}>
-                {c.label} (torch {c.row}, about {(c.approx_mb / 1000).toFixed(1)} GB)
-              </option>
-            ))}
-          </select>
-          <div className="flex gap-2">
-            <button className={btnPrimary} onClick={() => run(ask.ext, "install", ask.pick)}>
-              {installsHost(ask.ext)
-                ? ask.ext.kind === "host"
-                  ? "Install uv and the Gradio host"
-                  : `Install uv, the Gradio host and ${ask.ext.name}`
-                : `Install uv and ${ask.ext.name}`}
-            </button>
-            <button className={btn} onClick={() => setAsk(null)}>
-              Not now
-            </button>
-          </div>
+          </Show>
+          <Show when={log.length > 0}>
+            <pre class="p-3 rounded-lg bg-gray-900 text-gray-100 text-xs overflow-auto max-h-72 whitespace-pre-wrap">
+              {log.join("\n")}
+            </pre>
+          </Show>
         </div>
-      )}
-      {busy && (
-        <div>
-          <button className={btn} onClick={() => abort.current?.abort()}>
-            Cancel
-          </button>
-        </div>
-      )}
-      {log.length > 0 && (
-        <pre className="p-3 rounded-lg bg-gray-900 text-gray-100 text-xs overflow-auto max-h-72 whitespace-pre-wrap">
-          {log.join("\n")}
-        </pre>
-      )}
-    </div>
+      </Loading>
+    </Errored>
   );
 }

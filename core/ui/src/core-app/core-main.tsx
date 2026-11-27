@@ -1,10 +1,5 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+import { render } from "@solidjs/web";
 import "../index.css";
 import { CoreApp } from "./CoreApp";
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <CoreApp />
-  </StrictMode>,
-);
+render(() => <CoreApp />, document.getElementById("root")!);

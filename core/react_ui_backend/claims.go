@@ -1,5 +1,5 @@
 // Package react_ui_backend is the Go server for the React UI on port 3000. It
-// serves the static export (react-ui/out, built by Vite) and answers the API
+// serves the static export (frontend/out, built by Vite) and answers the API
 // routes claimed by the files in this package. See
 // documentation/core-rewrite/CONTRACTS.md, sections 4 to 7 and 10.
 package react_ui_backend
@@ -90,7 +90,7 @@ func newDeps(root string) Deps {
 	}
 }
 
-// gradioBackend matches react-ui/src/backend-utils/defaultBackend.tsx.
+// gradioBackend matches frontend/src/backend-utils/defaultBackend.tsx.
 func gradioBackend(lookup func(string) string) string {
 	for _, name := range []string{"GRADIO_BACKEND", "GRADIO_BACKEND_AUTOMATIC"} {
 		if v := lookup(name); v != "" {
@@ -107,7 +107,7 @@ func envLookup(root string) func(string) string {
 	files := []string{".env.production.local", ".env.local", ".env.production", ".env"}
 	values := map[string]string{}
 	for _, name := range files {
-		for k, v := range readEnvFile(filepath.Join(root, "react-ui", name)) {
+		for k, v := range readEnvFile(filepath.Join(root, "frontend", name)) {
 			if _, seen := values[k]; !seen {
 				values[k] = v
 			}

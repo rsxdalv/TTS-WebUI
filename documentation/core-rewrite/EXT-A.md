@@ -9,7 +9,7 @@ as a native entry), each on its own branch from `main`.
 |---|---|
 | Scan and prune of the hub cache | `core/internal/hfcache` (`hfcache.go` scan, `rows.go` the rows and the two format helpers, `delete.go` plan and execute, `cachedir.go` which folder, `atime_*.go` st_atime per OS) |
 | Routes | `core/react_ui_backend/go_hf_cache.go`, claim `go-hf-cache`: `GET /api/go-data/hf-cache/scan`, `POST /api/go-data/hf-cache/delete` |
-| Vite page | `react-ui/src/components/ExtensionHuggingFaceCacheManager.tsx` calls those two routes (it called `/api/gradio/scan_huggingface_cache_api` and `/api/gradio/delete_huggingface_cache_revisions`); shows delete errors and scan warnings; `functions/hostStatus.ts` no longer counts `/extensions/huggingface_cache_manager` as a Gradio page, so it stays in the menu without the Gradio host |
+| Vite page | `frontend/src/components/ExtensionHuggingFaceCacheManager.tsx` calls those two routes (it called `/api/gradio/scan_huggingface_cache_api` and `/api/gradio/delete_huggingface_cache_revisions`); shows delete errors and scan warnings; `functions/hostStatus.ts` no longer counts `/extensions/huggingface_cache_manager` as a Gradio page, so it stays in the menu without the Gradio host |
 | Unchanged | the Gradio tab (`extensions/builtin/extension_huggingface_cache_manager/`), its api names, and the `scan_huggingface_cache_api` / `delete_huggingface_cache_revisions` entries in `react_ui_backend/gradio.go` |
 
 ### API

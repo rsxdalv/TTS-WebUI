@@ -108,7 +108,7 @@ exclude = [
     "favorites",
     "collections",
     "temp",
-    "react-ui",
+    "frontend",
     "react-ui-vite",
 ]
 

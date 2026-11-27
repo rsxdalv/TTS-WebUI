@@ -282,7 +282,7 @@ func freeTestPort(t *testing.T) int {
 
 func TestGradioSettingsOrder(t *testing.T) {
 	root := t.TempDir()
-	ui := filepath.Join(root, "react-ui")
+	ui := filepath.Join(root, "frontend")
 	if err := os.MkdirAll(ui, 0o755); err != nil {
 		t.Fatal(err)
 	}

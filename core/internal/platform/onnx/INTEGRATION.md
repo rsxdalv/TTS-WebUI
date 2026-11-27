@@ -13,7 +13,7 @@ and what was run. **Windows x64 and CPU only.**
 | `react_ui_backend/core_onnx.go` | Port 3000 routes `GET /api/go-data/onnx/engines`, `POST /api/go-data/onnx/speech` (switch `core-onnx`). |
 | `extcatalog` | `Options.ONNX`; the plan installs the `onnx` platform first (`onnxplatform.go`), installed state of an onnx entry comes from the platform, uninstall removes the model and keeps the platform. |
 | Catalog | One entry in `extensions.json`: `tts_webui_onnx.kitten_nano` with `"requires": ["onnx"]`. The model pin (URL, sha256, size) lives in Go (`pin.go`), not in the catalog. |
-| Vite | Page `/onnx` (`react-ui/src/pages/onnx.tsx`), header link `ONNX`. Install stays on the launcher's Extensions page. Cancel aborts the request. |
+| Vite | Page `/onnx` (`frontend/src/pages/onnx.tsx`), header link `ONNX`. Install stays on the launcher's Extensions page. Cancel aborts the request. |
 
 ## Differences from the design
 
@@ -60,7 +60,7 @@ and what was run. **Windows x64 and CPU only.**
 - The espeak-ng data licence (GPL?) was not verified from the model folder.
 - Shared files edited here (also touched by other sessions): `extensions.json` (one entry), `extcatalog` (`catalog.go`,
   `install.go`, `installed.go`, `requires.go`, `uvplatform.go`), `launcher/extensions.go`, `launcher/serverpy.go`,
-  `react-ui/src/routes.tsx`, `react-ui/src/components/Header.tsx`.
+  `frontend/src/routes.tsx`, `frontend/src/components/Header.tsx`.
 
 ## After the merge with main (P0-P7), 2026-11-25
 

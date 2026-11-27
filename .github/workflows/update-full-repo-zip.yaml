@@ -64,11 +64,11 @@ jobs:
         with:
           node-version: 22
 
-      - name: Build the React UI export (react-ui/out)
+      - name: Build the React UI export (frontend/out)
         # D32: the archive ships the export, so a new install needs no Node. build-static.js
         # records this checkout's commit in out/_tts-export.json; the archive carries the
         # same checkout's .git, so the launcher does not call the export stale.
-        working-directory: react-ui
+        working-directory: frontend
         run: |
           npm install
           npm run build:static
@@ -104,10 +104,10 @@ jobs:
       - name: Create zip file with full git history
         run: |
           # The repository including .git (with .git/config: the launcher updates with
-          # git pull, which needs the origin remote), the launchers, react-ui/out and
+          # git pull, which needs the origin remote), the launchers, frontend/out and
           # archive.json.
           # Not the Node dependencies of the build, nor the published copy of archive.json.
-          zip -r tts-webui-installer.zip . -x "react-ui/node_modules/*" "tts-webui-installer.json"
+          zip -r tts-webui-installer.zip . -x "frontend/node_modules/*" "tts-webui-installer.json"
 
       - name: Delete existing asset if it exists
         uses: actions/github-script@v6

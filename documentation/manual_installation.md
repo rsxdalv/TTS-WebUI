@@ -109,7 +109,7 @@ pip install -r requirements.txt
 Build the React app:
 
 ```bash
-cd react-ui && npm install && npm run build:static
+cd frontend && npm install && npm run build:static
 ```
 
 ### 4. (Optional) Database Setup
@@ -167,7 +167,7 @@ To update the installation, navigate to the project directory and run:
 ```bash
 git pull
 pip install -r requirements.txt
-cd react-ui && npm install && npm run build:static
+cd frontend && npm install && npm run build:static
 ```
 
 # Development Setup
@@ -181,7 +181,7 @@ If you want to work on the React UI:
 2. Install React dependencies:
 
    ```bash
-   cd react-ui
+   cd frontend
    npm install
    ```
 

@@ -40,7 +40,7 @@ Nothing else changed: the Gradio tab code, `model_download` api name and `data/m
 
 ## Evidence (Linux x86-64, CPU runner, no GPU, 2026-11-26)
 
-Scratch folder `/tmp/c-run/root` = `git archive` of this branch (+ `react-ui/out` copied from a build), launcher built from
+Scratch folder `/tmp/c-run/root` = `git archive` of this branch (+ `frontend/out` copied from a build), launcher built from
 this branch, `launch --root /tmp/c-run/root --port 17800 --no-browser`. Nothing in the checkout, `installer_files`,
 `.venvs`, `platforms`, `outputs`, `config.json`, `.env` or `data` was touched (`git status` clean afterwards).
 

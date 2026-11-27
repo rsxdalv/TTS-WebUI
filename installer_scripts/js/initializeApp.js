@@ -330,13 +330,13 @@ function setupReactUIExtensions() {
   try {
     displayMessage("Initializing extensions...");
     const packageJSONpath = getInstallerFilesPath(
-      "../react-ui/src/extensions/package.json"
+      "../frontend/src/extensions/package.json"
     );
 
     if (!fs.existsSync(packageJSONpath)) {
       fs.writeFileSync(packageJSONpath, "{}");
     }
-    // $sh("cd react-ui/src/extensions && npm install");
+    // $sh("cd frontend/src/extensions && npm install");
     // displayMessage("Successfully installed extensions");
   } catch (error) {
     displayMessage("Failed to install extensions");
@@ -350,10 +350,10 @@ exports.setupReactUI = async () => {
     if (!fs.existsSync("outputs")) fs.mkdirSync("outputs");
     if (!fs.existsSync("favorites")) fs.mkdirSync("favorites");
     displayMessage("Installing node_modules...");
-    await $sh("cd react-ui && npm install");
+    await $sh("cd frontend && npm install");
     displayMessage("Successfully installed node_modules");
     displayMessage("Building react-ui...");
-    await $sh("cd react-ui && npm run build:static");
+    await $sh("cd frontend && npm run build:static");
     displayMessage("Successfully built react-ui");
   } catch (error) {
     displayMessage("Failed to install node_modules or build react-ui");

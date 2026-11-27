@@ -1,6 +1,6 @@
 package react_ui_backend
 
-// Port of react-ui/src/pages/api/gradio-file-proxy/[...path].tsx.
+// Port of frontend/src/pages/api/gradio-file-proxy/[...path].tsx.
 //
 // Behaviour kept from the original, on purpose:
 //   - the decoded path segments are joined with "/" and appended to the Gradio

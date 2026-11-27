@@ -13,7 +13,7 @@ package react_ui_backend
 // error.
 //
 // The file is named, never given as a path: POST {"name": "x.flac"} reads
-// react-ui/public/file-input-cache/x.flac, the directory /api/upload fills.
+// frontend/public/file-input-cache/x.flac, the directory /api/upload fills.
 
 import (
 	"bytes"
@@ -85,7 +85,7 @@ func findFFprobe(root string) string {
 }
 
 func newFFmpegMetadata(deps Deps) http.Handler {
-	cacheDir := filepath.Join(deps.Root, "react-ui", "public", "file-input-cache")
+	cacheDir := filepath.Join(deps.Root, "frontend", "public", "file-input-cache")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !requireJSON(w, r) {
 			return

@@ -8,7 +8,7 @@ with this file. Each line says what was run and what it showed; what was not run
 - **Windows 10, Go 1.27.4.** A scratch copy of the repo (`git archive HEAD`) under `%TEMP%\p0scratch\root`, with
   `installer_files` a junction to the developer's real install (Python 3.10.11, gradio 5.49.1, torch, 8 extensions
   installed), `installer_scripts/.gpu` = `NVIDIA GPU` (copied), a `config.json` copied from the real one with
-  `server_port` 17910 and `inbrowser` false. `react-ui/out` built with the env's npm (`npm ci`, `npm run
+  `server_port` 17910 and `inbrowser` false. `frontend/out` built with the env's npm (`npm ci`, `npm run
   build:static`). Binary built from this branch. GPU: GTX 1070, CUDA 13.0 driver.
 - **Linux, WSL distro `tts-linux-test`.** The same copy in `/root/p0root`, `installer_files` a symlink to an earlier
   install (`/root/install-flow/final`: Python 3.10, gradio 5.49.1, torch 2.11.0+cpu, `.gpu` = `CPU`), a Linux binary

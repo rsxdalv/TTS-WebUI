@@ -21,7 +21,7 @@ decides.
 | `core/internal/platform/openai/shared.go` (new), `clip.go`, `save.go`, `client.go` | The P5 helpers MiniMax shares are exported instead of copied: `Scrub`, `Snippet`, `ShortErr`, `Unreachable`, `CheckTransport`, `WriteFileAtomic` (0600), `ReadJSON`, `Invalidf`, `Authorized` (loopback + token), `WriteJSON/WriteErr/DecodeJSON`, `NoRedirectClient` (the redirect rule, moved out of `NewClient`), `CheckWav`. `SaveClipFields` is `SaveClip` for a generator with its own metadata fields (`meta` got `Version` and `Fields`; the default output of the openai platform is byte for byte what it was, its tests are unchanged). |
 | `core/internal/launcher/serverpy.go` | mounts `/api/minimax/` on the control API next to `/api/openai/` |
 | `core/react_ui_backend/core_minimax.go` (new) | browser routes, switch `core-minimax` (below) |
-| `react-ui/src/functions/generateWithMiniMaxTTS.ts`, `tabs/MiniMaxTTSParams.ts`, `components/MiniMaxTTSInputs.tsx`, new `components/MiniMaxKeyCard.tsx`, `routes.tsx`, `components/Header.tsx` | the page uses the Go routes; the API Key field became a settings card; the page is also at `/minimax` with a menu entry |
+| `frontend/src/functions/generateWithMiniMaxTTS.ts`, `tabs/MiniMaxTTSParams.ts`, `components/MiniMaxTTSInputs.tsx`, new `components/MiniMaxKeyCard.tsx`, `routes.tsx`, `components/Header.tsx` | the page uses the Go routes; the API Key field became a settings card; the page is also at `/minimax` with a menu entry |
 | `core/scripts/smoke/minimax-no-key-leak.sh` (new) | the real-binary version of the no-key-leak test |
 
 `core/ui` (the launcher UI behind `core/internal/webui/assets`) is untouched. I ran `core/scripts/build-webui.sh`: it reproduces
@@ -134,7 +134,7 @@ All on Linux (Ubuntu runner, CPU only, no GPU, no key). Go 1.27.0 from `core/go.
    only `key.json` holds it. The same test checks the LAN rules (PUT and test from a non-loopback peer, a forwarded request and a
    cross-site Origin are refused; read and speech stay open), that the clip is listed by `/api/go-data/outputs/outputs` and that
    its player URL answers `audio/wav`.
-4. **The real binary**, `go build ./cmd/tts-webui`, scratch root with `react-ui/out`, `tts-webui --no-browser --start`, no Python
+4. **The real binary**, `go build ./cmd/tts-webui`, scratch root with `frontend/out`, `tts-webui --no-browser --start`, no Python
    and no Gradio host (the log says "the Gradio host is not installed"), a small Python stand-in for MiniMax on 127.0.0.1:
    settings, test, generate by `curl`; `platforms/minimax/key.json` mode 600; the clip listed by `/api/go-data/outputs/outputs`;
    `GET /api/webui-generations/outputs/<folder>/<folder>.wav` answers `200 audio/wav` (88244 bytes); the launcher log has no key.

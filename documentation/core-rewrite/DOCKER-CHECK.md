@@ -50,7 +50,7 @@ docker build --network host --progress=plain --build-arg HTTPS_PROXY=$HTTPS_PROX
 | Warnings | `npm warn ERESOLVE overriding peer dependency` (react-remove-scroll wants `@types/react` 16-18, the app has 19); apt `update-alternatives: warning: skip creation of /usr/share/man/...` (vim/nano without man pages); `pip: Running pip as the 'root' user ...`. No pip resolver conflict was printed |
 
 Image contents (`docker run --entrypoint sh`): `uv 0.13.6` at `/usr/local/bin/uv`, `Python 3.10.12`, **no `node`, no `npm`,
-no `micromamba`**, `react-ui/out` present (`_tts-export.json`, `assets/`, `index.html`, `favicon.ico`). `Config.User` is
+no `micromamba`**, `frontend/out` present (`_tts-export.json`, `assets/`, `index.html`, `favicon.ico`). `Config.User` is
 empty (root), no `ExposedPorts`, entrypoint is the NVIDIA one, `Cmd` is
 `tts-webui launch --root /app/tts-webui --docker --start --system-python --no-browser`.
 

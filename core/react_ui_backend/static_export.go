@@ -1,7 +1,7 @@
 package react_ui_backend
 
 // Serving the React UI static export (S2), following CONTRACTS.md section 10:
-// react-ui/out holds the single-page app (Vite), and react-ui/public is served
+// frontend/out holds the single-page app (Vite), and frontend/public is served
 // live for files the export lacks, so uploads in file-input-cache are reachable
 // at once.
 
@@ -25,7 +25,7 @@ var ExportClaims = []string{"gradio", "gradio-file-proxy", "upload", "webui-gene
 const ExportMarker = "_tts-export.json"
 
 // ExportDir returns where the static export lives for an install root.
-func ExportDir(root string) string { return filepath.Join(root, "react-ui", "out") }
+func ExportDir(root string) string { return filepath.Join(root, "frontend", "out") }
 
 // HasExport reports whether root has a complete static export.
 func HasExport(root string) bool {
@@ -33,14 +33,14 @@ func HasExport(root string) bool {
 	return err == nil && st.Mode().IsRegular()
 }
 
-// staticExport serves the export and react-ui/public.
+// staticExport serves the export and frontend/public.
 type staticExport struct {
 	out    string
 	public string
 }
 
 func newStaticExport(root string) *staticExport {
-	return &staticExport{out: ExportDir(root), public: filepath.Join(root, "react-ui", "public")}
+	return &staticExport{out: ExportDir(root), public: filepath.Join(root, "frontend", "public")}
 }
 
 const (

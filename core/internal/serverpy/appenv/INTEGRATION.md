@@ -41,7 +41,7 @@ Then:
    (plus `--share/--docker/--no-tree-proxy` forwarded as given: Python still
    reads them, and Python re-derives the same ports, so Go and Python agree).
    Start react-ui only if `!plan.NoReact`, on `plan.ReactPort`
-   (`npm --prefix react-ui start -- -p <ReactPort>`), env `plan.ReactEnv()`.
+   (`npm --prefix frontend start -- -p <ReactPort>`), env `plan.ReactEnv()`.
 3. **Stage 3 router**: listen on `plan.Host:plan.PublicPort` (docker: 0.0.0.0:7770)
    and proxy `/` to `http://plan.Host:plan.GradioPort`. With `plan.TreeProxy ==
    false` (`--no-tree-proxy`) gradio itself is on `PublicPort`; there is nothing

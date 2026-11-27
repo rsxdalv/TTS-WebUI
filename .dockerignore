@@ -2,7 +2,7 @@
 .git
 .claude
 **/node_modules
-react-ui/out
+frontend/out
 installer_files
 platforms
 .venvs

@@ -21,7 +21,7 @@ import (
 // Opt-in tests that run real Python through the launcher's own wiring. They
 // need an install: a copy of the repo (git archive) with installer_files
 // junctioned to a real one, a config.json whose server_port is free, and (for
-// the app run below) a react-ui/out/_tts-export.json. Remove the junction with
+// the app run below) a frontend/out/_tts-export.json. Remove the junction with
 // rmdir before deleting the copy.
 //
 // The full launcher run is done by hand on the same copy: with

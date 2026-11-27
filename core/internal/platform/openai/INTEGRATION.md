@@ -13,7 +13,7 @@ clip. No Python.
 | The saved clip | `save.go`, `wav.go`: `outputs/<date>__<model>__<title>/<same>.{wav,json,png}` |
 | Control API (loopback, `X-TTS-Core-Token`) | `handler.go`, mounted by `launcher/serverpy.go` at `/api/openai/` |
 | Browser routes on port 3000 | `react_ui_backend/core_openai.go`, switch `core-openai`: `GET/PUT/DELETE /api/go-data/openai/endpoints[/{name}]`, `POST .../{name}/test`, `POST /api/go-data/openai/speech` |
-| The page | `react-ui/src/pages/openai.tsx`, route `/openai`, top-level menu entry (a `/text-to-speech/...` path is a Gradio path and is hidden without the Gradio host) |
+| The page | `frontend/src/pages/openai.tsx`, route `/openai`, top-level menu entry (a `/text-to-speech/...` path is a Gradio path and is hidden without the Gradio host) |
 | Seam | `platform.go`: a `platform.Platform` that is always ready; `Install` says it is not installable; `Command` answers that an endpoint has no process |
 
 ## Rules and how each is kept

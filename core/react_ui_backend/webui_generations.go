@@ -1,6 +1,6 @@
 package react_ui_backend
 
-// Port of react-ui/src/pages/api/webui-generations/[...name].ts, which is
+// Port of frontend/src/pages/api/webui-generations/[...name].ts, which is
 // express.static() (serve-static 1.15 and send 0.18) on a list of directories.
 //
 // What is kept:

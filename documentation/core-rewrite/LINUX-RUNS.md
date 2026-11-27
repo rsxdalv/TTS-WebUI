@@ -12,8 +12,8 @@ showed, and what was not run. Small defects found were fixed on this branch (las
 | Machine | Ubuntu 24.04.5 LTS, glibc 2.39, 4 vCPU, 15 GB RAM, no GPU (`nvidia-smi` absent), x86-64 |
 | Toolchain | Go 1.27.4 (the `go 1.27.0` of `core/go.mod`; the runner's own Go was 1.24 and could not build it), Node 22.23.5 |
 | Network | An egress proxy with a fast link and a cache in front of it: **install times below are not what a home connection gives**. The runner also has `UV_NATIVE_TLS=true` set (see fix 1) |
-| Build | `git archive HEAD` into `/tmp/lr/src` (the checkout was never installed into). `cd react-ui && npm ci && node generate-plugin-imports.js && npm run build:static` (CI's `test-react-ui.yaml` steps, 15.7 s with a warm npm cache), `cd core && CGO_ENABLED=0 go build -trimpath ./cmd/tts-webui` (12 s). The embedded launcher UI is the committed bundle |
-| Each line | A fresh folder `/tmp/lr/pN` = the source copy + `react-ui/out` + the launcher binary, no `.git`, no `installer_files`. Launcher started with `env -i PATH=<limited> HOME=/tmp/lr/homeN TMPDIR=...` plus the runner's proxy and CA variables, `tts-webui launch -root /tmp/lr/pN -port 177NN -no-browser`, then `POST /api/app/start` with the `X-TTS-Token` from `GET /` (the call the launcher page makes) |
+| Build | `git archive HEAD` into `/tmp/lr/src` (the checkout was never installed into). `cd frontend && npm ci && node generate-plugin-imports.js && npm run build:static` (CI's `test-react-ui.yaml` steps, 15.7 s with a warm npm cache), `cd core && CGO_ENABLED=0 go build -trimpath ./cmd/tts-webui` (12 s). The embedded launcher UI is the committed bundle |
+| Each line | A fresh folder `/tmp/lr/pN` = the source copy + `frontend/out` + the launcher binary, no `.git`, no `installer_files`. Launcher started with `env -i PATH=<limited> HOME=/tmp/lr/homeN TMPDIR=...` plus the runner's proxy and CA variables, `tts-webui launch -root /tmp/lr/pN -port 177NN -no-browser`, then `POST /api/app/start` with the `X-TTS-Token` from `GET /` (the call the launcher page makes) |
 | Clicks | Chromium with Playwright on the real pages, served by the real binary. `Save`, `Test`, `Edit`, `Generate`, `Process`, `Cancel` and the GPU `select` were pointer clicks and `selectOption`. **`Install` and `Uninstall` of the Extensions page rows were `button.click()` called from the page's DOM by script, not pointer clicks.** No browser had been run on Linux before (P0 to P8 had none on the WSL side) |
 | Limited PATH | `cleanbin` = an empty folder (no python, git, node, npm, uv, micromamba, ffmpeg, not even `sh`). `gitbin` = `git` plus the coreutils `git submodule` needs (`sed basename uname cat grep sh ...`), still no python, node, uv or ffmpeg |
 
@@ -24,7 +24,7 @@ showed, and what was not run. Small defects found were fixed on this branch (las
 | # | Line | Result |
 |---|---|---|
 | 0 | `gofmt -l`, `go vet ./...`, `go test ./...` in `core` on main, on Linux | **pass** (34 packages ok, 17 s, before any change here) |
-| 1 | P4: fresh folder, launcher + `react-ui/out`, no micromamba, PATH with no Python/git/Node, Go pages answer | **pass** |
+| 1 | P4: fresh folder, launcher + `frontend/out`, no micromamba, PATH with no Python/git/Node, Go pages answer | **pass** |
 | 2a | P2: install uv and a small CPU engine from the launcher, generate a clip | **pass** (Kitten TTS: clip made from the engine page; Kokoro: clip made and saved) |
 | 2b | P2: the clip is in History | **pass for Kokoro**; **Kitten does not write to History** (its tab has no save decorator: the clip stays in Gradio's temp folder; upstream extension, not the platform) |
 | 2c | P2: second engine on the same torch row, one inode | **pass** (inode 862031, link count 3 with the cache) |
@@ -50,7 +50,7 @@ showed, and what was not run. Small defects found were fixed on this branch (las
 ### 1. P4: fresh folder, no micromamba, PATH with nothing on it
 
 ```bash
-/tmp/lr/mkroot.sh /tmp/lr/p4          # source copy + react-ui/out + tts-webui
+/tmp/lr/mkroot.sh /tmp/lr/p4          # source copy + frontend/out + tts-webui
 cd /tmp/lr/p4 && env -i PATH=/tmp/lr/cleanbin HOME=/tmp/lr/home4 ./tts-webui launch -root /tmp/lr/p4 -port 17700 -no-browser
 ```
 

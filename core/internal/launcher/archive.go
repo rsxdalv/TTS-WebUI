@@ -1,7 +1,7 @@
 package launcher
 
 // Updating an install that came from the archive (D32): the installer zip CI
-// publishes holds the repo, the launchers and react-ui/out, and archive.json at
+// publishes holds the repo, the launchers and frontend/out, and archive.json at
 // its root says which commit it was built from. CI publishes the same file next
 // to the zip as tts-webui-installer.json, so a check is one small request and
 // needs no git. Updating downloads the zip and extracts it over the install; the

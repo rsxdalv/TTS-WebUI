@@ -147,7 +147,7 @@ Prerequisites:
 
 5. For React UI, build it and leave out `--no-react`:
    ```bash
-   cd react-ui
+   cd frontend
    npm install
    npm run build:static
    cd ..

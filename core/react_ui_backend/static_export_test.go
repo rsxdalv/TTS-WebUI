@@ -21,14 +21,14 @@ func exportFixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	files := map[string]string{
-		"react-ui/out/index.html":                  exportIndex,
-		"react-ui/out/assets/a.js":                 "console.log(1)",
-		"react-ui/out/favicon.ico":                 "ICO",
-		"react-ui/out/_tts-export.json":            `{"commit":"C1"}`,
-		"react-ui/out/.hidden":                     "hidden",
-		"react-ui/public/robots.txt":               "robots",
-		"react-ui/public/file-input-cache/.secret": "secret",
-		"react-ui/public/.env":                     "secret",
+		"frontend/out/index.html":                  exportIndex,
+		"frontend/out/assets/a.js":                 "console.log(1)",
+		"frontend/out/favicon.ico":                 "ICO",
+		"frontend/out/_tts-export.json":            `{"commit":"C1"}`,
+		"frontend/out/.hidden":                     "hidden",
+		"frontend/public/robots.txt":               "robots",
+		"frontend/public/file-input-cache/.secret": "secret",
+		"frontend/public/.env":                     "secret",
 	}
 	for name, content := range files {
 		full := filepath.Join(root, filepath.FromSlash(name))
@@ -80,7 +80,7 @@ func TestStaticExportMapping(t *testing.T) {
 	front := staticFront(t, root)
 
 	// Uploaded after the server started: served at once (R1's O2).
-	upload := filepath.Join(root, "react-ui", "public", "file-input-cache", "up.wav")
+	upload := filepath.Join(root, "frontend", "public", "file-input-cache", "up.wav")
 	if err := os.WriteFile(upload, []byte("RIFF"), 0o644); err != nil {
 		t.Fatal(err)
 	}

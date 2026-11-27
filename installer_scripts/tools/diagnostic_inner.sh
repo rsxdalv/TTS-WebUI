@@ -90,7 +90,7 @@ echo ".python_version:" >> ./installer_scripts/diagnostic.txt
 cat ./installer_scripts/.python_version >> ./installer_scripts/diagnostic.txt 2>&1
 echo "" >> ./installer_scripts/diagnostic.txt
 
-# npm list in react-ui
-echo "npm list --prefix ./react-ui/" >> ./installer_scripts/diagnostic.txt
-npm list --prefix ./react-ui/ >> ./installer_scripts/diagnostic.txt 2>&1
+# npm list in frontend
+echo "npm list --prefix ./frontend/" >> ./installer_scripts/diagnostic.txt
+npm list --prefix ./frontend/ >> ./installer_scripts/diagnostic.txt 2>&1
 echo "" >> ./installer_scripts/diagnostic.txt

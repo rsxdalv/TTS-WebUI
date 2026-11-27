@@ -1,6 +1,6 @@
 package launcher
 
-// How the React UI starts. Go serves the static export in react-ui/out (built by
+// How the React UI starts. Go serves the static export in frontend/out (built by
 // Vite, `npm run build:static`) on the React port; no Node process runs. Before
 // the app starts the launcher checks that the export exists, that the route
 // claims it needs are on, and that it was built from the install's commit.
@@ -111,12 +111,12 @@ func missingExportClaims(sw switches.Set) string {
 }
 
 // errUINotBuilt is the error for an install with no export and no way to build one.
-var errUINotBuilt = errors.New("the React UI is not built: react-ui/out is missing. The installer zip ships it, so run Update in the launcher or download the zip again (an install with the old env builds it in Install)")
+var errUINotBuilt = errors.New("the React UI is not built: frontend/out is missing. The installer zip ships it, so run Update in the launcher or download the zip again (an install with the old env builds it in Install)")
 
 // canBuildExport reports whether `npm run build:static` can run: react-ui has
 // the script and its dependencies are installed.
 func canBuildExport(root paths.Root) bool {
-	data, err := os.ReadFile(filepath.Join(root.Dir(), "react-ui", "package.json"))
+	data, err := os.ReadFile(filepath.Join(root.Dir(), "frontend", "package.json"))
 	if err != nil {
 		return false
 	}
@@ -129,7 +129,7 @@ func canBuildExport(root paths.Root) bool {
 	if _, ok := pkg.Scripts["build:static"]; !ok {
 		return false
 	}
-	st, err := os.Stat(filepath.Join(root.Dir(), "react-ui", "node_modules"))
+	st, err := os.Stat(filepath.Join(root.Dir(), "frontend", "node_modules"))
 	return err == nil && st.IsDir()
 }
 
@@ -157,11 +157,11 @@ func (s *reactPrep) prepareReactUI(ctx context.Context, sw switches.Set) error {
 	}
 	switch {
 	case plan.buildExport:
-		slog.Warn("react-ui: there is no static export in react-ui/out; building it once with npm run build:static (this takes a few minutes)")
+		slog.Warn("react-ui: there is no static export in frontend/out; building it once with npm run build:static (this takes a few minutes)")
 	case plan.rebuildExport:
 		slog.Warn("react-ui: the static export was built from another commit than this install, so it would serve an old UI; rebuilding it once with npm run build:static (this takes a few minutes)")
 	default:
-		slog.Info("react-ui: serving the static export from react-ui/out")
+		slog.Info("react-ui: serving the static export from frontend/out")
 		return nil
 	}
 	// A failed build never falls back to an old export.
@@ -169,7 +169,7 @@ func (s *reactPrep) prepareReactUI(ctx context.Context, sw switches.Set) error {
 		return fmt.Errorf("building the React UI (npm run build:static) failed, so the app was not started: %w", err)
 	}
 	if !react_ui_backend.HasExport(s.root.Dir()) || exportStale(s.root) {
-		return errors.New("npm run build:static finished but react-ui/out is still missing or stale, so the app was not started")
+		return errors.New("npm run build:static finished but frontend/out is still missing or stale, so the app was not started")
 	}
 	slog.Info("react-ui: static export built")
 	return nil
@@ -187,7 +187,7 @@ func (s *reactPrep) tool() func(ctx context.Context, name string, args ...string
 // straight from PATH with system python), and logs its output.
 func (s *reactPrep) runReactUITool(ctx context.Context, name string, args ...string) error {
 	p := &procs.Proc{}
-	dir := filepath.Join(s.root.Dir(), "react-ui")
+	dir := filepath.Join(s.root.Dir(), "frontend")
 	// A clone that builds for itself uses its own Node from PATH; only the old env
 	// and the system platform run it through the platform.
 	var c platform.Command
@@ -197,7 +197,7 @@ func (s *reactPrep) runReactUITool(ctx context.Context, name string, args ...str
 		c, err = s.platform.Command(nil, append([]string{name}, args...))
 	default:
 		if path, e := exec.LookPath(name); e != nil {
-			err = fmt.Errorf("%s was not found on PATH: a clone that builds the React UI itself needs Node; the installer zip ships react-ui/out", name)
+			err = fmt.Errorf("%s was not found on PATH: a clone that builds the React UI itself needs Node; the installer zip ships frontend/out", name)
 		} else {
 			c = platform.Command{Program: path, Args: args}
 		}

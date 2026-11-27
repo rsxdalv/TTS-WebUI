@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	root := flag.String("root", "", "install root (it holds react-ui/out and react-ui/public)")
+	root := flag.String("root", "", "install root (it holds frontend/out and frontend/public)")
 	port := flag.Int("port", 0, "public port")
 	routes := flag.String("routes", "", "TTS_GO_ROUTES value (empty: every claim)")
 	coreURL := flag.String("core-url", "", "control API address for the core routes (dev: a pipd or logd)")

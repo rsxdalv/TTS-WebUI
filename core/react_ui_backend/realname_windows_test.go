@@ -31,7 +31,7 @@ func shortName(t *testing.T, path string) string {
 
 func TestDotfilesStayHiddenBehind83Names(t *testing.T) {
 	root := exportFixture(t)
-	hidden := filepath.Join(root, "react-ui", "public", ".hidden")
+	hidden := filepath.Join(root, "frontend", "public", ".hidden")
 	if err := os.WriteFile(hidden, []byte("SECRET-DOTFILE"), 0o644); err != nil {
 		t.Fatal(err)
 	}

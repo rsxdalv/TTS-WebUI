@@ -39,7 +39,7 @@ The release the launcher checks (`https://github.com/rsxdalv/TTS-WebUI/releases/
 `tts-webui-installer.json` (`{"commit":"b844e0a6...","built":"2026-11-26T00:38:04Z"}`, HTTP 200, 85 bytes) and
 `tts-webui-installer.zip` (69,371,396 bytes; the CI run "Update Full Repository Zip" for b844e0a succeeded). So the real URL was used, not
 a local server, for the swap run. The zip holds `archive.json`, `tts-webui.exe` (11.7 MB; `--version`: `tts-webui main (commit b844e0a6...,
-built 2026-11-26T00:37:03Z)`), the other launchers, `react-ui/out`, the sources and `.git`. The cases that need a server that misbehaves used a
+built 2026-11-26T00:37:03Z)`), the other launchers, `frontend/out`, the sources and `.git`. The cases that need a server that misbehaves used a
 small local Python file server (`TTS_ARCHIVE_URL=http://127.0.0.1:7950/tts-webui-installer.zip`).
 
 Scratch install: the release zip extracted, `tts-webui.exe` replaced by a build of this branch (`--version`: `tts-webui dev (commit none,

@@ -152,7 +152,7 @@ function Check-Pycheck($pkg) {
 }
 
 # The Vite pages' own calls: package -> api name and the body the page sends with its default settings
-# (initial*Params in react-ui/src/tabs, use_random_seed removed, GPU off because the scratch platform is CPU).
+# (initial*Params in frontend/src/tabs, use_random_seed removed, GPU off because the scratch platform is CPU).
 $inferenceCalls = @{
     "tts_webui_extension.kokoro"     = @{ Name = "kokoro_generate"; Body = @{ seed = 0; text = "This is a short check of the engine."; voice = "af_heart"; speed = 1.0; model_name = "hexgrad/Kokoro-82M"; use_gpu = $false } }
     "tts_webui_extension.mms"        = @{ Name = "mms"; Body = @{ seed = 0; text = "This is a short check of the engine."; language = "eng"; speaking_rate = 1.0; noise_scale = 0.667; noise_scale_duration = 0.8 } }

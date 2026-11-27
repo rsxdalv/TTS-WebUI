@@ -16,7 +16,7 @@ import (
 func uploadFixture(t *testing.T) (cache string, srv *httptest.Server) {
 	t.Helper()
 	root := t.TempDir()
-	cache = filepath.Join(root, "react-ui", "public", "file-input-cache")
+	cache = filepath.Join(root, "frontend", "public", "file-input-cache")
 	if err := os.MkdirAll(cache, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +164,7 @@ func TestSafeUploadName(t *testing.T) {
 // other files stay.
 func TestUploadRemovesStaleTempFilesAtStart(t *testing.T) {
 	root := t.TempDir()
-	cache := filepath.Join(root, "react-ui", "public", "file-input-cache")
+	cache := filepath.Join(root, "frontend", "public", "file-input-cache")
 	if err := os.MkdirAll(cache, 0o755); err != nil {
 		t.Fatal(err)
 	}

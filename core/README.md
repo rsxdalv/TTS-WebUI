@@ -49,7 +49,7 @@ CGO_ENABLED=0 go build -trimpath -o bin/tts-webui ./cmd/tts-webui
 - `cmd/tts-webui/` - entry point (`launch`, the default, and `mcp`)
 - `internal/mcp/` - the MCP server: two tools over the OpenAI-compatible API ([spec](../documentation/core-rewrite/MCP.md))
 - `internal/launcher/` - the setup steps and the app supervisor
-- `react_ui_backend/` - the Go server for the React UI on port 3000: serves the static export (`react-ui/out`, built by Vite with `npm run build:static`) and answers the API routes (`TTS_GO_ROUTES` picks which; `TTS_GO_PROXY=0` is an error now that Next.js is gone)
+- `react_ui_backend/` - the Go server for the React UI on port 3000: serves the static export (`frontend/out`, built by Vite with `npm run build:static`) and answers the API routes (`TTS_GO_ROUTES` picks which; `TTS_GO_PROXY=0` is an error now that Next.js is gone)
 - `installer_scripts/` - Go ports of `installer_scripts/*`
 - `internal/switches/` - the switches that turn the Go ports on
 - `internal/server/` - local HTTP server (token, host/origin checks, SSE)

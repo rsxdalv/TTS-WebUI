@@ -70,7 +70,7 @@ func TestUpdateStep_ArchiveInstall(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root.Dir(), "archive.json"), []byte(`{"commit":"aaaaaaaa11"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("TTS_ARCHIVE_URL", release(t, "bbbbbbbb22", map[string]string{"react-ui/out/index.html": "new ui"}))
+	t.Setenv("TTS_ARCHIVE_URL", release(t, "bbbbbbbb22", map[string]string{"frontend/out/index.html": "new ui"}))
 
 	st := statusOf(t, srv, token, "update")
 	if st.Done || !strings.Contains(st.Detail, "update is available") {
@@ -87,7 +87,7 @@ func TestUpdateStep_ArchiveInstall(t *testing.T) {
 	if !strings.Contains(string(body), "Update complete") || !strings.Contains(string(body), `"exitCode":0`) {
 		t.Fatalf("stream = %s", body)
 	}
-	if b, _ := os.ReadFile(filepath.Join(root.Dir(), "react-ui", "out", "index.html")); string(b) != "new ui" {
+	if b, _ := os.ReadFile(filepath.Join(root.Dir(), "frontend", "out", "index.html")); string(b) != "new ui" {
 		t.Errorf("the archive was not extracted: %q", b)
 	}
 	deadline := time.Now().Add(3 * time.Second)

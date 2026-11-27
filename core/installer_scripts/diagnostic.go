@@ -92,8 +92,8 @@ func diagnosticWindows() []diagLine {
 		blank()
 	}
 	// The original's last section has no colon after the title.
-	echo("npm list --prefix ./react-ui/")
-	call("npm list --prefix ./react-ui/")
+	echo("npm list --prefix ./frontend/")
+	call("npm list --prefix ./frontend/")
 	blank()
 	return l
 }
@@ -136,8 +136,8 @@ func diagnosticUnix() []diagLine {
 		run("cat ./installer_scripts/" + f)
 		blank()
 	}
-	echo("npm list --prefix ./react-ui/")
-	run("npm list --prefix ./react-ui/")
+	echo("npm list --prefix ./frontend/")
+	run("npm list --prefix ./frontend/")
 	blank()
 	return l
 }

@@ -20,7 +20,7 @@ cancel; **Windows only**, plus a **Vite page of its own**.
 | Control API | `handler.go`, `/api/audiocpp/` (loopback, token): `GET status`, `POST speech`, `POST cancel`, `POST stop`. Clips are saved by `openai.SaveClip` (a small exported wrapper added to the `openai` package) in the layout History reads. |
 | Browser routes | `react_ui_backend/core_audiocpp.go`, switch `core-audiocpp`: `GET /api/go-data/audiocpp/status`, `POST .../speech`, `POST .../cancel`. No route installs, removes or stops anything. |
 | Install UI | The launcher's Extensions page (D30): a `Platforms` row for audio.cpp, an `audio.cpp models` group, a **build select** (CPU 34 MB / Vulkan 84 MB) that is sent as `audiocpp_row`. Install order is platform, then model; removing the platform is refused while a model needs it. |
-| Vite page | `react-ui/src/pages/audiocpp.tsx`, route `/audiocpp`, top-level menu entry (it stays visible without the Gradio host): model and voice, text, Generate, **Cancel**, the clip, a link to History. |
+| Vite page | `frontend/src/pages/audiocpp.tsx`, route `/audiocpp`, top-level menu entry (it stays visible without the Gradio host): model and voice, text, Generate, **Cancel**, the clip, a link to History. |
 
 ## Cancel: what the server really does
 
@@ -40,7 +40,7 @@ The manifest field `cancel` of PLATFORM-DESIGN section 2 was **not added**: noth
 ## Verification (2026-11-25)
 
 Windows 10, Go 1.27.4, a scratch copy of `git archive HEAD` in `%TEMP%\p7fresh` with no Python, no micromamba, no git or Node on the
-launcher's path needs; `react-ui/out` built from this branch; launcher on port 18930, router on 18940, UI on 3000. `--no-browser --start`.
+launcher's path needs; `frontend/out` built from this branch; launcher on port 18930, router on 18940, UI on 3000. `--no-browser --start`.
 Driven through the real launcher page and the real Vite page in the browser pane (the pane was hidden, so by DOM events on the
 real pages, as in P5). Cold downloads from GitHub and Hugging Face.
 
@@ -97,5 +97,5 @@ A wrong checksum of the zip and of each model file with real downloads, a 404, a
 `install.go`; the rest is in the new `audiocpp.go`), `core/internal/launcher/{extensions,serverpy}.go` (construct the platform, mount the
 control API, stop the server on close, list row), `core/internal/platform/requires/requires.go` (the reserved text), `extensions.json` (one
 group), `core/internal/platform/openai/{save,clip}.go` (a `Label` and an exported `SaveClip`), `core/ui/src/core-app/ExtensionsView.tsx`
-**and the embedded bundle under `core/internal/webui/assets/`** (rebuild it after a merge: `core/scripts/build-webui.*`), `react-ui/src/routes.tsx`
+**and the embedded bundle under `core/internal/webui/assets/`** (rebuild it after a merge: `core/scripts/build-webui.*`), `frontend/src/routes.tsx`
 and `components/Header.tsx` (one route and one menu entry).

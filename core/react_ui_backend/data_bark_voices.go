@@ -1,13 +1,13 @@
 package react_ui_backend
 
-// Data endpoint for react-ui/src/pages/text-to-speech/bark/voices.tsx (task
+// Data endpoint for frontend/src/pages/text-to-speech/bark/voices.tsx (task
 // B5b): the `outputs` array that getStaticProps builds with
-// getNpzDataSimpleVoices() in react-ui/src/data/getVoicesData.tsx. Behind the
+// getNpzDataSimpleVoices() in frontend/src/data/getVoicesData.tsx. Behind the
 // claim switch data-bark-voices.
 //
 // For every file of <root>/voices that ends in ".npz" (case-sensitive) the
 // original reads the zip, parses the entry named metadata.npy as an .npy array
-// of UTF-32 characters (react-ui/src/data/npz-parsing.ts, npyToUtf8.ts), parses
+// of UTF-32 characters (frontend/src/data/npz-parsing.ts, npyToUtf8.ts), parses
 // that text as JSON and spreads it into
 //   {...metadata, filename: "voices/<file>", url: "api/webui-generations/voices/<file>"}.
 // Anything that cannot be parsed (not a zip, no metadata entry, another dtype,

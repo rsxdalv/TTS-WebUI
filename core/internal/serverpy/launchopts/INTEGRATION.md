@@ -38,7 +38,7 @@ every write), so what Gradio gets is the file as it is at launch.
 - **Dropped keys:** `file_directories`, `favicon_path`, `show_tips`,
   `enable_queue`, `prevent_thread_lock` of the file; the last two are then set
   to the fixed values below. Fixed: `allowed_paths: ["."]`, `favicon_path:
-  ./react-ui/public/favicon.ico`, `prevent_thread_lock: true`.
+  ./frontend/public/favicon.ico`, `prevent_thread_lock: true`.
 - **Flags:** the launcher passes its flags (`NoReact` always; `--share` and
   `--docker` from `tts-webui launch`, via `launcher.WithShare`/`WithDocker`; the
   same flags reach `appenv.Plan` and the gradio child's arguments). With
@@ -72,7 +72,7 @@ extension to avoid importing torch), the built-in ones live.
 
 Step 27 repeated the launcher run with real extensions: a copy of the repo with
 `installer_files` junctioned, `TTS_GO_SERVERPY=1`, port 17910, no browser, a fake
-`react-ui/out/_tts-export.json`, and only `tts_webui_extension.mms`, `.openai_tts_api`
+`frontend/out/_tts-export.json`, and only `tts_webui_extension.mms`, `.openai_tts_api`
 and `.vocos` enabled. `/config` listed 107 tabs, 44 of them `[Disabled]`; the three
 extensions' tabs were live (their modules imported). The one error tab,
 `Huggingface Cache Manager (!)`, is the built-in extension failing on

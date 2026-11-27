@@ -8,7 +8,7 @@ pages sit beside them. Removing the old tabs is a later step.
 
 **Before (origin/main b476228).**
 
-1. Verified by a real run (empty root with only `react-ui/out`, `tts-webui launch --start --no-browser`): the launcher
+1. Verified by a real run (empty root with only `frontend/out`, `tts-webui launch --start --no-browser`): the launcher
    page comes up, the app does not start: `determining GPU: GPU label not set: complete the GPU step first`
    (`installer_scripts/.gpu` missing). `--system-python` skipped that gate.
 2. Verified by the tests that were on origin/main (`TestStartErrorMarksFailed`, `TestStartFailureClosesTheReactFront`):
@@ -43,7 +43,7 @@ launcher's real supervisor wiring (`launcher/gocore_test.go`) or the supervisor 
   skipped. Tests: `TestGPULabelIsAWarning`, `launcher/TestMissingGPULabelIsOnlyAWarning`.
   **Revisit:** set `Config.StrictGPULabel` (not wired to any flag yet) to make it a hard stop again
   (`TestStrictGPULabelStopsStart`); decide then whether native installs should fall back to CPU torch.
-- Still needed to boot: the static export in `react-ui/out` (or npm to build it, which today comes from the env), and
+- Still needed to boot: the static export in `frontend/out` (or npm to build it, which today comes from the env), and
   `config.json` (a missing one means defaults). Not changed.
 - On the public port (default 7770) the Go router answers 502 for `/` while Gradio is down; the React UI on :3000 is
   the app in that case.
@@ -112,7 +112,7 @@ All pages are in the Tools menu (Header.tsx).
    widget polls every 2 s. Same keys as `get_gpu_info`. Neutral values for what only torch knew: `torch_version` "",
    `used_vram` and `cached_vram` 0, `multi_processor_count` 0; `used_vram_total` is the device memory in use;
    `cuda_version` is the driver's CUDA version from the nvidia-smi header. NVIDIA only; AMD, Intel and Apple get `[]`.
-9. **ffmpeg_metadata.** `{name}` of a file in `react-ui/public/file-input-cache` (what `/api/upload` fills), never a
+9. **ffmpeg_metadata.** `{name}` of a file in `frontend/public/file-input-cache` (what `/api/upload` fills), never a
    path. Same tag rules as the extension; tag names matched without case; a file with no usable comment tag returns
    the whole ffprobe document instead of an error.
 10. **minimax: not converted.** A Go handler was written and then dropped (Rob: MiniMax is not part of the core). The
@@ -140,7 +140,7 @@ Also checked: the supervisor with a Gradio that cannot start, one that dies late
 a second `Start` after Gradio died (`supervise/gocore_test.go`); the launcher's real wiring on a temp install with no
 env (React front, real control API and services answering, Gradio reported as failed) and with a Gradio that exits with
 code 3 (control API still answering) (`launcher/gocore_test.go`); `tsc` on the launcher UI change.
-Real run (sub session, built binary, empty scratch root with only `react-ui/out` and a `config.json`; no env, no
+Real run (sub session, built binary, empty scratch root with only `frontend/out` and a `config.json`; no env, no
 `.gpu`): `tts-webui launch --start --no-browser` started. The launcher status showed gradio `failed` with `no Python
 environment: ...micromamba.exe was not found (the install has not been done)` and react-ui `ready`. :3000 served the
 UI (200); `pip-list` 409 `no_python`; `logs/files` 200 `[]`; `model-locations`, `server-settings` (no secrets) and
@@ -150,4 +150,4 @@ checked when Gradio could start. The launcher wrote a default `.env` into the ro
 Not checked: a start with a real Python env after the change (the opt-in `LAUNCHER_REAL_ROOT` tests were not run); the
 launcher page and the new pages (other than pip list) rendered in a browser; a real ffprobe run
 through the route (only a stub); the remixer with real audio; the Gradio tabs next to the new pages; a no-env start when
-`react-ui/out` is missing (it needs npm to build it).
+`frontend/out` is missing (it needs npm to build it).

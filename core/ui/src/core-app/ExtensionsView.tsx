@@ -161,7 +161,6 @@ export function ExtensionsView() {
 
   const [ask, setAsk] = useState<{ ext: Ext; ask: GPUAsk; pick: string } | null>(null);
   const abort = useRef<AbortController | null>(null);
-
   // The audio.cpp build (cpu or vulkan) is chosen for an install that installs the
   // audiocpp platform: the platform itself, or a model while it is missing.
   const [audioRow, setAudioRow] = useState("cpu");
@@ -293,20 +292,6 @@ export function ExtensionsView() {
         placeholder="Filter extensions"
         className="px-3 py-2 text-sm rounded border border-gray-300 dark:border-gray-700 bg-transparent"
       />
-      {data.extensions.some((e) => e.package_name === "audiocpp" && !e.installed) && (
-        <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm flex items-center gap-2">
-          <label htmlFor="audio-row">audio.cpp build to install:</label>
-          <select
-            id="audio-row"
-            className="px-2 py-1 rounded border border-gray-300 dark:border-gray-700 bg-transparent"
-            value={audioRow}
-            onChange={(e) => setAudioRow(e.target.value)}
-          >
-            <option value="cpu">CPU (34 MB, runs anywhere)</option>
-            <option value="vulkan">Vulkan (84 MB, needs a GPU driver with Vulkan)</option>
-          </select>
-        </div>
-      )}
       {groups.map(([group, list]) => (
         <section key={group} className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
@@ -338,6 +323,20 @@ export function ExtensionsView() {
                     <p className="text-xs text-gray-600 dark:text-gray-400">
                       Requires: {e.requirements_state.map(requirementText).join(", ")}
                     </p>
+                  )}
+                  {!e.installed && installsAudio(e) && (
+                    <div className="mt-1 mb-1 flex items-center gap-2 text-xs">
+                      <label htmlFor={`audio-row-${e.package_name}`}>audio.cpp build to install:</label>
+                      <select
+                        id={`audio-row-${e.package_name}`}
+                        className="px-2 py-1 rounded border border-gray-300 dark:border-gray-700 bg-transparent"
+                        value={audioRow}
+                        onChange={(ev) => setAudioRow(ev.target.value)}
+                      >
+                        <option value="cpu">CPU (34 MB, runs anywhere)</option>
+                        <option value="vulkan">Vulkan (84 MB, needs a GPU driver with Vulkan)</option>
+                      </select>
+                    </div>
                   )}
                   <p className="text-xs text-gray-500 dark:text-gray-500">
                     {e.package_name}
@@ -390,8 +389,16 @@ export function ExtensionsView() {
           ))}
         </section>
       ))}
+      {(ask || busy || log.length > 0) && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={ask ? "Choose the GPU" : "Install log"}
+        >
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-auto rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-xl flex flex-col gap-3">
       {ask && (
-        <div className="p-3 rounded-lg border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950 text-sm flex flex-col gap-2">
+        <div className="text-sm flex flex-col gap-2">
           <strong>Which GPU is this for?</strong>
           <p className="text-gray-700 dark:text-gray-300">
             {installsHost(ask.ext)
@@ -420,7 +427,10 @@ export function ExtensionsView() {
                   : `Install uv, the Gradio host and ${ask.ext.name}`
                 : `Install uv and ${ask.ext.name}`}
             </button>
-            <button className={btn} onClick={() => setAsk(null)}>
+            <button className={btn} onClick={() => {
+                setAsk(null);
+                setLog([]);
+              }}>
               Not now
             </button>
           </div>
@@ -437,6 +447,16 @@ export function ExtensionsView() {
         <pre className="p-3 rounded-lg bg-gray-900 text-gray-100 text-xs overflow-auto max-h-72 whitespace-pre-wrap">
           {log.join("\n")}
         </pre>
+      )}
+            {!busy && !ask && (
+              <div>
+                <button className={btn} onClick={() => setLog([])}>
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

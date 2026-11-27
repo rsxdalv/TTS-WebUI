@@ -11,6 +11,10 @@ import (
 // noHostPage answers GET / of the public port while there is no Gradio host: it
 // says why and links to the Vite UI, which runs without it.
 func noHostPage(detail string) http.Handler {
+	reactPort := supervise.DefaultReactPort
+	if n, err := reactPortFromEnv(); err == nil && n != 0 {
+		reactPort = n
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store")
@@ -21,6 +25,6 @@ func noHostPage(detail string) http.Handler {
 <p>%s</p>
 <p><a id="ui" href="#">Open the TTS WebUI</a> (it works without them). The Gradio host is installed from the launcher's Extensions page.</p>
 <script>document.getElementById("ui").href = location.protocol + "//" + location.hostname + ":%d/"</script>`,
-			html.EscapeString(detail), supervise.DefaultReactPort)
+			html.EscapeString(detail), reactPort)
 	})
 }

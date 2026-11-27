@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Template } from "../components/Template";
 import { errorText, goGetJson } from "../functions/goData";
+import { LauncherExtensionsLink } from "../components/LauncherExtensionsLink";
 
 /** An engine of the onnx platform as the Go core lists it. */
 type Engine = {
@@ -31,7 +32,7 @@ const primary =
 /**
  * The onnx platform: engines run by a native ONNX runtime that TTS WebUI
  * downloads on demand (no Python). Installing one is done on the launcher's
- * Extensions page (port 7700); generating is here. The clip is saved by Go in
+ * Extensions page; generating is here. The clip is saved by Go in
  * outputs/ and appears in History. Cancel stops the program.
  */
 const OnnxPage = () => {
@@ -51,16 +52,17 @@ const OnnxPage = () => {
         <p className="text-sm text-gray-600">
           These engines run on a native ONNX runtime that TTS WebUI downloads
           once (checked against a pinned checksum). Install one on the
-          launcher&apos;s Extensions page (port 7700); then generate here. CPU
-          only.
+          <LauncherExtensionsLink text="launcher's Extensions page" />; then
+          generate here. CPU only.
         </p>
         {error && <div className="text-red-600">{error}</div>}
         {engines && engines.length === 0 && <p>No ONNX engine is known.</p>}
         {engines && ready.length === 0 && engines.length > 0 && (
           <p>
             No ONNX engine is installed
-            {engines[0].detail ? ` (${engines[0].detail})` : ""}. Open the
-            launcher&apos;s Extensions page (port 7700) and install{" "}
+            {engines[0].detail ? ` (${engines[0].detail})` : ""}. Open the{" "}
+            <LauncherExtensionsLink text="launcher's Extensions page" /> and
+            install{" "}
             <b>{engines[0].name}</b>.
           </p>
         )}

@@ -2,6 +2,7 @@ package extcatalog
 
 import (
 	"encoding/json"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/gpu"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -55,6 +56,14 @@ func TestNativeInstallAsksForTheGPUThenInstallsUVFirst(t *testing.T) {
 	}
 	if code != 409 || json.Unmarshal([]byte(body), &ask) != nil || ask.Needs != "gpu_choice" || ask.Proposed == "" || len(ask.Choices) < 2 {
 		t.Fatalf("no choice: %d %s", code, body)
+	}
+	// The older-NVIDIA choice is offered on torch cu126 beside the cu128 one.
+	rows := map[string]string{}
+	for _, c := range ask.Choices {
+		rows[c.Label] = c.Row
+	}
+	if rows["NVIDIA GPU"] != "cu128" || rows[string(gpu.NVIDIALegacy)] != "cu126" {
+		t.Errorf("NVIDIA choices: %v", rows)
 	}
 	if _, err := os.Stat(log); err == nil {
 		t.Fatal("something ran before the GPU was chosen")
@@ -284,5 +293,18 @@ func TestNativeInstallWithoutGitIsRefusedBeforeAnyStep(t *testing.T) {
 	t.Setenv("PATH", bin)
 	if code, got := call(t, s.Handler(), "POST", Prefix+"install", `{"package_name":"ext.native"}`, "tok"); code != 409 || !strings.Contains(got, "gpu_choice") {
 		t.Fatalf("with git: %d %s", code, got)
+	}
+}
+
+// The older-NVIDIA label installs the cu126 row, with no xformers.
+func TestNativeInstallOnTheOlderNVIDIAChoiceUsesCu126(t *testing.T) {
+	s, _, log := nativeStore(t)
+	_, got, _ := stream(t, s, `install {"package_name":"ext.native","gpu":"`+string(gpu.NVIDIALegacy)+`"}`)
+	if !got.ok {
+		t.Fatalf("install: %+v", got.lines)
+	}
+	l := strings.Join(readLog(t, log), "\n")
+	if !strings.Contains(l, "torch==2.11.0+cu126") || !strings.Contains(l, "https://download.pytorch.org/whl/cu126") || strings.Contains(l, "xformers") {
+		t.Errorf("uv log:\n%s", l)
 	}
 }

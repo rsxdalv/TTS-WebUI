@@ -7,6 +7,7 @@ interface ProcessStatus {
   name: string;
   running: boolean;
   state?: string; // starting, ready, exited, failed, ...
+  port?: number;
   error?: string; // why it failed (for example: no Python environment)
   warning?: string; // carried on despite, e.g. a missing GPU label
 }
@@ -62,6 +63,27 @@ export function LaunchStep() {
       .catch(() => {});
   }, []);
 
+  // A page opened (or reloaded) while the app is up shows its state at once:
+  // the status stream only sends changes, so ask once.
+  useEffect(() => {
+    let live = true;
+    client("/api/app/status")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: ProcessStatus[]) => {
+        if (!live || !Array.isArray(list)) return;
+        if (list.some((p) => p.running || p.state === "failed")) {
+          setProcesses(list);
+          setLaunched(true);
+          subscribeStatus();
+        }
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Cleanup on unmount.
   useEffect(() => {
     return () => {
@@ -104,6 +126,13 @@ export function LaunchStep() {
     }
     setLaunched(true);
     subscribeStatus();
+    // Show the processes now, not at their next change.
+    try {
+      const r = await client("/api/app/status");
+      if (r.ok) setProcesses((await r.json()) as ProcessStatus[]);
+    } catch {
+      // the stream will bring the state
+    }
   }
 
   async function stop() {
@@ -139,6 +168,11 @@ export function LaunchStep() {
   }
 
   const anyRunning = processes.some((p) => p.running);
+  const react = processes.find((p) => p.name === "react-ui");
+  const reactURL =
+    react?.running && react.port
+      ? `${window.location.protocol}//${window.location.hostname}:${react.port}/`
+      : "";
   const allStopped = launched && processes.length > 0 && !anyRunning;
 
   return (
@@ -195,7 +229,18 @@ export function LaunchStep() {
         </ul>
       )}
 
-      {appURL && (
+      {reactURL && (
+        <a
+          href={reactURL}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 mr-2 inline-flex px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 text-sm"
+        >
+          Open the UI →
+        </a>
+      )}
+
+      {appURL && processes.some((p) => p.name === "gradio" && p.running) && (
         <a
           href={appURL}
           target="_blank"

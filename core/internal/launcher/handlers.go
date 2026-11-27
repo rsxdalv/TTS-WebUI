@@ -168,7 +168,10 @@ func (l *Launcher) handleGPU() http.Handler {
 			http.Error(w, "body must be {\"label\": \"<gpu-label>\"}", http.StatusBadRequest)
 			return
 		}
-		if _, err := gpu.Parse(req.Label); err != nil {
+		if lab, err := gpu.Parse(req.Label); err != nil || lab == gpu.NVIDIALegacy {
+			if err == nil {
+				err = fmt.Errorf("%q is a uv platform choice; the legacy installer has no such GPU", lab)
+			}
 			http.Error(w, fmt.Sprintf("invalid gpu label: %v", err), http.StatusBadRequest)
 			return
 		}

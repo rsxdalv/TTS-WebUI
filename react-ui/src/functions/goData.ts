@@ -15,8 +15,8 @@ const readError = async (response: Response): Promise<string> => {
   return text || `${response.status} ${response.statusText}`;
 };
 
-export const goGetJson = async <T>(path: string): Promise<T> => {
-  const response = await fetch(path);
+export const goGetJson = async <T>(path: string, signal?: AbortSignal): Promise<T> => {
+  const response = await fetch(path, { signal });
   if (!response.ok) throw new Error(await readError(response));
   return response.json();
 };

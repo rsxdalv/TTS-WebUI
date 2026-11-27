@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { client } from "./client";
 import { PlatformRows } from "./PlatformRows";
+import { InstallProgress } from "./InstallDialog";
+import { applyStepMessage, type StepInfo, type StepMessage } from "./install-steps";
 
 interface Ext {
   package_name: string;
@@ -84,7 +86,8 @@ function title(s: string) {
 }
 
 // runOp streams an install-style operation. Output arrives as NDJSON:
-// {"line": "..."} per line, then {"done": true, "ok": bool}.
+// {"line": "..."} per line, {"plan": [...]} and {"step": {...}} for the steps
+// (install-steps.ts), then {"done": true, "ok": bool}.
 async function runOp(
   op: Op,
   packageName: string,
@@ -92,6 +95,7 @@ async function runOp(
   gpu?: string,
   signal?: AbortSignal,
   audioRow?: string,
+  onStep?: (m: StepMessage) => void,
 ): Promise<boolean | GPUAsk> {
   const r = await client(`/api/ext/op/${op}`, {
     method: "POST",
@@ -122,6 +126,7 @@ async function runOp(
     if (!text.trim()) return;
     const msg = JSON.parse(text);
     if (typeof msg.line === "string") onLine(msg.line);
+    if (msg.plan || msg.step) onStep?.(msg as StepMessage);
     if (msg.done) ok = !!msg.ok;
   };
   for (;;) {
@@ -142,6 +147,7 @@ export function ExtensionsView() {
   const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>([]);
+  const [steps, setSteps] = useState<StepInfo[]>([]);
   const [changed, setChanged] = useState(false);
 
   const load = useCallback(async () => {
@@ -172,6 +178,7 @@ export function ExtensionsView() {
   const run = async (ext: Ext, op: Op, gpu?: string) => {
     setBusy(ext.package_name);
     setAsk(null);
+    setSteps([]);
     const row = op === "install" && installsAudio(ext) ? audioRow : undefined;
     setLog([
       `> ${op} ${ext.package_name}${gpu ? ` (GPU: ${gpu})` : ""}${row ? ` (audio.cpp build: ${row})` : ""}`,
@@ -185,6 +192,7 @@ export function ExtensionsView() {
         gpu,
         abort.current.signal,
         row,
+        (m) => setSteps((prev) => applyStepMessage(prev, m)),
       );
       if (typeof res === "object") {
         // The uv platform is installed first and needs the GPU choice.
@@ -391,7 +399,7 @@ export function ExtensionsView() {
           ))}
         </section>
       ))}
-      {(ask || busy || log.length > 0) && (
+      {(ask || busy || log.length > 0 || steps.length > 0) && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           role="dialog"
@@ -438,25 +446,18 @@ export function ExtensionsView() {
           </div>
         </div>
       )}
-      {busy && (
-        <div>
-          <button className={btn} onClick={() => abort.current?.abort()}>
-            Cancel
-          </button>
-        </div>
+      {!ask && (
+        <InstallProgress
+          steps={steps}
+          log={log}
+          busy={!!busy}
+          onCancel={() => abort.current?.abort()}
+          onClose={() => {
+            setLog([]);
+            setSteps([]);
+          }}
+        />
       )}
-      {log.length > 0 && (
-        <pre className="p-3 rounded-lg bg-gray-900 text-gray-100 text-xs overflow-auto max-h-72 whitespace-pre-wrap">
-          {log.join("\n")}
-        </pre>
-      )}
-            {!busy && !ask && (
-              <div>
-                <button className={btn} onClick={() => setLog([])}>
-                  Close
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}

@@ -66,6 +66,7 @@ func (p *Platform) Check(_ context.Context, e platform.Entry, emit platform.Emit
 // the row, torchcodec, xformers when the row has it, then the requirements.
 // Cancelling stops uv; running it again reuses the cache and finishes.
 func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.Emit) bool {
+	emit = lockedEmit(emit) // the prefetch below talks from its own goroutine
 	emit(fmt.Sprintf("Setting up virtual environment and installing dependencies for %s...", e.Label()))
 	fail := func(format string, a ...any) bool {
 		emit(fmt.Sprintf(format, a...))
@@ -129,27 +130,102 @@ func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.E
 	pyExe := platform.VenvPython(p.root.Dir(), e.Package)
 	cache := []string{"--cache-dir", p.CacheDir(), "--no-config"}
 	pip := append([]string{"pip", "install", "--python", pyExe}, cache...)
-	var steps [][]string
+	// Each uv call belongs to one reported step: the environment, torch (torch,
+	// torchcodec, xformers) or the requirements.
+	type uvStep struct {
+		group string
+		args  []string
+	}
+	var steps []uvStep
 	if py != st.Python {
-		steps = append(steps, []string{"python", "install", py, "--no-bin", "--no-registry"})
+		steps = append(steps, uvStep{"venv", []string{"python", "install", py, "--no-bin", "--no-registry"}})
 	}
 	steps = append(steps,
-		append([]string{"venv", venv, "--python", py, "--managed-python", "--no-python-downloads", "--allow-existing"}, cache...),
-		append(append([]string{}, pip...), row.InstallArgs()...),
-		append(append([]string{}, pip...), "torchcodec", "--index-url="+torchrows.TorchcodecIndex),
+		uvStep{"venv", append([]string{"venv", venv, "--python", py, "--managed-python", "--no-python-downloads", "--allow-existing"}, cache...)},
+		uvStep{"torch", append(append([]string{}, pip...), row.InstallArgs()...)},
+		uvStep{"torch", append(append([]string{}, pip...), "torchcodec", "--index-url="+torchrows.TorchcodecIndex)},
 	)
 	if row.Xformers != "" {
-		steps = append(steps, append(append([]string{}, pip...), row.Xformers))
+		steps = append(steps, uvStep{"torch", append(append([]string{}, pip...), row.Xformers)})
 	}
-	steps = append(steps, append(append(append([]string{}, pip...), e.Requirements...), strings.Fields(compatibility)...))
-	for _, args := range steps {
-		if err := p.run(ctx, emit, args...); err != nil {
-			if ctx.Err() != nil {
-				return fail("Cancelled: %s was not finished (install it again to continue; downloads are kept)", e.Label())
-			}
-			return fail("Failed to run uv %s: %v", strings.Join(args[:min(2, len(args))], " "), err)
+	steps = append(steps, uvStep{"requirements", append(append(append([]string{}, pip...), e.Requirements...), strings.Fields(compatibility)...)})
+
+	id := func(group string) string { return e.Package + ":" + group }
+	// The plan is the caller's; a caller that made none is shown the steps as
+	// they come (the page adds an unknown id).
+	platform.Step(ctx, platform.StepEvent{ID: id("torch"), Label: fmt.Sprintf("Install torch %s (%s)", torchrows.TorchVersion, row.Name)})
+	// While torch downloads, the requirements' wheels are fetched into the cache
+	// (prefetch.go); the requirements step waits for that to end.
+	wheels := id("wheels")
+	var prefetched chan struct{}
+	stopPrefetch := func() {}
+	endPrefetch := func() {
+		if prefetched != nil {
+			<-prefetched
+			prefetched = nil
 		}
 	}
+	defer func() { stopPrefetch(); endPrefetch() }()
+	cur := ""
+	closeGroup := func(state, detail string) {
+		if cur != "" {
+			report(ctx, id(cur), state, detail)
+		}
+	}
+	for _, st := range steps {
+		if st.group != cur {
+			closeGroup(platform.StepDone, "")
+			cur = st.group
+			detail := map[string]string{
+				"venv":         "",
+				"torch":        "downloading and unpacking: uv shows no progress, this is measured from the cache folder",
+				"requirements": "resolving",
+			}[cur]
+			report(ctx, id(cur), platform.StepRunning, detail)
+			switch cur {
+			case "torch":
+				if !p.prefetchEnabled() {
+					report(ctx, wheels, platform.StepSkipped, "off")
+					break
+				}
+				pctx, cancel := context.WithCancel(ctx)
+				stopPrefetch = cancel
+				prefetched = make(chan struct{})
+				toks := append(append([]string{}, e.Requirements...), strings.Fields(compatibility)...)
+				go func(done chan struct{}) {
+					defer close(done)
+					p.prefetchWheels(pctx, wheels, e.Package, toks, pyExe, emit)
+				}(prefetched)
+			case "requirements":
+				endPrefetch() // the wheels are in the cache before they are asked for
+			}
+		}
+		// The requirements are many small packages, so uv's own lines give their
+		// progress; torch is one big wheel, measured from the cache folder below.
+		stepEmit := emit
+		if st.group == "requirements" {
+			obs := &uvLines{ctx: ctx, id: id(cur)}
+			stepEmit = func(l string) {
+				emit(l)
+				obs.observe(l)
+			}
+		}
+		stop := func() {}
+		if st.group == "torch" && len(st.args) > 0 && st.args[0] == "pip" && containsArg(st.args, row.Packages[0]) {
+			stop = watchCache(ctx, id("torch"), p.CacheDir(), torchUnpackedBytes(row.ApproxMB), 2*time.Second)
+		}
+		err := p.run(ctx, stepEmit, st.args...)
+		stop()
+		if err != nil {
+			if ctx.Err() != nil {
+				closeGroup(platform.StepFailed, "cancelled: install again to continue; downloads are kept")
+				return fail("Cancelled: %s was not finished (install it again to continue; downloads are kept)", e.Label())
+			}
+			closeGroup(platform.StepFailed, err.Error())
+			return fail("Failed to run uv %s: %v", strings.Join(st.args[:min(2, len(st.args))], " "), err)
+		}
+	}
+	closeGroup(platform.StepDone, "")
 	state := EntryState{Package: e.Package, Platform: Name, Python: py, TorchRow: row.Name,
 		InstalledAt: time.Now().UTC().Format(time.RFC3339)}
 	b, _ := json.MarshalIndent(state, "", "  ")
@@ -159,6 +235,15 @@ func (p *Platform) Create(ctx context.Context, e platform.Entry, emit platform.E
 	_ = os.Remove(filepath.Join(venv, platform.InstallingFile))
 	emit(fmt.Sprintf("Successfully set up virtual environment for %s with dependencies", e.Label()))
 	return true
+}
+
+func containsArg(args []string, want string) bool {
+	for _, a := range args {
+		if a == want {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Platform) rowFor(e platform.Entry, g gpu.Label) (torchrows.Row, error) {

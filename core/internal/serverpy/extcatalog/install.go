@@ -2,6 +2,7 @@ package extcatalog
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,10 +10,12 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/audiocpp"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/gradiohost"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/platform/uv"
 )
 
 // serveInstall streams an install, an uninstall or a dependency check as
@@ -105,6 +108,7 @@ func (s *Store) serveInstall(w http.ResponseWriter, r *http.Request, op string) 
 // runSteps installs the platforms of a plan, then its entries in order, the last
 // one being entry. A failed step stops the plan.
 func (s *Store) runSteps(ctx context.Context, pl plan, entry *Obj, emit func(string)) bool {
+	s.announcePlan(ctx, pl, entry)
 	n := 0
 	say := func(what string) {
 		n++
@@ -121,12 +125,21 @@ func (s *Store) runSteps(ctx context.Context, pl plan, entry *Obj, emit func(str
 	for _, name := range pl.Platforms {
 		say("the " + name + " platform")
 		if name == audiocpp.Name {
-			if !s.installAudioCpp(ctx, pl.AudioRow, emit) {
+			platform.Step(ctx, platform.StepEvent{ID: name, State: platform.StepRunning})
+			if !s.finish(ctx, name, s.installAudioCpp(ctx, pl.AudioRow, emit)) {
 				return stopped("the " + name + " platform")
 			}
 			continue
 		}
-		if !s.installPlatform(ctx, name, pl.GPU, emit) {
+		// The uv platform reports its own steps; any other platform is one.
+		if name != "uv" {
+			platform.Step(ctx, platform.StepEvent{ID: name, State: platform.StepRunning})
+		}
+		ok := s.installPlatform(ctx, name, pl.GPU, emit)
+		if name != "uv" {
+			ok = s.finish(ctx, name, ok)
+		}
+		if !ok {
 			return stopped("the " + name + " platform")
 		}
 	}
@@ -148,6 +161,11 @@ func (s *Store) runSteps(ctx context.Context, pl plan, entry *Obj, emit func(str
 		}
 		say(step)
 		var ok bool
+		own := e.Str("proxy") == "native" && !s.isONNX(e.Str("package_name")) && !requiresAudio(e)
+		if !own {
+			// A venv reports its own steps; any other install is one step.
+			platform.Step(ctx, platform.StepEvent{ID: step, State: platform.StepRunning})
+		}
 		if s.isONNX(e.Str("package_name")) {
 			ok = s.onnxCreate(ctx, e, emit)
 		} else if requiresAudio(e) {
@@ -156,6 +174,9 @@ func (s *Store) runSteps(ctx context.Context, pl plan, entry *Obj, emit func(str
 			ok = s.venvSetup(ctx, e, emit)
 		} else {
 			ok = s.pipInstall(ctx, e, false, emit)
+		}
+		if !own {
+			ok = s.finish(ctx, step, ok)
 		}
 		if !ok {
 			return stopped(step)
@@ -211,21 +232,45 @@ func (s *Store) latestVersion(ctx context.Context, pkg string) string {
 }
 
 // stream writes the NDJSON answer of an install: one {"line": "..."} per
-// output line, then {"done": true, "ok": bool}.
+// output line, {"plan": [...]} and {"step": {...}} for a page that shows the
+// steps (see platform.Reporter), then {"done": true, "ok": bool}.
 func (s *Store) stream(w http.ResponseWriter, r *http.Request, run func(context.Context, func(string)) bool) {
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusOK)
 	fl, _ := w.(http.Flusher)
-	send := func(v any) {
-		_, _ = w.Write(Marshal(v, ""))
+	// Lines and step events come from different goroutines (a progress watcher
+	// runs beside uv), and a response writer is not safe for that.
+	var mu sync.Mutex
+	write := func(b []byte) {
+		mu.Lock()
+		defer mu.Unlock()
+		_, _ = w.Write(b)
 		_, _ = io.WriteString(w, "\n")
 		if fl != nil {
 			fl.Flush()
 		}
 	}
+	send := func(v any) { write(Marshal(v, "")) }
+	sendJSON := func(v any) {
+		if b, err := json.Marshal(v); err == nil {
+			write(b)
+		}
+	}
 	emit := func(line string) { send(map[string]string{"line": line}) }
-	send(map[string]any{"done": true, "ok": run(r.Context(), emit)})
+	ctx := platform.WithReporter(r.Context(), streamReporter{sendJSON})
+	send(map[string]any{"done": true, "ok": run(ctx, emit)})
+}
+
+// streamReporter writes the plan and the step changes into the NDJSON answer.
+type streamReporter struct{ send func(any) }
+
+func (s streamReporter) Plan(items []platform.PlanItem) {
+	s.send(map[string]any{"plan": items})
+}
+
+func (s streamReporter) Step(ev platform.StepEvent) {
+	s.send(map[string]any{"step": ev})
 }
 
 const gradioPin = "gradio==5.49.1"
@@ -447,4 +492,54 @@ func (s *Store) checkGitForPlan(pl plan, entry *Obj) error {
 		}
 	}
 	return nil
+}
+
+// finish reports a one-step install as done or failed, and passes ok on.
+func (s *Store) finish(ctx context.Context, id string, ok bool) bool {
+	state := platform.StepDone
+	if !ok {
+		state = platform.StepFailed
+	}
+	platform.Step(ctx, platform.StepEvent{ID: id, State: state})
+	return ok
+}
+
+// announcePlan tells the page every step of the install before the first one
+// runs: the uv platform's downloads, the venv's three steps, one row for any
+// other install. Only a page that wants the steps reads it.
+func (s *Store) announcePlan(ctx context.Context, pl plan, entry *Obj) {
+	var items []platform.PlanItem
+	for _, name := range pl.Platforms {
+		switch {
+		case name == "uv" && s.opts.UV != nil:
+			items = append(items, s.opts.UV.InstallPlan()...)
+		case name == audiocpp.Name:
+			items = append(items, platform.PlanItem{ID: name, Label: "Install the audio.cpp platform"})
+		default:
+			items = append(items, platform.PlanItem{ID: name, Label: "Install the " + name + " platform"})
+		}
+	}
+	for _, step := range pl.Steps {
+		if step == gradiohost.Name {
+			items = append(items, uv.CreatePlan(gradiohost.Name, gradiohost.Title)...)
+			continue
+		}
+		e := entry
+		if entry == nil || step != entry.Str("package_name") {
+			var err error
+			if e, err = s.find(step); err != nil {
+				return
+			}
+		}
+		label := e.Str("name")
+		if label == "" {
+			label = step
+		}
+		if e.Str("proxy") == "native" && !s.isONNX(step) && !requiresAudio(e) {
+			items = append(items, uv.CreatePlan(step, label)...)
+		} else {
+			items = append(items, platform.PlanItem{ID: step, Label: "Install " + label})
+		}
+	}
+	platform.Plan(ctx, items...)
 }

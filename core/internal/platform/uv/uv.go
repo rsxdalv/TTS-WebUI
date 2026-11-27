@@ -195,9 +195,12 @@ func (p *Platform) Install(ctx context.Context, emit platform.Emit) error {
 	if err := os.MkdirAll(p.PythonDir(), 0o755); err != nil {
 		return err
 	}
+	report(ctx, StepPython, platform.StepRunning, "uv downloads it (about 35 MB)")
 	if err := p.run(ctx, emit, "python", "install", PythonVersion, "--no-bin", "--no-registry"); err != nil {
+		report(ctx, StepPython, platform.StepFailed, err.Error())
 		return fmt.Errorf("uv python install %s: %w", PythonVersion, err)
 	}
+	report(ctx, StepPython, platform.StepDone, "")
 	if err := os.MkdirAll(p.CacheDir(), 0o755); err != nil {
 		return err
 	}
@@ -237,10 +240,12 @@ func (p *Platform) Uninstall(_ context.Context, emit platform.Emit) error {
 // answers with the pinned version.
 func (p *Platform) fetchUV(ctx context.Context, emit platform.Emit) error {
 	if len(p.prefix) > 0 {
+		report(ctx, StepUV, platform.StepSkipped, "")
 		return nil
 	}
 	if _, err := os.Stat(p.UVPath()); err == nil && p.uvVersionOK(ctx) {
 		emit("uv " + Version + " is already there")
+		report(ctx, StepUV, platform.StepSkipped, "")
 		return nil
 	}
 	a := p.archive
@@ -257,19 +262,28 @@ func (p *Platform) fetchUV(ctx context.Context, emit platform.Emit) error {
 	}
 	dest := filepath.Join(p.Dir(), "bin", "uv-archive"+ext)
 	emit("Downloading uv " + Version + " from " + a.URL)
+	report(ctx, StepUV, platform.StepRunning, "downloading")
 	last := -1
+	progress := downloadProgress(ctx, StepUV)
 	err := download(ctx, p.client, a.URL, a.SHA256, dest, func(done, total int64) {
+		progress(done, total)
 		if pc := int(done * 100 / total); pc != last {
 			last = pc
 			emit(fmt.Sprintf("uv: %d%% of %d MB", pc, total>>20))
 		}
 	})
 	if err != nil {
+		report(ctx, StepUV, platform.StepFailed, err.Error())
 		return err
 	}
 	defer os.Remove(dest)
 	emit("Checksum matches " + a.SHA256)
-	return extractMember(dest, filepath.Base(p.UVPath()), p.UVPath())
+	if err := extractMember(dest, filepath.Base(p.UVPath()), p.UVPath()); err != nil {
+		report(ctx, StepUV, platform.StepFailed, err.Error())
+		return err
+	}
+	report(ctx, StepUV, platform.StepDone, "checksum matches")
+	return nil
 }
 
 // uvVersionOK reports whether bin/uv runs and says the pinned version.

@@ -28,6 +28,10 @@ export const routes: Route[] = [
     text: "Pipeline",
   },
   {
+    href: "/chains",
+    text: "Chains",
+  },
+  {
     href: "/text-to-speech",
     text: "Text-to-Speech",
     subroutes: [

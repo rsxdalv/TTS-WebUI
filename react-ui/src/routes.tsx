@@ -24,6 +24,9 @@ const AudioConversion = lazy(() => import("./pages/audio-conversion"));
 /** The pipeline page. */
 const Pipeline = lazy(() => import("./pages/pipeline"));
 
+/** The chain editor: a node graph. */
+const Chains = lazy(() => import("./pages/chains"));
+
 /** The tools pages. */
 const Tools = lazy(() => import("./pages/tools"));
 const ToolsGpuInfo = lazy(() => import("./pages/tools/gpu_info"));
@@ -114,6 +117,7 @@ export const AppRoutes = () => (
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/pipeline" element={<Pipeline />} />
+      <Route path="/chains" element={<Chains />} />
       <Route path="/placeholder" element={<Placeholder />} />
       <Route path="/test-gradio-proxy" element={<TestGradioProxy />} />
 

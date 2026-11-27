@@ -631,6 +631,22 @@ func TestAppLinkUsesConfiguredPort(t *testing.T) {
 	}
 }
 
+func TestAppLinkIgnoresProxyErrors(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "Proxy error: upstream unavailable", http.StatusBadGateway)
+	}))
+	defer srv.Close()
+	port := srv.Listener.Addr().(*net.TCPAddr).Port
+	root, _ := paths.New(t.TempDir())
+	s, err := New(Config{Root: root, PublicPort: port, ReactPort: tmpPort(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := s.AppLink(); got != "" {
+		t.Errorf("AppLink while upstream is 502 = %q, want empty", got)
+	}
+}
+
 // prefixPlatform is the legacy-env platform with a fake child in front of every
 // command, so a test runs the supervisor against a program it controls.
 func prefixPlatform(root paths.Root, prefix []string) platform.Platform {

@@ -679,6 +679,10 @@ func (s *Supervisor) AppLink() string {
 		return ""
 	}
 	_ = resp.Body.Close()
+	// The Go proxy answers 502 while Gradio is still starting; that is not a link yet.
+	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+		return ""
+	}
 	return url
 }
 

@@ -240,7 +240,13 @@ export function LaunchStep() {
         </a>
       )}
 
-      {appURL && processes.some((p) => p.name === "gradio" && p.running) && (
+      {processes.some((p) => p.name === "gradio" && p.running && p.state !== "ready") && (
+        <span className="mt-3 inline-flex px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm">
+          Gradio is starting…
+        </span>
+      )}
+
+      {appURL && processes.some((p) => p.name === "gradio" && p.running && p.state === "ready") && (
         <a
           href={appURL}
           target="_blank"

@@ -65,7 +65,7 @@ branch, `--no-browser --start`:
 - Windows path length of `.venvs/gradio-host` in a deep folder was not tried (the scratch root is short).
 - A tab install into the host is a pip install: no hardlinks, and the Gradio pin is still a pip argument.
 - `diagnostic.go` (one env), `procscan_other.go` (word `micromamba`), npm for the launcher's React build on the host platform
-  (`Command("npm")` is refused there: P4 owns the build; `react-ui/out` must be shipped).
+  (`Command("npm")` is refused there: P4 owns the build; `frontend/out` must be shipped).
 - The launcher address in the menu notice is the launcher port the process was started with; a launcher behind a proxy or on
   another host name is not handled.
 - The Setup tab of the launcher still shows the micromamba steps on a new folder (P4).

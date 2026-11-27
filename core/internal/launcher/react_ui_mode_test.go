@@ -25,7 +25,7 @@ func modeSwitches(t *testing.T, env map[string]string) switches.Set {
 func touch(t *testing.T, root string, names ...string) {
 	t.Helper()
 	for _, n := range names {
-		full := filepath.Join(root, "react-ui", filepath.FromSlash(n))
+		full := filepath.Join(root, "frontend", filepath.FromSlash(n))
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -38,8 +38,8 @@ func touch(t *testing.T, root string, names ...string) {
 // buildable makes a react-ui that `npm run build:static` can run in.
 func buildable(t *testing.T, dir string) {
 	t.Helper()
-	pkg := filepath.Join(dir, "react-ui", "package.json")
-	if err := os.MkdirAll(filepath.Join(dir, "react-ui", "node_modules"), 0o755); err != nil {
+	pkg := filepath.Join(dir, "frontend", "package.json")
+	if err := os.MkdirAll(filepath.Join(dir, "frontend", "node_modules"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(pkg, []byte(`{"scripts":{"build:static":"node build-static.js"}}`), 0o644); err != nil {
@@ -114,12 +114,12 @@ func TestCanBuildExport(t *testing.T) {
 	if canBuildExport(root) {
 		t.Fatal("an empty root can build")
 	}
-	if err := os.MkdirAll(filepath.Join(dir, "react-ui"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "frontend"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	pkg := filepath.Join(dir, "react-ui", "package.json")
+	pkg := filepath.Join(dir, "frontend", "package.json")
 	_ = os.WriteFile(pkg, []byte(`{"scripts":{"dev":"vite"}}`), 0o644)
-	_ = os.MkdirAll(filepath.Join(dir, "react-ui", "node_modules"), 0o755)
+	_ = os.MkdirAll(filepath.Join(dir, "frontend", "node_modules"), 0o755)
 	if canBuildExport(root) {
 		t.Fatal("a tree without build:static can build")
 	}
@@ -127,7 +127,7 @@ func TestCanBuildExport(t *testing.T) {
 	if !canBuildExport(root) {
 		t.Fatal("build:static with node_modules not found")
 	}
-	_ = os.RemoveAll(filepath.Join(dir, "react-ui", "node_modules"))
+	_ = os.RemoveAll(filepath.Join(dir, "frontend", "node_modules"))
 	if canBuildExport(root) {
 		t.Fatal("a tree without node_modules can build")
 	}

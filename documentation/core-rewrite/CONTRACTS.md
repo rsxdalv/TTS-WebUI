@@ -59,7 +59,7 @@ launcher decides the install finished.
 | `GRADIO_AUTH` | `user:password` for the Gradio client (`gradio/[name].tsx:49`) |
 | `NEXT_PUBLIC_DB_API_URL` | Inlined at build time (`lib/databaseApi.ts:11`) |
 
-`next start` also loads `react-ui/.env.production.local`, `.env.local`, `.env.production` and `.env`, in that order,
+`next start` also loads `frontend/.env.production.local`, `.env.local`, `.env.production` and `.env`, in that order,
 with the process environment winning. Go routes that need these values read them through `Deps` (section 5), which
 applies the same order, so both paths use the same backend.
 
@@ -139,7 +139,7 @@ An invalid value stops the app from starting with a clear error, so a typo can n
 
 **Proxy off** (`TTS_GO_PROXY=0`, the escape hatch) means the launcher starts Next with the same arguments as before:
 `npm --prefix react-ui start -- -p 3000`. No Go listener exists on port 3000. A unit test asserts these arguments. If
-`react-ui/.next` is not a usable server build (section 10), or is older than the static export, the supervisor first
+`frontend/.next` is not a usable server build (section 10), or is older than the static export, the supervisor first
 runs `npm run build` once in `react-ui`, logs which of the two it is, and only then starts Next. Start waits for that
 build. If the build fails, or leaves a build that is still missing or older than the export, Start fails and nothing
 starts: the old server build is never served instead.
@@ -167,24 +167,24 @@ the rename).
 
 **Proxy on** (the default) means the supervisor picks one of three modes when the app starts (D18):
 
-1. **Static:** `react-ui/out/_tts-export.json` exists and every claim the export needs is on (`gradio`,
+1. **Static:** `frontend/out/_tts-export.json` exists and every claim the export needs is on (`gradio`,
    `gradio-file-proxy`, `upload`, `webui-generations`, `data-outputs`, `data-bark-voices`). Go serves the export on
    port 3000 (section 10) and no Next process runs. The launcher status shows `react-ui` as running while Go serves
    it. If `TTS_GO_ROUTES` turns any of those claims off, generation and upload could not work, so the supervisor uses
    mode 2 when a usable server build exists, with a log line naming the missing claims. Otherwise Start fails with an
    error naming them.
-2. **Next behind the proxy:** no export, but `react-ui/.next` is a usable server build (an install made by the old
+2. **Next behind the proxy:** no export, but `frontend/.next` is a usable server build (an install made by the old
    scripts). The supervisor logs one line saying so, picks a free loopback port, starts Next with
    `-- -p <port> -H 127.0.0.1`, and Go forwards to it as B1 did. If Next exits, Go stops listening on 3000 too.
 3. **Neither:** Start fails with `the React UI is not built: run Install or Update in the launcher`, and nothing starts.
 
-If `react-ui/.next-server-saved` exists (an interrupted export build), the supervisor first runs
+If `frontend/.next-server-saved` exists (an interrupted export build), the supervisor first runs
 `node build-static.js --recover` and decides again. In every mode Stop shuts down Go's listener and any Next process.
 
 Every switch (`TTS_GO_ROUTES` names, `TTS_GO_STEPS` names and the rest) is checked before the mode choice, so a typo
 fails Start before any build runs (R2-5).
 
-When there is no export, the mode 2 log line suggests Update only when `react-ui/package.json` has `build:static`.
+When there is no export, the mode 2 log line suggests Update only when `frontend/package.json` has `build:static`.
 Otherwise it says that this UI version has no static export and is served through `next start` (R2-4).
 
 **Process lifetime (R2-1).** On SIGINT (Ctrl+C), SIGTERM and SIGHUP (closed terminal), the launcher stops the app (all
@@ -315,7 +315,7 @@ The page edits must keep the app identical with the proxy off:
   (`Sec-Fetch-Dest: document`, or `Accept` containing `text/html`), it sets `tts-go-claims=<names joined by .>` with
   `Path=/; SameSite=Strict` and no expiry. If no `data-*` claim is on and the request carried the cookie, it expires it.
   With the proxy off nothing sets this cookie.
-- The page calls this hook, added by B5a in `react-ui/src/data/useGoData.ts` and reused by B5b:
+- The page calls this hook, added by B5a in `frontend/src/data/useGoData.ts` and reused by B5b:
 
 ```ts
 import { useEffect, useState } from "react";
@@ -403,30 +403,30 @@ Port these as they are unless a rule below says otherwise. Record any you meet i
 | `applyDatabaseConfig.js:74` | `createDB` is undefined, so an upgrade fails and is caught at `initializeApp.js:292-297` | Keep the logged failure and carry on. Do not write `.db_version` on that path |
 | `js/server.js:160`, `extension_manager.py:143` | Both use port 7771 | Keep |
 | `supervisor.go:91,105` | The launcher passes `--port` and `TTS_EXTENSION_MANAGER_PORT`, but `extension_manager.py` reads neither and always uses 7771 | Unchanged by this port |
-| `backend-utils/getFile.tsx:11-17` | A file name from the request is read from `public/` with no path check | **Fix in Go:** refuse anything outside `react-ui/public` |
+| `backend-utils/getFile.tsx:11-17` | A file name from the request is read from `public/` with no path check | **Fix in Go:** refuse anything outside `frontend/public` |
 | `pages/outputs/[name].tsx:30` | `name` is used in a path unchecked | **Fix in Go:** section 7 |
 
 ## 10. Static export (S1)
 
-`npm run build:static` in `react-ui` builds the UI as a single-page app with Vite, into `react-ui/out`. Go serves it (S2). The Next server build is separate: `npm run build` and `npm start` are unchanged and still produce and run the server build in `react-ui/.next`.
+`npm run build:static` in `react-ui` builds the UI as a single-page app with Vite, into `frontend/out`. Go serves it (S2). The Next server build is separate: `npm run build` and `npm start` are unchanged and still produce and run the server build in `frontend/.next`.
 
 ### Build
 
-- `npm run build:static` runs `build-static.js`. It runs `generate-plugin-imports.js` (writes `src/extensions/link.ts`), then `vite build` into `react-ui/.out-building`. The build is renamed to `react-ui/out` only when it is complete, so a failed or interrupted build leaves the previous `out/` as it was.
+- `npm run build:static` runs `build-static.js`. It runs `generate-plugin-imports.js` (writes `src/extensions/link.ts`), then `vite build` into `frontend/.out-building`. The build is renamed to `frontend/out` only when it is complete, so a failed or interrupted build leaves the previous `out/` as it was.
 - `out/_tts-export.json` (`{"builtAt": ..., "commit": ...}`) exists only in a complete export. Its absence means there is no usable export. `commit` is the git HEAD of the install the build comes from, or `null` outside a git checkout. Go reads `commit` to tell a stale build.
-- The export does not touch `react-ui/.next`. The server build's rules are unchanged: `.next-server-saved`, `.next-export-scratch`, `build-static.js --recover` and `--stamp-server`, and the usability rule (`.next/BUILD_ID` and `.next/prerender-manifest.json`). `npm run build` runs `--recover` first, as before.
-- `public/file-input-cache` is not copied into the export. Go serves `react-ui/public` live, so uploads are reachable at once.
+- The export does not touch `frontend/.next`. The server build's rules are unchanged: `.next-server-saved`, `.next-export-scratch`, `build-static.js --recover` and `--stamp-server`, and the usability rule (`.next/BUILD_ID` and `.next/prerender-manifest.json`). `npm run build` runs `--recover` first, as before.
+- `public/file-input-cache` is not copied into the export. Go serves `frontend/public` live, so uploads are reachable at once.
 - Needs `src/extensions/link.ts`, written by `generate-plugin-imports.js` as before. An extension installed later needs a rebuild to be included.
 
 ### Who builds it (C2)
 
-- The Go install and update steps (`TTS_GO_STEPS` install, update) run `cd react-ui && npm run build:static`, as before. A tree whose `react-ui/package.json` has no `build:static` script gets `npm run build` instead, after the log line "react-ui has no build:static script (this tree predates the static export), so building the server build". They build only when the original builds: on install, and on update when `git pull` brings a commit that differs from `.git_version`.
+- The Go install and update steps (`TTS_GO_STEPS` install, update) run `cd frontend && npm run build:static`, as before. A tree whose `frontend/package.json` has no `build:static` script gets `npm run build` instead, after the log line "react-ui has no build:static script (this tree predates the static export), so building the server build". They build only when the original builds: on install, and on update when `git pull` brings a commit that differs from `.git_version`.
 - The legacy JS installer (`init_app.js`) is unchanged and still builds the server build only.
 - The launcher answers `POST /api/steps/install` and `POST /api/steps/update` with `409` and "stop the app before running <step>" while any app process runs, when that step runs its Go port. That check was made for the old export, which moved `.next` aside. The export no longer does this, so the check is no longer needed for the export. It stays until it is removed in the launcher (a follow-up, not part of this section).
 
 ### Where things are
 
-| In `react-ui/out/` | Contents |
+| In `frontend/out/` | Contents |
 |---|---|
 | `index.html` | The app. It serves every route of the app (see below) |
 | `assets/**` | Hashed JS, CSS and fonts |
@@ -438,10 +438,10 @@ Port these as they are unless a rule below says otherwise. Record any you meet i
 For `GET`/`HEAD` of a decoded path `P`, in this order, first match wins:
 
 1. Refuse with `404` any path with a segment starting with `.`, a backslash or a NUL (as for `public/`).
-2. `P` under `/file-input-cache/`: the live file from `react-ui/public`.
+2. `P` under `/file-input-cache/`: the live file from `frontend/public`.
 3. `P == "/"`: `index.html`, status `200`.
 4. `P` is a file of the export under its own name: serve it. `/assets/**` is immutable. A path ending in `.html` (such as `/index.html`) is the entry page.
-5. `P` is any other file of `react-ui/public`: serve it live.
+5. `P` is any other file of `frontend/public`: serve it live.
 6. The last segment of `P` has a dot (a file that does not exist): `404`.
 7. Anything else is a route of the app: `index.html`, status `200`. The app renders its own not-found view for a route it does not know.
 
@@ -449,7 +449,7 @@ Trailing slashes get a `308` to the path without them (as before), `/api/...` pa
 
 ### Routes of the app
 
-The routes are listed in `react-ui/src/routes.tsx`. All of them, including `/extensions/<any name>` and `/outputs/<any name>`, are served by `index.html`. The app reads the URL in the browser after load, so one file serves every route, and client-side navigation stays in the page.
+The routes are listed in `frontend/src/routes.tsx`. All of them, including `/extensions/<any name>` and `/outputs/<any name>`, are served by `index.html`. The app reads the URL in the browser after load, so one file serves every route, and client-side navigation stays in the page.
 
 ### Data pages
 

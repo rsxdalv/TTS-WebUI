@@ -17,7 +17,7 @@ without a click and copies the Gradio and React output to stdout.
 What PR 741 added to the old Supervisor now lives here, through hooks in
 `Config` so that `supervise` does not import `launcher`:
 
-- **React front** (`react_ui_backend` on `ReactPort`): Go serves `react-ui/out`
+- **React front** (`react_ui_backend` on `ReactPort`): Go serves `frontend/out`
   (the Vite static export) and answers the API routes; there is no Node
   process. The react-ui child in the status is a stand-in that lives until
   Stop, and the front closes then (or when a failed start unwinds). Switches
@@ -100,7 +100,7 @@ the browser tab and React's `GRADIO_BACKEND_AUTOMATIC` all use it.
 
 ## Behaviour summary
 
-- Children: `<prefix> python <entry> <args...>`, `<prefix> npm --prefix react-ui start -- -p <ReactPort>`
+- Children: `<prefix> python <entry> <args...>`, `<prefix> npm --prefix frontend start -- -p <ReactPort>`
   (the extension manager process is gone: the launcher's Extensions page does its job);
   prefix defaults to `micromamba -p installer_files/env run`, cwd = root,
   `MAMBA_ROOT_PREFIX` set as before.

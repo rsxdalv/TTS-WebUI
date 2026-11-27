@@ -174,7 +174,7 @@ func TestMarkers_GoInitAppReadsLegacyInstall(t *testing.T) {
 	} {
 		dir := installWithLegacyMarkers(t)
 		os.MkdirAll(filepath.Join(dir, ".git"), 0o755)
-		os.MkdirAll(filepath.Join(dir, "react-ui", "src", "extensions"), 0o755)
+		os.MkdirAll(filepath.Join(dir, "frontend", "src", "extensions"), 0o755)
 		os.WriteFile(filepath.Join(dir, "installer_scripts", "versions.json"), []byte(`{"version":"1.0.0","pip_packages":"1.2.0","npm_packages":4,"react_ui":4}`), 0o666)
 		r := &markerRunner{head: tc.head}
 		var log []string

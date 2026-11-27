@@ -25,7 +25,7 @@ const (
 	Path = "/api/launch/options"
 
 	// FaviconPath is relative to the project root, which is the child's cwd.
-	faviconPath = "./react-ui/public/favicon.ico"
+	faviconPath = "./frontend/public/favicon.ico"
 )
 
 // droppedOptions are keys of old config.json files that launch() no longer

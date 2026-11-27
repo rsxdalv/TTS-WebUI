@@ -20,7 +20,7 @@ func postJSON(h http.Handler, body string) *httptest.ResponseRecorder {
 
 func TestFFmpegMetadata(t *testing.T) {
 	root := t.TempDir()
-	cache := filepath.Join(root, "react-ui", "public", "file-input-cache")
+	cache := filepath.Join(root, "frontend", "public", "file-input-cache")
 	_ = os.MkdirAll(cache, 0o755)
 	_ = os.WriteFile(filepath.Join(cache, "a.flac"), []byte("x"), 0o644)
 	_ = os.WriteFile(filepath.Join(cache, "b.wav"), []byte("x"), 0o644)

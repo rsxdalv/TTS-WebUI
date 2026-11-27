@@ -106,18 +106,18 @@ func (l *flowLog) has(s string) bool {
 }
 
 // newFlow builds an install root with what init_app.js expects before it runs:
-// .git, versions.json, react-ui/src/extensions and the .gpu the launcher writes.
+// .git, versions.json, frontend/src/extensions and the .gpu the launcher writes.
 func newFlow(t *testing.T) (*Step, *flowRunner, *flowLog) {
 	t.Helper()
 	root := t.TempDir()
-	for _, d := range []string{".git", "installer_scripts", filepath.Join("react-ui", "src", "extensions")} {
+	for _, d := range []string{".git", "installer_scripts", filepath.Join("frontend", "src", "extensions")} {
 		if err := os.MkdirAll(filepath.Join(root, d), 0o777); err != nil {
 			t.Fatal(err)
 		}
 	}
 	writeFile(t, root, "installer_scripts/versions.json", `{"version":"1.0.0","pip_packages":"1.2.0","npm_packages":4,"react_ui":4}`)
 	writeFile(t, root, "installer_scripts/.gpu", "NVIDIA GPU")
-	writeFile(t, root, "react-ui/package.json", `{"scripts":{"build:static":"node build-static.js","dev":"vite"}}`)
+	writeFile(t, root, "frontend/package.json", `{"scripts":{"build:static":"node build-static.js","dev":"vite"}}`)
 	r := &flowRunner{root: root, handlers: map[string]func(context.Context, Command) (Result, error){}}
 	log := &flowLog{}
 	return &Step{Root: root, Run: r, Log: log.add}, r, log
@@ -180,7 +180,7 @@ func TestInitAppJSFreshInstall(t *testing.T) {
 		"python --version > installer_scripts/.python_version",
 		nvidiaInstall,
 		singleInstall,
-		"cd react-ui && npm install",
+		"cd frontend && npm install",
 		reactUIBuild,
 		"git rev-parse HEAD",
 	})
@@ -205,7 +205,7 @@ func TestInitAppJSFreshInstall(t *testing.T) {
 	if _, ok := readMarker(t, s.Root, ".db_version"); ok {
 		t.Error(".db_version written on a fresh install")
 	}
-	if raw, _ := os.ReadFile(filepath.Join(s.Root, "react-ui", "src", "extensions", "package.json")); string(raw) != "{}" {
+	if raw, _ := os.ReadFile(filepath.Join(s.Root, "frontend", "src", "extensions", "package.json")); string(raw) != "{}" {
 		t.Errorf("extensions package.json = %q", raw)
 	}
 	for _, d := range []string{"outputs", "favorites", filepath.Join("data", "sqlite")} {
@@ -419,7 +419,7 @@ func TestInitAppJSCorePackagesFailure(t *testing.T) {
 	if code := run(t, s); code != 1 {
 		t.Fatalf("exit %d", code)
 	}
-	if !log.has("Failed to install core packages") || r.ran("cd react-ui && npm install") {
+	if !log.has("Failed to install core packages") || r.ran("cd frontend && npm install") {
 		t.Errorf("log %q", log.lines)
 	}
 	for _, m := range []string{".pip_packages", ".git_version"} {
@@ -442,7 +442,7 @@ func TestInitAppJSTorchAlreadyInstalled(t *testing.T) {
 	equalLists(t, r.foreground()[3:], []string{
 		"python --version > installer_scripts/.python_version",
 		torchFound,
-		"cd react-ui && npm install",
+		"cd frontend && npm install",
 		reactUIBuild,
 		"git rev-parse HEAD",
 	})
@@ -620,7 +620,7 @@ func TestInitAppJSBuildsTheStaticExportOnlyWhenTheOriginalBuilds(t *testing.T) {
 	if code := run(t, s); code != 0 {
 		t.Fatalf("exit %d", code)
 	}
-	if !r.ran("cd react-ui && npm run build:static") {
+	if !r.ran("cd frontend && npm run build:static") {
 		t.Fatalf("update with a new commit: commands %q", r.foreground())
 	}
 

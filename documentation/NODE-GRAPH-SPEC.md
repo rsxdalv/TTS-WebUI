@@ -4,7 +4,7 @@ Status: **M0–M2 implemented** on this branch (see section 12); M3 and M4 are n
 
 ## 1. Problem and scope
 
-Today the only multi-step workflow is `react-ui/src/pages/pipeline.tsx`: a fixed "generate with one model, then optionally post-process with one of rvc / demucs / vocos". Users who want more must run tabs by hand and re-upload files:
+Today the only multi-step workflow is `frontend/src/pages/pipeline.tsx`: a fixed "generate with one model, then optionally post-process with one of rvc / demucs / vocos". Users who want more must run tabs by hand and re-upload files:
 
 - text → TTS → RVC → trim/gain → save
 - same text through several engines or voices, compared side by side
@@ -20,7 +20,7 @@ Rule used: **lightweight and generic → main app; heavy, engine-specific or dep
 
 | Piece | Where | Why |
 |---|---|---|
-| Graph data model, validation, JSON (de)serialisation | main (`react-ui/src/chains/`) | Tiny, pure TS, no deps. |
+| Graph data model, validation, JSON (de)serialisation | main (`frontend/src/chains/`) | Tiny, pure TS, no deps. |
 | Executor (topological run, caching, cancel, progress) | main | Same; it is the part that must be correct and tested. |
 | Node registry (`registerNode`) | main | The seam extensions plug into. |
 | Canvas page (route `/chains`, lazy-loaded) | main | A `lazy()` route chunk costs nothing on other pages (see `routes.tsx`). One new dependency (§4). |
@@ -32,12 +32,12 @@ Rule used: **lightweight and generic → main app; heavy, engine-specific or dep
 
 Re-evaluate after the spike (§9): if the canvas library's lazy chunk is more than about 150 KB gzipped, move the *canvas page* (not the model/executor) to an external `@tts-webui/chains` package and keep the model, executor and registry in main.
 
-Extension seam today: `@tts-webui/*` packages listed in `react-ui/src/extensions/package.json` are linked by `generate-plugin-imports.js` into `link.ts` and rendered at `/extensions/<name>` with only a `Button` prop. A node-contributing extension needs one addition: the main app exposes `window`-free registration, i.e. the extension package default-exports `{ page?, nodes?: NodeDef[] }` and `link.ts` consumers call `registerNode` for each. This is a small, separate change and is tracked as milestone M3.
+Extension seam today: `@tts-webui/*` packages listed in `frontend/src/extensions/package.json` are linked by `generate-plugin-imports.js` into `link.ts` and rendered at `/extensions/<name>` with only a `Button` prop. A node-contributing extension needs one addition: the main app exposes `window`-free registration, i.e. the extension package default-exports `{ page?, nodes?: NodeDef[] }` and `link.ts` consumers call `registerNode` for each. This is a small, separate change and is tracked as milestone M3.
 
 ## 3. Architecture
 
 ```
-react-ui/src/chains/
+frontend/src/chains/
   types.ts        Graph, NodeInstance, Edge, Port, ValueType
   registry.ts     registerNode / getNode / listNodes
   validate.ts     schema + cycle + type checks, unknown-node refusal
@@ -45,7 +45,7 @@ react-ui/src/chains/
   cache.ts        per-node result cache keyed by hash(type, params, inputs)
   nodes/          built-in node definitions
   ui/             Canvas, NodeShell, Cable, Inspector, Palette
-react-ui/src/pages/chains.tsx   route + Template
+frontend/src/pages/chains.tsx   route + Template
 ```
 
 ### 3.1 Data model (JSON, data only)
@@ -172,9 +172,9 @@ The prototype in this PR added 50 files (15,135 lines) under `nodes-ui/`: a sepa
 
 ## 12. Implementation status and findings (as built)
 
-Everything is in `react-ui/` (no Go, Python or workflow-runtime change; one CI step added).
+Everything is in `frontend/` (no Go, Python or workflow-runtime change; one CI step added).
 
-**Built (M0–M2):** `react-ui/src/chains/` (model, validation, executor, cache, registry, DSP, graph IO, layout, templates, 14 nodes), the canvas under `chains/ui/`, the lazy route `/chains` and a header link. Nodes: Text, Number, Audio file; MMS, Kokoro, OpenAI-style TTS; RVC, Demucs; Gain, Trim, Fade, Join, Mix (Web Audio, no dependency); Preview, Compare A/B, Show text. Three templates.
+**Built (M0–M2):** `frontend/src/chains/` (model, validation, executor, cache, registry, DSP, graph IO, layout, templates, 14 nodes), the canvas under `chains/ui/`, the lazy route `/chains` and a header link. Nodes: Text, Number, Audio file; MMS, Kokoro, OpenAI-style TTS; RVC, Demucs; Gain, Trim, Fade, Join, Mix (Web Audio, no dependency); Preview, Compare A/B, Show text. Three templates.
 
 **Not built yet** (listed in this spec, deliberately left out of this pass):
 - Bark node (its parameter set is large; needs its own form), and a History/outputs clip picker. Audio files are entered as a URL/path.
@@ -190,7 +190,7 @@ Everything is in `react-ui/` (no Go, Python or workflow-runtime change; one CI s
 **Tests:** `npm test` runs 59 Vitest tests (executor, validation, cache, DSP, graph IO, layout, API errors/timeouts). In a browser (Playwright, Chromium) the page was driven through a mock backend for: adding nodes, refusing a type mismatch and a cycle, replacing a cable, autosave and reload, templates, error isolation, Stop, bypass, export/import, refusing a graph containing a `custom.js` node, and upload of browser-made audio before RVC. A second run used a real MMS model (`facebook/mms-tts-eng`, CPU) behind the same `/api/gradio/mms` contract: real 6.5 s speech, Gain of -6.02 dB halved the peak, Trim gave 1.00 s, and a downstream change reused the seeded generation without a second request. **Not tested:** the real Go core and Gradio host, RVC/Demucs/Kokoro/OpenAI with real models or endpoints, screen readers, Safari/Firefox, touch.
 
 **Things learned that change earlier assumptions:**
-1. `react-ui/tailwind.config.js` only scanned `pages`, `components` and `app`. Classes used only under `src/chains/` were silently missing. The chains folder is now in `content`.
+1. `frontend/tailwind.config.js` only scanned `pages`, `components` and `app`. Classes used only under `src/chains/` were silently missing. The chains folder is now in `content`.
 2. React Flow 13.0.3 ignores a numeric `padding` in `fitView` (0.15 behaved as 0 px, so graphs touched the canvas edge and edge auto-pan swallowed drags). Percent strings such as `"12%"` work.
 3. A server-side node cannot read a browser `blob:` URL. Browser nodes output blob URLs; server nodes upload them through the existing `POST /api/upload` first (`toServerUrl`). Uploaded clips accumulate in `file-input-cache/` like any other upload.
 4. The Go gradio route can leave a request unanswered when the Gradio tab does not declare a parameter (see `TestGradioHangsWhereTheOriginalNeverAnswers`). Stop only stops waiting (the Go call keeps running, by design), so every request also has a 15 minute timeout.

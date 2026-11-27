@@ -22,7 +22,7 @@ func commitFixture(t *testing.T, exportCommit string) paths.Root {
 	if exportCommit != "" {
 		body = `{"buildId":"x","commit":"` + exportCommit + `"}`
 	}
-	if err := os.WriteFile(filepath.Join(dir, "react-ui", "out", "_tts-export.json"), []byte(body), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "frontend", "out", "_tts-export.json"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	root, err := paths.New(dir)
@@ -109,7 +109,7 @@ func TestStaleExportIsRebuiltOrRefused(t *testing.T) {
 		root := commitFixture(t, "old")
 		s := newReactPrep(root, false)
 		s.runTool = func(context.Context, string, ...string) error {
-			return os.WriteFile(filepath.Join(root.Dir(), "react-ui", "out", "_tts-export.json"), []byte(`{"commit":"new"}`), 0o644)
+			return os.WriteFile(filepath.Join(root.Dir(), "frontend", "out", "_tts-export.json"), []byte(`{"commit":"new"}`), 0o644)
 		}
 		if err := s.prepareReactUI(context.Background(), sw); err != nil {
 			t.Fatal(err)

@@ -47,7 +47,7 @@ removal, "installed" for a native extension meaning the directory exists (the P0
 
 Run on 2026-11-24 from `platform/p1-seam`, Windows 10 (Go 1.27.4) and WSL `tts-linux-test`, in scratch copies made by
 `git archive` as in [P0-BASELINE.md](../../../documentation/core-rewrite/P0-BASELINE.md) (`installer_files` a junction or
-symlink to the real install, a copy of `.gpu`, `server_port` 17930/17940, `react-ui/out` copied from the P0 scratch).
+symlink to the real install, a copy of `.gpu`, `server_port` 17930/17940, `frontend/out` copied from the P0 scratch).
 
 | Line | Windows | Linux (WSL) |
 |---|---|---|

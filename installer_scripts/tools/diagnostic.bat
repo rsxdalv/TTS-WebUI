@@ -93,8 +93,8 @@ echo .python_version: >> .\installer_scripts\diagnostic.txt 2>&1
 type .\installer_scripts\.python_version >> .\installer_scripts\diagnostic.txt 2>&1
 echo: >> .\installer_scripts\diagnostic.txt
 
-@REM npm list ./react-ui/package.json
-echo npm list --prefix ./react-ui/ >> .\installer_scripts\diagnostic.txt 2>&1
-call npm list --prefix ./react-ui/ >> .\installer_scripts\diagnostic.txt 2>&1
+@REM npm list ./frontend/package.json
+echo npm list --prefix ./frontend/ >> .\installer_scripts\diagnostic.txt 2>&1
+call npm list --prefix ./frontend/ >> .\installer_scripts\diagnostic.txt 2>&1
 echo: >> .\installer_scripts\diagnostic.txt
 

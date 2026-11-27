@@ -1,6 +1,6 @@
 package react_ui_backend
 
-// Port of react-ui/src/app/api/upload/route.ts.
+// Port of frontend/src/app/api/upload/route.ts.
 //
 // Kept from the original:
 //   - the whole body is read before the answer, so a bad type, a size over the
@@ -9,7 +9,7 @@ package react_ui_backend
 //     size over 256 MiB 413, then the write;
 //   - the name is the last path component with leading dots removed, and its
 //     extension must be on the allow-list (compared in lower case);
-//   - the file is written to react-ui/public/file-input-cache, replacing a file
+//   - the file is written to frontend/public/file-input-cache, replacing a file
 //     of the same name; the directory is not created (a missing one is a 500);
 //   - the answer is {"success":true,"name":...}.
 //
@@ -54,7 +54,7 @@ func init() {
 const uploadTempPrefix = ".upload-"
 
 func newUpload(deps Deps) http.Handler {
-	cacheDir := filepath.Join(deps.Root, "react-ui", "public", "file-input-cache")
+	cacheDir := filepath.Join(deps.Root, "frontend", "public", "file-input-cache")
 	removeStaleUploads(cacheDir)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		up, err := readUpload(r, cacheDir)

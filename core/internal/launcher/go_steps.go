@@ -52,7 +52,7 @@ func (l *Launcher) serveGoStep(w http.ResponseWriter, name string, fn goStepFunc
 		return false
 	}
 	// The Go install and update steps rebuild the static export that the running
-	// app serves from react-ui/out (CONTRACTS.md section 10), so they wait for
+	// app serves from frontend/out (CONTRACTS.md section 10), so they wait for
 	// the app to stop.
 	if (name == "install" || name == "update") && l.appRunning() {
 		http.Error(w, "stop the app before running "+name, http.StatusConflict)

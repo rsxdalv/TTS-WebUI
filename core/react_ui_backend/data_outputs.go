@@ -1,8 +1,8 @@
 package react_ui_backend
 
-// Data endpoint for react-ui/src/pages/outputs/[name].tsx (task B5a): the
+// Data endpoint for frontend/src/pages/outputs/[name].tsx (task B5a): the
 // `outputs` array that getStaticProps builds with getDataFromJSON(name) in
-// react-ui/src/data/getVoicesData.tsx. Behind the claim switch data-outputs.
+// frontend/src/data/getVoicesData.tsx. Behind the claim switch data-outputs.
 //
 // getDataFromJSON reads <root>/<name>/<dir>/<dir>.json for every entry of
 // <root>/<name>, keeps those with a truthy "date", and sorts them by date,

@@ -50,7 +50,7 @@ func coreInstall(t *testing.T) (root paths.Root, publicPort, reactPort int) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out := filepath.Join(dir, "react-ui", "out")
+	out := filepath.Join(dir, "frontend", "out")
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		t.Fatal(err)
 	}

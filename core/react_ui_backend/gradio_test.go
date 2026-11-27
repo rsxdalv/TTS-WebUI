@@ -340,7 +340,7 @@ func TestGradioUploadsLocalCacheFiles(t *testing.T) {
 	stub := newStubGradio(t)
 	stub.script[5] = []string{stub.completed(`[{"ok":true}]`)}
 	root := t.TempDir()
-	cache := filepath.Join(root, "react-ui", "public", "file-input-cache")
+	cache := filepath.Join(root, "frontend", "public", "file-input-cache")
 	if err := os.MkdirAll(cache, 0o755); err != nil {
 		t.Fatal(err)
 	}

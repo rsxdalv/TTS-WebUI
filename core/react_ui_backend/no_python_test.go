@@ -125,7 +125,7 @@ func TestRoutesWithoutPythonAndGradio(t *testing.T) {
 		t.Errorf("gpu-info: %d %q", code, got)
 	}
 	// FFMPEG Metadata: a clear error when ffprobe is not installed.
-	cache := filepath.Join(root, "react-ui", "public", "file-input-cache")
+	cache := filepath.Join(root, "frontend", "public", "file-input-cache")
 	_ = os.MkdirAll(cache, 0o755)
 	_ = os.WriteFile(filepath.Join(cache, "x.flac"), []byte("x"), 0o644)
 	expect("POST", "/api/go-data/ffmpeg-metadata", `{"name":"x.flac"}`, 503, "ffprobe was not found")

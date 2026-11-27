@@ -33,9 +33,9 @@ const (
 	extensionsIndex = "https://tts-webui.github.io/extensions-index/"
 
 	// reactUIBuild builds the UI: the static export (Vite) that Go serves
-	// (CONTRACTS.md section 10). It replaces react-ui/out, so the launcher
+	// (CONTRACTS.md section 10). It replaces frontend/out, so the launcher
 	// refuses these steps while the app runs.
-	reactUIBuild = "cd react-ui && npm run build:static"
+	reactUIBuild = "cd frontend && npm run build:static"
 )
 
 var rocmVersionTag = map[string]string{
@@ -418,7 +418,7 @@ func (p *jsProcess) repairTorch() error {
 
 func (p *jsProcess) setupReactUIExtensions() error {
 	p.displayMessage("Initializing extensions...")
-	packageJSONpath := filepath.Join(p.s.Root, "react-ui", "src", "extensions", "package.json")
+	packageJSONpath := filepath.Join(p.s.Root, "frontend", "src", "extensions", "package.json")
 	if !exists(packageJSONpath) {
 		if err := os.WriteFile(packageJSONpath, []byte("{}"), 0o666); err != nil {
 			p.displayMessage("Failed to install extensions")
@@ -443,7 +443,7 @@ func (p *jsProcess) setupReactUI(ctx context.Context) error {
 			}
 		}
 		p.displayMessage("Installing node_modules...")
-		if err := p.sh(ctx, "cd react-ui && npm install"); err != nil {
+		if err := p.sh(ctx, "cd frontend && npm install"); err != nil {
 			return err
 		}
 		p.displayMessage("Successfully installed node_modules")

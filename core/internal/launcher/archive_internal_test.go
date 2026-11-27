@@ -43,7 +43,7 @@ func TestExtractWritesTheRunningBinaryBesideItself(t *testing.T) {
 	runningExe = func() string { return exe }
 	defer func() { runningExe = old }()
 
-	z := zipOf(t, map[string]string{"tts-webui-test.exe": "new", "react-ui/out/index.html": "<html>"})
+	z := zipOf(t, map[string]string{"tts-webui-test.exe": "new", "frontend/out/index.html": "<html>"})
 	if err := extractZip(context.Background(), z, dest, newLog()); err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestExtractWritesTheRunningBinaryBesideItself(t *testing.T) {
 	if b, _ := os.ReadFile(exe + pendingSuffix); string(b) != "new" {
 		t.Errorf("%s = %q, want the new binary", pendingSuffix, b)
 	}
-	if _, err := os.Stat(filepath.Join(dest, "react-ui", "out", "index.html")); err != nil {
+	if _, err := os.Stat(filepath.Join(dest, "frontend", "out", "index.html")); err != nil {
 		t.Errorf("the other files were not extracted: %v", err)
 	}
 }

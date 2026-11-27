@@ -77,7 +77,7 @@ func TestPlainOptions(t *testing.T) {
 		"server_name": "127.0.0.1", "server_port": 27700.0, "height": 500.0, "width": "100%",
 		"ssl_verify": true,
 		"quiet":      true, "show_api": true, "_frontend": true,
-		"allowed_paths": []any{"."}, "favicon_path": "./react-ui/public/favicon.ico", "prevent_thread_lock": true,
+		"allowed_paths": []any{"."}, "favicon_path": "./frontend/public/favicon.ico", "prevent_thread_lock": true,
 		"blocked_paths": blockedAt(),
 	}
 	if got := roundTrip(t, r); !reflect.DeepEqual(got, want) {
@@ -159,7 +159,7 @@ func TestLegacyKeysAreDroppedAndFixedOnesWin(t *testing.T) {
 			t.Errorf("%s kept", k)
 		}
 	}
-	if !reflect.DeepEqual(m["allowed_paths"], []any{"."}) || m["favicon_path"] != "./react-ui/public/favicon.ico" || m["prevent_thread_lock"] != true {
+	if !reflect.DeepEqual(m["allowed_paths"], []any{"."}) || m["favicon_path"] != "./frontend/public/favicon.ico" || m["prevent_thread_lock"] != true {
 		t.Errorf("fixed options: %v %v %v", m["allowed_paths"], m["favicon_path"], m["prevent_thread_lock"])
 	}
 	if m["root_path"] != "/gradio" {
@@ -200,7 +200,7 @@ func TestDescribeFormat(t *testing.T) {
 	want := []string{
 		"Starting Gradio server: http://127.0.0.1:27700",
 		`  • Server   > server_name: "127.0.0.1", server_port: 27700, max_threads: 40, prevent_thread_lock: True, quiet: True`,
-		`  • Display  > inline: False, inbrowser: False, width: "100%", height: 500, favicon_path: "./react-ui/public...", show_api: True`,
+		`  • Display  > inline: False, inbrowser: False, width: "100%", height: 500, favicon_path: "./frontend/public...", show_api: True`,
 		`  • Access   > share: False, auth_message: "a message that is..."`,
 		"  • Security > ssl_verify: True, allowed_paths: ['.'], blocked_paths: " + pyList(blockedAt()),
 		`  • Debug    > debug: False, show_error: False`,

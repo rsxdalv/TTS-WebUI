@@ -4,10 +4,10 @@ WORKDIR /src
 COPY core/ ./core/
 RUN cd core && CGO_ENABLED=0 go build -trimpath -o /out/tts-webui ./cmd/tts-webui
 
-# The React UI export (react-ui/out). Node is needed to build it, not to run the app.
+# The React UI export (frontend/out). Node is needed to build it, not to run the app.
 FROM node:22 AS react
-WORKDIR /src/react-ui
-COPY react-ui/ ./
+WORKDIR /src/frontend
+COPY frontend/ ./
 RUN npm install && npm run build:static
 
 # Python 3.10 w/ Nvidia Cuda
@@ -51,7 +51,7 @@ RUN pip install "tts-webui-extension.styletts2>=0.1.0" --extra-index-url https:/
 
 
 # The React UI export built above
-COPY --from=react --chown=appuser:appuser /src/react-ui/out /app/tts-webui/react-ui/out
+COPY --from=react --chown=appuser:appuser /src/frontend/out /app/tts-webui/frontend/out
 
 # The launcher starts the app on 0.0.0.0:7770 with the image's own Python
 COPY --from=launcher /out/tts-webui /usr/local/bin/tts-webui

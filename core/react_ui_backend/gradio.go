@@ -1,6 +1,6 @@
 package react_ui_backend
 
-// Port of react-ui/src/pages/api/gradio/[name].tsx: POST /api/gradio/<name>
+// Port of frontend/src/pages/api/gradio/[name].tsx: POST /api/gradio/<name>
 // calls the named Gradio endpoint and answers with the mapped result.
 //
 // The original's quirks are kept on purpose, because the UI depends on the
@@ -8,7 +8,7 @@ package react_ui_backend
 // cases where the original never answers (see errHang) never answer here.
 //
 // Deliberate differences, recorded in tts-comms/B6.md:
-//   - getFile refuses paths outside react-ui/public (CONTRACTS.md section 9).
+//   - getFile refuses paths outside frontend/public (CONTRACTS.md section 9).
 //   - Names inherited from Object.prototype ("constructor", "toString", ...)
 //     are 404 here; in the original they call prototype methods.
 //   - The Gradio heartbeat stream closes when the request ends.
@@ -41,7 +41,7 @@ func init() {
 				backend:   d.GradioBackend,
 				core:      d.Core,
 				auth:      d.GradioAuth,
-				publicDir: filepath.Join(d.Root, "react-ui", "public"),
+				publicDir: filepath.Join(d.Root, "frontend", "public"),
 			}
 		},
 	})
@@ -467,7 +467,7 @@ func proxyGradioFile(d any, backend, engine string) (any, error) {
 }
 
 // getFile is backend-utils/getFile.tsx: a URL is fetched, anything else is
-// read from react-ui/public.
+// read from frontend/public.
 func (c *gradioCall) getFile(file any) (any, error) {
 	if !isTruthy(file) {
 		return nil, nil
@@ -489,7 +489,7 @@ func (c *gradioCall) readFromDisk(name string) (any, error) {
 	}
 	target := filepath.Join(base, name)
 	if rel, err := filepath.Rel(base, target); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return nil, fmt.Errorf("refusing to read %q outside react-ui/public", name)
+		return nil, fmt.Errorf("refusing to read %q outside frontend/public", name)
 	}
 	data, err := os.ReadFile(target)
 	if err != nil {

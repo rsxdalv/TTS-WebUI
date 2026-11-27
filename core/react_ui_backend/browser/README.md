@@ -4,7 +4,7 @@ Not run by CI. `npm i playwright-core`, then serve the install root's export wit
 
 ```
 go run ./react_ui_backend/cmd/gosrv -root <install root> -port 34012
-node react_ui_backend/browser/static-export-check.js http://127.0.0.1:34012 <react-ui/src/routes.tsx> <an extension name>
+node react_ui_backend/browser/static-export-check.js http://127.0.0.1:34012 <frontend/src/routes.tsx> <an extension name>
 ```
 
 `static-export-check.js` loads every page of the export (`npm run build:static`, CONTRACTS.md section 10) and fails on

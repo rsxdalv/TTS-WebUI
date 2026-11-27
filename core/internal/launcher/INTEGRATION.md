@@ -13,11 +13,11 @@ built, how it differs from the plan, and what was run. What was only in tests or
 | Cannot check | A folder with no `archive.json` and no `.git` says its version is unknown; a git clone says to use `git pull`; no network or a 404 says "Could not check for an update: ...". Each is `detail` on the update step, shown amber in the Setup tab; none is "up to date". An old-env install with no git on PATH says so too (it used to count as up to date). |
 | Setup tab | The Start button no longer waits for the update step (an update that is waiting or cannot be checked never hides it). `detail` is shown under a step. |
 | Notice | `GET /api/app/notice` is `{legacy, text, url}`; a legacy folder gets the text and the link to [MIGRATION.md](../../../documentation/core-rewrite/MIGRATION.md) on both launcher pages. The Vite UI does not show it. |
-| React UI | `react-ui/out` is shipped. A folder without it says to run Update or download the zip again. A clone that builds it itself runs `npm` from PATH (`react_ui_mode.go`); only the old env and `system` run it through the platform. |
+| React UI | `frontend/out` is shipped. A folder without it says to run Update or download the zip again. A clone that builds it itself runs `npm` from PATH (`react_ui_mode.go`); only the old env and `system` run it through the platform. |
 | ffprobe | `react_ui_backend` also looks in `platforms/uv/tools/ffmpeg/bin` (Linux: `LD_LIBRARY_PATH` set to the tool's `lib`). The FFMPEG Metadata page, on the 503, links to the launcher's Extensions page (installing any engine installs uv first, which fetches ffmpeg). |
 | db | The `db` page, `databaseApi.ts` and `VITE_DB_API_URL` are deleted from `react-ui`. The old installer step still sets up its database, for an old-env install. |
-| Docker, Colab | The image has uv 0.13.6 (the pin) on PATH from pip, builds `react-ui/out` in a Node stage and has no Node, and copies the commit being built instead of cloning `main`; `.dockerignore` keeps a developer's state out. The Colab notebook runs `pip install uv==0.13.6`. Both run on `--system-python`. |
-| CI | `update-full-repo-zip.yaml` builds `react-ui/out`, writes `archive.json` and publishes it beside the zip. `test-pip-install.yaml` now builds the launcher and runs `core/scripts/ci/install-host.sh` (the install of `gradio-host` through the launcher) on Linux, macOS and Windows. |
+| Docker, Colab | The image has uv 0.13.6 (the pin) on PATH from pip, builds `frontend/out` in a Node stage and has no Node, and copies the commit being built instead of cloning `main`; `.dockerignore` keeps a developer's state out. The Colab notebook runs `pip install uv==0.13.6`. Both run on `--system-python`. |
+| CI | `update-full-repo-zip.yaml` builds `frontend/out`, writes `archive.json` and publishes it beside the zip. `test-pip-install.yaml` now builds the launcher and runs `core/scripts/ci/install-host.sh` (the install of `gradio-host` through the launcher) on Linux, macOS and Windows. |
 
 ## Differences from the plan
 
@@ -33,7 +33,7 @@ built, how it differs from the plan, and what was run. What was only in tests or
 
 Run on 2026-11-25 from `platform/p4-default-install`, Windows 10 (Go 1.27.4) and WSL `tts-linux-test`, in scratch folders
 under the OS temp directory. A "fresh folder" is `git clone` of the branch (so it has `.git`, as the zip does) plus
-`react-ui/out` built by `npm run build:static`, a launcher built from the branch and an `archive.json` written by hand
+`frontend/out` built by `npm run build:static`, a launcher built from the branch and an `archive.json` written by hand
 (what CI now does). The zip packaging by CI itself was not run. The launcher was started with PATH holding only the
 Windows system folders (Windows) or an empty folder (WSL); `python`, `git`, `node`, `npm`, `uv`, `micromamba`, `ffprobe`
 were all reported absent first.

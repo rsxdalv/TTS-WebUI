@@ -1,7 +1,7 @@
 package react_ui_backend
 
 // A Go port of the parts of @gradio/client 1.19.1 (dist/index.js) that
-// react-ui/src/pages/api/gradio/[name].tsx uses: Client.connect, predict and
+// frontend/src/pages/api/gradio/[name].tsx uses: Client.connect, predict and
 // submit over the sse_v3 queue protocol, the /run path for unqueued endpoints,
 // and file uploads. Function names follow the original.
 

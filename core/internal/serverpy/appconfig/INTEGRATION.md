@@ -109,7 +109,7 @@ Dev server: `go run ./internal/serverpy/appconfig/cmd/configd -root <dir> -token
   the app stopped (it replaced `extension_manager.py`, which wrote the file from
   Python). While the app runs there are two Stores on the file, each under its
   own lock.
-- React (`react-ui/src/pages/api`) does not write `config.json`.
+- React (`frontend/src/pages/api`) does not write `config.json`.
 
 ## Known limit
 

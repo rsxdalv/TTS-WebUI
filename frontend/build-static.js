@@ -1,4 +1,4 @@
-// `npm run build:static`: builds the React app with Vite into react-ui/out.
+// `npm run build:static`: builds the React app with Vite into frontend/out.
 // Go serves it (CONTRACTS.md section 10).
 //
 // The build goes to .out-building and is renamed to out/ only when it is
@@ -59,7 +59,7 @@ function main() {
   rm(path.join(BUILDING, "file-input-cache"));
   rm(OUT);
   fs.renameSync(BUILDING, OUT);
-  console.log("build:static: export written to react-ui/out");
+  console.log("build:static: export written to frontend/out");
   return 0;
 }
 

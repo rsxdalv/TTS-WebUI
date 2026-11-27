@@ -113,19 +113,28 @@ func (u *uvLines) observe(line string) {
 }
 
 // cacheBytes is the size of the torch wheel uv has unpacked into its cache so
-// far: the archive folders that have a top-level torch/ in them. uv unpacks a
-// wheel while it downloads it, so the growth follows the download of a wheel it
-// prints no progress for (torch is 2.4 GB of it). Other wheels (the prefetch
-// fills the cache with them at the same time) are not counted.
+// far. uv unpacks a wheel while it downloads it, so the growth follows the
+// download of a wheel it prints no progress for (torch is 2.4 GB of it). While
+// it unpacks, the files are in a .tmpXXXX folder of the cache; the folder moves
+// into archive-v0/ when it is whole. Both are looked at, and only the folders
+// that have a top-level torch/ in them: the other wheels (the prefetch fills the
+// cache with them at the same time) are not counted.
 func cacheBytes(cacheDir string) int64 {
-	root := filepath.Join(cacheDir, "archive-v0")
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		return 0
+	var dirs []string
+	if es, err := os.ReadDir(filepath.Join(cacheDir, "archive-v0")); err == nil {
+		for _, e := range es {
+			dirs = append(dirs, filepath.Join(cacheDir, "archive-v0", e.Name()))
+		}
+	}
+	if es, err := os.ReadDir(cacheDir); err == nil {
+		for _, e := range es {
+			if strings.HasPrefix(e.Name(), ".tmp") {
+				dirs = append(dirs, filepath.Join(cacheDir, e.Name()))
+			}
+		}
 	}
 	var n int64
-	for _, e := range entries {
-		dir := filepath.Join(root, e.Name())
+	for _, dir := range dirs {
 		if fi, err := os.Stat(filepath.Join(dir, "torch")); err != nil || !fi.IsDir() {
 			continue
 		}

@@ -195,6 +195,14 @@ func TestWatchCacheReportsTheGrowthOfTheCache(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "new.bin"), make([]byte, 4000), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// While uv unpacks, the wheel is in a .tmp folder of the cache.
+	tmp := filepath.Join(cache, ".tmpAbC123", "torch", "lib")
+	if err := os.MkdirAll(tmp, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "big.dll"), make([]byte, 1000), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	time.Sleep(100 * time.Millisecond)
 	stop()
 	rec.mu.Lock()
@@ -203,8 +211,8 @@ func TestWatchCacheReportsTheGrowthOfTheCache(t *testing.T) {
 		t.Fatal("no progress reported")
 	}
 	last := rec.steps[len(rec.steps)-1]
-	if last.Done != 4000 || last.Total != 10000 || !last.Estimated || last.State != platform.StepRunning {
-		t.Errorf("last = %+v, want 4000 of an estimated 10000", last)
+	if last.Done != 5000 || last.Total != 10000 || !last.Estimated || last.State != platform.StepRunning {
+		t.Errorf("last = %+v, want 5000 of an estimated 10000", last)
 	}
 }
 

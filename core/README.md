@@ -44,6 +44,28 @@ test -z "$(gofmt -l .)"
 CGO_ENABLED=0 go build -trimpath -o bin/tts-webui ./cmd/tts-webui
 ```
 
+## Development
+
+Two loops, run side by side:
+
+```sh
+# Go: rebuild and restart the launcher on every Go change (port 7700, install root = the repo).
+go install github.com/air-verse/air@latest   # once
+cd core && air
+
+# Setup page (core/ui): hot reload against that launcher.
+cd core/ui && npm run dev                    # open http://127.0.0.1:5173/core.html
+```
+
+`npm run dev` proxies `/api` to `LAUNCHER_URL` (default `http://127.0.0.1:7700`),
+fixes the Host and Origin headers and adds the launcher's per-run token, which it reads
+from the launcher's index page. After a launcher restart the first request may get a
+403; reload the page. The built setup page that `go:embed` serves is still
+`scripts/build-webui.sh` (commit its output).
+
+The React UI has its own dev server: `cd frontend && npm run dev` (port 3002, proxies
+`/api` to the Go server on 3000, or `VITE_API_PROXY`).
+
 ## Layout
 
 - `cmd/tts-webui/` - entry point (`launch`, the default, and `mcp`)

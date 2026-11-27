@@ -1,10 +1,19 @@
 import { ChangeEvent } from "react";
 
+const uploadCachePrefix = "/file-input-cache/";
+
 export const getLocalFileURL = (file?: File) =>
-  file && "/file-input-cache/" + file.name;
+  file && uploadCachePrefix + file.name;
 
 export const getFilenameFromLocalFileURL = (url?: string) =>
-  url?.replace("/file-input-cache/", "");
+  url?.replace(uploadCachePrefix, "");
+
+// Upload references also travel to Gradio as raw filesystem paths. Escape
+// only when using one as a browser URL, not when storing or sending the path.
+export const getLocalFilePlaybackURL = (url?: string) =>
+  url?.startsWith(uploadCachePrefix)
+    ? uploadCachePrefix + encodeURIComponent(url.slice(uploadCachePrefix.length))
+    : url;
 
 export const uploadFile = async (file?: File) => {
   if (!file) return;
@@ -22,7 +31,7 @@ export const uploadFile = async (file?: File) => {
     if (!res.ok) throw new Error(await res.text());
     // The server sanitises the filename, so use the name it actually wrote.
     const { name } = await res.json();
-    return "/file-input-cache/" + name;
+    return uploadCachePrefix + name;
   } catch (e: any) {
     // Handle errors here
     console.error(e);

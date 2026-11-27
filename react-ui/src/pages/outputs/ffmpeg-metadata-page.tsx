@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Template } from "../../components/Template";
 import { AudioInput } from "../../components/AudioComponents";
+import { getFilenameFromLocalFileURL } from "../../components/FileInput";
 import {
   Card,
   CardContent,
@@ -19,7 +20,7 @@ const FFMPEGMetadataPage = () => {
 
   const loadMetadata = async (x: string) => {
     // x is /file-input-cache/<name>; the Go core reads that uploaded file.
-    const name = decodeURIComponent(x.split("/").pop() ?? "");
+    const name = getFilenameFromLocalFileURL(x);
     const response = await fetch("/api/go-data/ffmpeg-metadata", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

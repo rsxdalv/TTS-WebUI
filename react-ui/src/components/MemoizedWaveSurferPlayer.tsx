@@ -3,6 +3,7 @@ import { useWavesurfer } from "@/components/useWavesurfer";
 import Timeline from "wavesurfer.js/dist/plugins/timeline.js";
 import { WaveSurferOptions } from "wavesurfer.js";
 import { DownloadButton } from "./DownloadButton";
+import { getLocalFilePlaybackURL } from "./FileInput";
 
 interface EnhancedWaveSurferProps extends Omit<WaveSurferOptions, "container"> {
   volume: number;
@@ -266,5 +267,11 @@ export const AudioPlayer = (
     setPlugins([topTimeline, bottomTimeline]);
   }, []);
 
-  return <MemoizedWaveSurferPlayer {...props} plugins={plugins} />;
+  return (
+    <MemoizedWaveSurferPlayer
+      {...props}
+      url={getLocalFilePlaybackURL(props.url)}
+      plugins={plugins}
+    />
+  );
 };

@@ -5,13 +5,18 @@ import { Button } from "./ui/button";
  * An iframe with a Fullscreen button. Fullscreen covers the window; "Back"
  * (or Esc, when this page has focus) returns. It is one element whose classes
  * change, so the frame stays mounted and the page inside keeps its state.
+ *
+ * padded: the embedded page has no padding of its own (a single Gradio tab is
+ * embedded without it), so fullscreen puts it back around the frame.
  */
 export const FullscreenFrame = ({
   title,
   src,
+  padded,
 }: {
   title: string;
   src: string;
+  padded?: boolean;
 }) => {
   const [full, setFull] = React.useState(false);
 
@@ -41,12 +46,14 @@ export const FullscreenFrame = ({
           {full ? "← Back (Esc)" : "Fullscreen"}
         </Button>
       </div>
-      <iframe
-        title={title}
-        src={src}
-        className={full ? "w-full flex-1" : "w-full border rounded"}
-        style={full ? undefined : { height: "85vh" }}
-      />
+      <div className={full ? `flex min-h-0 flex-1 ${padded ? "p-4" : ""}` : "contents"}>
+        <iframe
+          title={title}
+          src={src}
+          className={full ? "h-full w-full flex-1" : "w-full border rounded"}
+          style={full ? undefined : { height: "85vh" }}
+        />
+      </div>
     </div>
   );
 };

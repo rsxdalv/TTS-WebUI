@@ -110,7 +110,7 @@ export const GradioFrame = ({
             </div>
           </div>
         )}
-        {phase === "ready" && <FullscreenFrame title={title} src={src} />}
+        {phase === "ready" && <FullscreenFrame title={title} src={src} padded={!!tab} />}
       </div>
     </Template>
   );

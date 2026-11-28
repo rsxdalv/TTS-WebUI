@@ -9,6 +9,8 @@ interface ProcessStatus {
   state?: string; // starting, ready, exited, failed, ...
   port?: number;
   error?: string; // why it failed (for example: no Python environment)
+  exit_code?: number; // set when it ended by itself
+  log_tail?: string[]; // its last output when it ended or failed
   warning?: string; // carried on despite, e.g. a missing GPU label
 }
 
@@ -23,6 +25,8 @@ export function LaunchStep() {
   const [appURL, setAppURL] = useState("");
   const [launched, setLaunched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The part (or "all") whose start or stop request is in flight: its buttons wait.
+  const [busy, setBusy] = useState<string | null>(null);
   const [diagLines, setDiagLines] = useState<string[]>([]);
   const [diagRunning, setDiagRunning] = useState(false);
   const [lan, setLan] = useState<{ lan: boolean; warning?: string; urls?: string[] }>({ lan: false });
@@ -119,7 +123,17 @@ export function LaunchStep() {
 
   // part is "gradio" or "react-ui"; none starts both.
   async function launch(part?: string) {
+    if (busy) return;
     setError(null);
+    setBusy(part ?? "all");
+    try {
+      await launchRequest(part);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function launchRequest(part?: string) {
     try {
       const r = await client(`/api/app/start${part ? `?part=${part}` : ""}`, { method: "POST" });
       // 409 means already running — subscribe to its status stream.
@@ -143,7 +157,13 @@ export function LaunchStep() {
   }
 
   async function stop(part?: string) {
-    await client(`/api/app/stop${part ? `?part=${part}` : ""}`, { method: "POST" });
+    if (busy) return;
+    setBusy(part ?? "all");
+    try {
+      await client(`/api/app/stop${part ? `?part=${part}` : ""}`, { method: "POST" });
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function restart() {
@@ -240,6 +260,12 @@ export function LaunchStep() {
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{part.note}</p>
+                {!running && p?.state === "exited" && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-0.5 break-words">
+                    Ended by itself{p.exit_code !== undefined ? ` (exit code ${p.exit_code})` : ""}.
+                    {p.log_tail && p.log_tail.length > 0 ? ` Last output: ${p.log_tail.slice(-3).join(" | ")}` : ""}
+                  </p>
+                )}
                 {p?.error && (
                   <p className="text-xs text-red-600 dark:text-red-400 mt-0.5 break-words">{p.error}</p>
                 )}
@@ -261,16 +287,18 @@ export function LaunchStep() {
                 {running ? (
                   <button
                     onClick={() => stop(part.name)}
-                    className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                    disabled={!!busy}
+                    className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
                   >
-                    Stop
+                    {busy === part.name ? "Working…" : "Stop"}
                   </button>
                 ) : (
                   <button
                     onClick={() => launch(part.name)}
-                    className="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
+                    disabled={!!busy}
+                    className="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm disabled:opacity-50 disabled:cursor-wait"
                   >
-                    {part.launch}
+                    {busy === part.name || busy === "all" ? "Starting…" : part.launch}
                   </button>
                 )}
               </div>
@@ -282,7 +310,8 @@ export function LaunchStep() {
       {!anyRunning && (
         <button
           onClick={() => launch()}
-          className="mt-3 px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+          disabled={!!busy}
+          className="mt-3 px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
         >
           Launch both
         </button>

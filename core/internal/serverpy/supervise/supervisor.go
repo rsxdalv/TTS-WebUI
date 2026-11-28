@@ -126,6 +126,10 @@ type Supervisor struct {
 	cfg       Config
 	newRunner func() runner
 
+	// startMu serializes starts: two requests at once must not both see an
+	// empty run and both bind the ports.
+	startMu sync.Mutex
+
 	mu     sync.Mutex
 	cur    []*managed // current generation, in start order; nil before first Start
 	pub    int        // public port of the current run; 0 = cfg.PublicPort
@@ -220,6 +224,8 @@ func (s *Supervisor) StartParts(setupCtx context.Context, parts ...string) error
 	if err := setupCtx.Err(); err != nil {
 		return err
 	}
+	s.startMu.Lock()
+	defer s.startMu.Unlock()
 	want := map[string]bool{}
 	for _, p := range parts {
 		if p != NameGradio && p != NameReact {

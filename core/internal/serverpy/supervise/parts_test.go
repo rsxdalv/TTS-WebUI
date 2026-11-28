@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 	"testing"
 	"time"
 )
@@ -128,4 +129,34 @@ func TestStartPartsRefusesUnknownAndDisabled(t *testing.T) {
 	if err := s2.StartParts(ctx(), NameReact); err == nil {
 		t.Error("the React part started although it is turned off")
 	}
+}
+
+// Requests that arrive together (a double click, two pages) must not both
+// start the same part: one starts it, the others find it running.
+func TestConcurrentStartsDoNotCollide(t *testing.T) {
+	s, _ := newSup(t, nil)
+	var wg sync.WaitGroup
+	errs := make([]error, 8)
+	for i := range errs {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			errs[i] = s.StartParts(ctx(), NameReact)
+		}(i)
+	}
+	wg.Wait()
+	started := 0
+	for _, err := range errs {
+		switch {
+		case err == nil:
+			started++
+		case errors.Is(err, ErrAlreadyRunning):
+		default:
+			t.Errorf("a concurrent start failed: %v", err)
+		}
+	}
+	if started != 1 {
+		t.Errorf("%d requests started the part, want 1", started)
+	}
+	waitState(t, s, NameReact, StateReady)
 }

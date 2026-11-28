@@ -187,7 +187,7 @@ export const routes: Route[] = [
   },
   {
     href: "/gradio",
-    text: "Gradio",
+    text: "Gradio (legacy)",
     // The tabs of the Gradio UI are added by useMenuRoutes (withGradioTabs).
   },
   {

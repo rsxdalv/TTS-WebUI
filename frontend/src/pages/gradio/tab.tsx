@@ -65,14 +65,14 @@ const GradioTabPage = () => {
 
   if (!tabs) {
     return (
-      <Template title="Gradio">
+      <Template title="Gradio (legacy)">
         <div className="p-4">Looking for Gradio…</div>
       </Template>
     );
   }
   if (!known) {
     return (
-      <Template title="Gradio">
+      <Template title="Gradio (legacy)">
         <div className="p-4">
           There is no such tab in the Gradio UI. <Link className="underline" to="/gradio">Open Gradio</Link>
         </div>

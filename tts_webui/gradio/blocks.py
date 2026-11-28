@@ -1,12 +1,12 @@
-import os
 import html
+import os
+
 import gradio as gr
 
 from tts_webui.gradio.all_tabs import all_tabs
 from tts_webui.gradio.css import full_css
 from tts_webui.gradio.fix_gradio_tabs import fix_gradio_tabs
 from tts_webui.gradio.get_theme import get_theme
-
 
 # The React UI shows the Gradio page in a frame: ?embed=1 hides the page header
 # and tightens the layout (.tts-embed in tts_webui.css),
@@ -53,7 +53,8 @@ def main_block(config):
         react_ui_url = html.escape(
             os.environ.get("TTS_REACT_UI_URL", "http://localhost:3000"), quote=True
         )
-        gr.HTML(f"""
+        gr.HTML(
+            f"""
         <div style="display: flex; align-items: baseline; gap: 1rem; font-family: sans-serif;">
             <h1>TTS WebUI</h1>
             | <h4>(The Gradio UI has more tools, but the UI is basic)</h4>
@@ -61,7 +62,9 @@ def main_block(config):
             | <h3><a href="https://forms.gle/2L62owhBsGFzdFBC8">Feedback / Bug reports</a></h3>
             | <h3><a href="https://discord.gg/V8BKTVRtJ9">Discord Server</a></h3>
         </div>
-        """, elem_id="tts-header")
+        """,
+            elem_id="tts-header",
+        )
 
         with gr.Tabs():
             all_tabs(config)

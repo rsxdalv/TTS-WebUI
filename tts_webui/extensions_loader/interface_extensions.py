@@ -276,4 +276,3 @@ def handle_extension_class(extension_class, extensions=None):
         extensions = resolve_extension_class(extension_class)
     for ext in extensions:
         _handle_package(ext)
-

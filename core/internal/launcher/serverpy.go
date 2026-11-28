@@ -27,7 +27,6 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/engines"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extcatalog"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extprocs"
-	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/extui"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/history"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/launchopts"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/serverpy/logview"
@@ -51,7 +50,6 @@ type serverPy struct {
 	rt   *router.Router
 	mgr  *extprocs.Manager
 	ctl  *http.Server
-	ui   *http.Server
 
 	// publicAddr is where the router listens (the address users open).
 	publicAddr string
@@ -71,7 +69,7 @@ type serverPy struct {
 // platform the children run on; its command environment is what the launcher
 // gives every child. The environment the children get is that plus .env and
 // .env.user.
-func startServerPy(root paths.Root, p platform.Platform, flags appenv.Flags) (*serverPy, error) {
+func startServerPy(root paths.Root, p platform.Platform, flags appenv.Flags, opts ...serverPyOpt) (*serverPy, error) {
 	baseEnv := commandEnv(p)
 	// Startup prep that server.py does in-process: output folders, a default
 	// .env when missing, then .env and .env.user on top of the launcher env.
@@ -96,12 +94,30 @@ func startServerPy(root paths.Root, p platform.Platform, flags appenv.Flags) (*s
 		return nil, err
 	}
 	// rep.Env (launcher env + .env + .env.user) is what the children run with.
-	return startServerPyOn(root, plan.Host, plan.PublicPort, p.WithEnv(rep.Env), flags)
+	return startServerPyOn(root, plan.Host, plan.PublicPort, p.WithEnv(rep.Env), flags, opts...)
+}
+
+// serverPyOpt tunes startServerPyOn.
+type serverPyOpt func(*serverPyOpts)
+
+type serverPyOpts struct {
+	// gradioPrefix puts Gradio under a prefix of the public port (such as
+	// "/gradio-legacy") so "/" is free for the React UI. "" keeps Gradio at "/".
+	gradioPrefix string
+}
+
+// withGradioPrefix is the option for serverPyOpts.gradioPrefix.
+func withGradioPrefix(prefix string) serverPyOpt {
+	return func(o *serverPyOpts) { o.gradioPrefix = prefix }
 }
 
 // startServerPyOn starts the router on host:publicPort, routing / to Gradio on
 // a free loopback port, and the control API on another loopback port.
-func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Platform, flags appenv.Flags) (*serverPy, error) {
+func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Platform, flags appenv.Flags, opts ...serverPyOpt) (*serverPy, error) {
+	var so serverPyOpts
+	for _, f := range opts {
+		f(&so)
+	}
 	gradioPort, err := freePort()
 	if err != nil {
 		return nil, fmt.Errorf("allocating the Gradio port: %w", err)
@@ -120,9 +136,22 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 	if noHost {
 		home = noHostPage(st.Detail)
 	}
+	routeAt := so.gradioPrefix
+	if routeAt == "" {
+		routeAt = "/"
+	}
 	rt := router.New(router.Options{Token: token, Home: home})
+	if so.gradioPrefix != "" {
+		// "/" belongs to the React UI, mounted by the supervisor. While it is not
+		// running, "/" says so; the no-Gradio page moves under the prefix.
+		rt = router.New(router.Options{Token: token, Home: frontStoppedPage()})
+	}
 	if !noHost {
-		if err := rt.AddRoute("/", "http://"+net.JoinHostPort(gradioHost, strconv.Itoa(gradioPort))); err != nil {
+		if err := rt.AddRoute(routeAt, "http://"+net.JoinHostPort(gradioHost, strconv.Itoa(gradioPort))); err != nil {
+			return nil, err
+		}
+	} else if so.gradioPrefix != "" {
+		if err := rt.AddHandler(routeAt, home); err != nil {
 			return nil, err
 		}
 	}
@@ -240,23 +269,12 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 	mux.Handle("/api/extensions/", mgr.Handler())
 	ctl := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 
-	// The Extensions List pages Gradio shows in an iframe come from the same
-	// origin, through the router (see extui). They have their own listener and
-	// rules: the control API above never faces the browser.
-	uiLn, ui, err := startExtUI(rt, ext, cfg, token, pub.Addr(), host)
-	if err != nil {
-		_ = pub.Close()
-		_ = ctlLn.Close()
-		return nil, err
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	sp := &serverPy{
 		root:       root.Dir(),
 		rt:         rt,
 		mgr:        mgr,
 		ctl:        ctl,
-		ui:         ui,
 		publicAddr: pub.Addr().String(),
 		gradioEnv: append(commandEnv(p),
 			"TTS_CORE_URL=http://"+ctlLn.Addr().String(),
@@ -275,8 +293,12 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 		}
 	}()
 	go func() { _ = ctl.Serve(ctlLn) }()
-	go func() { _ = ui.Serve(uiLn) }()
-	slog.Info(fmt.Sprintf("serverpy: router on %s -> gradio %s", sp.publicAddr, net.JoinHostPort(gradioHost, strconv.Itoa(gradioPort))))
+	if so.gradioPrefix != "" {
+		// Gradio builds its URLs from GRADIO_ROOT_PATH; the router strips the prefix.
+		// The React UI is the same origin's "/": the link in the Gradio header says so.
+		sp.gradioEnv = append(sp.gradioEnv, "GRADIO_ROOT_PATH="+so.gradioPrefix, "TTS_REACT_UI_URL=/")
+	}
+	slog.Info(fmt.Sprintf("serverpy: router on %s -> gradio %s at %s", sp.publicAddr, net.JoinHostPort(gradioHost, strconv.Itoa(gradioPort)), routeAt))
 	return sp, nil
 }
 
@@ -294,7 +316,6 @@ func (sp *serverPy) Close() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = sp.ctl.Shutdown(ctx)
-		_ = sp.ui.Shutdown(ctx)
 		<-sp.routerDone
 	})
 }
@@ -319,41 +340,6 @@ func freePort() (int, error) {
 	// Brief pause so the OS can reclaim the ephemeral port before the child claims it.
 	time.Sleep(10 * time.Millisecond)
 	return port, nil
-}
-
-// startExtUI builds the extension page handler, listens for it on a loopback
-// port and routes /_core there. The pages are read-only when the router is
-// reachable from other devices (host is not a loopback address).
-func startExtUI(rt *router.Router, ext *extcatalog.Store, cfg *appconfig.Store, token string, pub net.Addr, host string) (net.Listener, *http.Server, error) {
-	port := 0
-	if a, ok := pub.(*net.TCPAddr); ok {
-		port = a.Port
-	}
-	h, err := extui.New(extui.Options{
-		Cat: ext, CatToken: token, Cfg: cfg, Port: port, Exposed: !isLoopbackHost(host),
-		Logf: func(f string, a ...any) { slog.Info(fmt.Sprintf(f, a...)) },
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return nil, nil, fmt.Errorf("extension pages: %w", err)
-	}
-	if err := rt.AddRoute(extui.Prefix, "http://"+ln.Addr().String()); err != nil {
-		_ = ln.Close()
-		return nil, nil, err
-	}
-	return ln, &http.Server{Handler: h, ReadHeaderTimeout: 10 * time.Second}, nil
-}
-
-// isLoopbackHost is whether a listen host only accepts connections from this machine.
-func isLoopbackHost(host string) bool {
-	if host == "localhost" {
-		return true
-	}
-	ip := net.ParseIP(host)
-	return ip != nil && ip.IsLoopback()
 }
 
 // commandEnv is the environment the platform gives a command.

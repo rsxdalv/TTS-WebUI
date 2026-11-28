@@ -52,9 +52,9 @@ type Options struct {
 // route; replacing a route swaps the whole struct, in-flight requests finish on
 // the old one.
 type route struct {
-	prefix string // normalized: "" is the catch-all, otherwise "/pkg"
-	target string // "http://127.0.0.1:27771"
-	proxy  *httputil.ReverseProxy
+	prefix string       // normalized: "" is the catch-all, otherwise "/pkg"
+	target string       // "http://127.0.0.1:27771", or "(in process)" for a mounted handler
+	proxy  http.Handler // the reverse proxy, or the handler of AddHandler
 }
 
 // Router is the reverse proxy. The zero value is not usable; call [New].
@@ -174,6 +174,26 @@ func (rt *Router) AddRoute(prefix, target string) error {
 	rt.routes[p] = r
 	rt.mu.Unlock()
 	rt.log.Info("route added", "prefix", displayPrefix(p), "target", r.target)
+	return nil
+}
+
+// AddHandler makes requests under prefix go to h, which runs inside this
+// process (no upstream port). The prefix is NOT stripped: h sees the path the
+// browser used, as the "/" route of a proxy does. Like AddRoute it replaces an
+// existing prefix. The prefix "/" is the catch-all route.
+func (rt *Router) AddHandler(prefix string, h http.Handler) error {
+	p, err := NormalizePrefix(prefix)
+	if err != nil {
+		return err
+	}
+	if h == nil {
+		return errors.New("router: nil handler")
+	}
+	r := &route{prefix: p, target: "(in process)", proxy: h}
+	rt.mu.Lock()
+	rt.routes[p] = r
+	rt.mu.Unlock()
+	rt.log.Info("handler mounted", "prefix", displayPrefix(p))
 	return nil
 }
 

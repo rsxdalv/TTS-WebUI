@@ -126,6 +126,10 @@ type Supervisor struct {
 	cfg       Config
 	newRunner func() runner
 
+	// startMu serializes starts: two requests at once must not both see an
+	// empty run and both bind the ports.
+	startMu sync.Mutex
+
 	mu     sync.Mutex
 	cur    []*managed // current generation, in start order; nil before first Start
 	pub    int        // public port of the current run; 0 = cfg.PublicPort
@@ -135,6 +139,7 @@ type Supervisor struct {
 	// context, which would kill the app when the handler returned.
 	supCtx    context.Context
 	supCancel context.CancelFunc
+	run       *runState // the run that is up; nil before the first start and after Stop
 
 	subMu sync.Mutex // guards subs; held while fanning out (sends never block)
 	subs  []*statusSub
@@ -172,18 +177,22 @@ func (s *Supervisor) defs(c Config) []procDef {
 
 	gEnv := append([]string(nil), base...)
 	if !c.NoReact {
-		gEnv = append(gEnv, "REACT_UI_PORT="+strconv.Itoa(c.ReactPort))
+		gEnv = append(gEnv, "REACT_UI_PORT="+strconv.Itoa(c.frontPort()))
 	}
 	gEnv = append(gEnv, c.GradioEnv...)
 
 	defs := []procDef{{
-		name: NameGradio, port: c.PublicPort, probe: publicProbe(c.PublicTLS),
+		name: NameGradio, port: c.PublicPort, probe: publicProbe(c.PublicTLS, c.GradioPrefix),
 		args: append([]string{"python", c.GradioEntry}, c.gradioArgs()...),
 		env:  gEnv,
 	}}
 	if !c.NoReact {
 		// The Go front serves the static export; there is no process to run.
-		defs = append(defs, procDef{name: NameReact, port: c.ReactPort, probe: tcpProbe, static: true})
+		port := c.ReactPort
+		if c.FrontInRouter {
+			port = c.PublicPort // served by the router
+		}
+		defs = append(defs, procDef{name: NameReact, port: port, probe: tcpProbe, static: true})
 	}
 	return defs
 }
@@ -198,19 +207,149 @@ func (s *Supervisor) aliveLocked() bool {
 	return false
 }
 
-// Start launches the app processes. setupCtx covers setup work only; the
-// children run under a supervisor-owned context. On a partial start failure
-// everything already started is stopped and the error names the failed child.
+// runState is what a later start of one part needs from the run that is up.
+type runState struct {
+	c    Config
+	plan Plan
+	core *react_ui_backend.Core
+	side *GradioSide
+	ctx  context.Context
+}
+
+// Start launches both parts of the app: Gradio and the React UI front.
 func (s *Supervisor) Start(setupCtx context.Context) error {
+	return s.StartParts(setupCtx, NameGradio, NameReact)
+}
+
+// StartParts launches the named parts (NameGradio, NameReact). With nothing
+// running, it starts a run and only those parts in it. With a run up, it
+// starts the wanted parts that are not alive and leaves the others as they
+// are. ErrAlreadyRunning means every wanted part is already alive.
+func (s *Supervisor) StartParts(setupCtx context.Context, parts ...string) error {
 	if err := setupCtx.Err(); err != nil {
 		return err
 	}
+	s.startMu.Lock()
+	defer s.startMu.Unlock()
+	want := map[string]bool{}
+	for _, p := range parts {
+		if p != NameGradio && p != NameReact {
+			return fmt.Errorf("unknown part %q", p)
+		}
+		want[p] = true
+	}
+	if s.cfg.NoReact {
+		delete(want, NameReact)
+	}
+	if len(want) == 0 {
+		return errors.New("nothing to start: the React UI is turned off")
+	}
 	s.mu.Lock()
-	running := s.aliveLocked()
+	run, running := s.run, s.aliveLocked()
 	s.mu.Unlock()
-	if running {
+	switch {
+	case running && run != nil:
+		return s.startMore(setupCtx, run, want)
+	case running:
 		return ErrAlreadyRunning
 	}
+	return s.startFresh(setupCtx, want)
+}
+
+// startFront starts the Go front (the React UI server) of a run.
+//
+// With Config.FrontInRouter and a router on the Go side, the front is the router's
+// "/" route (in this process, on the public port; its Host and Origin guards use
+// the public port). Otherwise it listens on ReactPort. The returned function
+// ends it.
+func (s *Supervisor) startFront(c Config, plan Plan, core *react_ui_backend.Core, side *GradioSide) (func(), error) {
+	cfg := react_ui_backend.Config{
+		Root:          c.Root.Dir(),
+		Port:          c.ReactPort,
+		Routes:        plan.Switches,
+		LAN:           plan.Switches.ProxyLAN,
+		AllowedHosts:  plan.Switches.ProxyAllowedHosts,
+		Core:          core,
+		GradioBackend: gradioBackendURL(c),
+		DevURL:        c.FrontDevURL,
+	}
+	if c.FrontInRouter && side != nil && side.Router != nil {
+		cfg.Port = c.PublicPort
+		h, err := react_ui_backend.NewHandler(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("starting the React UI server: %w", err)
+		}
+		if err := side.Router.AddHandler("/", h); err != nil {
+			return nil, fmt.Errorf("mounting the React UI on the router: %w", err)
+		}
+		return func() { side.Router.RemoveRoute("/") }, nil
+	}
+	front, err := react_ui_backend.Start(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("starting the React UI server: %w", err)
+	}
+	if plan.Switches.ProxyLAN {
+		slog.Warn(react_ui_backend.LANWarning(c.ReactPort))
+	}
+	return front.Close, nil
+}
+
+// gradioBackendURL is where the React server reaches Gradio: the public port,
+// under GradioPrefix. "" leaves the server's own default.
+func gradioBackendURL(c Config) string {
+	if !c.FrontInRouter || c.PublicPort == 0 {
+		return ""
+	}
+	return fmt.Sprintf("http://127.0.0.1:%d%s/", c.PublicPort, c.GradioPrefix)
+}
+
+// launchChild starts one part. mu is held. The returned managed is always
+// usable in the status; the error is set only for a part that must not fail
+// (Gradio is optional: its failure is a state).
+func (s *Supervisor) launchChild(ctx context.Context, c Config, cwd string, d procDef, closeFront func(), pyOK bool, pyMsg string) (*managed, error) {
+	m := newManaged(d.name, d.port, d.probe)
+	var r runner
+	if d.static {
+		r = newFrontRunner(closeFront)
+	} else {
+		r = s.newRunner()
+	}
+	if d.name == NameGradio && !pyOK {
+		// Not an error: the core runs without Gradio. The status says why.
+		m.state, m.errMsg = StateFailed, pyMsg
+		m.markGone()
+		slog.Warn("gradio not started: " + pyMsg)
+		return m, nil
+	}
+	var pc platform.Command
+	var err error
+	if !d.static { // the Go front is not a program
+		pc, err = c.Platform.Command(nil, d.args)
+	}
+	if err == nil {
+		err = r.Start(ctx, pc.Program, pc.Args, cwd, d.env)
+	}
+	if err != nil {
+		m.state, m.errMsg = StateFailed, err.Error()
+		m.markGone()
+		if d.name == NameGradio {
+			// Optional too: a Gradio that cannot start is a state.
+			slog.Warn("gradio did not start: " + err.Error())
+			return m, nil
+		}
+		return m, fmt.Errorf("starting %s: %w", d.name, err)
+	}
+	m.r, m.alive = r, true
+	go s.watch(m)
+	go s.probeLoop(ctx, m)
+	return m, nil
+}
+
+// startFresh starts a run with the wanted parts. setupCtx covers setup work
+// only; the children run under a supervisor-owned context. On a partial start
+// failure everything already started is stopped and the error names the
+// failed child.
+func (s *Supervisor) startFresh(setupCtx context.Context, want map[string]bool) error {
 	s.releaseCore()
 
 	// Gradio is optional. Without a Python environment it is not started and
@@ -221,6 +360,11 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	if s.cfg.Prepare != nil {
 		var err error
 		if plan, err = s.cfg.Prepare(setupCtx); err != nil {
+			return err
+		}
+	}
+	if want[NameReact] && s.cfg.PrepareFront != nil {
+		if err := s.cfg.PrepareFront(setupCtx, plan); err != nil {
 			return err
 		}
 	}
@@ -242,41 +386,17 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		c.OpenBrowser = *plan.OpenBrowser
 	}
 	c.GradioEnv = append(append([]string(nil), c.GradioEnv...), plan.GradioEnv...)
-	if !c.NoReact && c.ReactPort == c.PublicPort {
+	if !c.NoReact && !c.FrontInRouter && c.ReactPort == c.PublicPort {
 		return fmt.Errorf("ReactPort and PublicPort are both %d", c.PublicPort)
 	}
 
 	core := &react_ui_backend.Core{}
-	var front *react_ui_backend.Server
-	if !c.NoReact {
-		var err error
-		front, err = react_ui_backend.Start(react_ui_backend.Config{
-			Root:         c.Root.Dir(),
-			Port:         c.ReactPort,
-			Routes:       plan.Switches,
-			LAN:          plan.Switches.ProxyLAN,
-			AllowedHosts: plan.Switches.ProxyAllowedHosts,
-			Core:         core,
-		})
-		if err != nil {
-			return fmt.Errorf("starting the React UI server: %w", err)
-		}
-		if plan.Switches.ProxyLAN {
-			slog.Warn(react_ui_backend.LANWarning(c.ReactPort))
-		}
-	}
-	closeFront := func() {
-		if front != nil {
-			front.Close()
-		}
-	}
-
+	// The Go side comes first: the front may be mounted on its router.
 	var side *GradioSide
 	if s.cfg.StartGradioSide != nil {
 		var err error
 		side, err = s.cfg.StartGradioSide(c.Platform)
 		if err != nil {
-			closeFront()
 			return fmt.Errorf("starting the Go side of gradio: %w", err)
 		}
 	}
@@ -289,6 +409,14 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	if side != nil {
 		core.Set(side.CoreURL, side.CoreToken)
 		c.GradioEnv = append(c.GradioEnv, side.Env...)
+	}
+	closeFront := func() {}
+	if want[NameReact] {
+		var err error
+		if closeFront, err = s.startFront(c, plan, core, side); err != nil {
+			closeSide()
+			return err
+		}
 	}
 
 	s.mu.Lock()
@@ -305,6 +433,7 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	s.supCtx, s.supCancel = ctx, cancel
 	s.pub = c.PublicPort
 	s.pubTLS = c.PublicTLS
+	s.run = &runState{c: c, plan: plan, core: core, side: side, ctx: ctx}
 
 	cwd := c.Root.Dir()
 	gen := make([]*managed, 0, 3)
@@ -321,47 +450,19 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	s.cur = gen
 	var startErr error
 	for _, d := range s.defs(c) {
-		m := newManaged(d.name, d.port, d.probe)
-		gen = append(gen, m)
-		s.cur = gen
-		var r runner
-		switch {
-		case d.static:
-			r = newFrontRunner(closeFront)
-		default:
-			r = s.newRunner()
-		}
-		if d.name == NameGradio && !pyOK {
-			// Not an error: the core runs without Gradio. The status says why.
-			m.state, m.errMsg = StateFailed, pyMsg
-			m.markGone()
-			slog.Warn("gradio not started: " + pyMsg)
+		if !want[d.name] {
 			continue
 		}
-		var pc platform.Command
-		var err error
-		if !d.static { // the Go front is not a program
-			pc, err = c.Platform.Command(nil, d.args)
-		}
-		if err == nil {
-			err = r.Start(ctx, pc.Program, pc.Args, cwd, d.env)
-		}
+		m, err := s.launchChild(ctx, c, cwd, d, closeFront, pyOK, pyMsg)
+		gen = append(gen, m)
+		s.cur = gen
 		if err != nil {
-			m.state, m.errMsg = StateFailed, err.Error()
-			m.markGone()
-			if d.name == NameGradio {
-				// Optional too: a Gradio that cannot start is a state.
-				slog.Warn("gradio did not start: " + err.Error())
-				continue
-			}
-			startErr = fmt.Errorf("starting %s: %w", d.name, err)
+			startErr = err
 			break
 		}
-		m.r, m.alive = r, true
-		go s.watch(m)
-		go s.probeLoop(ctx, m)
 	}
 	if startErr != nil {
+		s.run = nil
 		s.mu.Unlock()
 		// Whatever belongs to a child that never started is closed here.
 		closeFront()
@@ -370,14 +471,9 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 		return startErr
 	}
 	if c.OpenBrowser {
-		go s.openBrowsers(ctx, gen, publicURLScheme(c.PublicPort, c.PublicTLS), !c.SkipReactTab, c.ReactPort)
+		go s.openBrowsers(ctx, gen, publicURLScheme(c.PublicPort, c.PublicTLS)+c.GradioPrefix, !c.SkipReactTab, c.frontPort())
 	}
-	var refs []ProcRef
-	for _, m := range gen {
-		if p, ok := m.r.(pidder); ok {
-			refs = append(refs, ProcRef{Name: m.name, PID: p.Pid()})
-		}
-	}
+	refs := s.refsLocked()
 	s.mu.Unlock()
 	if s.cfg.OnStarted != nil {
 		s.cfg.OnStarted(refs)
@@ -386,12 +482,149 @@ func (s *Supervisor) Start(setupCtx context.Context) error {
 	return nil
 }
 
+// startMore starts the wanted parts that are not alive in the run that is up.
+func (s *Supervisor) startMore(setupCtx context.Context, run *runState, want map[string]bool) error {
+	s.mu.Lock()
+	need := map[string]bool{}
+	for n := range want {
+		if !s.partAliveLocked(n) {
+			need[n] = true
+		}
+	}
+	s.mu.Unlock()
+	if len(need) == 0 {
+		return ErrAlreadyRunning
+	}
+
+	// The slow work (building the export, checking the Python environment)
+	// happens outside the lock.
+	closeFront := func() {}
+	if need[NameReact] {
+		if s.cfg.PrepareFront != nil {
+			if err := s.cfg.PrepareFront(setupCtx, run.plan); err != nil {
+				return err
+			}
+		}
+		var err error
+		if closeFront, err = s.startFront(run.c, run.plan, run.core, run.side); err != nil {
+			return err
+		}
+	}
+	pyOK, pyMsg := true, ""
+	if need[NameGradio] {
+		st := run.c.Platform.Status(setupCtx)
+		pyOK, pyMsg = st.Ready, st.Detail
+	}
+
+	s.mu.Lock()
+	if s.run != run || !s.aliveLocked() {
+		s.mu.Unlock()
+		closeFront()
+		return errors.New("the app was stopped while it was starting")
+	}
+	cwd := run.c.Root.Dir()
+	var startErr error
+	for _, d := range s.defs(run.c) {
+		if !need[d.name] {
+			continue
+		}
+		m, err := s.launchChild(run.ctx, run.c, cwd, d, closeFront, pyOK, pyMsg)
+		kept := s.cur[:0:0]
+		for _, o := range s.cur {
+			if o.name != d.name {
+				kept = append(kept, o)
+			}
+		}
+		s.cur = append(kept, m)
+		if err != nil {
+			startErr = err
+			break
+		}
+	}
+	if startErr != nil {
+		s.mu.Unlock()
+		closeFront()
+		s.publish()
+		return startErr
+	}
+	refs := s.refsLocked()
+	s.mu.Unlock()
+	if s.cfg.OnStarted != nil {
+		s.cfg.OnStarted(refs)
+	}
+	s.publish()
+	return nil
+}
+
+// partAliveLocked reports whether the named part is alive. mu is held.
+func (s *Supervisor) partAliveLocked(name string) bool {
+	for _, m := range s.cur {
+		if m.name == name && m.alive {
+			return true
+		}
+	}
+	return false
+}
+
+// refsLocked lists the pids of the current generation. mu is held.
+func (s *Supervisor) refsLocked() []ProcRef {
+	var refs []ProcRef
+	for _, m := range s.cur {
+		if m.r == nil {
+			continue
+		}
+		if p, ok := m.r.(pidder); ok {
+			refs = append(refs, ProcRef{Name: m.name, PID: p.Pid()})
+		}
+	}
+	return refs
+}
+
+// StopPart stops one part (NameGradio or NameReact) and leaves the other
+// running. When it was the last part alive, the whole run is stopped, so the
+// Go side and its ports are released.
+func (s *Supervisor) StopPart(name string) {
+	s.mu.Lock()
+	var m *managed
+	for _, o := range s.cur {
+		if o.name == name && o.alive && !o.stopping {
+			m = o
+		}
+	}
+	if m == nil {
+		s.mu.Unlock()
+		return
+	}
+	m.stopping, m.state, m.errMsg = true, StateStopping, ""
+	m.markGone()
+	s.mu.Unlock()
+	s.publish()
+
+	_ = m.r.Stop()
+	select {
+	case <-m.finished:
+	case <-time.After(5 * time.Second):
+		s.mu.Lock()
+		m.alive, m.state = false, StateStopped
+		s.mu.Unlock()
+	}
+	s.mu.Lock()
+	left := s.aliveLocked()
+	s.mu.Unlock()
+	if !left {
+		s.Stop()
+		return
+	}
+	s.publish()
+}
+
 // Stop stops all children and cancels the supervisor context. Children that
 // exited or failed on their own keep their status until the next Start.
 func (s *Supervisor) Stop() {
 	s.mu.Lock()
 	cancel := s.supCancel
 	s.supCancel, s.supCtx = nil, nil
+	s.run = nil
 	gen := s.cur
 	s.mu.Unlock()
 	s.stopGeneration(gen, cancel)
@@ -572,7 +805,7 @@ func (s *Supervisor) statusesLocked() []ProcessStatus {
 			case NameGradio:
 				st.Port = s.publicPortLocked()
 			case NameReact:
-				st.Port = s.cfg.ReactPort
+				st.Port = s.cfg.frontPort()
 				if s.cfg.NoReact {
 					st.State, st.Port = StateDisabled, 0
 				}
@@ -649,7 +882,10 @@ func (s *Supervisor) pubTLSLocked() bool {
 }
 
 // publicProbe is the readiness probe of the public port.
-func publicProbe(useTLS bool) probeFunc {
+func publicProbe(useTLS bool, prefix string) probeFunc {
+	if prefix != "" {
+		return pathProbe(useTLS, prefix)
+	}
 	if useTLS {
 		return httpsProbe
 	}
@@ -669,7 +905,7 @@ func (s *Supervisor) AppLink() string {
 	port := s.publicPortLocked()
 	useTLS := s.pubTLSLocked()
 	s.mu.Unlock()
-	url := publicURLScheme(port, useTLS)
+	url := publicURLScheme(port, useTLS) + s.cfg.GradioPrefix
 	client := &http.Client{Timeout: 500 * time.Millisecond}
 	if useTLS {
 		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, DisableKeepAlives: true}

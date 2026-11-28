@@ -14,7 +14,7 @@ export const Vote = ({
 }) => (
   <div className="flex items-center justify-center gap-2">
     <button
-      className={`text-xl text-gray-900 select-none hover:opacity-50 ${
+      className={`text-xl text-gray-900 dark:text-gray-100 select-none hover:opacity-50 ${
         vote === 1
           ? "text-green-500 hover:text-green-900 disabled:opacity-100"
           : "hover:text-green-500 opacity-20"
@@ -25,9 +25,9 @@ export const Vote = ({
     >
       <MUIIcon icon={ThumbsUpIcon} alt="like" />
     </button>
-    <span className="text-xl text-gray-900">{voteCount}</span>
+    <span className="text-xl text-gray-900 dark:text-gray-100">{voteCount}</span>
     <button
-      className={`text-xl text-gray-900 select-none hover:opacity-50 ${
+      className={`text-xl text-gray-900 dark:text-gray-100 select-none hover:opacity-50 ${
         vote === -1
           ? "text-red-500 hover:text-red-900 disabled:opacity-100"
           : "hover:text-red-500 opacity-20"

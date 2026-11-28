@@ -2,6 +2,7 @@ package supervise
 
 import (
 	"context"
+	"net/http"
 	"sync"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/switches"
@@ -40,6 +41,16 @@ type GradioSide struct {
 	Close func()
 	// CoreURL and CoreToken are the control API the React front calls.
 	CoreURL, CoreToken string
+	// Router is where the React UI is mounted when Config.FrontInRouter is on.
+	// nil: the front keeps a listener of its own.
+	Router Mounter
+}
+
+// Mounter is the part of the router the supervisor needs to serve the React UI
+// from the public port.
+type Mounter interface {
+	AddHandler(prefix string, h http.Handler) error
+	RemoveRoute(prefix string)
 }
 
 // ProcRef names a running child process, for the orphan record.

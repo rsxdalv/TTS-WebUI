@@ -114,7 +114,8 @@ func missingExportClaims(sw switches.Set) string {
 var errUINotBuilt = errors.New("the React UI is not built: frontend/out is missing. The installer zip ships it, so run Update in the launcher or download the zip again (an install with the old env builds it in Install)")
 
 // canBuildExport reports whether `npm run build:static` can run: react-ui has
-// the script and its dependencies are installed.
+// the script and its dependencies are installed (vite is there: an old Next.js-era
+// node_modules is a folder too, but cannot build).
 func canBuildExport(root paths.Root) bool {
 	data, err := os.ReadFile(filepath.Join(root.Dir(), "frontend", "package.json"))
 	if err != nil {
@@ -129,7 +130,7 @@ func canBuildExport(root paths.Root) bool {
 	if _, ok := pkg.Scripts["build:static"]; !ok {
 		return false
 	}
-	st, err := os.Stat(filepath.Join(root.Dir(), "frontend", "node_modules"))
+	st, err := os.Stat(filepath.Join(root.Dir(), "frontend", "node_modules", "vite"))
 	return err == nil && st.IsDir()
 }
 

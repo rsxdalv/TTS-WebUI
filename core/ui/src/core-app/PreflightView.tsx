@@ -1,4 +1,5 @@
 // PreflightView: runs POST /api/steps/preflight, shows check results and fix buttons.
+// As a step (old env) it gates the install; as a panel (Extensions) it only informs.
 import { useState, useEffect } from "react";
 import { client } from "./client";
 
@@ -20,10 +21,12 @@ interface FixResponse {
 }
 
 interface PreflightViewProps {
-  onComplete: () => void;
+  onComplete?: () => void;
+  variant?: "step" | "panel";
 }
 
-export function PreflightView({ onComplete }: PreflightViewProps) {
+export function PreflightView({ onComplete, variant = "step" }: PreflightViewProps) {
+  const panel = variant === "panel";
   const [checks, setChecks] = useState<PreflightCheck[]>([]);
   const [ok, setOk] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -44,7 +47,7 @@ export function PreflightView({ onComplete }: PreflightViewProps) {
       setChecks(data.checks);
       setOk(data.ok);
       if (data.ok) {
-        onComplete();
+        onComplete?.();
       }
     } catch (e: unknown) {
       setChecks([{ id: "error", status: "fail", message: e instanceof Error ? e.message : String(e) }]);
@@ -75,14 +78,29 @@ export function PreflightView({ onComplete }: PreflightViewProps) {
     return <span className="text-red-600 dark:text-red-400">✗</span>;
   };
 
+  const LABELS: Record<string, string> = {
+    SpacesInPath: "No spaces in the install path",
+    System32InPath: "Not installed inside System32",
+    ExFAT: "Drive is not exFAT",
+    LongPaths: "Windows long paths",
+    ConflictingConda: "No other conda in the way",
+    MSVC: "C++ build tools (MSVC)",
+    GCC: "C++ compiler (gcc)",
+  };
   const readableId = (id: string) =>
-    id.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim();
+    LABELS[id] ?? id.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim();
 
   return (
-    <div className="rounded-xl border border-blue-400 dark:border-blue-600 bg-white dark:bg-gray-900 p-4">
-      <div className="font-medium text-sm mb-1">System Pre-flight Checks</div>
+    <div
+      className={`rounded-xl border bg-white dark:bg-gray-900 p-4 ${
+        panel ? "border-gray-200 dark:border-gray-800" : "border-blue-400 dark:border-blue-600"
+      }`}
+    >
+      <div className="font-medium text-sm mb-1">{panel ? "System checks" : "System Pre-flight Checks"}</div>
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-        Verify system requirements before installation.
+        {panel
+          ? "Things on this machine that can make an install or a build fail. They only inform: nothing is blocked."
+          : "Verify system requirements before installation."}
       </p>
 
       {loading && checks.length === 0 && (
@@ -118,7 +136,11 @@ export function PreflightView({ onComplete }: PreflightViewProps) {
         </div>
       )}
 
-      {!ok && checks.length > 0 && (
+      {panel && ok && checks.length > 0 && checks.every((c) => c.status === "pass") && (
+        <p className="text-xs text-green-600 dark:text-green-400 mb-3">All checks passed.</p>
+      )}
+
+      {!panel && !ok && checks.length > 0 && (
         <p className="text-xs text-red-600 dark:text-red-400 mb-3">
           Fix the issues above to continue.
         </p>
@@ -129,7 +151,7 @@ export function PreflightView({ onComplete }: PreflightViewProps) {
         disabled={loading}
         className="py-1.5 px-3 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 disabled:bg-gray-400 text-white transition-colors cursor-pointer"
       >
-        {loading ? "Checking…" : "Retry"}
+        {loading ? "Checking…" : panel ? "Run again" : "Retry"}
       </button>
     </div>
   );

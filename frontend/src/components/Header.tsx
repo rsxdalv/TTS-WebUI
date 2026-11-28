@@ -3,6 +3,7 @@ import Link from "@/shims/link";
 import { useRouter } from "@/shims/router";
 import { ExternalLinkIcon } from "lucide-react";
 import { RouteCommands } from "./RouteCommands";
+import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "../lib/utils";
 import {
   HostStatus,
@@ -10,6 +11,7 @@ import {
   launcherUrl,
   useHostStatus,
 } from "../functions/hostStatus";
+import { GradioTab, useGradioTabs } from "../functions/gradioTabs";
 
 export type Route = {
   href: string;
@@ -95,6 +97,10 @@ export const routes: Route[] = [
         href: "/text-to-speech/vallex",
         text: "Vall-E-X",
       },
+      {
+        href: "/text-to-speech/minimax-tts",
+        text: "MiniMax Cloud TTS",
+      },
     ],
   },
   {
@@ -172,16 +178,17 @@ export const routes: Route[] = [
     text: "OpenAI",
   },
   {
-    href: "/minimax",
-    text: "MiniMax Cloud TTS",
-  },
-  {
     href: "/onnx",
     text: "ONNX",
   },
   {
     href: "/audiocpp",
     text: "audio.cpp",
+  },
+  {
+    href: "/gradio",
+    text: "Gradio (legacy)",
+    // The tabs of the Gradio UI are added by useMenuRoutes (withGradioTabs).
   },
   {
     href: "/tools",
@@ -200,9 +207,9 @@ export const routes: Route[] = [
         text: "API Config",
       },
       { href: "/tools/pip_list", text: "Installed Packages" },
-      { href: "/engines", text: "Engines" },
+      { href: "/tools/engines", text: "Engines" },
       { href: "/tools/extensions", text: "Extension Lists" },
-      { href: "/tools/simple_remixer", text: "Simple Remixer" },
+      { href: "/tools/custom-extensions", text: "Custom Extensions Installer" },
       { href: "/tools/log_viewer", text: "Log Viewer" },
       { href: "/tools/model_location", text: "Model Location" },
       { href: "/tools/server_settings", text: "Server Settings" },
@@ -212,7 +219,7 @@ export const routes: Route[] = [
 ];
 
 const RouteList = ({ children }: { children: React.ReactNode }) => (
-  <div className="flex gap-4 items-center justify-center w-full p-2 bg-white rounded shadow-sm">
+  <div className="flex flex-wrap gap-x-4 gap-y-1 items-center justify-center w-full p-2 bg-white dark:bg-gray-900 rounded shadow-sm">
     {children}
   </div>
 );
@@ -225,7 +232,10 @@ const RouteLinks = ({ routes }: { routes: Route[] }) => {
     routes.find(
       (r) => r.href.slice(1) === route.slice(0, route.lastIndexOf("/"))
     ) ||
-    routes.find((r) => r.href.slice(1) === route.slice(0, route.indexOf("/")));
+    routes.find((r) => r.href.slice(1) === route.slice(0, route.indexOf("/"))) ||
+    // A page listed in a section's submenu whose URL does not start with the
+    // section's (/extensions/huggingface_cache_manager under Tools).
+    routes.find((r) => r.subroutes?.some((s) => s.href === `/${route}`));
   const currentInnerRoute =
     currentTopRoute?.subroutes?.find((r) => r.href.slice(1) === route) ||
     currentTopRoute?.subroutes?.find(
@@ -344,13 +354,38 @@ const HostNotice = ({
 };
 
 /**
+ * The Gradio entry lists the tabs of the Gradio UI as links: /gradio/<group>
+ * for a top-level tab and /gradio/<group>/<tab> for a tab inside it.
+ */
+const withGradioTabs = (routes: Route[], tabs: GradioTab[] | null): Route[] =>
+  !tabs
+    ? routes
+    : routes.map((r) =>
+        r.href !== "/gradio"
+          ? r
+          : {
+              ...r,
+              subroutes: tabs.map((g) => ({
+                href: `/gradio/${g.slug}`,
+                text: g.label,
+                subroutes: g.children.map((t) => ({
+                  href: `/gradio/${g.slug}/${t.slug}`,
+                  text: t.label,
+                })),
+              })),
+            }
+      );
+
+/**
  * The routes the menu and the command palette offer: all of them, except the
  * pages that call the Gradio host while it is known not to be installed.
  */
 export const useMenuRoutes = () => {
   const host = useHostStatus();
   const noHost = host.kind === "known" && !host.status.installed;
-  return { host, noHost, routes: noHost ? withoutGradioPages(routes) : routes };
+  const tabs = useGradioTabs(!noHost);
+  const base = noHost ? withoutGradioPages(routes) : routes;
+  return { host, noHost, routes: withGradioTabs(base, tabs) };
 };
 
 export const Header = ({}) => {
@@ -359,7 +394,7 @@ export const Header = ({}) => {
   return (
     <>
       <div className="flex items-center w-full pb-1">
-        <h1 className="text-3xl font-bold text-start w-full text-gray-900">
+        <h1 className="text-3xl font-bold text-start w-full text-gray-900 dark:text-gray-100">
           TTS WebUI
         </h1>
         <div className="mr-2 relative w-96 flex-shrink-0 h-12 z-10">
@@ -370,7 +405,7 @@ export const Header = ({}) => {
         <a
           href="https://github.com/rsxdalv/tts-webui"
           target="_blank"
-          className="text-gray-500 hover:underline"
+          className="text-gray-600 hover:underline"
         >
           GitHub
         </a>
@@ -378,10 +413,12 @@ export const Header = ({}) => {
         <a
           href="https://forms.gle/2L62owhBsGFzdFBC8"
           target="_blank"
-          className="text-gray-500 hover:underline whitespace-pre"
+          className="text-gray-600 hover:underline whitespace-pre"
         >
           Feedback / Bug reports
         </a>
+        &nbsp; &nbsp;
+        <ThemeToggle />
       </div>
       <RouteLinks routes={menuRoutes} />
       {noHost && host.kind === "known" && (

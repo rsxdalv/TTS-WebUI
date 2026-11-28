@@ -23,6 +23,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/webui"
 )
@@ -36,9 +37,12 @@ func init() {
 
 // Server is the local HTTP server.
 type Server struct {
-	port  int
-	token string
-	mux   *http.ServeMux
+	port    int
+	token   string
+	httpMu  sync.Mutex
+	httpSrv *http.Server // the running http server (Serve), for Close
+	boot    string       // names this start of the server; not a secret (the page compares it across a restart)
+	mux     *http.ServeMux
 }
 
 // New creates a Server that will listen on port (0 = OS-assigned).
@@ -48,9 +52,16 @@ func New(port int) (*Server, error) {
 	if _, err := rand.Read(raw); err != nil {
 		return nil, fmt.Errorf("generating token: %w", err)
 	}
+	// The boot id is separate randomness: it is public (health), the token is not.
+	bootRaw := make([]byte, 8)
+	if _, err := rand.Read(bootRaw); err != nil {
+		return nil, fmt.Errorf("generating boot id: %w", err)
+	}
+	bootID := hex.EncodeToString(bootRaw)
 	s := &Server{
 		port:  port,
 		token: hex.EncodeToString(raw),
+		boot:  bootID,
 		mux:   http.NewServeMux(),
 	}
 	s.routes()
@@ -93,7 +104,23 @@ func (s *Server) Serve(l net.Listener) error {
 		s.port = addr.Port
 	}
 	srv := &http.Server{Handler: s.Handler()}
+	s.httpMu.Lock()
+	s.httpSrv = srv
+	s.httpMu.Unlock()
 	return srv.Serve(l)
+}
+
+// Close stops serving: the listener and every open connection, so a client with
+// a kept-alive connection (a page) cannot go on talking to a server that is
+// being replaced. It is safe to call before Serve and twice.
+func (s *Server) Close() error {
+	s.httpMu.Lock()
+	srv := s.httpSrv
+	s.httpMu.Unlock()
+	if srv == nil {
+		return nil
+	}
+	return srv.Close()
 }
 
 // Handler returns an http.Handler that enforces Host and Origin guards,
@@ -127,9 +154,10 @@ func (s *Server) routes() {
 		cwd, _ := os.Getwd()
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"ok":  true,
-			"os":  runtime.GOOS,
-			"cwd": cwd,
+			"ok":   true,
+			"os":   runtime.GOOS,
+			"cwd":  cwd,
+			"boot": s.boot,
 		})
 	})
 

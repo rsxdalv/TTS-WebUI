@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -13,6 +14,9 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/server"
 )
 
+// errRestart is returned by runLaunch when the page asked for a restart.
+var errRestart = errors.New("restart requested")
+
 func runLaunch(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("tts-webui", flag.ContinueOnError)
 	rootDir := fs.String("root", "", "install root directory (default: parent of binary)")
@@ -23,6 +27,8 @@ func runLaunch(ctx context.Context, args []string) error {
 	start := fs.Bool("start", false, "start the app as soon as the launcher is up, without opening the launcher page (Docker, Colab, start scripts)")
 	systemPython := fs.Bool("system-python", false, "run python and npm from PATH, not the installer's micromamba env (Docker, Colab)")
 	noReact := fs.Bool("no-react", false, "leave the React UI out (no build, no front on port 3000)")
+	dev := fs.Bool("dev", false, "development: the React UI's pages come from a Vite dev server (TTS_FRONTEND_DEV_URL, default http://127.0.0.1:3002; npm run dev in frontend/) instead of frontend/out")
+	noAutostart := fs.Bool("no-autostart", false, "do not start the React UI when the launcher starts (for development; start it from the launcher page)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -62,6 +68,14 @@ func runLaunch(ctx context.Context, args []string) error {
 	if *systemPython {
 		opts = append(opts, launcher.WithSystemPython())
 	}
+	if *dev {
+		devURL := os.Getenv("TTS_FRONTEND_DEV_URL")
+		if devURL == "" {
+			devURL = "http://127.0.0.1:3002"
+		}
+		opts = append(opts, launcher.WithDev(devURL))
+		slog.Info("dev mode: the React UI's pages come from " + devURL + " (run npm run dev in frontend/)")
+	}
 	l := launcher.New(root, opts...)
 	l.CleanupOrphans()
 	l.Register(srv)
@@ -92,10 +106,25 @@ func runLaunch(ctx context.Context, args []string) error {
 		}()
 	}
 
+	// The frontend starts with the launcher; Gradio waits for its button. --start
+	// has already started both, and --no-react has no frontend.
+	if !*start && !*noReact && !*noAutostart {
+		go func() {
+			if err := l.StartFrontend(ctx); err != nil {
+				slog.Error("starting the frontend failed (use Launch frontend on the launcher page to see why)", "err", err)
+			}
+		}()
+	}
+
 	errCh := make(chan error, 1)
 	go func() { errCh <- srv.Serve(ln) }()
 
 	select {
+	case <-l.RestartRequested():
+		slog.Info("launcher restarting: stopping the app")
+		l.Shutdown()
+		_ = srv.Close() // drop open connections too: a page must reach the new launcher
+		return errRestart
 	case <-ctx.Done():
 		slog.Info("launcher exiting: stopping the app")
 		done := make(chan struct{})

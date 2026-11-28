@@ -22,7 +22,7 @@ func TestHTTPSProbeReadsATLSPublicPort(t *testing.T) {
 	if got := publicURLScheme(port, true); got != "https://127.0.0.1:"+u.Port() {
 		t.Errorf("publicURLScheme = %q", got)
 	}
-	if !(publicProbe(true) != nil && publicProbe(false) != nil) {
+	if !(publicProbe(true, "") != nil && publicProbe(false, "") != nil) {
 		t.Error("publicProbe returned nil")
 	}
 }

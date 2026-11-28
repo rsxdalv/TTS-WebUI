@@ -137,7 +137,7 @@ func TestRoutesWithoutPythonAndGradio(t *testing.T) {
 	expect("GET", "/api/go-data/hf-cache/scan", "", 200, `"rows":[]`)
 	expect("POST", "/api/go-data/hf-cache/delete", `{"commit_hash":"../../x"}`, 400, "not a commit hash")
 	// The pages themselves are static files.
-	for _, p := range []string{"/tools/pip_list", "/tools/log_viewer", "/tools/gpu_info", "/tools/simple_remixer"} {
+	for _, p := range []string{"/tools/pip_list", "/tools/log_viewer", "/tools/gpu_info"} {
 		expect("GET", p, "", 200, "")
 	}
 }

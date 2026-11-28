@@ -46,6 +46,9 @@ type appProc struct {
 // appSupervisor is what the launcher needs from the app supervisor.
 type appSupervisor interface {
 	Start(ctx context.Context) error
+	// StartParts and StopPart act on one part (gradio, react-ui) and leave the other as it is.
+	StartParts(ctx context.Context, parts ...string) error
+	StopPart(name string)
 	Stop()
 	Restart(ctx context.Context) error
 	Statuses() any // JSON-encodable list of per-process statuses
@@ -72,12 +75,14 @@ func (s superviseSup) Running() bool {
 // badSup stands in when the supervisor cannot be built: every Start says why.
 type badSup struct{ err error }
 
-func (b badSup) Start(context.Context) error   { return b.err }
-func (b badSup) Restart(context.Context) error { return b.err }
-func (b badSup) Stop()                         {}
-func (b badSup) Statuses() any                 { return []supervise.ProcessStatus{} }
-func (b badSup) AppLink() string               { return "" }
-func (b badSup) Running() bool                 { return false }
+func (b badSup) Start(context.Context) error                 { return b.err }
+func (b badSup) StartParts(context.Context, ...string) error { return b.err }
+func (b badSup) StopPart(string)                             {}
+func (b badSup) Restart(context.Context) error               { return b.err }
+func (b badSup) Stop()                                       {}
+func (b badSup) Statuses() any                               { return []supervise.ProcessStatus{} }
+func (b badSup) AppLink() string                             { return "" }
+func (b badSup) Running() bool                               { return false }
 func (b badSup) SubscribeLogs(string) (<-chan string, func(), bool) {
 	return nil, nil, false
 }
@@ -93,7 +98,14 @@ type Option func(*options)
 type options struct {
 	noBrowser, share, docker, systemPython, noReact bool
 	launcherPort                                    int
+	frontDevURL                                     string // a Vite dev server answering the React UI's pages (WithDev)
 }
+
+// WithDev has the React UI server forward the app's pages and assets to a Vite dev
+// server (hot reload), such as http://127.0.0.1:3002 (npm run dev in frontend/).
+// The API routes, uploads and the export are the server's as ever; frontend/out
+// is not needed and not built.
+func WithDev(devURL string) Option { return func(o *options) { o.frontDevURL = devURL } }
 
 // WithLauncherPort tells the app where this launcher listens, so the Vite UI can
 // link to the launcher's Extensions page (the Gradio host is installed there).
@@ -123,6 +135,18 @@ func buildOptions(opts []Option) options {
 	return o
 }
 
+// gradioLegacyPrefix is where Gradio lives on the public port when the React UI
+// is served from the router at "/".
+const gradioLegacyPrefix = "/gradio-legacy"
+
+// frontInRouter says whether the React UI is served by the router on the public
+// port (and Gradio sits under gradioLegacyPrefix). It is the layout of a normal
+// run; TTS_FRONT_IN_ROUTER=0 brings back the old one (React on its own port,
+// Gradio at "/").
+func (o options) frontInRouter() bool {
+	return !o.noReact && os.Getenv("TTS_FRONT_IN_ROUTER") != "0"
+}
+
 // flags are the switches the launcher passes on: it runs React itself
 // (NoReact for the gradio child), and share and docker are the user's.
 func (o options) flags() appenv.Flags {
@@ -148,6 +172,11 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		GradioEntry:  serverPyEntry,
 		GradioArgs:   o.flags().Args(),
 	}
+	if o.frontInRouter() {
+		cfg.FrontInRouter = true
+		cfg.GradioPrefix = gradioLegacyPrefix
+	}
+	cfg.FrontDevURL = o.frontDevURL
 	cfg.Prepare = func(ctx context.Context) (supervise.Plan, error) {
 		// Every switch is checked before anything runs, so a typo never starts
 		// a build or a process first (R2-5).
@@ -166,11 +195,6 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		sweepOrphans(root)
 
 		plan := supervise.Plan{Switches: sw}
-		if !o.noReact {
-			if err := newReactPrep(root, o.systemPython).prepareReactUI(ctx, sw); err != nil {
-				return supervise.Plan{}, err
-			}
-		}
 		// The public port and inbrowser come from config.json.
 		inBrowser := false
 		if c, err := appenv.LoadConfig(root.Dir()); err == nil {
@@ -192,12 +216,28 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		plan.GradioEnv = []string{"BROWSER=" + noopBrowser, "PYTHONUNBUFFERED=1"}
 		return plan, nil
 	}
+	// The static export is built when the React UI front starts, so Gradio can
+	// be launched alone without building it.
+	cfg.PrepareFront = func(ctx context.Context, plan supervise.Plan) error {
+		if o.noReact || o.frontDevURL != "" {
+			return nil // development: Vite answers the pages, no export to build
+		}
+		return newReactPrep(root, o.systemPython).prepareReactUI(ctx, plan.Switches)
+	}
 	cfg.StartGradioSide = func(p platform.Platform) (*supervise.GradioSide, error) {
-		py, err := startServerPy(root, p, o.flags())
+		var sopts []serverPyOpt
+		if o.frontInRouter() {
+			sopts = append(sopts, withGradioPrefix(gradioLegacyPrefix))
+		}
+		py, err := startServerPy(root, p, o.flags(), sopts...)
 		if err != nil {
 			return nil, err
 		}
-		return &supervise.GradioSide{Env: py.gradioEnv, Close: py.Close, CoreURL: py.coreURL, CoreToken: py.coreToken}, nil
+		side := &supervise.GradioSide{Env: py.gradioEnv, Close: py.Close, CoreURL: py.coreURL, CoreToken: py.coreToken}
+		if o.frontInRouter() {
+			side.Router = py.rt
+		}
+		return side, nil
 	}
 	cfg.OnStarted = func(refs []supervise.ProcRef) {
 		procs := make([]appProc, len(refs))

@@ -3,8 +3,10 @@
 # Install once: go install github.com/air-verse/air@latest
 #
 # The launcher runs on port 7700 with the repo root as its install root (so the
-# checkout's frontend/out, .venvs and so on are used). A restart stops the app
-# it had started; start it again from the page (or add "-start" to args_bin).
+# .venvs and so on are used), and -dev: the React UI on the public port (7770)
+# answers its pages from the Vite dev server (hot reload), so frontend/out is not
+# needed. Run `npm run dev` in frontend/ (port 3002) next to it. A restart of the
+# launcher stops the app it had started; the frontend starts again by itself.
 # For the setup page with hot reload, run `npm run dev` in core/ui as well; it
 # proxies /api to this launcher (see core/ui/vite.core.config.ts).
 root = "."
@@ -13,7 +15,7 @@ tmp_dir = ".tmp/air"
 [build]
   cmd = "go build -o .tmp/air/tts-webui.exe ./cmd/tts-webui"
   entrypoint = ".tmp/air/tts-webui.exe"
-  args_bin = ["-root", "..", "-port", "7700", "-no-browser"]
+  args_bin = ["-root", "..", "-port", "7700", "-no-browser", "-dev"]
   # internal/webui/assets is go:embed'ed, so a rebuilt setup page restarts too.
   include_ext = ["go", "html", "js", "css"]
   exclude_dir = [".tmp", "ui", "scripts"]

@@ -90,8 +90,11 @@ func gradioState(t *testing.T, sup *supervise.Supervisor) supervise.ProcessStatu
 	return supervise.ProcessStatus{}
 }
 
+// startCore runs the app in the old layout (the React UI on its own port,
+// Gradio at "/"), which TTS_FRONT_IN_ROUTER=0 keeps; startRouterCore is the new one.
 func startCore(t *testing.T, root paths.Root, reactPort int, mutate func(*supervise.Config)) *supervise.Supervisor {
 	t.Helper()
+	t.Setenv("TTS_FRONT_IN_ROUTER", "0")
 	cfg := superviseConfig(root, options{noBrowser: true})
 	cfg.ReactPort = reactPort
 	cfg.SkipReactTab = true

@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
@@ -30,6 +31,12 @@ type StepStatus struct {
 	// Detail is a line to show with the step: an update waiting, or why it could
 	// not be checked.
 	Detail string `json:"detail,omitempty"`
+	// Checking is true while the answer is still being worked out (the update
+	// check asks the network); the page asks again shortly.
+	Checking bool `json:"checking,omitempty"`
+	// Restart is true when the step changed what the running launcher uses: the
+	// page offers a Restart.
+	Restart bool `json:"restart,omitempty"`
 }
 
 // Launcher holds shared mutable state for the step handlers.
@@ -44,6 +51,11 @@ type Launcher struct {
 	updMu    sync.Mutex // guards updState and updAt (the update step's cached answer)
 	updState updateState
 	updAt    time.Time
+	updBusy  bool // a background check is running
+
+	restartNeeded atomic.Bool   // an update replaced files the running launcher still uses
+	restartOnce   sync.Once     // closes restartCh once
+	restartCh     chan struct{} // closed when the page asks the launcher to restart
 
 	systemPython bool      // the system platform (WithSystemPython)
 	extOnce      sync.Once // the Extensions page's stores, built on first use
@@ -57,6 +69,7 @@ func New(root paths.Root, opts ...Option) *Launcher {
 	launcherPorts.Store(root.Dir(), buildOptions(opts).launcherPort)
 	return &Launcher{
 		root:         root,
+		restartCh:    make(chan struct{}),
 		sprocs:       make(map[string]*procs.Proc),
 		slogs:        make(map[string]*Log),
 		sup:          newAppSupervisor(root, opts...),
@@ -92,6 +105,37 @@ func (l *Launcher) StartApp(ctx context.Context, echo io.Writer) error {
 		}(name)
 	}
 	return nil
+}
+
+// StartFrontend starts the React UI alone, as the launcher does when it starts.
+// An app that is already running is not an error.
+func (l *Launcher) StartFrontend(ctx context.Context) error {
+	err := l.sup.StartParts(ctx, supervise.NameReact)
+	if err != nil && err.Error() == "app already running" {
+		return nil
+	}
+	return err
+}
+
+// RestartRequested is closed when the page has asked the launcher to restart.
+func (l *Launcher) RestartRequested() <-chan struct{} { return l.restartCh }
+
+// handleLauncherRestart asks the process to restart itself: it stops the app,
+// closes the listener and starts again (with the downloaded program, if an
+// update left one). It refuses while a step runs.
+func (l *Launcher) handleLauncherRestart() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		l.stepMu.Lock()
+		busy := l.downloadRunning() || l.updateRunning() || l.isStepRunning("mamba") || l.isStepRunning("install") || l.isStepRunning("update")
+		l.stepMu.Unlock()
+		if busy {
+			http.Error(w, "a step is running; restart when it has finished", http.StatusConflict)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+		l.restartOnce.Do(func() { close(l.restartCh) })
+	})
 }
 
 // Shutdown stops the app and any running install step, for a launcher that
@@ -149,6 +193,7 @@ func (l *Launcher) Register(srv *server.Server) {
 	srv.Handle("GET /api/steps/install/stream", l.handleProcStream("install"))
 
 	srv.Handle("POST /api/steps/update", l.handleUpdate())
+	srv.Handle("POST /api/launcher/restart", l.handleLauncherRestart())
 	srv.Handle("GET /api/steps/update/stream", l.handleUpdateStream())
 
 	// C3.2: app supervisor endpoints (start/stop/restart/status/stream).
@@ -175,7 +220,7 @@ func (l *Launcher) handleStatus() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// The update step: an install with the old env asks git, any other folder asks
 		// the archive's published description. The answer is cached for a minute.
-		upd := l.updateStatus()
+		upd, updChecking := l.updateStatus()
 		// Also done when the legacy update proc ran and exited cleanly.
 		if !upd.Done {
 			if p := l.getProc("update"); p != nil && !p.Running() && p.ExitCode() == 0 {
@@ -202,7 +247,7 @@ func (l *Launcher) handleStatus() http.Handler {
 				StepStatus{Step: "install", Done: installDone(l.root) && !installRunning, Running: installRunning},
 			)
 		}
-		statuses = append(statuses, StepStatus{Step: "update", Done: upd.Done && !updRunning, Running: updRunning, Detail: upd.Detail})
+		statuses = append(statuses, StepStatus{Step: "update", Done: upd.Done && !updRunning, Running: updRunning, Detail: upd.Detail, Checking: updChecking, Restart: l.restartNeeded.Load() && !updRunning})
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(statuses)
 	})
@@ -316,7 +361,18 @@ func (l *Launcher) handleProcStream(step string) http.Handler {
 
 func (l *Launcher) handleAppStart() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := l.sup.Start(context.Background()); err != nil {
+		// ?part=gradio or ?part=react-ui starts that part alone; no part starts both.
+		var err error
+		switch part := r.URL.Query().Get("part"); part {
+		case "":
+			err = l.sup.Start(context.Background())
+		case "gradio", "react-ui":
+			err = l.sup.StartParts(context.Background(), part)
+		default:
+			http.Error(w, "unknown part "+part+" (gradio or react-ui)", http.StatusBadRequest)
+			return
+		}
+		if err != nil {
 			if err.Error() == "app already running" {
 				http.Error(w, err.Error(), http.StatusConflict)
 			} else {
@@ -331,7 +387,15 @@ func (l *Launcher) handleAppStart() http.Handler {
 
 func (l *Launcher) handleAppStop() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l.sup.Stop()
+		switch part := r.URL.Query().Get("part"); part {
+		case "":
+			l.sup.Stop()
+		case "gradio", "react-ui":
+			l.sup.StopPart(part)
+		default:
+			http.Error(w, "unknown part "+part+" (gradio or react-ui)", http.StatusBadRequest)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"ok":true}`))
 	})

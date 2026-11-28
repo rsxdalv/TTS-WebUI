@@ -42,7 +42,7 @@ const ActionButton = ({
   onClick: () => void;
 }) => (
   <button
-    className="w-9 h-9 text-xl text-gray-900 select-none hover:opacity-70"
+    className="w-9 h-9 text-xl text-gray-900 dark:text-gray-100 select-none hover:opacity-70"
     onClick={onClick}
     title={alt}
   >
@@ -64,10 +64,10 @@ export const CardBig = ({
     setLocalVotes({ ...localVotes, [download]: newVote });
   };
   return (
-    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white rounded shadow-lg">
+    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-800 rounded shadow-lg">
       <div className="flex flex-col gap-y-4 w-full h-full justify-between">
         <div className="flex items-center w-full gap-x-2">
-          <h1 className="text-2xl font-bold text-gray-900">{name}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{name}</h1>
           <div className="ml-auto" />
           <Author author={author} />
           <SaveToFavorites download={download} />
@@ -118,15 +118,15 @@ export const CardGeneration = ({
   const maxLength = isJapanese ? 30 : 50;
   // const maxLength = 100000;
   return (
-    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white rounded shadow-lg">
+    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-800 rounded shadow-lg">
       <div className="flex flex-col gap-y-4 w-full h-full justify-between">
         <div className="flex w-full">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             <span
               className={
                 promptText.length > maxLength
-                  ? "text-xl font-bold text-gray-900"
-                  : "text-2xl font-bold text-gray-900"
+                  ? "text-xl font-bold text-gray-900 dark:text-gray-100"
+                  : "text-2xl font-bold text-gray-900 dark:text-gray-100"
               }
             >
               {promptText.length > maxLength
@@ -333,15 +333,15 @@ export const HistoryCard = ({
   };
 
   return (
-    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white rounded shadow-lg">
+    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-800 rounded shadow-lg">
       <div className="flex flex-col gap-y-4 w-full h-full">
         <div className="flex w-full">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             <span
               className={
                 promptText.length > maxLength
-                  ? "text-xl font-bold text-gray-900"
-                  : "text-2xl font-bold text-gray-900"
+                  ? "text-xl font-bold text-gray-900 dark:text-gray-100"
+                  : "text-2xl font-bold text-gray-900 dark:text-gray-100"
               }
             >
               {promptText.length > maxLength
@@ -446,7 +446,7 @@ export const CardVoiceNpz = ({ generation }: { generation: NPZ }) => {
     .replaceAll("_", " ")
     .replaceAll("-", " ");
   return (
-    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white rounded shadow-lg">
+    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-800 rounded shadow-lg">
       {image && (
         <img
           className="w-24 h-24 rounded select-none"
@@ -521,15 +521,15 @@ export const SectionVoice = ({
   const title = name || promptText;
   // const maxLength = 100000;
   return (
-    <div className="flex flex-col items-center justify-start w-full py-4 px-6 bg-white rounded shadow-lg">
+    <div className="flex flex-col items-center justify-start w-full py-4 px-6 bg-white dark:bg-gray-800 rounded shadow-lg">
       <div className="flex flex-col gap-y-4 w-full h-full justify-between">
         <div className="flex w-full">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             <span
               className={
                 name === undefined && prompt.length > maxLength
-                  ? "text-xl font-bold text-gray-900"
-                  : "text-2xl font-bold text-gray-900"
+                  ? "text-xl font-bold text-gray-900 dark:text-gray-100"
+                  : "text-2xl font-bold text-gray-900 dark:text-gray-100"
               }
             >
               {title}
@@ -552,7 +552,7 @@ export const SectionVoice = ({
           {...rest}
         />
       </div>
-      <h1 className="text-2xl font-bold text-gray-900">Used in generations:</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Used in generations:</h1>
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         {children}
       </div>
@@ -562,10 +562,10 @@ export const SectionVoice = ({
 
 export const CardEmpty = ({ title, link }: { title: string; link: string }) => {
   return (
-    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white rounded shadow-lg">
+    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-800 rounded shadow-lg">
       <div className="flex flex-col gap-y-4 w-full h-full justify-between">
         <div className="flex items-center w-full gap-x-2">
-          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{title}</h1>
         </div>
         <div className="flex w-full justify-center">
           <button
@@ -613,7 +613,7 @@ const SaveToFavorites = ({ download }: Pick<Voice, "download">) => {
   const isFavorite = favorites.includes(download);
   return (
     <button
-      className={`w-9 h-9 text-xl text-gray-900 select-none ${
+      className={`w-9 h-9 text-xl text-gray-900 dark:text-gray-100 select-none ${
         isFavorite ? "text-red-500 hover:text-red-900" : "hover:text-red-500"
       }`}
       onClick={() =>
@@ -746,7 +746,7 @@ const Tags = ({ tags }: Pick<Voice, "tags">) => (
     {tags.map((tag) => (
       <li
         key={tag}
-        className="px-2 py-1 text-sm font-medium text-gray-800 bg-gray-200 rounded"
+        className="px-2 py-1 text-sm font-medium text-gray-800 dark:text-gray-200 bg-gray-200 rounded"
       >
         {tag}
       </li>

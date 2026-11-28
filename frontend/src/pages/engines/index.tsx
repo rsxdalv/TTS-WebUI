@@ -35,7 +35,7 @@ const EnginesPage = () => {
             <li key={e.package} className="border rounded p-3">
               <Link
                 className="font-semibold underline"
-                to={`/engine?pkg=${encodeURIComponent(e.package)}`}
+                to={`/tools/engine?pkg=${encodeURIComponent(e.package)}`}
               >
                 {e.name || e.package}
               </Link>

@@ -10,7 +10,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/http/cookiejar"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -246,56 +245,6 @@ func TestOptionsFlags(t *testing.T) {
 	}
 	if o := buildOptions(nil); o.flags() != (appenv.Flags{NoReact: true}) {
 		t.Errorf("default flags = %+v, want only NoReact", o.flags())
-	}
-}
-
-// The Extensions List pages come through the public port at /_core, from their
-// own listener: the page sets its cookie, the API answers with it, and the
-// control API is not reachable by that route.
-func TestServerPyServesExtensionPagesThroughTheRouter(t *testing.T) {
-	root := makeRoot(t)
-	if err := os.WriteFile(filepath.Join(root.Dir(), "extensions.json"),
-		[]byte(`{"tabs":[{"package_name":"ext.one","name":"One","requirements":"x","extension_type":"interface","extension_class":"tools"}]}`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	sp, err := startServerPyOn(root, "127.0.0.1", 0, testPlat(t, []string{"no-such-micromamba", "run"}), appenv.Flags{NoReact: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer sp.Close()
-	base := "http://" + sp.publicAddr
-	jar, _ := cookiejar.New(nil)
-	c := &http.Client{Timeout: 10 * time.Second, Jar: jar}
-
-	resp, err := c.Get(base + "/_core/ext/list?kind=interface")
-	if err != nil {
-		t.Fatal(err)
-	}
-	page, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	if resp.StatusCode != 200 || !strings.Contains(string(page), `data-kind="interface"`) {
-		t.Fatalf("page: %d %s", resp.StatusCode, page)
-	}
-	if !strings.Contains(resp.Header.Get("Content-Security-Policy"), "frame-ancestors 'self'") {
-		t.Errorf("CSP: %q", resp.Header.Get("Content-Security-Policy"))
-	}
-
-	resp, err = c.Get(base + "/_core/ext/api/list?kind=interface")
-	if err != nil {
-		t.Fatal(err)
-	}
-	body, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	if resp.StatusCode != 200 || !strings.Contains(string(body), `"ext.one"`) {
-		t.Fatalf("list: %d %s", resp.StatusCode, body)
-	}
-	// without the cookie the same call is refused
-	if code, _ := get(t, base+"/_core/ext/api/list?kind=interface", ""); code != 403 {
-		t.Errorf("no cookie: %d", code)
-	}
-	// the control API does not hang off /_core, token or not
-	if code, _ := get(t, base+"/_core/api/routes", envMap(sp.gradioEnv)["TTS_CORE_TOKEN"]); code != 404 {
-		t.Errorf("control API through /_core: %d", code)
 	}
 }
 

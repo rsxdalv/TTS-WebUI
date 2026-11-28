@@ -9,12 +9,11 @@
   --background-end-rgb: 255, 255, 255;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0; */
-  }
+/* The theme toggle puts .dark on <html> (src/lib/theme.ts). */
+.dark {
+  --foreground-rgb: 245, 245, 245;
+  --background-start-rgb: 15, 15, 15;
+  --background-end-rgb: 15, 15, 15;
 }
 
 body {
@@ -42,10 +41,10 @@ body {
     --secondary: 220 14.3% 88.9%;
     --secondary-foreground: 220.9 39.3% 11%;
     --muted: 220 14.3% 95.9%;
-    --muted-foreground: 220 8.9% 46.1%;
+    --muted-foreground: 220 8.9% 38%; /* 6:1 on the page, was 4.2:1 */
     --accent: 220 14.3% 95.9%;
     --accent-foreground: 220.9 39.3% 11%;
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 72.2% 50.6%; /* white text 4.8:1, was 3.6:1 */
     --destructive-foreground: 210 20% 98%;
     --border: 220 13% 91%;
     /* --input: 220 13% 91%; */
@@ -59,32 +58,63 @@ body {
     --chart-5: 27 87% 67%;
   }
 
+  /* Dark values follow Gradio's dark theme (Base, neutral): page #0f0f0f (neutral-950),
+     blocks #262626 (800), borders and inputs #404040 (700), text #f5f5f5 (100),
+     subdued text #a3a3a3 (400), secondary buttons #525252 (600). */
   .dark {
-    --background: 224 71.4% 4.1%;
-    --foreground: 210 20% 98%;
-    --card: 224 71.4% 4.1%;
-    --card-foreground: 210 20% 98%;
-    --popover: 224 71.4% 4.1%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 210 20% 98%;
-    --primary-foreground: 220.9 39.3% 11%;
-    --secondary: 215 27.9% 16.9%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 215 27.9% 16.9%;
-    --muted-foreground: 217.9 10.6% 64.9%;
-    --accent: 215 27.9% 16.9%;
-    --accent-foreground: 210 20% 98%;
+    --background: 0 0% 5.9%;
+    --foreground: 0 0% 96.1%;
+    --card: 0 0% 14.9%;
+    --card-foreground: 0 0% 96.1%;
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 96.1%;
+    --primary: 0 0% 96.1%;
+    --primary-foreground: 0 0% 5.9%;
+    --secondary: 0 0% 32.2%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 25.1%;
+    --accent-foreground: 0 0% 96.1%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 215 27.9% 16.9%;
-    --input: 215 27.9% 16.9%;
-    --ring: 216 12.2% 83.9%;
+    --destructive-foreground: 0 0% 96.1%;
+    --border: 0 0% 25.1%;
+    --input: 0 0% 25.1%;
+    --ring: 0 0% 63.9%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
+}
+
+@layer components {
+  /* Dark remap of the light-only utility classes the pages were written with
+     (the app had no dark mode). Greys follow Gradio's neutral scale: light
+     50/100/200 backgrounds become 900/800/700, text 500-900 becomes 400-100.
+     A `dark:` variant on the same element still wins (later layer). */
+  .dark .text-black, .dark .text-gray-900 { color: #f5f5f5; }
+  .dark .text-gray-800 { color: #e5e5e5; }
+  .dark .text-gray-700 { color: #d4d4d4; }
+  .dark .text-gray-600, .dark .text-gray-500 { color: #a3a3a3; }
+  .dark .bg-white, .dark .bg-gray-50 { background-color: #171717; }
+  .dark .bg-gray-100, .dark .hover\:bg-gray-100:hover { background-color: #262626; }
+  .dark .bg-gray-200, .dark .hover\:bg-gray-200:hover { background-color: #404040; }
+  .dark .bg-gray-300, .dark .hover\:bg-gray-300:hover { background-color: #525252; }
+  .dark .border-gray-200, .dark .border-gray-300 { border-color: #404040; }
+  /* Status colours: the 500-900 shades are too dark on #0f0f0f / #262626. */
+  .dark .text-red-500, .dark .text-red-600 { color: #f87171; }
+  .dark .text-red-700, .dark .text-red-800, .dark .text-red-900 { color: #fca5a5; }
+  .dark .text-green-500, .dark .text-green-600, .dark .text-green-700 { color: #4ade80; }
+  .dark .text-green-900 { color: #86efac; }
+  .dark .text-blue-500 { color: #60a5fa; }
+  .dark .text-amber-700 { color: #fbbf24; }
+  .dark .bg-red-50 { background-color: #3b1212; }
+  .dark .bg-yellow-50 { background-color: #3a2a08; }
+  .dark .text-yellow-800, .dark .text-yellow-900 { color: #fde68a; }
+  .dark .border-red-300 { border-color: #7f1d1d; }
+  .dark .border-yellow-300 { border-color: #854d0e; }
 }
 
 @layer components {

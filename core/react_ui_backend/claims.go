@@ -90,6 +90,14 @@ func newDeps(root string) Deps {
 	}
 }
 
+// backendSet reports whether GRADIO_BACKEND or GRADIO_BACKEND_AUTOMATIC is set
+// (the process environment or the env files): the user's choice wins over
+// Config.GradioBackend.
+func backendSet(root string) bool {
+	lookup := envLookup(root)
+	return lookup("GRADIO_BACKEND") != "" || lookup("GRADIO_BACKEND_AUTOMATIC") != ""
+}
+
 // gradioBackend matches frontend/src/backend-utils/defaultBackend.tsx.
 func gradioBackend(lookup func(string) string) string {
 	for _, name := range []string{"GRADIO_BACKEND", "GRADIO_BACKEND_AUTOMATIC"} {

@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 /**
  * The routes of the app.
@@ -33,11 +33,14 @@ const ToolsGpuInfo = lazy(() => import("./pages/tools/gpu_info"));
 const ToolsApiConfig = lazy(() => import("./pages/tools/api_config"));
 const ToolsPipList = lazy(() => import("./pages/tools/pip_list"));
 const ToolsExtensions = lazy(() => import("./pages/tools/extensions"));
-const ToolsRemixer = lazy(() => import("./pages/tools/simple_remixer"));
+const ToolsCustomExtensions = lazy(() => import("./pages/tools/custom_extensions"));
 const ToolsYouTube = lazy(() => import("./pages/tools/youtube_tutorials"));
 const OpenAIEndpoints = lazy(() => import("./pages/openai"));
 const AudioCppPage = lazy(() => import("./pages/audiocpp"));
 const OnnxEngines = lazy(() => import("./pages/onnx"));
+const GradioPage = lazy(() => import("./pages/gradio"));
+const GradioKokoroPage = lazy(() => import("./pages/gradio/kokoro"));
+const GradioTabPage = lazy(() => import("./pages/gradio/tab"));
 const EnginesIndex = lazy(() => import("./pages/engines"));
 const EnginePage = lazy(() => import("./pages/engines/engine"));
 const ToolsLogViewer = lazy(() => import("./pages/tools/log_viewer"));
@@ -112,6 +115,12 @@ const Loading = () => (
   </div>
 );
 
+/** Redirects to another path and keeps the query string (/engine?pkg=...). */
+const RedirectKeepingSearch = ({ to }: { to: string }) => {
+  const { search } = useLocation();
+  return <Navigate to={to + search} replace />;
+};
+
 export const AppRoutes = () => (
   <Suspense fallback={<Loading />}>
     <Routes>
@@ -175,10 +184,17 @@ export const AppRoutes = () => (
       <Route path="/minimax" element={<MinimaxTts />} />
       <Route path="/audiocpp" element={<AudioCppPage />} />
       <Route path="/onnx" element={<OnnxEngines />} />
-      <Route path="/engines" element={<EnginesIndex />} />
-      <Route path="/engine" element={<EnginePage />} />
+      <Route path="/gradio" element={<GradioPage />} />
+      <Route path="/gradio/kokoro" element={<GradioKokoroPage />} />
+      <Route path="/gradio/:group" element={<GradioTabPage />} />
+      <Route path="/gradio/:group/:tab" element={<GradioTabPage />} />
+      <Route path="/tools/engines" element={<EnginesIndex />} />
+      <Route path="/tools/engine" element={<EnginePage />} />
+      {/* The old addresses of the Engines pages. */}
+      <Route path="/engines" element={<RedirectKeepingSearch to="/tools/engines" />} />
+      <Route path="/engine" element={<RedirectKeepingSearch to="/tools/engine" />} />
       <Route path="/tools/extensions" element={<ToolsExtensions />} />
-      <Route path="/tools/simple_remixer" element={<ToolsRemixer />} />
+      <Route path="/tools/custom-extensions" element={<ToolsCustomExtensions />} />
       <Route path="/tools/youtube_tutorials" element={<ToolsYouTube />} />
       <Route path="/tools/log_viewer" element={<ToolsLogViewer />} />
       <Route path="/tools/model_location" element={<ToolsModelLocation />} />

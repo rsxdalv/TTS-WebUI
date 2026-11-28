@@ -522,3 +522,43 @@ func TestBindHost(t *testing.T) {
 		t.Fatalf("empty host bound %v, want loopback", ln.Addr())
 	}
 }
+
+// A mounted handler answers under its prefix, sees the unstripped path, and
+// yields to a longer prefix that proxies elsewhere.
+func TestAddHandlerMountsInProcessAndKeepsThePath(t *testing.T) {
+	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, "upstream "+r.URL.Path)
+	}))
+	defer up.Close()
+	rt, front := newFront(t, map[string]string{"/gradio-legacy": up.URL})
+	if err := rt.AddHandler("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, "mounted "+r.URL.Path)
+	})); err != nil {
+		t.Fatal(err)
+	}
+	get := func(p string) string {
+		resp, err := http.Get(front.URL + p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		return string(b)
+	}
+	if got := get("/outputs/a.wav"); got != "mounted /outputs/a.wav" {
+		t.Errorf("catch-all handler got %q", got)
+	}
+	if got := get("/gradio-legacy/queue/join"); got != "upstream /queue/join" {
+		t.Errorf("the longer prefix should proxy with the prefix stripped, got %q", got)
+	}
+	if got := rt.Routes()["/"]; got != "(in process)" {
+		t.Errorf("route table says %q for the mounted handler", got)
+	}
+	rt.RemoveRoute("/")
+	if got := get("/outputs/a.wav"); strings.HasPrefix(got, "mounted") {
+		t.Errorf("a removed handler still answered: %q", got)
+	}
+	if err := rt.AddHandler("/x", nil); err == nil {
+		t.Error("a nil handler was accepted")
+	}
+}

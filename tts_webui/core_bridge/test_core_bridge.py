@@ -536,10 +536,7 @@ class ExtCatalogTest(unittest.TestCase):
             },
             ("POST", "add"): {"status": "Saved | Added: " + payload, "json": "{}"},
         }
-        for mod in (
-            "extensions.builtin.extension_custom_extensions_installer.main",
-            "extensions.builtin.extension_extension_catalog.main",
-        ):
+        for mod in ("extensions.builtin.extension_extension_catalog.main",):
             m = importlib.import_module(mod)
             with mock.patch.dict(ANSWERS, answers):
                 info = m._on_parse("{}")[2]
@@ -554,40 +551,6 @@ class ExtCatalogTest(unittest.TestCase):
         self.assertIn("no installable extension", str(cm.exception))
         with self.assertRaises(TypeError):
             list(bridge.extcatalog.install())
-
-    def test_list_tab_is_an_iframe_of_the_go_page(self):
-        from tts_webui.extensions_loader.list_tab import extension_list_ui
-
-        for kind in ("interface", "decorator"):
-            with gr.Blocks() as demo:
-                extension_list_ui(kind)
-            blocks = list(demo.blocks.values())
-            html = [b for b in blocks if isinstance(b, gr.HTML)]
-            self.assertEqual(len(html), 1)
-            self.assertIn(f'src="/_core/ext/list?kind={kind}"', html[0].value)
-            self.assertIn("<iframe", html[0].value)
-            self.assertEqual(len(demo.fns), 0)  # no handlers: Go runs the page
-        self.assertEqual(self.stub.requests, [])  # and Python asks Go nothing
-
-    def test_custom_installer_handlers(self):
-        import importlib
-
-        m = importlib.import_module(
-            "extensions.builtin.extension_custom_extensions_installer.main"
-        )
-        entries, preview, info = m._on_parse("{}")
-        self.assertEqual(
-            (entries, info), ([{"package_name": "n.one"}], "Parsed entries: 1")
-        )
-        self.assertIsInstance(preview, gr.Markdown)
-        self.assertEqual(m._add_to_external(entries)[1], "{}")
-        out = list(
-            m._install_selected([{"package_name": "a.one"}, {"package_name": "a.one"}])
-        )
-        self.assertEqual(out, ["Collecting x", "Collecting x<br />Installed x"] * 2)
-        self.assertEqual(
-            list(m._install_selected([])), ["<i>Nothing selected to install.</i>"]
-        )
 
 
 class ExtensionCatalogTabTest(unittest.TestCase):

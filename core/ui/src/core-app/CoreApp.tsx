@@ -17,6 +17,8 @@ export interface StepStatus {
   done: boolean;
   running?: boolean;
   detail?: string;
+  restart?: boolean; // an update changed what the running launcher uses: offer a Restart
+  checking?: boolean; // the answer is still being worked out (the update check asks the network)
 }
 
 export function CoreApp() {
@@ -34,8 +36,13 @@ export function CoreApp() {
     try {
       const r = await client("/api/steps/status");
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      setStatuses(await r.json());
+      const list: StepStatus[] = await r.json();
+      setStatuses(list);
       setError(null);
+      // The update check runs in the background: ask again until it has answered.
+      if (list.some((s) => s.checking)) {
+        window.setTimeout(() => void fetchStatus(), 1500);
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     }

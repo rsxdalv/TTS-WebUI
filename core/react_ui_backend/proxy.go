@@ -33,6 +33,14 @@ type Config struct {
 	AllowedHosts []string
 	// Core is filled in by the launcher once its control API is up. May be nil.
 	Core *Core
+	// DevURL, when set, is a Vite dev server (such as http://127.0.0.1:3002) that
+	// answers the app's pages and assets instead of frontend/out. The API routes
+	// and uploads are still answered here.
+	DevURL string
+	// GradioBackend is where Gradio answers (a URL, a path allowed), such as
+	// http://127.0.0.1:7770/gradio-legacy/. The GRADIO_BACKEND and
+	// GRADIO_BACKEND_AUTOMATIC settings win over it; "" is the old default.
+	GradioBackend string
 }
 
 // handler is the front door for every request on the public port. Claimed
@@ -53,6 +61,13 @@ func NewHandler(cfg Config) (http.Handler, error) {
 		return nil, err
 	}
 	static := newStaticExport(cfg.Root)
+	if cfg.DevURL != "" {
+		dev, err := newDevProxy(cfg.DevURL)
+		if err != nil {
+			return nil, err
+		}
+		static.dev = dev
+	}
 
 	port := strconv.Itoa(cfg.Port)
 	h := &handler{
@@ -71,6 +86,9 @@ func NewHandler(cfg Config) (http.Handler, error) {
 	}
 
 	deps := newDeps(cfg.Root)
+	if cfg.GradioBackend != "" && !backendSet(cfg.Root) {
+		deps.GradioBackend = cfg.GradioBackend
+	}
 	deps.Core = cfg.Core
 	var dataClaims []string
 	for _, c := range registeredClaims() {

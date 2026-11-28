@@ -2,13 +2,14 @@
 // runs the install steps, then starts and stops the app.
 //
 //	tts-webui [launch] [--root DIR] [--port N] [--no-browser] [--share] [--docker]
-//	          [--start] [--system-python] [--no-react]
+//	          [--start] [--system-python] [--no-react] [--no-autostart] [--dev]
 //	tts-webui mcp [--backend URL] [--http ADDR]
 //	tts-webui --version
 package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -47,8 +48,22 @@ func main() {
 	// the launcher exits. SIGKILL cannot be caught; the next launcher sweeps.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	defer stop()
-	if err := runLaunch(ctx, args); err != nil {
-		fmt.Fprintf(os.Stderr, "tts-webui: %v\n", err)
-		os.Exit(1)
+	for {
+		err := runLaunch(ctx, args)
+		if errors.Is(err, errRestart) {
+			// The listener is closed. An update leaves the new program as <exe>.new:
+			// run it in place of this one; with none, start again in this process.
+			if handled, code, serr := launcher.SwapPendingBinary(args); serr != nil {
+				fmt.Fprintf(os.Stderr, "tts-webui: could not switch to the downloaded launcher (%v); restarting the old one\n", serr)
+			} else if handled {
+				os.Exit(code)
+			}
+			continue
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "tts-webui: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 }

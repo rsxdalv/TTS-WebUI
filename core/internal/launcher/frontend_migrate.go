@@ -8,7 +8,9 @@ import (
 
 // migrateFrontendDir moves what git does not track out of the old react-ui
 // folder into frontend/ after an update renamed the folder: uploaded inputs,
-// installed extensions and node_modules. Tracked files were already moved by
+// and installed extensions. node_modules stays behind on purpose: an install from
+// before the Vite switch holds Next.js-era packages without vite, and carrying
+// them over made `npm run build:static` fail. Tracked files were already moved by
 // git. Nothing is overwritten; anything that cannot be moved stays where it is.
 func migrateFrontendDir(root string) {
 	oldDir := filepath.Join(root, "react-ui")
@@ -37,7 +39,6 @@ func migrateFrontendDir(root string) {
 		slog.Info("frontend: moved from react-ui", "path", rel)
 	}
 	move(filepath.Join("public", "file-input-cache"))
-	move("node_modules")
 	if entries, err := os.ReadDir(filepath.Join(oldDir, "src", "extensions")); err == nil {
 		for _, e := range entries {
 			move(filepath.Join("src", "extensions", e.Name()))

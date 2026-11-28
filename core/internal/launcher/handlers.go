@@ -66,6 +66,18 @@ type preflightResponse struct {
 	OK     bool              `json:"ok"`
 }
 
+// withoutLegacyChecks drops what only matters to the micromamba install: a new
+// install does not use conda, so a system conda cannot interfere.
+func withoutLegacyChecks(checks []preflight.Check) []preflight.Check {
+	out := checks[:0:0]
+	for _, c := range checks {
+		if c.ID != "ConflictingConda" {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 // handlePreflight runs all preflight checks synchronously and writes the marker.
 func (l *Launcher) handlePreflight() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -78,6 +90,9 @@ func (l *Launcher) handlePreflight() http.Handler {
 		if err != nil {
 			http.Error(w, fmt.Sprintf("preflight error: %v", err), http.StatusInternalServerError)
 			return
+		}
+		if !l.legacy() {
+			checks = withoutLegacyChecks(checks)
 		}
 		ok := preflight.AllPassed(checks)
 		if ok {
@@ -287,9 +302,10 @@ func (l *Launcher) handleUpdate() http.Handler {
 			return
 		}
 		if !l.legacy() {
+			// The files the app runs from are about to change and a restart follows,
+			// so the update stops the app itself.
 			if l.appRunning() {
-				http.Error(w, "stop the app before running update", http.StatusConflict)
-				return
+				l.sup.Stop()
 			}
 			l.startArchiveUpdate(w)
 			return

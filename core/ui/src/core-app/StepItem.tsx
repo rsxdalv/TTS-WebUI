@@ -10,6 +10,11 @@ interface StepItemProps {
   hasStream: boolean;
   running?: boolean; // server reports a proc is already running (reattach on mount)
   detail?: string; // a line from the server: an update waiting, or why it could not be checked
+  runLabel?: string; // the button of an active step (default "Run")
+  skipLabel?: string; // the button that hides an optional step (default "Skip")
+  skipped?: boolean; // the user hid an optional step: shown grayed out as done, nothing changes on the server
+  onSkip?: () => void; // set only for optional steps: shows a Skip button
+  onUnskip?: () => void;
   onComplete: () => void;
 }
 
@@ -21,6 +26,11 @@ export function StepItem({
   hasStream,
   running,
   detail,
+  runLabel,
+  skipLabel,
+  skipped,
+  onSkip,
+  onUnskip,
   onComplete,
 }: StepItemProps) {
   const [isRunning, setIsRunning] = useState(false);
@@ -115,7 +125,9 @@ export function StepItem({
   return (
     <div
       className={`rounded-xl border p-4 transition-colors ${
-        state === "done" && detail
+        skipped
+          ? "border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40 opacity-60"
+          : state === "done" && detail
           ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30"
           : state === "done"
             ? "border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/30"
@@ -127,7 +139,8 @@ export function StepItem({
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            {state === "done" && !detail && (
+            {skipped && <span className="text-gray-400 text-sm">–</span>}
+            {state === "done" && !detail && !skipped && (
               <span className="text-green-600 dark:text-green-400 text-sm">✓</span>
             )}
             <span className="font-medium text-sm">{title}</span>
@@ -137,11 +150,30 @@ export function StepItem({
               {description}
             </p>
           )}
-          {detail && (
+          {skipped && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Skipped</p>
+          )}
+          {detail && !skipped && (
             <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">{detail}</p>
           )}
         </div>
-        {state === "active" && (
+        {skipped && onUnskip && (
+          <button
+            onClick={onUnskip}
+            className="shrink-0 py-1.5 px-3 rounded-lg text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 underline cursor-pointer"
+          >
+            Undo
+          </button>
+        )}
+        {state === "active" && !skipped && onSkip && !isRunning && (
+          <button
+            onClick={onSkip}
+            className="shrink-0 py-1.5 px-3 rounded-lg text-sm font-medium transition-colors cursor-pointer border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            {skipLabel ?? "Skip"}
+          </button>
+        )}
+        {state === "active" && !skipped && (
           <button
             onClick={runStep}
             disabled={isRunning}
@@ -151,7 +183,7 @@ export function StepItem({
                 : "bg-blue-600 hover:bg-blue-500 text-white"
             }`}
           >
-            {isRunning ? "Running..." : "Run"}
+            {isRunning ? "Running..." : (runLabel ?? "Run")}
           </button>
         )}
       </div>

@@ -111,3 +111,10 @@ tts-webui-installer.zip
 .tmp
 neutralinojs.log
 /platforms/
+
+# The frontend folder was called react-ui before; an install updated by git keeps
+# the untracked leftovers (the launcher moves what matters into frontend/).
+/react-ui/
+
+# Claude Code worktrees
+/.claude/worktrees/

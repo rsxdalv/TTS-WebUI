@@ -39,7 +39,7 @@ func touch(t *testing.T, root string, names ...string) {
 func buildable(t *testing.T, dir string) {
 	t.Helper()
 	pkg := filepath.Join(dir, "frontend", "package.json")
-	if err := os.MkdirAll(filepath.Join(dir, "frontend", "node_modules"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "frontend", "node_modules", "vite"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(pkg, []byte(`{"scripts":{"build:static":"node build-static.js"}}`), 0o644); err != nil {
@@ -119,7 +119,7 @@ func TestCanBuildExport(t *testing.T) {
 	}
 	pkg := filepath.Join(dir, "frontend", "package.json")
 	_ = os.WriteFile(pkg, []byte(`{"scripts":{"dev":"vite"}}`), 0o644)
-	_ = os.MkdirAll(filepath.Join(dir, "frontend", "node_modules"), 0o755)
+	_ = os.MkdirAll(filepath.Join(dir, "frontend", "node_modules", "vite"), 0o755)
 	if canBuildExport(root) {
 		t.Fatal("a tree without build:static can build")
 	}
@@ -130,6 +130,11 @@ func TestCanBuildExport(t *testing.T) {
 	_ = os.RemoveAll(filepath.Join(dir, "frontend", "node_modules"))
 	if canBuildExport(root) {
 		t.Fatal("a tree without node_modules can build")
+	}
+	// A node_modules from the Next.js days has no vite and cannot build.
+	_ = os.MkdirAll(filepath.Join(dir, "frontend", "node_modules", "next"), 0o755)
+	if canBuildExport(root) {
+		t.Fatal("a node_modules without vite can build")
 	}
 }
 

@@ -1,12 +1,13 @@
 # extcatalog: integration
 
-Package `core/internal/serverpy/extcatalog`. Go side of four tabs: Extensions
-List (`extension_list_tab`), Decorator Extensions List
-(`extension_decorator_list_tab`), Custom Extensions Installer
-(`extensions/builtin/extension_custom_extensions_installer`) and Extension
-Catalog (`extensions/builtin/extension_extension_catalog`). Python calls it
-through `bridge.extcatalog.<op>(...)` (`tts_webui/core_bridge/extcatalog.py`); the
-two list tabs share `tts_webui/extensions_loader/list_tab.py`.
+Package `core/internal/serverpy/extcatalog`. Go side of the extension lists and
+installs: the Custom Extensions Installer
+(`extensions/builtin/extension_custom_extensions_installer`), the Extension
+Catalog (`extensions/builtin/extension_extension_catalog`) and the React UI's
+Extension Lists page (`/tools/extensions`, through `core/react_ui_backend`).
+The Gradio Extensions List and Decorator Extensions List tabs, and the extui
+page behind them, are gone. Python calls this package through
+`bridge.extcatalog.<op>(...)` (`tts_webui/core_bridge/extcatalog.py`).
 
 ## API (loopback, header `X-TTS-Core-Token`, otherwise 403)
 

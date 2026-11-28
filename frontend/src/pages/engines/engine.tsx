@@ -2,6 +2,7 @@ import React from "react";
 import { useSearchParams } from "react-router-dom";
 import { Template } from "../../components/Template";
 import { Button } from "../../components/ui/button";
+import { FullscreenFrame } from "../../components/FullscreenFrame";
 import { errorText, goGetJson, goSendJson } from "../../functions/goData";
 
 type Answer = {
@@ -19,10 +20,11 @@ type Answer = {
  * the Gradio port, so the frame points there, on the host this page was
  * opened from.
  */
-const EnginePage = () => {
+const EnginePage = ({ pkg: fixedPkg }: { pkg?: string }) => {
   // The package name has a dot, so it is a query value: a path with a dot is a
   // missing asset to the static server.
-  const pkg = useSearchParams()[0].get("pkg") ?? "";
+  const queryPkg = useSearchParams()[0].get("pkg") ?? "";
+  const pkg = fixedPkg ?? queryPkg;
   const [answer, setAnswer] = React.useState<Answer | null>(null);
   const [error, setError] = React.useState("");
   const [attempt, setAttempt] = React.useState(0);
@@ -59,7 +61,7 @@ const EnginePage = () => {
 
   return (
     <Template title={answer?.name || "Engine"}>
-      <div className="flex flex-col gap-3 p-4">
+      <div className="flex w-full flex-col gap-3 p-4">
         {error && <div className="text-red-600">{error}</div>}
         {!error && answer && answer.state !== "ready" && (
           <div>
@@ -73,14 +75,7 @@ const EnginePage = () => {
             <Button onClick={() => setAttempt(attempt + 1)}>Try again</Button>
           </div>
         )}
-        {src && (
-          <iframe
-            title={answer?.name || pkg}
-            src={src}
-            className="w-full border rounded"
-            style={{ height: "80vh" }}
-          />
-        )}
+        {src && <FullscreenFrame title={answer?.name || pkg} src={src} />}
       </div>
     </Template>
   );

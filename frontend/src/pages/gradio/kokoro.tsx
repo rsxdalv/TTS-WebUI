@@ -1,12 +1,13 @@
 import React from "react";
-import { GradioFrame } from "../../components/GradioFrame";
+import EnginePage from "../engines/engine";
 
 /**
- * A demo of one Gradio tab on its own: the Kokoro tab of Text-to-Speech. Any
- * other tab is the same page with another `tab` path.
+ * The Kokoro extension on its own: Go starts it (it is installed in its own
+ * venv) and its page is framed directly, with no Gradio tabs around it. Any
+ * other extension is the same page with another package name.
  */
 const GradioKokoroPage = () => (
-  <GradioFrame title="Kokoro TTS (Gradio)" tab="Text-to-Speech/Kokoro" />
+  <EnginePage pkg="tts_webui_extension.kokoro" />
 );
 
 export default GradioKokoroPage;

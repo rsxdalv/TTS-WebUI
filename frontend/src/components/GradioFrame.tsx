@@ -1,6 +1,7 @@
 import React from "react";
 import { Template } from "./Template";
 import { Button } from "./ui/button";
+import { FullscreenFrame } from "./FullscreenFrame";
 import { LauncherExtensionsLink } from "./LauncherExtensionsLink";
 import { errorText, goGetJson } from "../functions/goData";
 
@@ -25,15 +26,6 @@ export const GradioFrame = ({
   const [phase, setPhase] = React.useState<Phase>("loading");
   const [error, setError] = React.useState("");
   const [attempt, setAttempt] = React.useState(0);
-  const [full, setFull] = React.useState(false);
-
-  // Escape leaves fullscreen.
-  React.useEffect(() => {
-    if (!full) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setFull(false);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [full]);
 
   React.useEffect(() => {
     let live = true;
@@ -118,35 +110,7 @@ export const GradioFrame = ({
             </div>
           </div>
         )}
-        {phase === "ready" && (
-          // One element whose classes change, so the frame stays mounted (and
-          // Gradio keeps its state) when fullscreen is switched.
-          <div
-            className={
-              full
-                ? "fixed inset-0 z-[100] flex flex-col bg-white dark:bg-gray-950"
-                : "flex w-full flex-col gap-2"
-            }
-          >
-            <div className={full ? "flex items-center gap-3 border-b p-2" : "flex justify-end"}>
-              {full && <span className="font-medium">{title}</span>}
-              <Button
-                variant="outline"
-                size="sm"
-                className={full ? "ml-auto" : undefined}
-                onClick={() => setFull(!full)}
-              >
-                {full ? "← Back (Esc)" : "Fullscreen"}
-              </Button>
-            </div>
-            <iframe
-              title={title}
-              src={src}
-              className={full ? "w-full flex-1" : "w-full border rounded"}
-              style={full ? undefined : { height: "85vh" }}
-            />
-          </div>
-        )}
+        {phase === "ready" && <FullscreenFrame title={title} src={src} />}
       </div>
     </Template>
   );

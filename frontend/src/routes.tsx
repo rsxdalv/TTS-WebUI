@@ -33,7 +33,6 @@ const ToolsGpuInfo = lazy(() => import("./pages/tools/gpu_info"));
 const ToolsApiConfig = lazy(() => import("./pages/tools/api_config"));
 const ToolsPipList = lazy(() => import("./pages/tools/pip_list"));
 const ToolsExtensions = lazy(() => import("./pages/tools/extensions"));
-const ToolsRemixer = lazy(() => import("./pages/tools/simple_remixer"));
 const ToolsYouTube = lazy(() => import("./pages/tools/youtube_tutorials"));
 const OpenAIEndpoints = lazy(() => import("./pages/openai"));
 const AudioCppPage = lazy(() => import("./pages/audiocpp"));
@@ -182,7 +181,6 @@ export const AppRoutes = () => (
       <Route path="/engines" element={<EnginesIndex />} />
       <Route path="/engine" element={<EnginePage />} />
       <Route path="/tools/extensions" element={<ToolsExtensions />} />
-      <Route path="/tools/simple_remixer" element={<ToolsRemixer />} />
       <Route path="/tools/youtube_tutorials" element={<ToolsYouTube />} />
       <Route path="/tools/log_viewer" element={<ToolsLogViewer />} />
       <Route path="/tools/model_location" element={<ToolsModelLocation />} />

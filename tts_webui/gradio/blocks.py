@@ -11,7 +11,7 @@ from tts_webui.gradio.get_theme import get_theme
 # The React UI shows the Gradio page in a frame: ?embed=1 hides the page header
 # and tightens the layout (.tts-embed in tts_webui.css),
 # ?tab=Text-to-Speech/Kokoro opens that tab (names match without emoji and
-# case, one per level, outermost first).
+# case, one per level, outermost first) and hides the tab rows of those levels.
 embed_head = """
 <script>
 (function () {
@@ -28,6 +28,9 @@ embed_head = """
       .find(function (b) { return norm(b.textContent) === path[i]; });
     if (!btn) return;
     if (btn.getAttribute("aria-selected") !== "true") btn.click();
+    // The React UI menu links to these levels, so its frame hides their tab row.
+    var nav = btn.closest(".tab-nav");
+    if (nav) nav.setAttribute("data-tts-hide", "");
     i++;
   }, 200);
 })();

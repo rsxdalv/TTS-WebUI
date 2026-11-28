@@ -39,6 +39,7 @@ const AudioCppPage = lazy(() => import("./pages/audiocpp"));
 const OnnxEngines = lazy(() => import("./pages/onnx"));
 const GradioPage = lazy(() => import("./pages/gradio"));
 const GradioKokoroPage = lazy(() => import("./pages/gradio/kokoro"));
+const GradioTabPage = lazy(() => import("./pages/gradio/tab"));
 const EnginesIndex = lazy(() => import("./pages/engines"));
 const EnginePage = lazy(() => import("./pages/engines/engine"));
 const ToolsLogViewer = lazy(() => import("./pages/tools/log_viewer"));
@@ -178,6 +179,8 @@ export const AppRoutes = () => (
       <Route path="/onnx" element={<OnnxEngines />} />
       <Route path="/gradio" element={<GradioPage />} />
       <Route path="/gradio/kokoro" element={<GradioKokoroPage />} />
+      <Route path="/gradio/:group" element={<GradioTabPage />} />
+      <Route path="/gradio/:group/:tab" element={<GradioTabPage />} />
       <Route path="/engines" element={<EnginesIndex />} />
       <Route path="/engine" element={<EnginePage />} />
       <Route path="/tools/extensions" element={<ToolsExtensions />} />

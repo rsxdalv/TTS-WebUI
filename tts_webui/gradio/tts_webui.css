@@ -46,3 +46,8 @@
 .tts-embed .tab-nav button {
   padding: 4px 10px !important;
 }
+
+/* The tab rows the React UI menu already lists (set by the ?tab= script). */
+.tts-embed [data-tts-hide] {
+  display: none !important;
+}

@@ -11,6 +11,7 @@ import {
   launcherUrl,
   useHostStatus,
 } from "../functions/hostStatus";
+import { GradioTab, useGradioTabs } from "../functions/gradioTabs";
 
 export type Route = {
   href: string;
@@ -187,7 +188,7 @@ export const routes: Route[] = [
   {
     href: "/gradio",
     text: "Gradio",
-    subroutes: [{ href: "/gradio/kokoro", text: "Kokoro TTS" }],
+    // The tabs of the Gradio UI are added by useMenuRoutes (withGradioTabs).
   },
   {
     href: "/tools",
@@ -217,7 +218,7 @@ export const routes: Route[] = [
 ];
 
 const RouteList = ({ children }: { children: React.ReactNode }) => (
-  <div className="flex gap-4 items-center justify-center w-full p-2 bg-white dark:bg-gray-900 rounded shadow-sm">
+  <div className="flex flex-wrap gap-x-4 gap-y-1 items-center justify-center w-full p-2 bg-white dark:bg-gray-900 rounded shadow-sm">
     {children}
   </div>
 );
@@ -349,13 +350,38 @@ const HostNotice = ({
 };
 
 /**
+ * The Gradio entry lists the tabs of the Gradio UI as links: /gradio/<group>
+ * for a top-level tab and /gradio/<group>/<tab> for a tab inside it.
+ */
+const withGradioTabs = (routes: Route[], tabs: GradioTab[] | null): Route[] =>
+  !tabs
+    ? routes
+    : routes.map((r) =>
+        r.href !== "/gradio"
+          ? r
+          : {
+              ...r,
+              subroutes: tabs.map((g) => ({
+                href: `/gradio/${g.slug}`,
+                text: g.label,
+                subroutes: g.children.map((t) => ({
+                  href: `/gradio/${g.slug}/${t.slug}`,
+                  text: t.label,
+                })),
+              })),
+            }
+      );
+
+/**
  * The routes the menu and the command palette offer: all of them, except the
  * pages that call the Gradio host while it is known not to be installed.
  */
 export const useMenuRoutes = () => {
   const host = useHostStatus();
   const noHost = host.kind === "known" && !host.status.installed;
-  return { host, noHost, routes: noHost ? withoutGradioPages(routes) : routes };
+  const tabs = useGradioTabs(!noHost);
+  const base = noHost ? withoutGradioPages(routes) : routes;
+  return { host, noHost, routes: withGradioTabs(base, tabs) };
 };
 
 export const Header = ({}) => {

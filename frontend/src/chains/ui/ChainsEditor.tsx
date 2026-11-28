@@ -15,6 +15,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import React from "react";
 import { Button } from "../../components/ui/button";
+import { useTheme } from "../../lib/theme";
 import { ResultCache } from "../cache";
 import { runGraph } from "../execute";
 import {
@@ -39,6 +40,11 @@ registerBuiltinNodes();
 
 const STORAGE_KEY = "tts-generation-webui__chains.current.v1";
 const nodeTypes = { module: ModuleNodeView };
+// The canvas and minimap use the app's tokens (see globals.css), so they match the page in both themes.
+const FLOW_COLORS = {
+  "--xy-background-color": "hsl(var(--muted))",
+  "--xy-minimap-background-color": "hsl(var(--card))",
+} as React.CSSProperties;
 
 const readSaved = () => {
   try {
@@ -110,6 +116,7 @@ const Editor = () => {
   const abort = React.useRef<AbortController | null>(null);
   const fileInput = React.useRef<HTMLInputElement>(null);
   const rf = useReactFlow();
+  const { theme } = useTheme();
 
   // Save as you go. Storage can be blocked, so a failure is not an error.
   React.useEffect(() => {
@@ -402,6 +409,9 @@ const Editor = () => {
               snapGrid={[20, 20]}
               deleteKeyCode={["Backspace", "Delete"]}
               proOptions={{ hideAttribution: false }}
+              // xyflow colours itself with light-dark() and, without a .light/.dark class, follows the OS, not the toggle.
+              className={theme}
+              style={FLOW_COLORS}
             >
               <Background variant={BackgroundVariant.Dots} gap={20} />
               <Controls showInteractive={false} />

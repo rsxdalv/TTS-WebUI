@@ -51,6 +51,9 @@ export default defineConfig({
     strictPort: true,
     // Listen on the loopback address only, like the Go server does.
     host: "127.0.0.1",
+    // `npm run build:static` renames .out-building to out. On Windows a folder
+    // the dev server watches cannot be renamed (EPERM), so it stays unwatched.
+    watch: { ignored: ["**/out/**", "**/.out-building/**"] },
     proxy: {
       // The API routes belong to the Go server. Start the app with the
       // launcher (it listens on port 3000), or set VITE_API_PROXY to another

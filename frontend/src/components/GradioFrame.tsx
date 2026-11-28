@@ -30,7 +30,14 @@ export const GradioFrame = ({
     let live = true;
     goGetJson<{ server_port: number | null }>("/api/go-data/server-settings")
       .then((s) => live && setPort(s.server_port ?? 7770))
-      .catch((e) => live && setError(errorText(e)));
+      .catch(
+        (e) =>
+          live &&
+          setError(
+            `Could not reach the TTS WebUI server (${errorText(e)}). ` +
+              "The app is probably not started."
+          )
+      );
     return () => {
       live = false;
     };
@@ -68,7 +75,25 @@ export const GradioFrame = ({
   return (
     <Template title={title}>
       <div className="flex w-full flex-col gap-3 p-4">
-        {error && <div className="text-red-600">{error}</div>}
+        {error && (
+          <div className="flex flex-col gap-2">
+            <div className="text-red-600">{error}</div>
+            <div>
+              Start it from the <LauncherExtensionsLink text="launcher" /> (Launch
+              WebUI), then try again.
+            </div>
+            <div>
+              <Button
+                onClick={() => {
+                  setError("");
+                  setAttempt(attempt + 1);
+                }}
+              >
+                Try again
+              </Button>
+            </div>
+          </div>
+        )}
         {!error && phase === "loading" && <div>Looking for Gradio…</div>}
         {phase === "starting" && (
           <div>Gradio is starting. The first start can take a minute.</div>

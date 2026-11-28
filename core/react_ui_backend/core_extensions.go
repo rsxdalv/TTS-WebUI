@@ -40,6 +40,7 @@ type extensionState struct {
 	Installed bool   `json:"installed"`
 	Version   string `json:"version,omitempty"`
 	Enabled   bool   `json:"enabled"`
+	Autostart bool   `json:"autostart"`
 	Proxy     string `json:"proxy,omitempty"`
 }
 
@@ -71,6 +72,7 @@ func newExtensionState(core *Core) http.Handler {
 				Extensions []struct {
 					PackageName string `json:"package_name"`
 					Enabled     bool   `json:"enabled"`
+					Autostart   bool   `json:"autostart"`
 					Installed   bool   `json:"installed"`
 					Version     string `json:"version"`
 					Proxy       string `json:"proxy"`
@@ -81,7 +83,7 @@ func newExtensionState(core *Core) http.Handler {
 				return
 			}
 			for _, x := range res.Extensions {
-				out[x.PackageName] = extensionState{Installed: x.Installed, Version: x.Version, Enabled: x.Enabled, Proxy: x.Proxy}
+				out[x.PackageName] = extensionState{Installed: x.Installed, Version: x.Version, Enabled: x.Enabled, Autostart: x.Autostart, Proxy: x.Proxy}
 			}
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")

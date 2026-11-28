@@ -7,7 +7,7 @@ import EnginePage from "../engines/engine";
  * other extension is the same page with another package name.
  */
 const GradioKokoroPage = () => (
-  <EnginePage pkg="tts_webui_extension.kokoro" />
+  <EnginePage pkg="tts_webui_extension.kokoro" name="Kokoro" />
 );
 
 export default GradioKokoroPage;

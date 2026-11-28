@@ -25,6 +25,7 @@ export const ExtensionManager = ({
   name,
   installed,
   running,
+  starting = false,
   enabled = true,
   autostart = false,
   actions = {},
@@ -33,6 +34,7 @@ export const ExtensionManager = ({
   name: string;
   installed: boolean;
   running: boolean;
+  starting?: boolean;
   enabled?: boolean;
   autostart?: boolean;
   actions?: ExtensionActions;
@@ -120,7 +122,7 @@ export const ExtensionManager = ({
             <Button
               variant="destructive"
               disabled={disabled || !installed}
-              onClick={() => run("Uninstall", actions.uninstall)}
+              onClick={() => window.confirm(`Uninstall ${name}?`) && run("Uninstall", actions.uninstall)}
             >
               Uninstall
             </Button>
@@ -135,13 +137,13 @@ export const ExtensionManager = ({
               Shutdown Extension
             </Button>
             <Button
-              disabled={disabled || running || !installed}
+              disabled={disabled || running || starting || !installed}
               onClick={() => run("Start", actions.start)}
             >
               Start Extension
             </Button>
             <span className="text-sm text-muted-foreground">
-              {running ? "Running" : installed ? "Stopped" : "Not installed"}
+              {running ? "Running" : starting ? "Starting…" : installed ? "Stopped" : "Not installed"}
             </span>
           </div>
 

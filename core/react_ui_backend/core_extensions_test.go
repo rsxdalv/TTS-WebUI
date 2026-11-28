@@ -40,7 +40,7 @@ func TestExtensionStateMergesResolveOfEveryClass(t *testing.T) {
 		case "/api/extcatalog/list?kind=interface":
 			_, _ = w.Write([]byte(`[{"extension_class":"text-to-speech"},{"extension_class":"tools"},{"extension_class":"text-to-speech"}]`))
 		case "/api/extcatalog/resolve?kind=interface&extension_class=text-to-speech":
-			_, _ = w.Write([]byte(`{"extensions":[{"package_name":"a.kokoro","enabled":true,"installed":true,"proxy":"native"}]}`))
+			_, _ = w.Write([]byte(`{"extensions":[{"package_name":"a.kokoro","enabled":true,"autostart":true,"installed":true,"proxy":"native"}]}`))
 		case "/api/extcatalog/resolve?kind=interface&extension_class=tools":
 			_, _ = w.Write([]byte(`{"extensions":[{"package_name":"b.tool","enabled":false,"installed":false}]}`))
 		default:
@@ -59,7 +59,7 @@ func TestExtensionStateMergesResolveOfEveryClass(t *testing.T) {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
 	got := strings.TrimSpace(w.Body.String())
-	want := `{"a.kokoro":{"installed":true,"enabled":true,"proxy":"native"},"b.tool":{"installed":false,"enabled":false}}`
+	want := `{"a.kokoro":{"installed":true,"enabled":true,"autostart":true,"proxy":"native"},"b.tool":{"installed":false,"enabled":false,"autostart":false}}`
 	if got != want {
 		t.Errorf("got  %s, want %s", got, want)
 	}

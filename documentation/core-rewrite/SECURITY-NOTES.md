@@ -15,6 +15,16 @@ decisions.
   the frontend's *page* does not remove the link: once frontend and Gradio meet
   in one origin, a script in either can reach the other.
 
+## Where things stand (one port)
+
+Since the router serves the React UI at `/`, Gradio under `/gradio-legacy/`
+and extension pages at `/<package>` on the public port (7770), they all share one
+origin. A script in an extension's page or in the Gradio UI can reach the
+frontend's storage and its API (and the other way round). The launcher (7700) is
+still its own origin with its own token. The React UI's Host/Origin guards use
+the public port; its LAN mode and allowed host names still apply (`TTS_GO_PROXY_LISTEN`,
+`TTS_GO_PROXY_ALLOWED_HOSTS`). `TTS_FRONT_IN_ROUTER=0` restores the two-port layout.
+
 ## What does and does not protect
 
 - A token held in page memory (an inline `<script>token=…</script>`, a meta tag)

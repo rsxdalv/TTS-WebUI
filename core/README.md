@@ -56,7 +56,9 @@ pwsh -NoProfile -File core/scripts/dev.ps1                    # finds a Go new e
 cd core/ui && npm run dev                    # open http://127.0.0.1:5173/
 ```
 
-The launcher starts the React UI (port 3000, or `REACT_UI_PORT`) by itself, so `frontend/`'s dev server has an API right away; Gradio waits for its button. `--no-autostart` turns that off, `--start` starts both, `--no-react` leaves the React UI out.
+The launcher starts the React UI by itself, so `frontend/`'s dev server has an API right away; Gradio waits for its button. `--no-autostart` turns that off, `--start` starts both, `--no-react` leaves the React UI out.
+
+The React UI is served by the router on the public port (`server_port` of `config.json`, 7770): `/` is the UI and its API, the Gradio pages are under `/gradio-legacy/` (Gradio gets `GRADIO_ROOT_PATH`, the router strips the prefix), extensions stay at `/<package>`. The old layout, the React UI on its own port 3000 (`REACT_UI_PORT`) and Gradio at `/`, is still there with `TTS_FRONT_IN_ROUTER=0`.
 
 `dev.ps1` exists because an old Go earlier on PATH, or a stale `GOROOT=C:\Go` in a session that started before the Go upgrade, fails with "package cmp is not in std" and rewrites `go.mod`/`go.sum`; the script puts a matching Go first, resets `GOROOT` and sets `GOFLAGS=-mod=readonly`. On Linux/macOS run `cd core && air` with a current Go.
 
@@ -67,14 +69,14 @@ from the launcher's index page. After a launcher restart the first request may g
 `scripts/build-webui.sh` (commit its output).
 
 The React UI has its own dev server: `cd frontend && npm run dev` (port 3002, proxies
-`/api` to the Go server on 3000, or `VITE_API_PROXY`).
+`/api` to the Go server on the public port, or `VITE_API_PROXY`).
 
 ## Layout
 
 - `cmd/tts-webui/` - entry point (`launch`, the default, and `mcp`)
 - `internal/mcp/` - the MCP server: two tools over the OpenAI-compatible API ([spec](../documentation/core-rewrite/MCP.md))
 - `internal/launcher/` - the setup steps and the app supervisor
-- `react_ui_backend/` - the Go server for the React UI on port 3000: serves the static export (`frontend/out`, built by Vite with `npm run build:static`) and answers the API routes (`TTS_GO_ROUTES` picks which; `TTS_GO_PROXY=0` is an error now that Next.js is gone)
+- `react_ui_backend/` - the Go server for the React UI (mounted on the router at `/`; port 3000 only with `TTS_FRONT_IN_ROUTER=0`): serves the static export (`frontend/out`, built by Vite with `npm run build:static`) and answers the API routes (`TTS_GO_ROUTES` picks which; `TTS_GO_PROXY=0` is an error now that Next.js is gone)
 - `installer_scripts/` - Go ports of `installer_scripts/*`
 - `internal/switches/` - the switches that turn the Go ports on
 - `internal/server/` - local HTTP server (token, host/origin checks, SSE)

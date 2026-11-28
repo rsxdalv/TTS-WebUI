@@ -10,7 +10,8 @@ type Phase = "loading" | "down" | "starting" | "ready";
 /**
  * A page that shows the Gradio UI (or one of its tabs) in a frame. The Gradio
  * app answers on the public port (server_port, 7770 by default), on the host
- * this page was opened from. `tab` is a path of tab names, for example
+ * this page was opened from, under /gradio-legacy when this page is served by
+ * the same router. `tab` is a path of tab names, for example
  * "Text-to-Speech/Kokoro"; the Gradio page opens that tab (see
  * tts_webui/gradio/blocks.py). The page is probed first, so a Gradio that is
  * not running or still starting shows a message and not an error page.
@@ -44,8 +45,15 @@ export const GradioFrame = ({
     };
   }, [attempt]);
 
+  // Served by the router on the public port, this page and Gradio share the
+  // origin and Gradio sits under /gradio-legacy. Opened on another port (the Vite
+  // dev server, or the old layout with the React UI on its own port), Gradio is
+  // on the public port of the same host.
+  const here = window.location.port || (window.location.protocol === "https:" ? "443" : "80");
   const base = port
-    ? `${window.location.protocol}//${window.location.hostname}:${port}`
+    ? String(port) === here
+      ? `${window.location.origin}/gradio-legacy`
+      : `${window.location.protocol}//${window.location.hostname}:${port}`
     : "";
 
   React.useEffect(() => {

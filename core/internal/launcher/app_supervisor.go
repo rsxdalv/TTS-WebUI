@@ -128,6 +128,18 @@ func buildOptions(opts []Option) options {
 	return o
 }
 
+// gradioLegacyPrefix is where Gradio lives on the public port when the React UI
+// is served from the router at "/".
+const gradioLegacyPrefix = "/gradio-legacy"
+
+// frontInRouter says whether the React UI is served by the router on the public
+// port (and Gradio sits under gradioLegacyPrefix). It is the layout of a normal
+// run; TTS_FRONT_IN_ROUTER=0 brings back the old one (React on its own port,
+// Gradio at "/").
+func (o options) frontInRouter() bool {
+	return !o.noReact && os.Getenv("TTS_FRONT_IN_ROUTER") != "0"
+}
+
 // flags are the switches the launcher passes on: it runs React itself
 // (NoReact for the gradio child), and share and docker are the user's.
 func (o options) flags() appenv.Flags {
@@ -152,6 +164,10 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		NoReact:      o.noReact,
 		GradioEntry:  serverPyEntry,
 		GradioArgs:   o.flags().Args(),
+	}
+	if o.frontInRouter() {
+		cfg.FrontInRouter = true
+		cfg.GradioPrefix = gradioLegacyPrefix
 	}
 	cfg.Prepare = func(ctx context.Context) (supervise.Plan, error) {
 		// Every switch is checked before anything runs, so a typo never starts
@@ -201,11 +217,19 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		return newReactPrep(root, o.systemPython).prepareReactUI(ctx, plan.Switches)
 	}
 	cfg.StartGradioSide = func(p platform.Platform) (*supervise.GradioSide, error) {
-		py, err := startServerPy(root, p, o.flags())
+		var sopts []serverPyOpt
+		if o.frontInRouter() {
+			sopts = append(sopts, withGradioPrefix(gradioLegacyPrefix))
+		}
+		py, err := startServerPy(root, p, o.flags(), sopts...)
 		if err != nil {
 			return nil, err
 		}
-		return &supervise.GradioSide{Env: py.gradioEnv, Close: py.Close, CoreURL: py.coreURL, CoreToken: py.coreToken}, nil
+		side := &supervise.GradioSide{Env: py.gradioEnv, Close: py.Close, CoreURL: py.coreURL, CoreToken: py.coreToken}
+		if o.frontInRouter() {
+			side.Router = py.rt
+		}
+		return side, nil
 	}
 	cfg.OnStarted = func(refs []supervise.ProcRef) {
 		procs := make([]appProc, len(refs))

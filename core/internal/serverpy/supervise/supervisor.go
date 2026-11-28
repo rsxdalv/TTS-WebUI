@@ -177,18 +177,22 @@ func (s *Supervisor) defs(c Config) []procDef {
 
 	gEnv := append([]string(nil), base...)
 	if !c.NoReact {
-		gEnv = append(gEnv, "REACT_UI_PORT="+strconv.Itoa(c.ReactPort))
+		gEnv = append(gEnv, "REACT_UI_PORT="+strconv.Itoa(c.frontPort()))
 	}
 	gEnv = append(gEnv, c.GradioEnv...)
 
 	defs := []procDef{{
-		name: NameGradio, port: c.PublicPort, probe: publicProbe(c.PublicTLS),
+		name: NameGradio, port: c.PublicPort, probe: publicProbe(c.PublicTLS, c.GradioPrefix),
 		args: append([]string{"python", c.GradioEntry}, c.gradioArgs()...),
 		env:  gEnv,
 	}}
 	if !c.NoReact {
 		// The Go front serves the static export; there is no process to run.
-		defs = append(defs, procDef{name: NameReact, port: c.ReactPort, probe: tcpProbe, static: true})
+		port := c.ReactPort
+		if c.FrontInRouter {
+			port = c.PublicPort // served by the router
+		}
+		defs = append(defs, procDef{name: NameReact, port: port, probe: tcpProbe, static: true})
 	}
 	return defs
 }
@@ -208,6 +212,7 @@ type runState struct {
 	c    Config
 	plan Plan
 	core *react_ui_backend.Core
+	side *GradioSide
 	ctx  context.Context
 }
 
@@ -252,22 +257,49 @@ func (s *Supervisor) StartParts(setupCtx context.Context, parts ...string) error
 }
 
 // startFront starts the Go front (the React UI server) of a run.
-func (s *Supervisor) startFront(c Config, plan Plan, core *react_ui_backend.Core) (*react_ui_backend.Server, error) {
-	front, err := react_ui_backend.Start(react_ui_backend.Config{
-		Root:         c.Root.Dir(),
-		Port:         c.ReactPort,
-		Routes:       plan.Switches,
-		LAN:          plan.Switches.ProxyLAN,
-		AllowedHosts: plan.Switches.ProxyAllowedHosts,
-		Core:         core,
-	})
+//
+// With Config.FrontInRouter and a router on the Go side, the front is the router's
+// "/" route (in this process, on the public port; its Host and Origin guards use
+// the public port). Otherwise it listens on ReactPort. The returned function
+// ends it.
+func (s *Supervisor) startFront(c Config, plan Plan, core *react_ui_backend.Core, side *GradioSide) (func(), error) {
+	cfg := react_ui_backend.Config{
+		Root:          c.Root.Dir(),
+		Port:          c.ReactPort,
+		Routes:        plan.Switches,
+		LAN:           plan.Switches.ProxyLAN,
+		AllowedHosts:  plan.Switches.ProxyAllowedHosts,
+		Core:          core,
+		GradioBackend: gradioBackendURL(c),
+	}
+	if c.FrontInRouter && side != nil && side.Router != nil {
+		cfg.Port = c.PublicPort
+		h, err := react_ui_backend.NewHandler(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("starting the React UI server: %w", err)
+		}
+		if err := side.Router.AddHandler("/", h); err != nil {
+			return nil, fmt.Errorf("mounting the React UI on the router: %w", err)
+		}
+		return func() { side.Router.RemoveRoute("/") }, nil
+	}
+	front, err := react_ui_backend.Start(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("starting the React UI server: %w", err)
 	}
 	if plan.Switches.ProxyLAN {
 		slog.Warn(react_ui_backend.LANWarning(c.ReactPort))
 	}
-	return front, nil
+	return front.Close, nil
+}
+
+// gradioBackendURL is where the React server reaches Gradio: the public port,
+// under GradioPrefix. "" leaves the server's own default.
+func gradioBackendURL(c Config) string {
+	if !c.FrontInRouter || c.PublicPort == 0 {
+		return ""
+	}
+	return fmt.Sprintf("http://127.0.0.1:%d%s/", c.PublicPort, c.GradioPrefix)
 }
 
 // launchChild starts one part. mu is held. The returned managed is always
@@ -353,30 +385,17 @@ func (s *Supervisor) startFresh(setupCtx context.Context, want map[string]bool) 
 		c.OpenBrowser = *plan.OpenBrowser
 	}
 	c.GradioEnv = append(append([]string(nil), c.GradioEnv...), plan.GradioEnv...)
-	if !c.NoReact && c.ReactPort == c.PublicPort {
+	if !c.NoReact && !c.FrontInRouter && c.ReactPort == c.PublicPort {
 		return fmt.Errorf("ReactPort and PublicPort are both %d", c.PublicPort)
 	}
 
 	core := &react_ui_backend.Core{}
-	var front *react_ui_backend.Server
-	if want[NameReact] {
-		var err error
-		if front, err = s.startFront(c, plan, core); err != nil {
-			return err
-		}
-	}
-	closeFront := func() {
-		if front != nil {
-			front.Close()
-		}
-	}
-
+	// The Go side comes first: the front may be mounted on its router.
 	var side *GradioSide
 	if s.cfg.StartGradioSide != nil {
 		var err error
 		side, err = s.cfg.StartGradioSide(c.Platform)
 		if err != nil {
-			closeFront()
 			return fmt.Errorf("starting the Go side of gradio: %w", err)
 		}
 	}
@@ -389,6 +408,14 @@ func (s *Supervisor) startFresh(setupCtx context.Context, want map[string]bool) 
 	if side != nil {
 		core.Set(side.CoreURL, side.CoreToken)
 		c.GradioEnv = append(c.GradioEnv, side.Env...)
+	}
+	closeFront := func() {}
+	if want[NameReact] {
+		var err error
+		if closeFront, err = s.startFront(c, plan, core, side); err != nil {
+			closeSide()
+			return err
+		}
 	}
 
 	s.mu.Lock()
@@ -405,7 +432,7 @@ func (s *Supervisor) startFresh(setupCtx context.Context, want map[string]bool) 
 	s.supCtx, s.supCancel = ctx, cancel
 	s.pub = c.PublicPort
 	s.pubTLS = c.PublicTLS
-	s.run = &runState{c: c, plan: plan, core: core, ctx: ctx}
+	s.run = &runState{c: c, plan: plan, core: core, side: side, ctx: ctx}
 
 	cwd := c.Root.Dir()
 	gen := make([]*managed, 0, 3)
@@ -443,7 +470,7 @@ func (s *Supervisor) startFresh(setupCtx context.Context, want map[string]bool) 
 		return startErr
 	}
 	if c.OpenBrowser {
-		go s.openBrowsers(ctx, gen, publicURLScheme(c.PublicPort, c.PublicTLS), !c.SkipReactTab, c.ReactPort)
+		go s.openBrowsers(ctx, gen, publicURLScheme(c.PublicPort, c.PublicTLS)+c.GradioPrefix, !c.SkipReactTab, c.frontPort())
 	}
 	refs := s.refsLocked()
 	s.mu.Unlock()
@@ -470,7 +497,7 @@ func (s *Supervisor) startMore(setupCtx context.Context, run *runState, want map
 
 	// The slow work (building the export, checking the Python environment)
 	// happens outside the lock.
-	var front *react_ui_backend.Server
+	closeFront := func() {}
 	if need[NameReact] {
 		if s.cfg.PrepareFront != nil {
 			if err := s.cfg.PrepareFront(setupCtx, run.plan); err != nil {
@@ -478,13 +505,8 @@ func (s *Supervisor) startMore(setupCtx context.Context, run *runState, want map
 			}
 		}
 		var err error
-		if front, err = s.startFront(run.c, run.plan, run.core); err != nil {
+		if closeFront, err = s.startFront(run.c, run.plan, run.core, run.side); err != nil {
 			return err
-		}
-	}
-	closeFront := func() {
-		if front != nil {
-			front.Close()
 		}
 	}
 	pyOK, pyMsg := true, ""
@@ -782,7 +804,7 @@ func (s *Supervisor) statusesLocked() []ProcessStatus {
 			case NameGradio:
 				st.Port = s.publicPortLocked()
 			case NameReact:
-				st.Port = s.cfg.ReactPort
+				st.Port = s.cfg.frontPort()
 				if s.cfg.NoReact {
 					st.State, st.Port = StateDisabled, 0
 				}
@@ -859,7 +881,10 @@ func (s *Supervisor) pubTLSLocked() bool {
 }
 
 // publicProbe is the readiness probe of the public port.
-func publicProbe(useTLS bool) probeFunc {
+func publicProbe(useTLS bool, prefix string) probeFunc {
+	if prefix != "" {
+		return pathProbe(useTLS, prefix)
+	}
 	if useTLS {
 		return httpsProbe
 	}
@@ -879,7 +904,7 @@ func (s *Supervisor) AppLink() string {
 	port := s.publicPortLocked()
 	useTLS := s.pubTLSLocked()
 	s.mu.Unlock()
-	url := publicURLScheme(port, useTLS)
+	url := publicURLScheme(port, useTLS) + s.cfg.GradioPrefix
 	client := &http.Client{Timeout: 500 * time.Millisecond}
 	if useTLS {
 		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, DisableKeepAlives: true}

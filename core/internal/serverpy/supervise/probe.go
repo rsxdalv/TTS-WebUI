@@ -37,10 +37,17 @@ var probeClient = &http.Client{
 // 500. The Python proxy tree accepts TCP connections long before Gradio is
 // up and answers 502 until then, so a plain connect would report ready far too
 // early for the public port.
-func httpProbe(ctx context.Context, port int) bool { return probeScheme(ctx, port, false) }
+func httpProbe(ctx context.Context, port int) bool { return probeScheme(ctx, port, false, "/") }
 
 // httpsProbe is httpProbe for a public port the router serves over TLS.
-func httpsProbe(ctx context.Context, port int) bool { return probeScheme(ctx, port, true) }
+func httpsProbe(ctx context.Context, port int) bool { return probeScheme(ctx, port, true, "/") }
+
+// pathProbe is httpProbe/httpsProbe for Gradio living under a prefix of the
+// public port (the router's "/" is then another service, so "/" proves nothing).
+func pathProbe(useTLS bool, prefix string) probeFunc {
+	path := prefix + "/"
+	return func(ctx context.Context, port int) bool { return probeScheme(ctx, port, useTLS, path) }
+}
 
 // tlsProbeClient skips certificate verification: it only asks our own router,
 // on 127.0.0.1, whether it answers, and the certificate is usually issued for a
@@ -51,9 +58,9 @@ var tlsProbeClient = &http.Client{
 	Transport:     &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, DisableKeepAlives: true},
 }
 
-func probeScheme(ctx context.Context, port int, useTLS bool) bool {
+func probeScheme(ctx context.Context, port int, useTLS bool, path string) bool {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		publicURLScheme(port, useTLS)+"/", nil)
+		publicURLScheme(port, useTLS)+path, nil)
 	if err != nil {
 		return false
 	}

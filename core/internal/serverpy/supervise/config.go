@@ -20,6 +20,15 @@ const (
 	DefaultProbeInterval = 250 * time.Millisecond
 )
 
+// frontPort is the port the React UI answers on: the public port when the router
+// serves it, ReactPort otherwise.
+func (c Config) frontPort() int {
+	if c.FrontInRouter {
+		return c.PublicPort
+	}
+	return c.ReactPort
+}
+
 // DefaultGradioArgs returns the default arguments passed to the gradio entry
 // script. The React UI is started by the supervisor, never by server.py itself.
 func DefaultGradioArgs() []string { return []string{"--no-react"} }
@@ -40,6 +49,15 @@ type Config struct {
 	PublicTLS bool
 	// ReactPort is the port the Go front serves the React UI on. 0 = 3000.
 	ReactPort int
+	// FrontInRouter serves the React UI from the router on the public port (at
+	// "/") instead of a port of its own, when the Go side offers a router
+	// (GradioSide.Router). The status of the React part then reports the public
+	// port. Without a router the front keeps ReactPort.
+	FrontInRouter bool
+	// GradioPrefix is where Gradio lives on the public port: "" is "/", otherwise
+	// a prefix such as "/gradio-legacy". It is where readiness is probed and the
+	// app link and the browser tab point.
+	GradioPrefix string
 
 	// GradioEntry is the Python script run for Gradio, relative to Root.
 	// "" = server_core.py.

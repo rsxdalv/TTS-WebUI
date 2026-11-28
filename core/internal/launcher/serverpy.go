@@ -71,7 +71,7 @@ type serverPy struct {
 // platform the children run on; its command environment is what the launcher
 // gives every child. The environment the children get is that plus .env and
 // .env.user.
-func startServerPy(root paths.Root, p platform.Platform, flags appenv.Flags) (*serverPy, error) {
+func startServerPy(root paths.Root, p platform.Platform, flags appenv.Flags, opts ...serverPyOpt) (*serverPy, error) {
 	baseEnv := commandEnv(p)
 	// Startup prep that server.py does in-process: output folders, a default
 	// .env when missing, then .env and .env.user on top of the launcher env.
@@ -96,12 +96,30 @@ func startServerPy(root paths.Root, p platform.Platform, flags appenv.Flags) (*s
 		return nil, err
 	}
 	// rep.Env (launcher env + .env + .env.user) is what the children run with.
-	return startServerPyOn(root, plan.Host, plan.PublicPort, p.WithEnv(rep.Env), flags)
+	return startServerPyOn(root, plan.Host, plan.PublicPort, p.WithEnv(rep.Env), flags, opts...)
+}
+
+// serverPyOpt tunes startServerPyOn.
+type serverPyOpt func(*serverPyOpts)
+
+type serverPyOpts struct {
+	// gradioPrefix puts Gradio under a prefix of the public port (such as
+	// "/gradio-legacy") so "/" is free for the React UI. "" keeps Gradio at "/".
+	gradioPrefix string
+}
+
+// withGradioPrefix is the option for serverPyOpts.gradioPrefix.
+func withGradioPrefix(prefix string) serverPyOpt {
+	return func(o *serverPyOpts) { o.gradioPrefix = prefix }
 }
 
 // startServerPyOn starts the router on host:publicPort, routing / to Gradio on
 // a free loopback port, and the control API on another loopback port.
-func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Platform, flags appenv.Flags) (*serverPy, error) {
+func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Platform, flags appenv.Flags, opts ...serverPyOpt) (*serverPy, error) {
+	var so serverPyOpts
+	for _, f := range opts {
+		f(&so)
+	}
 	gradioPort, err := freePort()
 	if err != nil {
 		return nil, fmt.Errorf("allocating the Gradio port: %w", err)
@@ -120,9 +138,22 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 	if noHost {
 		home = noHostPage(st.Detail)
 	}
+	routeAt := so.gradioPrefix
+	if routeAt == "" {
+		routeAt = "/"
+	}
 	rt := router.New(router.Options{Token: token, Home: home})
+	if so.gradioPrefix != "" {
+		// "/" belongs to the React UI, mounted by the supervisor. While it is not
+		// running, "/" says so; the no-Gradio page moves under the prefix.
+		rt = router.New(router.Options{Token: token, Home: frontStoppedPage()})
+	}
 	if !noHost {
-		if err := rt.AddRoute("/", "http://"+net.JoinHostPort(gradioHost, strconv.Itoa(gradioPort))); err != nil {
+		if err := rt.AddRoute(routeAt, "http://"+net.JoinHostPort(gradioHost, strconv.Itoa(gradioPort))); err != nil {
+			return nil, err
+		}
+	} else if so.gradioPrefix != "" {
+		if err := rt.AddHandler(routeAt, home); err != nil {
 			return nil, err
 		}
 	}
@@ -276,7 +307,12 @@ func startServerPyOn(root paths.Root, host string, publicPort int, p platform.Pl
 	}()
 	go func() { _ = ctl.Serve(ctlLn) }()
 	go func() { _ = ui.Serve(uiLn) }()
-	slog.Info(fmt.Sprintf("serverpy: router on %s -> gradio %s", sp.publicAddr, net.JoinHostPort(gradioHost, strconv.Itoa(gradioPort))))
+	if so.gradioPrefix != "" {
+		// Gradio builds its URLs from GRADIO_ROOT_PATH; the router strips the prefix.
+		// The React UI is the same origin's "/": the link in the Gradio header says so.
+		sp.gradioEnv = append(sp.gradioEnv, "GRADIO_ROOT_PATH="+so.gradioPrefix, "TTS_REACT_UI_URL=/")
+	}
+	slog.Info(fmt.Sprintf("serverpy: router on %s -> gradio %s at %s", sp.publicAddr, net.JoinHostPort(gradioHost, strconv.Itoa(gradioPort)), routeAt))
 	return sp, nil
 }
 

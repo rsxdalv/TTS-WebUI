@@ -111,7 +111,7 @@ For other platforms, download the latest release from the [releases page](https:
 Current base installation size is around 10.7 GB. Each model will require 2-8 GB of space in addition.
 
 * Download the [latest version](https://github.com/rsxdalv/TTS-WebUI/releases/download/v0.0.0/tts-webui-installer.zip) and extract it.
-* Run start_tts_webui.bat or start_tts_webui.sh to start the server. It will ask you to select the GPU/Chip you are using. Once everything has installed, it will start the Gradio server at http://localhost:7770 and the React UI at http://localhost:3000.
+* Run start_tts_webui.bat or start_tts_webui.sh to start the server. It will ask you to select the GPU/Chip you are using. Once everything has installed, it will start the React UI at http://localhost:7770 (the Gradio pages are under http://localhost:7770/gradio-legacy/).
 * Output log will be available in the installer_scripts/output.log file.
 * Note: The start script sets up a conda environment and a python virtual environment. Thus you don't need to make a venv before that, and in fact, launching from another venv might break this script.
 
@@ -165,7 +165,7 @@ docker pull ghcr.io/rsxdalv/tts-webui:main
 ```
 
 Once the image has been pulled it can be started with Docker Compose:
-The ports are 7770 (env:TTS_PORT) for the Gradio backend and 3000 (env:UI_PORT) for the React front end.
+One port, 7770 (env:TTS_PORT): the React UI is at `/` and the Gradio pages are under `/gradio-legacy/`.
 
 ```
 docker compose up -d

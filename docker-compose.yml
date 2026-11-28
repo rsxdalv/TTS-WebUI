@@ -6,9 +6,8 @@ services:
     # default, so binding them to every host interface exposes them to the
     # local network. Override BIND_HOST=0.0.0.0 if you intend that.
     ports:
+      # One port: the React UI is at / and the Gradio pages are under /gradio-legacy/
       - ${BIND_HOST:-127.0.0.1}:${TTS_PORT:-7770}:7770
-      # include React UI
-      - ${BIND_HOST:-127.0.0.1}:${UI_PORT:-3000}:3000
       - ${BIND_HOST:-127.0.0.1}:${OPENAI_API_PORT:-7778}:7778
     container_name: tts-webui
     # The app runs as uid 1000 (appuser), not as root. Files that an older image created as root in
@@ -20,9 +19,9 @@ services:
       - ./favorites:/app/tts-webui/favorites
       # - ./voices:/app/tts-webui/voices
     environment:
-      # The React UI on port 3000 listens on loopback inside the container unless LAN mode is on (D17, D20), so
-      # the published port needs it. The Host check then accepts only this machine's own addresses and these
-      # names: add the name or address you open the UI with, e.g. TTS_ALLOWED_HOSTS=localhost,127.0.0.1,my-server
+      # The React UI is served on the public port, and its Host check accepts only this machine's own addresses
+      # unless LAN mode is on (D17, D20). It is on here, with these names: add the name or address you open the UI
+      # with, e.g. TTS_ALLOWED_HOSTS=localhost,127.0.0.1,my-server
       TTS_GO_PROXY_LISTEN: lan
       TTS_GO_PROXY_ALLOWED_HOSTS: ${TTS_ALLOWED_HOSTS:-localhost,127.0.0.1}
       # Run as root, as the image did before (see the note above the volumes):

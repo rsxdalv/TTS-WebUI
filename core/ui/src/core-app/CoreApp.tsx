@@ -17,6 +17,7 @@ export interface StepStatus {
   done: boolean;
   running?: boolean;
   detail?: string;
+  restart?: boolean; // an update changed what the running launcher uses: offer a Restart
   checking?: boolean; // the answer is still being worked out (the update check asks the network)
 }
 

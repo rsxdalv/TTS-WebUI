@@ -302,9 +302,10 @@ func (l *Launcher) handleUpdate() http.Handler {
 			return
 		}
 		if !l.legacy() {
+			// The files the app runs from are about to change and a restart follows,
+			// so the update stops the app itself.
 			if l.appRunning() {
-				http.Error(w, "stop the app before running update", http.StatusConflict)
-				return
+				l.sup.Stop()
 			}
 			l.startArchiveUpdate(w)
 			return

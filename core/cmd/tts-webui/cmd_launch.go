@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -12,6 +13,9 @@ import (
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
 	"github.com/rsxdalv/TTS-WebUI/core/internal/server"
 )
+
+// errRestart is returned by runLaunch when the page asked for a restart.
+var errRestart = errors.New("restart requested")
 
 func runLaunch(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("tts-webui", flag.ContinueOnError)
@@ -107,6 +111,10 @@ func runLaunch(ctx context.Context, args []string) error {
 	go func() { errCh <- srv.Serve(ln) }()
 
 	select {
+	case <-l.RestartRequested():
+		slog.Info("launcher restarting: stopping the app")
+		l.Shutdown()
+		return errRestart
 	case <-ctx.Done():
 		slog.Info("launcher exiting: stopping the app")
 		done := make(chan struct{})

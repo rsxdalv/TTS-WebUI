@@ -2,6 +2,7 @@
 import { useState } from "react";
 import type { StepStatus } from "./CoreApp";
 import { StepItem } from "./StepItem";
+import { RestartCard } from "./RestartCard";
 import { GPUView } from "./GPUView";
 import { LaunchStep } from "./LaunchStep";
 import { PreflightView } from "./PreflightView";
@@ -94,11 +95,14 @@ export function StepList({ statuses, onRefresh }: StepListProps) {
     const showUpdate = !!upd && (updSkipped || !isDone(upd) || !!upd.detail);
     return (
       <div className="flex flex-col gap-4">
-        {upd && showUpdate && (
+        {upd?.restart && !upd.running && <RestartCard />}
+        {upd && showUpdate && !upd.restart && (
           <StepItem
             step="update"
-            title={STEP_META.update.title}
-            description={STEP_META.update.description}
+            title={isDone(upd) && !updSkipped ? "Update" : "Update available"}
+            description=""
+            runLabel="Update"
+            skipLabel="Later"
             state={isDone(upd) || updSkipped ? "done" : "active"}
             hasStream={STEP_META.update.hasStream}
             running={upd.running}

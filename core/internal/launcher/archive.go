@@ -202,7 +202,8 @@ func (l *Launcher) runArchiveUpdate(ctx context.Context, lg *Log) error {
 			lg.AddLine("The new launcher program was saved as " + filepath.Base(exe) + pendingSuffix + "; it replaces the running one the next time the launcher starts.")
 		}
 	}
-	lg.AddLine("Update complete. Restart the launcher to use it.")
+	l.restartNeeded.Store(true)
+	lg.AddLine("Update complete. Restart to use it.")
 	return nil
 }
 

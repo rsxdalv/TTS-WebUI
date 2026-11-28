@@ -10,6 +10,8 @@ interface StepItemProps {
   hasStream: boolean;
   running?: boolean; // server reports a proc is already running (reattach on mount)
   detail?: string; // a line from the server: an update waiting, or why it could not be checked
+  runLabel?: string; // the button of an active step (default "Run")
+  skipLabel?: string; // the button that hides an optional step (default "Skip")
   skipped?: boolean; // the user hid an optional step: shown grayed out as done, nothing changes on the server
   onSkip?: () => void; // set only for optional steps: shows a Skip button
   onUnskip?: () => void;
@@ -24,6 +26,8 @@ export function StepItem({
   hasStream,
   running,
   detail,
+  runLabel,
+  skipLabel,
   skipped,
   onSkip,
   onUnskip,
@@ -166,7 +170,7 @@ export function StepItem({
             onClick={onSkip}
             className="shrink-0 py-1.5 px-3 rounded-lg text-sm font-medium transition-colors cursor-pointer border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
           >
-            Skip
+            {skipLabel ?? "Skip"}
           </button>
         )}
         {state === "active" && !skipped && (
@@ -179,7 +183,7 @@ export function StepItem({
                 : "bg-blue-600 hover:bg-blue-500 text-white"
             }`}
           >
-            {isRunning ? "Running..." : "Run"}
+            {isRunning ? "Running..." : (runLabel ?? "Run")}
           </button>
         )}
       </div>

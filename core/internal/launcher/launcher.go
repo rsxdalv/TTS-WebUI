@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
@@ -33,6 +34,9 @@ type StepStatus struct {
 	// Checking is true while the answer is still being worked out (the update
 	// check asks the network); the page asks again shortly.
 	Checking bool `json:"checking,omitempty"`
+	// Restart is true when the step changed what the running launcher uses: the
+	// page offers a Restart.
+	Restart bool `json:"restart,omitempty"`
 }
 
 // Launcher holds shared mutable state for the step handlers.
@@ -49,6 +53,10 @@ type Launcher struct {
 	updAt    time.Time
 	updBusy  bool // a background check is running
 
+	restartNeeded atomic.Bool   // an update replaced files the running launcher still uses
+	restartOnce   sync.Once     // closes restartCh once
+	restartCh     chan struct{} // closed when the page asks the launcher to restart
+
 	systemPython bool      // the system platform (WithSystemPython)
 	extOnce      sync.Once // the Extensions page's stores, built on first use
 	ext          *extHost
@@ -61,6 +69,7 @@ func New(root paths.Root, opts ...Option) *Launcher {
 	launcherPorts.Store(root.Dir(), buildOptions(opts).launcherPort)
 	return &Launcher{
 		root:         root,
+		restartCh:    make(chan struct{}),
 		sprocs:       make(map[string]*procs.Proc),
 		slogs:        make(map[string]*Log),
 		sup:          newAppSupervisor(root, opts...),
@@ -106,6 +115,27 @@ func (l *Launcher) StartFrontend(ctx context.Context) error {
 		return nil
 	}
 	return err
+}
+
+// RestartRequested is closed when the page has asked the launcher to restart.
+func (l *Launcher) RestartRequested() <-chan struct{} { return l.restartCh }
+
+// handleLauncherRestart asks the process to restart itself: it stops the app,
+// closes the listener and starts again (with the downloaded program, if an
+// update left one). It refuses while a step runs.
+func (l *Launcher) handleLauncherRestart() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		l.stepMu.Lock()
+		busy := l.downloadRunning() || l.updateRunning() || l.isStepRunning("mamba") || l.isStepRunning("install") || l.isStepRunning("update")
+		l.stepMu.Unlock()
+		if busy {
+			http.Error(w, "a step is running; restart when it has finished", http.StatusConflict)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+		l.restartOnce.Do(func() { close(l.restartCh) })
+	})
 }
 
 // Shutdown stops the app and any running install step, for a launcher that
@@ -163,6 +193,7 @@ func (l *Launcher) Register(srv *server.Server) {
 	srv.Handle("GET /api/steps/install/stream", l.handleProcStream("install"))
 
 	srv.Handle("POST /api/steps/update", l.handleUpdate())
+	srv.Handle("POST /api/launcher/restart", l.handleLauncherRestart())
 	srv.Handle("GET /api/steps/update/stream", l.handleUpdateStream())
 
 	// C3.2: app supervisor endpoints (start/stop/restart/status/stream).
@@ -216,7 +247,7 @@ func (l *Launcher) handleStatus() http.Handler {
 				StepStatus{Step: "install", Done: installDone(l.root) && !installRunning, Running: installRunning},
 			)
 		}
-		statuses = append(statuses, StepStatus{Step: "update", Done: upd.Done && !updRunning, Running: updRunning, Detail: upd.Detail, Checking: updChecking})
+		statuses = append(statuses, StepStatus{Step: "update", Done: upd.Done && !updRunning, Running: updRunning, Detail: upd.Detail, Checking: updChecking, Restart: l.restartNeeded.Load() && !updRunning})
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(statuses)
 	})

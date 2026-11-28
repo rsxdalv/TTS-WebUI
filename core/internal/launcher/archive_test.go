@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/rsxdalv/TTS-WebUI/core/internal/launcher"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/paths"
+	"github.com/rsxdalv/TTS-WebUI/core/internal/server"
 )
 
 // release serves what CI publishes: tts-webui-installer.json beside the zip.
@@ -117,6 +119,43 @@ func TestUpdateStep_ArchiveInstall(t *testing.T) {
 	}
 	if !st.Done || st.Detail != "" {
 		t.Errorf("after the update: %+v, want done with no detail", st)
+	}
+	if !st.Restart {
+		t.Errorf("after the update: %+v, want a restart offered", st)
+	}
+}
+
+func TestLauncherRestartRoute(t *testing.T) {
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "installer_scripts"), 0o755)
+	root, err := paths.New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv, err := server.New(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := launcher.New(root)
+	l.Register(srv)
+	select {
+	case <-l.RestartRequested():
+		t.Fatal("restart requested before anyone asked")
+	default:
+	}
+	resp := doRequest(t, srv, srv.Token(), http.MethodPost, "/api/launcher/restart", "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST restart: %d", resp.StatusCode)
+	}
+	select {
+	case <-l.RestartRequested():
+	case <-time.After(time.Second):
+		t.Fatal("the restart was not requested")
+	}
+	// asking twice is fine
+	resp = doRequest(t, srv, srv.Token(), http.MethodPost, "/api/launcher/restart", "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("second POST restart: %d", resp.StatusCode)
 	}
 }
 

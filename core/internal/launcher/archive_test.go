@@ -42,7 +42,24 @@ func release(t *testing.T, commit string, files map[string]string) string {
 	return s.URL + "/tts-webui-installer.zip"
 }
 
+// statusOf reads one step. The update check runs in the background, so the
+// first answers may say Checking; it asks again until the check has answered.
 func statusOf(t *testing.T, srv interface {
+	Handler() http.Handler
+	Addr() string
+}, token, step string) launcher.StepStatus {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		st := statusOnce(t, srv, token, step)
+		if !st.Checking || time.Now().After(deadline) {
+			return st
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+func statusOnce(t *testing.T, srv interface {
 	Handler() http.Handler
 	Addr() string
 }, token, step string) launcher.StepStatus {
@@ -100,6 +117,31 @@ func TestUpdateStep_ArchiveInstall(t *testing.T) {
 	}
 	if !st.Done || st.Detail != "" {
 		t.Errorf("after the update: %+v, want done with no detail", st)
+	}
+}
+
+// The status answers at once while the update check waits on a slow network.
+func TestUpdateStep_StatusDoesNotWaitForTheNetwork(t *testing.T) {
+	root, srv, token := newFreshInstall(t)
+	os.WriteFile(filepath.Join(root.Dir(), "archive.json"), []byte(`{"commit":"aaaaaaaa11"}`), 0o644)
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(1500 * time.Millisecond)
+		io.WriteString(w, `{"commit":"bbbbbbbb22"}`)
+	}))
+	defer slow.Close()
+	t.Setenv("TTS_ARCHIVE_URL", slow.URL+"/tts-webui-installer.zip")
+
+	start := time.Now()
+	first := statusOnce(t, srv, token, "update")
+	if d := time.Since(start); d > 700*time.Millisecond {
+		t.Errorf("status took %v while the check was slow", d)
+	}
+	if !first.Checking || !first.Done {
+		t.Errorf("first answer = %+v, want done and checking", first)
+	}
+	final := statusOf(t, srv, token, "update")
+	if final.Done || !strings.Contains(final.Detail, "An update is available") {
+		t.Errorf("final answer = %+v, want an update available", final)
 	}
 }
 

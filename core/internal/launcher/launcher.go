@@ -30,6 +30,9 @@ type StepStatus struct {
 	// Detail is a line to show with the step: an update waiting, or why it could
 	// not be checked.
 	Detail string `json:"detail,omitempty"`
+	// Checking is true while the answer is still being worked out (the update
+	// check asks the network); the page asks again shortly.
+	Checking bool `json:"checking,omitempty"`
 }
 
 // Launcher holds shared mutable state for the step handlers.
@@ -44,6 +47,7 @@ type Launcher struct {
 	updMu    sync.Mutex // guards updState and updAt (the update step's cached answer)
 	updState updateState
 	updAt    time.Time
+	updBusy  bool // a background check is running
 
 	systemPython bool      // the system platform (WithSystemPython)
 	extOnce      sync.Once // the Extensions page's stores, built on first use
@@ -175,7 +179,7 @@ func (l *Launcher) handleStatus() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// The update step: an install with the old env asks git, any other folder asks
 		// the archive's published description. The answer is cached for a minute.
-		upd := l.updateStatus()
+		upd, updChecking := l.updateStatus()
 		// Also done when the legacy update proc ran and exited cleanly.
 		if !upd.Done {
 			if p := l.getProc("update"); p != nil && !p.Running() && p.ExitCode() == 0 {
@@ -202,7 +206,7 @@ func (l *Launcher) handleStatus() http.Handler {
 				StepStatus{Step: "install", Done: installDone(l.root) && !installRunning, Running: installRunning},
 			)
 		}
-		statuses = append(statuses, StepStatus{Step: "update", Done: upd.Done && !updRunning, Running: updRunning, Detail: upd.Detail})
+		statuses = append(statuses, StepStatus{Step: "update", Done: upd.Done && !updRunning, Running: updRunning, Detail: upd.Detail, Checking: updChecking})
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(statuses)
 	})

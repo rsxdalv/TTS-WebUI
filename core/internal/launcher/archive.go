@@ -122,14 +122,27 @@ func gitUpdateState(ctx context.Context, root paths.Root) updateState {
 	return updateState{Done: updated}
 }
 
-// updateStatus answers the update step. The answer is kept for a minute; a run of
-// the step clears it.
-func (l *Launcher) updateStatus() updateState {
+// updateStatus answers the update step at once, never waiting for the network
+// (git fetch, the archive description). The answer is kept for a minute; an
+// older one is returned while a fresh check runs in the background. checking is
+// true while there is no answer yet: the step then reports "up to date" and the
+// page asks again.
+func (l *Launcher) updateStatus() (st updateState, checking bool) {
 	l.updMu.Lock()
 	defer l.updMu.Unlock()
-	if !l.updAt.IsZero() && time.Since(l.updAt) < time.Minute {
-		return l.updState
+	fresh := !l.updAt.IsZero() && time.Since(l.updAt) < time.Minute
+	if !fresh && !l.updBusy {
+		l.updBusy = true
+		go l.refreshUpdate()
 	}
+	if l.updAt.IsZero() {
+		return updateState{Done: true}, true
+	}
+	return l.updState, false
+}
+
+// refreshUpdate runs the check and stores its answer.
+func (l *Launcher) refreshUpdate() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	var st updateState
@@ -140,8 +153,9 @@ func (l *Launcher) updateStatus() updateState {
 	} else {
 		st = archiveUpdateState(ctx, l.root)
 	}
-	l.updState, l.updAt = st, time.Now()
-	return st
+	l.updMu.Lock()
+	l.updState, l.updAt, l.updBusy = st, time.Now(), false
+	l.updMu.Unlock()
 }
 
 func (l *Launcher) forgetUpdate() {

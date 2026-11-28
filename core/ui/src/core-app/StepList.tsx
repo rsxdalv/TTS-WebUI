@@ -80,6 +80,36 @@ export function StepList({ statuses, onRefresh }: StepListProps) {
     statuses.length > 0 &&
     statuses.filter((s) => s.step !== "update").every(isDone);
 
+  // A new install has no old env, so it has no waterfall: the app is launched
+  // right away, an update shows only when there is something to say about it,
+  // and the system checks live on the Extensions page.
+  const legacy = statuses.some((s) => s.step === "mamba");
+  if (!legacy) {
+    const upd = statuses.find((s) => s.step === "update");
+    const updSkipped = skipped.includes("update") && !upd?.running;
+    const showUpdate = !!upd && (updSkipped || !isDone(upd) || !!upd.detail);
+    return (
+      <div className="flex flex-col gap-4">
+        {upd && showUpdate && (
+          <StepItem
+            step="update"
+            title={STEP_META.update.title}
+            description={STEP_META.update.description}
+            state={isDone(upd) || updSkipped ? "done" : "active"}
+            hasStream={STEP_META.update.hasStream}
+            running={upd.running}
+            detail={upd.detail}
+            skipped={updSkipped}
+            onSkip={() => setSkip("update", true)}
+            onUnskip={() => setSkip("update", false)}
+            onComplete={onRefresh}
+          />
+        )}
+        <LaunchStep />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {statuses.map((s, idx) => {

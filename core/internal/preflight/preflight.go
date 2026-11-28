@@ -129,7 +129,7 @@ func checkSpacesInPath(root paths.Root) Check {
 		return Check{
 			ID:      "SpacesInPath",
 			Status:  StatusFail,
-			Message: fmt.Sprintf("installation path contains a space: %q — conda will fail; move to a path without spaces", root.Dir()),
+			Message: fmt.Sprintf("installation path contains a space: %q — Python environments and builds can fail; move to a path without spaces", root.Dir()),
 		}
 	}
 	return Check{ID: "SpacesInPath", Status: StatusPass}
@@ -162,7 +162,7 @@ func checkExFAT(ctx context.Context, root paths.Root, runner Runner) (Check, err
 		return Check{
 			ID:      "ExFAT",
 			Status:  StatusFail,
-			Message: fmt.Sprintf("drive %s: uses exFAT — conda cannot install on exFAT; use an NTFS drive", drive),
+			Message: fmt.Sprintf("drive %s: uses exFAT — environments cannot be installed on exFAT; use an NTFS drive", drive),
 		}, nil
 	}
 	return Check{ID: "ExFAT", Status: StatusPass}, nil

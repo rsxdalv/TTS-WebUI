@@ -85,6 +85,10 @@ type Config struct {
 	// anything is started (switch checks, orphan sweep, React recover and
 	// build). Its error aborts the Start. nil = the zero Plan.
 	Prepare func(ctx context.Context) (Plan, error)
+	// PrepareFront runs before the React UI front starts, in a Start and in a
+	// later start of that part alone (it builds the static export). Its error
+	// aborts that start. nil = nothing to prepare.
+	PrepareFront func(ctx context.Context, plan Plan) error
 	// StartGradioSide starts the Go side of the gradio child, on the platform the
 	// children run on. nil = none.
 	StartGradioSide func(p platform.Platform) (*GradioSide, error)

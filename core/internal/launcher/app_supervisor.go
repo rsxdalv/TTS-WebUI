@@ -46,6 +46,9 @@ type appProc struct {
 // appSupervisor is what the launcher needs from the app supervisor.
 type appSupervisor interface {
 	Start(ctx context.Context) error
+	// StartParts and StopPart act on one part (gradio, react-ui) and leave the other as it is.
+	StartParts(ctx context.Context, parts ...string) error
+	StopPart(name string)
 	Stop()
 	Restart(ctx context.Context) error
 	Statuses() any // JSON-encodable list of per-process statuses
@@ -72,12 +75,14 @@ func (s superviseSup) Running() bool {
 // badSup stands in when the supervisor cannot be built: every Start says why.
 type badSup struct{ err error }
 
-func (b badSup) Start(context.Context) error   { return b.err }
-func (b badSup) Restart(context.Context) error { return b.err }
-func (b badSup) Stop()                         {}
-func (b badSup) Statuses() any                 { return []supervise.ProcessStatus{} }
-func (b badSup) AppLink() string               { return "" }
-func (b badSup) Running() bool                 { return false }
+func (b badSup) Start(context.Context) error                 { return b.err }
+func (b badSup) StartParts(context.Context, ...string) error { return b.err }
+func (b badSup) StopPart(string)                             {}
+func (b badSup) Restart(context.Context) error               { return b.err }
+func (b badSup) Stop()                                       {}
+func (b badSup) Statuses() any                               { return []supervise.ProcessStatus{} }
+func (b badSup) AppLink() string                             { return "" }
+func (b badSup) Running() bool                               { return false }
 func (b badSup) SubscribeLogs(string) (<-chan string, func(), bool) {
 	return nil, nil, false
 }
@@ -166,11 +171,6 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		sweepOrphans(root)
 
 		plan := supervise.Plan{Switches: sw}
-		if !o.noReact {
-			if err := newReactPrep(root, o.systemPython).prepareReactUI(ctx, sw); err != nil {
-				return supervise.Plan{}, err
-			}
-		}
 		// The public port and inbrowser come from config.json.
 		inBrowser := false
 		if c, err := appenv.LoadConfig(root.Dir()); err == nil {
@@ -191,6 +191,14 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		// logs, a Colab cell) and the status log tail arrive as it is printed.
 		plan.GradioEnv = []string{"BROWSER=" + noopBrowser, "PYTHONUNBUFFERED=1"}
 		return plan, nil
+	}
+	// The static export is built when the React UI front starts, so Gradio can
+	// be launched alone without building it.
+	cfg.PrepareFront = func(ctx context.Context, plan supervise.Plan) error {
+		if o.noReact {
+			return nil
+		}
+		return newReactPrep(root, o.systemPython).prepareReactUI(ctx, plan.Switches)
 	}
 	cfg.StartGradioSide = func(p platform.Platform) (*supervise.GradioSide, error) {
 		py, err := startServerPy(root, p, o.flags())

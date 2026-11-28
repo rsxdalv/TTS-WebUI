@@ -320,7 +320,18 @@ func (l *Launcher) handleProcStream(step string) http.Handler {
 
 func (l *Launcher) handleAppStart() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := l.sup.Start(context.Background()); err != nil {
+		// ?part=gradio or ?part=react-ui starts that part alone; no part starts both.
+		var err error
+		switch part := r.URL.Query().Get("part"); part {
+		case "":
+			err = l.sup.Start(context.Background())
+		case "gradio", "react-ui":
+			err = l.sup.StartParts(context.Background(), part)
+		default:
+			http.Error(w, "unknown part "+part+" (gradio or react-ui)", http.StatusBadRequest)
+			return
+		}
+		if err != nil {
 			if err.Error() == "app already running" {
 				http.Error(w, err.Error(), http.StatusConflict)
 			} else {
@@ -335,7 +346,15 @@ func (l *Launcher) handleAppStart() http.Handler {
 
 func (l *Launcher) handleAppStop() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l.sup.Stop()
+		switch part := r.URL.Query().Get("part"); part {
+		case "":
+			l.sup.Stop()
+		case "gradio", "react-ui":
+			l.sup.StopPart(part)
+		default:
+			http.Error(w, "unknown part "+part+" (gradio or react-ui)", http.StatusBadRequest)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"ok":true}`))
 	})

@@ -12,6 +12,12 @@ interface ProcessStatus {
   warning?: string; // carried on despite, e.g. a missing GPU label
 }
 
+// The parts of the app that can be launched on their own.
+const PARTS = [
+  { name: "react-ui", label: "Frontend", note: "The React UI", launch: "Launch frontend" },
+  { name: "gradio", label: "Gradio", note: "The Gradio tabs and the extensions", launch: "Launch Gradio" },
+];
+
 export function LaunchStep() {
   const [processes, setProcesses] = useState<ProcessStatus[]>([]);
   const [appURL, setAppURL] = useState("");
@@ -71,8 +77,8 @@ export function LaunchStep() {
       .then((r) => (r.ok ? r.json() : []))
       .then((list: ProcessStatus[]) => {
         if (!live || !Array.isArray(list)) return;
+        setProcesses(list);
         if (list.some((p) => p.running || p.state === "failed")) {
-          setProcesses(list);
           setLaunched(true);
           subscribeStatus();
         }
@@ -111,10 +117,11 @@ export function LaunchStep() {
     };
   }
 
-  async function launch() {
+  // part is "gradio" or "react-ui"; none starts both.
+  async function launch(part?: string) {
     setError(null);
     try {
-      const r = await client("/api/app/start", { method: "POST" });
+      const r = await client(`/api/app/start${part ? `?part=${part}` : ""}`, { method: "POST" });
       // 409 means already running — subscribe to its status stream.
       if (!r.ok && r.status !== 409) {
         setError(`Failed to start: ${r.status}: ${await r.text()}`);
@@ -135,8 +142,8 @@ export function LaunchStep() {
     }
   }
 
-  async function stop() {
-    await client("/api/app/stop", { method: "POST" });
+  async function stop(part?: string) {
+    await client(`/api/app/stop${part ? `?part=${part}` : ""}`, { method: "POST" });
   }
 
   async function restart() {
@@ -200,61 +207,85 @@ export function LaunchStep() {
         <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>
       )}
 
-      {!launched && (
-        <button
-          onClick={launch}
-          className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
-        >
-          Launch WebUI
-        </button>
-      )}
-
-      {launched && processes.length > 0 && (
-        <ul className="mt-2 space-y-1">
-          {processes.map((p) => (
-            <li key={p.name} className="flex items-center gap-2 text-sm">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  p.running ? "bg-green-500" : "bg-gray-400"
-                }`}
-              />
-              <span className="font-mono">{p.name}</span>
-              <span className="text-gray-500 dark:text-gray-400">
-                {p.running ? "running" : p.state ?? "stopped"}
-                {p.error ? `: ${p.error}` : ""}
-                {p.warning ? ` (warning: ${p.warning})` : ""}
-              </span>
+      <ul className="space-y-2">
+        {PARTS.map((part) => {
+          const p = processes.find((x) => x.name === part.name);
+          if (p?.state === "disabled") return null;
+          const running = !!p?.running;
+          const ready = running && p?.state === "ready";
+          const starting = running && !ready;
+          const url =
+            part.name === "react-ui"
+              ? ready
+                ? reactURL
+                : ""
+              : ready && appURL
+                ? appURL
+                : "";
+          return (
+            <li
+              key={part.name}
+              className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2"
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      ready ? "bg-green-500" : starting ? "bg-amber-400" : "bg-gray-400"
+                    }`}
+                  />
+                  {part.label}
+                  <span className="font-normal text-gray-500 dark:text-gray-400">
+                    {ready ? "running" : starting ? "starting…" : p?.state === "failed" ? "failed" : "stopped"}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{part.note}</p>
+                {p?.error && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-0.5 break-words">{p.error}</p>
+                )}
+                {p?.warning && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">warning: {p.warning}</p>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {url && (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 rounded bg-green-600 text-white hover:bg-green-700 text-sm"
+                  >
+                    Open →
+                  </a>
+                )}
+                {running ? (
+                  <button
+                    onClick={() => stop(part.name)}
+                    className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    Stop
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => launch(part.name)}
+                    className="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
+                  >
+                    {part.launch}
+                  </button>
+                )}
+              </div>
             </li>
-          ))}
-        </ul>
-      )}
+          );
+        })}
+      </ul>
 
-      {reactURL && (
-        <a
-          href={reactURL}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 mr-2 inline-flex px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 text-sm"
+      {!anyRunning && (
+        <button
+          onClick={() => launch()}
+          className="mt-3 px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
         >
-          Open the UI →
-        </a>
-      )}
-
-      {processes.some((p) => p.name === "gradio" && p.running && p.state !== "ready") && (
-        <span className="mt-3 inline-flex px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm">
-          Gradio is starting…
-        </span>
-      )}
-
-      {appURL && processes.some((p) => p.name === "gradio" && p.running && p.state === "ready") && (
-        <a
-          href={appURL}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 inline-flex px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 text-sm"
-        >
-          Open WebUI →
-        </a>
+          Launch both
+        </button>
       )}
 
       {allStopped && (
@@ -266,10 +297,10 @@ export function LaunchStep() {
       {launched && (
         <div className="mt-3 flex gap-2">
           <button
-            onClick={stop}
+            onClick={() => stop()}
             className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
           >
-            Stop
+            Stop all
           </button>
           <button
             onClick={restart}

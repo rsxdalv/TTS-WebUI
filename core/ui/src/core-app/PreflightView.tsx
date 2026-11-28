@@ -78,8 +78,17 @@ export function PreflightView({ onComplete, variant = "step" }: PreflightViewPro
     return <span className="text-red-600 dark:text-red-400">✗</span>;
   };
 
+  const LABELS: Record<string, string> = {
+    SpacesInPath: "No spaces in the install path",
+    System32InPath: "Not installed inside System32",
+    ExFAT: "Drive is not exFAT",
+    LongPaths: "Windows long paths",
+    ConflictingConda: "No other conda in the way",
+    MSVC: "C++ build tools (MSVC)",
+    GCC: "C++ compiler (gcc)",
+  };
   const readableId = (id: string) =>
-    id.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim();
+    LABELS[id] ?? id.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim();
 
   return (
     <div

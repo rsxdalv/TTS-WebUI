@@ -29,6 +29,11 @@ const PipListPage = () => {
     }
   };
 
+  // Load when the page opens; the button reloads.
+  React.useEffect(() => {
+    void refresh();
+  }, []);
+
   const shown = (packages ?? []).filter((p) =>
     p.name.toLowerCase().includes(filter.trim().toLowerCase())
   );
@@ -38,7 +43,7 @@ const PipListPage = () => {
       <div className="flex flex-col gap-3 p-4 max-w-2xl">
         <div className="flex gap-2 items-center">
           <Button onClick={refresh} disabled={loading}>
-            {loading ? "Loading..." : packages ? "Refresh" : "Load"}
+            {loading ? "Loading..." : "Refresh"}
           </Button>
           <input
             className="border rounded px-2 py-1 flex-1"

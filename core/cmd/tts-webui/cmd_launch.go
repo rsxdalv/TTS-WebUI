@@ -114,6 +114,7 @@ func runLaunch(ctx context.Context, args []string) error {
 	case <-l.RestartRequested():
 		slog.Info("launcher restarting: stopping the app")
 		l.Shutdown()
+		_ = srv.Close() // drop open connections too: a page must reach the new launcher
 		return errRestart
 	case <-ctx.Done():
 		slog.Info("launcher exiting: stopping the app")

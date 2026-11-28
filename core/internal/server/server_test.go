@@ -372,3 +372,36 @@ func TestTwoLaunchersKeepTheirOwnCookie(t *testing.T) {
 		}
 	}
 }
+
+// Close ends open connections, not just the listener: a page holding a
+// kept-alive connection must not keep talking to a server that was replaced.
+func TestClose_DropsKeptAliveConnections(t *testing.T) {
+	srv, err := server.New(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ln, err := srv.Listen()
+	if err != nil {
+		t.Fatal(err)
+	}
+	go func() { _ = srv.Serve(ln) }()
+	client := &http.Client{}
+	url := "http://" + srv.Addr() + "/api/health"
+	// Host must be the server's own: Addr() is 127.0.0.1:<port>.
+	resp, err := client.Get(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	if err := srv.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if resp, err := client.Get(url); err == nil {
+		resp.Body.Close()
+		t.Fatal("the old server still answered on a kept-alive connection")
+	}
+	if err := srv.Close(); err != nil {
+		t.Fatalf("second Close: %v", err)
+	}
+}

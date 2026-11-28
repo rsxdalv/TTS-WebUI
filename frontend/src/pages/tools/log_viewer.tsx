@@ -1,6 +1,7 @@
 import React from "react";
 import { Template } from "../../components/Template";
 import { Button } from "../../components/ui/button";
+import { SimpleMarkdown } from "../../components/SimpleMarkdown";
 import {
   errorText,
   goGetJson,
@@ -128,7 +129,7 @@ const LogViewerPage = () => {
         {status && <div className="text-sm text-gray-600">{status}</div>}
         <div className="flex gap-4 flex-wrap md:flex-nowrap">
           <div className="flex flex-col gap-2 w-full md:w-1/3">
-            <pre className="whitespace-pre-wrap text-sm">{stats}</pre>
+            <SimpleMarkdown text={stats} />
             <select
               className="border rounded px-2 py-1"
               value={selected}
@@ -141,7 +142,7 @@ const LogViewerPage = () => {
                 </option>
               ))}
             </select>
-            <pre className="whitespace-pre-wrap text-sm">{info}</pre>
+            <SimpleMarkdown text={info} />
             {kind === "all" && (
               <div className="flex gap-2">
                 <Button
@@ -159,9 +160,10 @@ const LogViewerPage = () => {
           </div>
           <div className="flex flex-col gap-2 w-full md:w-2/3">
             {kind !== "all" && analysis && (
-              <pre className="whitespace-pre-wrap text-sm border rounded p-2">
-                {analysis}
-              </pre>
+              <SimpleMarkdown
+                text={analysis}
+                className="border rounded p-2"
+              />
             )}
             <div className="flex gap-2">
               <input

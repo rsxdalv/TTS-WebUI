@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Template } from "../../components/Template";
 import { Button } from "../../components/ui/button";
 import { FullscreenFrame } from "../../components/FullscreenFrame";
+import { ExtensionManager } from "../../components/ExtensionManager";
 import { errorText, goGetJson, goSendJson } from "../../functions/goData";
 
 type Answer = {
@@ -74,6 +75,13 @@ const EnginePage = ({ pkg: fixedPkg }: { pkg?: string }) => {
           <div className="p-4">
             <Button onClick={() => setAttempt(attempt + 1)}>Try again</Button>
           </div>
+        )}
+        {answer && (
+          <ExtensionManager
+            name={answer.name || pkg}
+            installed
+            running={answer.state === "ready"}
+          />
         )}
         {src && <FullscreenFrame title={answer?.name || pkg} src={src} padded />}
       </div>

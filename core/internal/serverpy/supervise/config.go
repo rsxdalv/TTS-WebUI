@@ -54,6 +54,10 @@ type Config struct {
 	// (GradioSide.Router). The status of the React part then reports the public
 	// port. Without a router the front keeps ReactPort.
 	FrontInRouter bool
+	// FrontDevURL, when set, makes the React UI server answer pages and assets
+	// from a Vite dev server (hot reload) instead of frontend/out. The export is
+	// not built; the API routes are still the server's.
+	FrontDevURL string
 	// GradioPrefix is where Gradio lives on the public port: "" is "/", otherwise
 	// a prefix such as "/gradio-legacy". It is where readiness is probed and the
 	// app link and the browser tab point.

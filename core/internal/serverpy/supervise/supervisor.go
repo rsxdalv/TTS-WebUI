@@ -271,6 +271,7 @@ func (s *Supervisor) startFront(c Config, plan Plan, core *react_ui_backend.Core
 		AllowedHosts:  plan.Switches.ProxyAllowedHosts,
 		Core:          core,
 		GradioBackend: gradioBackendURL(c),
+		DevURL:        c.FrontDevURL,
 	}
 	if c.FrontInRouter && side != nil && side.Router != nil {
 		cfg.Port = c.PublicPort

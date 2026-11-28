@@ -24,14 +24,19 @@ export const GradioFrame = ({
   tab?: string;
 }) => {
   const [port, setPort] = React.useState<number | null>(null);
+  const [prefix, setPrefix] = React.useState("");
   const [phase, setPhase] = React.useState<Phase>("loading");
   const [error, setError] = React.useState("");
   const [attempt, setAttempt] = React.useState(0);
 
   React.useEffect(() => {
     let live = true;
-    goGetJson<{ server_port: number | null }>("/api/go-data/server-settings")
-      .then((s) => live && setPort(s.server_port ?? 7770))
+    goGetJson<{ server_port: number | null; gradio_prefix?: string }>("/api/go-data/server-settings")
+      .then((s) => {
+        if (!live) return;
+        setPrefix(s.gradio_prefix ?? "");
+        setPort(s.server_port ?? 7770);
+      })
       .catch(
         (e) =>
           live &&
@@ -45,15 +50,14 @@ export const GradioFrame = ({
     };
   }, [attempt]);
 
-  // Served by the router on the public port, this page and Gradio share the
-  // origin and Gradio sits under /gradio-legacy. Opened on another port (the Vite
-  // dev server, or the old layout with the React UI on its own port), Gradio is
-  // on the public port of the same host.
+  // Gradio is on the public port, under `prefix` ("/gradio-legacy", or "" in the
+  // old layout). Served by that same port this page shares its origin; opened on
+  // another port (the Vite dev server, the old layout) it is the same host.
   const here = window.location.port || (window.location.protocol === "https:" ? "443" : "80");
   const base = port
-    ? String(port) === here
-      ? `${window.location.origin}/gradio-legacy`
-      : `${window.location.protocol}//${window.location.hostname}:${port}`
+    ? (String(port) === here
+        ? window.location.origin
+        : `${window.location.protocol}//${window.location.hostname}:${port}`) + prefix
     : "";
 
   React.useEffect(() => {

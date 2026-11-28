@@ -98,7 +98,14 @@ type Option func(*options)
 type options struct {
 	noBrowser, share, docker, systemPython, noReact bool
 	launcherPort                                    int
+	frontDevURL                                     string // a Vite dev server answering the React UI's pages (WithDev)
 }
+
+// WithDev has the React UI server forward the app's pages and assets to a Vite dev
+// server (hot reload), such as http://127.0.0.1:3002 (npm run dev in frontend/).
+// The API routes, uploads and the export are the server's as ever; frontend/out
+// is not needed and not built.
+func WithDev(devURL string) Option { return func(o *options) { o.frontDevURL = devURL } }
 
 // WithLauncherPort tells the app where this launcher listens, so the Vite UI can
 // link to the launcher's Extensions page (the Gradio host is installed there).
@@ -169,6 +176,7 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 		cfg.FrontInRouter = true
 		cfg.GradioPrefix = gradioLegacyPrefix
 	}
+	cfg.FrontDevURL = o.frontDevURL
 	cfg.Prepare = func(ctx context.Context) (supervise.Plan, error) {
 		// Every switch is checked before anything runs, so a typo never starts
 		// a build or a process first (R2-5).
@@ -211,8 +219,8 @@ func superviseConfig(root paths.Root, o options) supervise.Config {
 	// The static export is built when the React UI front starts, so Gradio can
 	// be launched alone without building it.
 	cfg.PrepareFront = func(ctx context.Context, plan supervise.Plan) error {
-		if o.noReact {
-			return nil
+		if o.noReact || o.frontDevURL != "" {
+			return nil // development: Vite answers the pages, no export to build
 		}
 		return newReactPrep(root, o.systemPython).prepareReactUI(ctx, plan.Switches)
 	}

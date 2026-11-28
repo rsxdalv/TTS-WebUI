@@ -2,7 +2,7 @@
 // runs the install steps, then starts and stops the app.
 //
 //	tts-webui [launch] [--root DIR] [--port N] [--no-browser] [--share] [--docker]
-//	          [--start] [--system-python] [--no-react] [--no-autostart]
+//	          [--start] [--system-python] [--no-react] [--no-autostart] [--dev]
 //	tts-webui mcp [--backend URL] [--http ADDR]
 //	tts-webui --version
 package main

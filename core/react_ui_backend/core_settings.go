@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -20,7 +21,7 @@ func init() {
 	RegisterClaim(Claim{
 		Switch:   "core-settings",
 		Patterns: []string{"GET /api/go-data/server-settings", "PUT /api/go-data/server-settings"},
-		Handler:  func(d Deps) http.Handler { return newServerSettings(d.Core) },
+		Handler:  func(d Deps) http.Handler { return newServerSettings(d.Core, gradioPrefix(d.GradioBackend)) },
 	})
 }
 
@@ -34,6 +35,22 @@ type settingsView struct {
 	SSLVerify         *bool    `json:"ssl_verify"`
 	AuthUsers         []string `json:"auth_users"`
 	SSLKeyfilePassSet bool     `json:"ssl_keyfile_password_set"`
+	// GradioPrefix is where Gradio lives on the public port ("" is "/"). Read only.
+	GradioPrefix string `json:"gradio_prefix"`
+}
+
+// gradioPrefix is the path of the Gradio backend URL without its slashes:
+// "http://127.0.0.1:7770/gradio-legacy/" gives "/gradio-legacy", the root gives "".
+func gradioPrefix(backend string) string {
+	u, err := url.Parse(strings.TrimSpace(backend))
+	if err != nil {
+		return ""
+	}
+	p := strings.TrimRight(u.Path, "/")
+	if p == "" || !strings.HasPrefix(p, "/") {
+		return ""
+	}
+	return p
 }
 
 func strOf(m map[string]json.RawMessage, k string) string {
@@ -126,7 +143,7 @@ func badText(s string) bool {
 	return len(s) > 1024 || strings.ContainsAny(s, "\x00\r\n")
 }
 
-func newServerSettings(core *Core) http.Handler {
+func newServerSettings(core *Core, prefix string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			section, err := loadSection(core, r)
@@ -134,7 +151,9 @@ func newServerSettings(core *Core) http.Handler {
 				coreError(w, err)
 				return
 			}
-			writeJSONStatus(w, http.StatusOK, viewOf(section))
+			view := viewOf(section)
+			view.GradioPrefix = prefix
+			writeJSONStatus(w, http.StatusOK, view)
 			return
 		}
 		if !requireJSON(w, r) {

@@ -37,6 +37,9 @@ func HasExport(root string) bool {
 type staticExport struct {
 	out    string
 	public string
+	// dev, when set, answers what the export would (the app's pages and assets)
+	// from a Vite dev server. Uploads stay live files and /api stays 404 here.
+	dev http.Handler
 }
 
 func newStaticExport(root string) *staticExport {
@@ -60,6 +63,14 @@ func (s *staticExport) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Development: the pages and modules come from the Vite dev server (hot
+	// reload), before rule 1: Vite serves /node_modules/.vite/deps/... and other
+	// dot paths. Uploads stay live files (rule 2).
+	if s.dev != nil && !strings.HasPrefix(p, "/file-input-cache/") {
+		s.dev.ServeHTTP(w, r)
 		return
 	}
 

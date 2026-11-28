@@ -60,6 +60,8 @@ The launcher starts the React UI by itself, so `frontend/`'s dev server has an A
 
 The React UI is served by the router on the public port (`server_port` of `config.json`, 7770): `/` is the UI and its API, the Gradio pages are under `/gradio-legacy/` (Gradio gets `GRADIO_ROOT_PATH`, the router strips the prefix), extensions stay at `/<package>`. The old layout, the React UI on its own port 3000 (`REACT_UI_PORT`) and Gradio at `/`, is still there with `TTS_FRONT_IN_ROUTER=0`.
 
+With `air` (it runs the launcher with `-dev`) the React UI on http://127.0.0.1:7770/ shows what `npm run dev` in `frontend/` serves (Vite on 3002, `TTS_FRONTEND_DEV_URL` to move it), with hot reload, while its API, uploads and the Gradio pages at `/gradio-legacy/` stay the server's. No `frontend/out` is needed. Opening Vite's own http://127.0.0.1:3002/ works too, its `/api` goes to 7770.
+
 `dev.ps1` exists because an old Go earlier on PATH, or a stale `GOROOT=C:\Go` in a session that started before the Go upgrade, fails with "package cmp is not in std" and rewrites `go.mod`/`go.sum`; the script puts a matching Go first, resets `GOROOT` and sets `GOFLAGS=-mod=readonly`. On Linux/macOS run `cd core && air` with a current Go.
 
 `npm run dev` proxies `/api` to `LAUNCHER_URL` (default `http://127.0.0.1:7700`),

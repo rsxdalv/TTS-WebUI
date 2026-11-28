@@ -231,7 +231,10 @@ const RouteLinks = ({ routes }: { routes: Route[] }) => {
     routes.find(
       (r) => r.href.slice(1) === route.slice(0, route.lastIndexOf("/"))
     ) ||
-    routes.find((r) => r.href.slice(1) === route.slice(0, route.indexOf("/")));
+    routes.find((r) => r.href.slice(1) === route.slice(0, route.indexOf("/"))) ||
+    // A page listed in a section's submenu whose URL does not start with the
+    // section's (/engines, /extensions/huggingface_cache_manager under Tools).
+    routes.find((r) => r.subroutes?.some((s) => s.href === `/${route}`));
   const currentInnerRoute =
     currentTopRoute?.subroutes?.find((r) => r.href.slice(1) === route) ||
     currentTopRoute?.subroutes?.find(

@@ -95,6 +95,10 @@ export const routes: Route[] = [
         href: "/text-to-speech/vallex",
         text: "Vall-E-X",
       },
+      {
+        href: "/text-to-speech/minimax-tts",
+        text: "MiniMax Cloud TTS",
+      },
     ],
   },
   {
@@ -170,10 +174,6 @@ export const routes: Route[] = [
   {
     href: "/openai",
     text: "OpenAI",
-  },
-  {
-    href: "/minimax",
-    text: "MiniMax Cloud TTS",
   },
   {
     href: "/onnx",

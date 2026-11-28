@@ -3,6 +3,7 @@ import Link from "@/shims/link";
 import { useRouter } from "@/shims/router";
 import { ExternalLinkIcon } from "lucide-react";
 import { RouteCommands } from "./RouteCommands";
+import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "../lib/utils";
 import {
   HostStatus,
@@ -217,7 +218,7 @@ export const routes: Route[] = [
 ];
 
 const RouteList = ({ children }: { children: React.ReactNode }) => (
-  <div className="flex gap-4 items-center justify-center w-full p-2 bg-white rounded shadow-sm">
+  <div className="flex gap-4 items-center justify-center w-full p-2 bg-white dark:bg-gray-900 rounded shadow-sm">
     {children}
   </div>
 );
@@ -364,7 +365,7 @@ export const Header = ({}) => {
   return (
     <>
       <div className="flex items-center w-full pb-1">
-        <h1 className="text-3xl font-bold text-start w-full text-gray-900">
+        <h1 className="text-3xl font-bold text-start w-full text-gray-900 dark:text-gray-100">
           TTS WebUI
         </h1>
         <div className="mr-2 relative w-96 flex-shrink-0 h-12 z-10">
@@ -387,6 +388,8 @@ export const Header = ({}) => {
         >
           Feedback / Bug reports
         </a>
+        &nbsp; &nbsp;
+        <ThemeToggle />
       </div>
       <RouteLinks routes={menuRoutes} />
       {noHost && host.kind === "known" && (

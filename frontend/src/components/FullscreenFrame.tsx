@@ -1,5 +1,6 @@
 import React from "react";
 import { Button } from "./ui/button";
+import { useTheme } from "@/lib/theme";
 
 /**
  * An iframe with a Fullscreen button. Fullscreen covers the window; "Back"
@@ -19,6 +20,9 @@ export const FullscreenFrame = ({
   padded?: boolean;
 }) => {
   const [full, setFull] = React.useState(false);
+  const { theme } = useTheme();
+  // Gradio takes its theme from this query parameter, so the frame follows the toggle, not the OS.
+  const themedSrc = src + (src.includes("?") ? "&" : "?") + "__theme=" + theme;
 
   React.useEffect(() => {
     if (!full) return;
@@ -29,7 +33,7 @@ export const FullscreenFrame = ({
 
   // The container carries the colour of the embedded page (white / #0f0f0f; the frontend has no dark class, so it follows the OS scheme like the embedded page)
   // and, for pages embedded without padding of their own, a left pad.
-  const bg = "bg-white [@media(prefers-color-scheme:dark)]:bg-[#0f0f0f]";
+  const bg = "bg-white dark:bg-[#0f0f0f]";
   return (
     <div
       className={
@@ -52,7 +56,7 @@ export const FullscreenFrame = ({
       <div className={`flex ${full ? "min-h-0 flex-1" : ""} ${padded ? "pl-4" : ""}`}>
         <iframe
           title={title}
-          src={src}
+          src={themedSrc}
           className={full ? "h-full w-full flex-1" : "w-full"}
           style={full ? undefined : { height: "85vh" }}
         />

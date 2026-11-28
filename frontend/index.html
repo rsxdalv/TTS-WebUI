@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" href="/favicon.ico" />
     <title>TTS WebUI</title>
+    <script>
+      // Apply the saved theme before the first paint (see src/lib/theme.ts).
+      try {
+        if (localStorage.getItem("tts-webui-theme") === "dark") {
+          document.documentElement.classList.add("dark");
+          document.documentElement.style.colorScheme = "dark";
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

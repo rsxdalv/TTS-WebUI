@@ -164,7 +164,7 @@ export const ExtensionHuggingFaceCacheManager = ({}) => {
 
   return (
     <div className="flex flex-col gap-2 w-full justify-center">
-      <h1 className="text-xl text-gray-900">HuggingFace Cache</h1>
+      <h1 className="text-xl text-gray-900 dark:text-gray-100">HuggingFace Cache</h1>
       <p>
         The following table shows all of the 'revisions' that have been cached
         by HuggingFace for all of the projects that you have used in the past.
@@ -227,13 +227,13 @@ export const ExtensionHuggingFaceCacheManager = ({}) => {
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200">
               {rows.map((row) => (
                 <tr key={row["commit_hash"]}>
                   {finalHeaderSelection.map((header, index) => (
                     <td
                       key={index}
-                      className="px-6 py-4 whitespace-no-wrap text-sm leading-5 font-medium text-gray-900"
+                      className="px-6 py-4 whitespace-no-wrap text-sm leading-5 font-medium text-gray-900 dark:text-gray-100"
                     >
                       {cellRenderer(header, row)}
                     </td>

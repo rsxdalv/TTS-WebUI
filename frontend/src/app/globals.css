@@ -9,12 +9,11 @@
   --background-end-rgb: 255, 255, 255;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0; */
-  }
+/* The theme toggle puts .dark on <html> (src/lib/theme.ts). */
+.dark {
+  --foreground-rgb: 243, 244, 246;
+  --background-start-rgb: 3, 7, 18;
+  --background-end-rgb: 17, 24, 39;
 }
 
 body {

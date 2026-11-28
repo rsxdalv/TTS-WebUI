@@ -14,12 +14,22 @@ export const FullscreenFrame = ({
   title,
   src,
   padded,
+  full: controlledFull,
+  onFullChange,
+  hideToolbar,
 }: {
   title: string;
   src: string;
   padded?: boolean;
+  /** Controlled: the page owns the state and puts its own Fullscreen button elsewhere. */
+  full?: boolean;
+  onFullChange?: (full: boolean) => void;
+  /** No toolbar row outside fullscreen (the page has its own Fullscreen button). */
+  hideToolbar?: boolean;
 }) => {
-  const [full, setFull] = React.useState(false);
+  const [ownFull, setOwnFull] = React.useState(false);
+  const full = controlledFull ?? ownFull;
+  const setFull = (v: boolean) => (onFullChange ? onFullChange(v) : setOwnFull(v));
   const { theme } = useTheme();
   // Gradio takes its theme from this query parameter, so the frame follows the toggle, not the OS.
   const themedSrc = src + (src.includes("?") ? "&" : "?") + "__theme=" + theme;
@@ -42,17 +52,19 @@ export const FullscreenFrame = ({
           : `flex w-full flex-col ${bg}`
       }
     >
-      <div className={full ? "flex items-center gap-3 border-b p-2" : "flex justify-end p-2"}>
-        {full && <span className="font-medium">{title}</span>}
-        <Button
-          variant="outline"
-          size="sm"
-          className={full ? "ml-auto" : undefined}
-          onClick={() => setFull(!full)}
-        >
-          {full ? "← Back (Esc)" : "Fullscreen"}
-        </Button>
-      </div>
+      {(full || !hideToolbar) && (
+        <div className={full ? "flex items-center gap-3 border-b p-2" : "flex justify-end p-2"}>
+          {full && <span className="font-medium">{title}</span>}
+          <Button
+            variant="outline"
+            size="sm"
+            className={full ? "ml-auto" : undefined}
+            onClick={() => setFull(!full)}
+          >
+            {full ? "← Back (Esc)" : "Fullscreen"}
+          </Button>
+        </div>
+      )}
       <div className={`flex ${full ? "min-h-0 flex-1" : ""} ${padded ? "pl-4" : ""}`}>
         <iframe
           title={title}

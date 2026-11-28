@@ -29,7 +29,8 @@ export const ExtensionManager = ({
   enabled = true,
   autostart = false,
   actions = {},
-  defaultOpen = true,
+  defaultOpen,
+  trailing,
 }: {
   name: string;
   installed: boolean;
@@ -38,9 +39,16 @@ export const ExtensionManager = ({
   enabled?: boolean;
   autostart?: boolean;
   actions?: ExtensionActions;
+  /** Open at first; when not given, open unless the extension is installed and running. */
   defaultOpen?: boolean;
+  /** Shown at the right of the header (the page's Fullscreen button). */
+  trailing?: React.ReactNode;
 }) => {
-  const [open, setOpen] = React.useState(defaultOpen);
+  const [toggled, setToggled] = React.useState<boolean | null>(null);
+  const open = toggled ?? defaultOpen ?? !(installed && (running || starting));
+  const setOpen = (v: boolean) => setToggled(v);
+  const status = running ? "Running" : starting ? "Starting…" : installed ? "Stopped" : "Not installed";
+  const dot = running ? "bg-green-500" : starting ? "bg-amber-500" : "bg-gray-400";
   const [busy, setBusy] = React.useState("");
   const [lines, setLines] = React.useState<string[]>([]);
   const [enabledNow, setEnabledNow] = React.useState(enabled);
@@ -72,15 +80,22 @@ export const ExtensionManager = ({
 
   return (
     <div className="w-full rounded-md border bg-card text-card-foreground p-3 flex flex-col gap-3">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between text-left font-medium"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        <span>Manage {name} Extension</span>
-        <span aria-hidden>{open ? "▼" : "◀"}</span>
-      </button>
+      <div className="flex w-full items-center gap-3">
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center gap-3 text-left font-medium"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          <span aria-hidden>{open ? "▼" : "▶"}</span>
+          <span className="truncate">Manage {name} Extension</span>
+          <span className="flex items-center gap-1.5 text-sm font-normal text-muted-foreground">
+            <span aria-hidden className={`inline-block h-2 w-2 rounded-full ${dot}`} />
+            {status}
+          </span>
+        </button>
+        {trailing}
+      </div>
 
       {open && (
         <>
@@ -142,20 +157,19 @@ export const ExtensionManager = ({
             >
               Start Extension
             </Button>
-            <span className="text-sm text-muted-foreground">
-              {running ? "Running" : starting ? "Starting…" : installed ? "Stopped" : "Not installed"}
-            </span>
           </div>
 
-          <div>
-            <div className="mb-1 text-sm font-medium">Console</div>
-            <pre
-              ref={consoleRef}
-              className="h-32 overflow-auto rounded-md border bg-muted text-foreground p-2 text-xs"
-            >
-              {lines.join("\n")}
-            </pre>
-          </div>
+          {lines.length > 0 && (
+            <div>
+              <div className="mb-1 text-sm font-medium">Console</div>
+              <pre
+                ref={consoleRef}
+                className="h-32 overflow-auto rounded-md border bg-muted text-foreground p-2 text-xs"
+              >
+                {lines.join("\n")}
+              </pre>
+            </div>
+          )}
         </>
       )}
     </div>

@@ -40,6 +40,7 @@ const EnginePage = ({ pkg: fixedPkg, name: fixedName }: { pkg?: string; name?: s
   const base = `/api/go-data/engines/${encodeURIComponent(pkg)}`;
   const [info, setInfo] = React.useState<ExtState | null>(null);
   const [stoppedByUser, setStoppedByUser] = React.useState(false);
+  const [full, setFull] = React.useState(false);
 
   const refreshInfo = React.useCallback(async () => {
     try {
@@ -130,21 +131,24 @@ const EnginePage = ({ pkg: fixedPkg, name: fixedName }: { pkg?: string; name?: s
       ? `${window.location.protocol}//${window.location.hostname}:${answer.public_port}${answer.path}`
       : "";
 
+  // Not installed is a state of the panel (Install button, "Not installed"), not an error.
+  const notInstalled = info ? !info.installed : false;
+  const failed = answer?.state === "failed" || (answer?.state === "exited" && !stoppedByUser);
+
   return (
-    <Template title={answer?.name || "Engine"}>
-      <div className="flex w-full flex-col gap-3">
-        {error && <div className="p-4 text-red-600">{error}</div>}
-        {!error && answer && answer.state !== "ready" && (
-          <div className="p-4">
-            {(answer.state === "stopped" || answer.state === "exited") && stoppedByUser
-              ? "The extension is stopped. Press Start Extension."
-              : answer.state === "starting" || answer.state === "stopped"
-                ? "Starting the engine. The first start can take a minute."
-                : `The engine is ${answer.state}. ${answer.error ?? ""}`}
+    <Template title={fixedName ?? answer?.name ?? "Extension"}>
+      <div className="flex w-full flex-col gap-2">
+        {error && !notInstalled && <div className="p-4 text-red-600">{error}</div>}
+        {!notInstalled && answer?.state === "starting" && (
+          <div className="px-1 text-sm text-muted-foreground">
+            Starting the extension. The first start can take a minute.
           </div>
         )}
-        {(error || answer?.state === "failed" || (answer?.state === "exited" && !stoppedByUser)) && (
-          <div className="p-4">
+        {!notInstalled && failed && (
+          <div className="p-4">The extension {answer?.state}. {answer?.error ?? ""}</div>
+        )}
+        {!notInstalled && (error || failed) && (
+          <div className="px-4 pb-2">
             <Button onClick={() => setAttempt(attempt + 1)}>Try again</Button>
           </div>
         )}
@@ -154,12 +158,28 @@ const EnginePage = ({ pkg: fixedPkg, name: fixedName }: { pkg?: string; name?: s
             installed={info ? info.installed : true}
             running={answer?.state === "ready"}
             starting={answer?.state === "starting"}
+            trailing={
+              src ? (
+                <Button variant="outline" size="sm" onClick={() => setFull(true)}>
+                  Fullscreen
+                </Button>
+              ) : undefined
+            }
             enabled={info?.enabled ?? true}
             autostart={info?.autostart ?? false}
             actions={actions}
           />
         )}
-        {src && <FullscreenFrame title={answer?.name || pkg} src={src} padded />}
+        {src && (
+          <FullscreenFrame
+            title={answer?.name || pkg}
+            src={src}
+            padded
+            full={full}
+            onFullChange={setFull}
+            hideToolbar
+          />
+        )}
       </div>
     </Template>
   );

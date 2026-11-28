@@ -75,7 +75,7 @@ const EnginePage = ({ pkg: fixedPkg }: { pkg?: string }) => {
             <Button onClick={() => setAttempt(attempt + 1)}>Try again</Button>
           </div>
         )}
-        {src && <FullscreenFrame title={answer?.name || pkg} src={src} />}
+        {src && <FullscreenFrame title={answer?.name || pkg} src={src} padded />}
       </div>
     </Template>
   );

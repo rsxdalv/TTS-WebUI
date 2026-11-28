@@ -23,6 +23,7 @@ func runLaunch(ctx context.Context, args []string) error {
 	start := fs.Bool("start", false, "start the app as soon as the launcher is up, without opening the launcher page (Docker, Colab, start scripts)")
 	systemPython := fs.Bool("system-python", false, "run python and npm from PATH, not the installer's micromamba env (Docker, Colab)")
 	noReact := fs.Bool("no-react", false, "leave the React UI out (no build, no front on port 3000)")
+	noAutostart := fs.Bool("no-autostart", false, "do not start the React UI when the launcher starts (for development; start it from the launcher page)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -88,6 +89,16 @@ func runLaunch(ctx context.Context, args []string) error {
 		go func() {
 			if err := l.StartApp(ctx, os.Stdout); err != nil {
 				slog.Error("starting the app failed", "err", err)
+			}
+		}()
+	}
+
+	// The frontend starts with the launcher; Gradio waits for its button. --start
+	// has already started both, and --no-react has no frontend.
+	if !*start && !*noReact && !*noAutostart {
+		go func() {
+			if err := l.StartFrontend(ctx); err != nil {
+				slog.Error("starting the frontend failed (use Launch frontend on the launcher page to see why)", "err", err)
 			}
 		}()
 	}

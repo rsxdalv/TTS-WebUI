@@ -56,6 +56,8 @@ pwsh -NoProfile -File core/scripts/dev.ps1                    # finds a Go new e
 cd core/ui && npm run dev                    # open http://127.0.0.1:5173/
 ```
 
+The launcher starts the React UI (port 3000, or `REACT_UI_PORT`) by itself, so `frontend/`'s dev server has an API right away; Gradio waits for its button. `--no-autostart` turns that off, `--start` starts both, `--no-react` leaves the React UI out.
+
 `dev.ps1` exists because an old Go earlier on PATH, or a stale `GOROOT=C:\Go` in a session that started before the Go upgrade, fails with "package cmp is not in std" and rewrites `go.mod`/`go.sum`; the script puts a matching Go first, resets `GOROOT` and sets `GOFLAGS=-mod=readonly`. On Linux/macOS run `cd core && air` with a current Go.
 
 `npm run dev` proxies `/api` to `LAUNCHER_URL` (default `http://127.0.0.1:7700`),

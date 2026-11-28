@@ -98,6 +98,16 @@ func (l *Launcher) StartApp(ctx context.Context, echo io.Writer) error {
 	return nil
 }
 
+// StartFrontend starts the React UI alone, as the launcher does when it starts.
+// An app that is already running is not an error.
+func (l *Launcher) StartFrontend(ctx context.Context) error {
+	err := l.sup.StartParts(ctx, supervise.NameReact)
+	if err != nil && err.Error() == "app already running" {
+		return nil
+	}
+	return err
+}
+
 // Shutdown stops the app and any running install step, for a launcher that
 // is exiting (Ctrl+C, SIGTERM, SIGHUP). It returns when they are gone.
 func (l *Launcher) Shutdown() {

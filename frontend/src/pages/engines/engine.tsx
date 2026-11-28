@@ -61,17 +61,17 @@ const EnginePage = ({ pkg: fixedPkg }: { pkg?: string }) => {
 
   return (
     <Template title={answer?.name || "Engine"}>
-      <div className="flex w-full flex-col gap-3 p-4">
-        {error && <div className="text-red-600">{error}</div>}
+      <div className="flex w-full flex-col gap-3">
+        {error && <div className="p-4 text-red-600">{error}</div>}
         {!error && answer && answer.state !== "ready" && (
-          <div>
+          <div className="p-4">
             {answer.state === "starting" || answer.state === "stopped"
               ? "Starting the engine. The first start can take a minute."
               : `The engine is ${answer.state}. ${answer.error ?? ""}`}
           </div>
         )}
         {(error || answer?.state === "failed" || answer?.state === "exited") && (
-          <div>
+          <div className="p-4">
             <Button onClick={() => setAttempt(attempt + 1)}>Try again</Button>
           </div>
         )}

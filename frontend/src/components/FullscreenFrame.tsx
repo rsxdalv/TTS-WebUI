@@ -6,8 +6,8 @@ import { Button } from "./ui/button";
  * (or Esc, when this page has focus) returns. It is one element whose classes
  * change, so the frame stays mounted and the page inside keeps its state.
  *
- * padded: the embedded page has no padding of its own (a single Gradio tab is
- * embedded without it), so fullscreen puts it back around the frame.
+ * padded: the embedded page has no padding of its own (a single Gradio tab or
+ * an extension page), so the container pads it on the left.
  */
 export const FullscreenFrame = ({
   title,
@@ -27,15 +27,18 @@ export const FullscreenFrame = ({
     return () => window.removeEventListener("keydown", onKey);
   }, [full]);
 
+  // The container carries the colour of the embedded page (white / #0f0f0f; the frontend has no dark class, so it follows the OS scheme like the embedded page)
+  // and, for pages embedded without padding of their own, a left pad.
+  const bg = "bg-white [@media(prefers-color-scheme:dark)]:bg-[#0f0f0f]";
   return (
     <div
       className={
         full
-          ? "fixed inset-0 z-[100] flex flex-col bg-white dark:bg-gray-950"
-          : "flex w-full flex-col gap-2"
+          ? `fixed inset-0 z-[100] flex flex-col ${bg}`
+          : `flex w-full flex-col ${bg}`
       }
     >
-      <div className={full ? "flex items-center gap-3 border-b p-2" : "flex justify-end"}>
+      <div className={full ? "flex items-center gap-3 border-b p-2" : "flex justify-end p-2"}>
         {full && <span className="font-medium">{title}</span>}
         <Button
           variant="outline"
@@ -46,11 +49,11 @@ export const FullscreenFrame = ({
           {full ? "← Back (Esc)" : "Fullscreen"}
         </Button>
       </div>
-      <div className={full ? `flex min-h-0 flex-1 ${padded ? "p-4" : ""}` : "contents"}>
+      <div className={`flex ${full ? "min-h-0 flex-1" : ""} ${padded ? "pl-4" : ""}`}>
         <iframe
           title={title}
           src={src}
-          className={full ? "h-full w-full flex-1" : "w-full border rounded"}
+          className={full ? "h-full w-full flex-1" : "w-full"}
           style={full ? undefined : { height: "85vh" }}
         />
       </div>

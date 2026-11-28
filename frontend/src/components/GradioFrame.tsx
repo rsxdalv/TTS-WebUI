@@ -75,9 +75,9 @@ export const GradioFrame = ({
 
   return (
     <Template title={title}>
-      <div className="flex w-full flex-col gap-3 p-4">
+      <div className="flex w-full flex-col gap-3">
         {error && (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 p-4">
             <div className="text-red-600">{error}</div>
             <div>
               Start it from the <LauncherExtensionsLink text="launcher" /> (Launch
@@ -95,12 +95,12 @@ export const GradioFrame = ({
             </div>
           </div>
         )}
-        {!error && phase === "loading" && <div>Looking for Gradio…</div>}
+        {!error && phase === "loading" && <div className="p-4">Looking for Gradio…</div>}
         {phase === "starting" && (
-          <div>Gradio is starting. The first start can take a minute.</div>
+          <div className="p-4">Gradio is starting. The first start can take a minute.</div>
         )}
         {phase === "down" && (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 p-4">
             <div>
               Gradio is not running on port {port}. Start the app from the{" "}
               <LauncherExtensionsLink text="launcher" />, then try again.

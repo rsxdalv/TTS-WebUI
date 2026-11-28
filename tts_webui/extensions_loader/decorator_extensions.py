@@ -8,17 +8,11 @@ from typing import Literal
 import gradio as gr
 
 from tts_webui.core_bridge import bridge
-from tts_webui.extensions_loader.list_tab import extension_list_ui
 
 # Set by the Go core for extension processes, which have no control API (and no
 # token): the resolved decorators of both classes, {"outer": ..., "inner": ...}.
 # Same name as extcatalog.DecoratorsEnv.
 DECORATORS_ENV = "TTS_WEBUI_DECORATORS"
-
-
-def extension_decorator_list_tab():
-    with gr.Tab("Decorator Extensions List"):
-        extension_list_ui("decorator")
 
 
 def _get_pretty_time(elapsed):

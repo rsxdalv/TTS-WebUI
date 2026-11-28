@@ -3,7 +3,6 @@ import importlib
 import gradio as gr
 
 from tts_webui.core_bridge import bridge
-from tts_webui.extensions_loader.list_tab import extension_list_ui
 from tts_webui.extensions_loader.LoadingIndicator import LoadingIndicator
 from tts_webui.extensions_loader.setup_proxy_extension import setup_proxy_extension
 from tts_webui.utils.generic_error_tab_advanced import generic_error_tab_advanced
@@ -278,6 +277,3 @@ def handle_extension_class(extension_class, extensions=None):
     for ext in extensions:
         _handle_package(ext)
 
-
-def extension_list_tab():
-    extension_list_ui("interface")

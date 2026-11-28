@@ -271,7 +271,7 @@ It has no token, Host check or Origin check. This stays true whenever the proxy 
 | Host | The request must have host `127.0.0.1`, `localhost` or `[::1]` with port 3000. Otherwise `400` |
 | Origin | Checked on every `/api/*` request and every request that is not `GET` or `HEAD`. If an `Origin` header is present it must be `http://127.0.0.1:3000`, `http://localhost:3000` or `http://[::1]:3000`. Otherwise `403`. `Origin: null` is refused |
 | Token | None. Pages are served by Next and have no way to receive the launcher's token |
-| Launcher API | Never exposed on port 3000. Port 7700 keeps its token. A claim must not start processes or change the install, with one exception (D31): `POST /api/go-data/engines/{pkg}/open` starts an installed own-venv engine named in the catalog, and nothing else. The human accepted this exception on 2026-11-24 (LAB-44) |
+| Launcher API | Never exposed on port 3000. Port 7700 keeps its token. A claim must not start processes or change the install, with one exception (D31): `POST /api/go-data/engines/{pkg}/open` starts an installed own-venv engine named in the catalog, and nothing else. The human accepted this exception on 2026-11-24 (LAB-44). A second one (2026-11-28, LAB-59): `POST /api/go-data/extensions/install` and `/uninstall` with `{"package_name"}` only, for the Extension Lists page. The control API looks the name up in its own catalog, refuses built-ins, takes no requirements or GPU choice from the caller and runs one install at a time; the route needs `Content-Type: application/json` and a loopback `Host`, so LAN mode cannot use it. install-entry, add and check-dependencies stay off this port |
 
 **LAN mode** (`TTS_GO_PROXY_LISTEN=lan`, opt-in, D20) changes only these rules:
 

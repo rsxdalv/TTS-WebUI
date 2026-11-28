@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -53,6 +54,31 @@ func get(t *testing.T, ts *httptest.Server, path string, headers map[string]stri
 		t.Fatalf("Do: %v", err)
 	}
 	return resp
+}
+
+// Health names each start of the server, so a page can tell a restart; the
+// name must not give away the token.
+func TestHealth_BootIDDiffersAndIsNotTheToken(t *testing.T) {
+	boot := func() (string, string) {
+		srv, ts := newTestServer(t)
+		resp := get(t, ts, "/api/health", nil)
+		defer resp.Body.Close()
+		var h struct {
+			Boot string `json:"boot"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&h); err != nil {
+			t.Fatal(err)
+		}
+		return h.Boot, srv.Token()
+	}
+	b1, tok1 := boot()
+	b2, _ := boot()
+	if b1 == "" || b1 == b2 {
+		t.Fatalf("boot ids %q and %q should be set and differ", b1, b2)
+	}
+	if strings.Contains(tok1, b1) || strings.Contains(b1, tok1[:8]) {
+		t.Fatal("the boot id is derived from the token")
+	}
 }
 
 func TestHealth_NoToken(t *testing.T) {

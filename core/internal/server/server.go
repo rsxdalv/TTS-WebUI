@@ -38,6 +38,7 @@ func init() {
 type Server struct {
 	port  int
 	token string
+	boot  string // names this start of the server; not a secret (the page compares it across a restart)
 	mux   *http.ServeMux
 }
 
@@ -48,9 +49,16 @@ func New(port int) (*Server, error) {
 	if _, err := rand.Read(raw); err != nil {
 		return nil, fmt.Errorf("generating token: %w", err)
 	}
+	// The boot id is separate randomness: it is public (health), the token is not.
+	bootRaw := make([]byte, 8)
+	if _, err := rand.Read(bootRaw); err != nil {
+		return nil, fmt.Errorf("generating boot id: %w", err)
+	}
+	bootID := hex.EncodeToString(bootRaw)
 	s := &Server{
 		port:  port,
 		token: hex.EncodeToString(raw),
+		boot:  bootID,
 		mux:   http.NewServeMux(),
 	}
 	s.routes()
@@ -127,9 +135,10 @@ func (s *Server) routes() {
 		cwd, _ := os.Getwd()
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"ok":  true,
-			"os":  runtime.GOOS,
-			"cwd": cwd,
+			"ok":   true,
+			"os":   runtime.GOOS,
+			"cwd":  cwd,
+			"boot": s.boot,
 		})
 	})
 

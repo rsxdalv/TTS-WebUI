@@ -6,12 +6,14 @@ import { client } from "./client";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function healthy(): Promise<boolean> {
+// bootOf is the id of this start of the launcher ("" when it does not answer).
+async function bootOf(): Promise<string> {
   try {
     const r = await fetch("/api/health", { cache: "no-store" });
-    return r.ok;
+    if (!r.ok) return "";
+    return ((await r.json()) as { boot?: string }).boot ?? "";
   } catch {
-    return false;
+    return "";
   }
 }
 
@@ -22,6 +24,7 @@ export function RestartCard({ detail }: { detail?: string }) {
   async function restart() {
     setBusy(true);
     setError(null);
+    const before = await bootOf();
     try {
       const r = await client("/api/launcher/restart", { method: "POST" });
       if (!r.ok) {
@@ -34,15 +37,14 @@ export function RestartCard({ detail }: { detail?: string }) {
       setBusy(false);
       return;
     }
-    // Wait for the old launcher to go away and the new one to answer, then
-    // reload so the page gets the new token and the new UI. After 30 s reload anyway.
+    // Wait until a launcher with another boot id answers (the restart can be
+    // faster than any poll sees it go down), then reload so the page gets the new
+    // token and the new UI. After 30 s reload anyway.
     const until = Date.now() + 30_000;
-    let wentDown = false;
     while (Date.now() < until) {
-      await sleep(700);
-      const up = await healthy();
-      if (!up) wentDown = true;
-      else if (wentDown) break;
+      await sleep(500);
+      const now = await bootOf();
+      if (now && now !== before) break;
     }
     window.location.reload();
   }

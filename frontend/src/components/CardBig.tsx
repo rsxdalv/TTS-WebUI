@@ -64,7 +64,7 @@ export const CardBig = ({
     setLocalVotes({ ...localVotes, [download]: newVote });
   };
   return (
-    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-900 rounded shadow-lg">
+    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-800 rounded shadow-lg">
       <div className="flex flex-col gap-y-4 w-full h-full justify-between">
         <div className="flex items-center w-full gap-x-2">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{name}</h1>
@@ -118,7 +118,7 @@ export const CardGeneration = ({
   const maxLength = isJapanese ? 30 : 50;
   // const maxLength = 100000;
   return (
-    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-900 rounded shadow-lg">
+    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-800 rounded shadow-lg">
       <div className="flex flex-col gap-y-4 w-full h-full justify-between">
         <div className="flex w-full">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -333,7 +333,7 @@ export const HistoryCard = ({
   };
 
   return (
-    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-900 rounded shadow-lg">
+    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-800 rounded shadow-lg">
       <div className="flex flex-col gap-y-4 w-full h-full">
         <div className="flex w-full">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -446,7 +446,7 @@ export const CardVoiceNpz = ({ generation }: { generation: NPZ }) => {
     .replaceAll("_", " ")
     .replaceAll("-", " ");
   return (
-    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-900 rounded shadow-lg">
+    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-800 rounded shadow-lg">
       {image && (
         <img
           className="w-24 h-24 rounded select-none"
@@ -521,7 +521,7 @@ export const SectionVoice = ({
   const title = name || promptText;
   // const maxLength = 100000;
   return (
-    <div className="flex flex-col items-center justify-start w-full py-4 px-6 bg-white dark:bg-gray-900 rounded shadow-lg">
+    <div className="flex flex-col items-center justify-start w-full py-4 px-6 bg-white dark:bg-gray-800 rounded shadow-lg">
       <div className="flex flex-col gap-y-4 w-full h-full justify-between">
         <div className="flex w-full">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -562,7 +562,7 @@ export const SectionVoice = ({
 
 export const CardEmpty = ({ title, link }: { title: string; link: string }) => {
   return (
-    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-900 rounded shadow-lg">
+    <div className="flex flex-col items-center justify-start w-full max-w-md py-4 px-6 bg-white dark:bg-gray-800 rounded shadow-lg">
       <div className="flex flex-col gap-y-4 w-full h-full justify-between">
         <div className="flex items-center w-full gap-x-2">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{title}</h1>

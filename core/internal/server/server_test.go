@@ -384,10 +384,11 @@ func TestClose_DropsKeptAliveConnections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Read the address before Serve starts: Serve records the port too (-race).
+	// Host must be the server's own: Addr() is 127.0.0.1:<port>.
+	url := "http://" + srv.Addr() + "/api/health"
 	go func() { _ = srv.Serve(ln) }()
 	client := &http.Client{}
-	url := "http://" + srv.Addr() + "/api/health"
-	// Host must be the server's own: Addr() is 127.0.0.1:<port>.
 	resp, err := client.Get(url)
 	if err != nil {
 		t.Fatal(err)

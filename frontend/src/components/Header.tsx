@@ -404,7 +404,7 @@ export const Header = ({}) => {
         <a
           href="https://github.com/rsxdalv/tts-webui"
           target="_blank"
-          className="text-gray-500 hover:underline"
+          className="text-gray-600 hover:underline"
         >
           GitHub
         </a>
@@ -412,7 +412,7 @@ export const Header = ({}) => {
         <a
           href="https://forms.gle/2L62owhBsGFzdFBC8"
           target="_blank"
-          className="text-gray-500 hover:underline whitespace-pre"
+          className="text-gray-600 hover:underline whitespace-pre"
         >
           Feedback / Bug reports
         </a>

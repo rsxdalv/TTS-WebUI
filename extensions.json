@@ -14,20 +14,6 @@
                 "website": "https://github.com/rsxdalv/tts-webui-extension-catalog",
                 "extension_website": "",
                 "extension_platform_version": "0.0.1"
-            },
-            {
-                "package_name": "extensions.builtin.extension_custom_extensions_installer",
-                "name": "Custom Extensions Installer",
-                "requirements": "builtin",
-                "description": "Add external extension entries via JSON and install them without restarts. Sync and apply the public extensions catalog via Git.",
-                "extension_type": "interface",
-                "extension_class": "extensions",
-                "author": "rsxdalv",
-                "extension_author": "rsxdalv",
-                "license": "MIT",
-                "website": "https://github.com/rsxdalv/tts-generation-webui",
-                "extension_website": "",
-                "extension_platform_version": "0.0.1"
             }
         ],
         "settings": [

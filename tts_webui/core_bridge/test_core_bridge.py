@@ -536,10 +536,7 @@ class ExtCatalogTest(unittest.TestCase):
             },
             ("POST", "add"): {"status": "Saved | Added: " + payload, "json": "{}"},
         }
-        for mod in (
-            "extensions.builtin.extension_custom_extensions_installer.main",
-            "extensions.builtin.extension_extension_catalog.main",
-        ):
+        for mod in ("extensions.builtin.extension_extension_catalog.main",):
             m = importlib.import_module(mod)
             with mock.patch.dict(ANSWERS, answers):
                 info = m._on_parse("{}")[2]
@@ -554,26 +551,6 @@ class ExtCatalogTest(unittest.TestCase):
         self.assertIn("no installable extension", str(cm.exception))
         with self.assertRaises(TypeError):
             list(bridge.extcatalog.install())
-
-    def test_custom_installer_handlers(self):
-        import importlib
-
-        m = importlib.import_module(
-            "extensions.builtin.extension_custom_extensions_installer.main"
-        )
-        entries, preview, info = m._on_parse("{}")
-        self.assertEqual(
-            (entries, info), ([{"package_name": "n.one"}], "Parsed entries: 1")
-        )
-        self.assertIsInstance(preview, gr.Markdown)
-        self.assertEqual(m._add_to_external(entries)[1], "{}")
-        out = list(
-            m._install_selected([{"package_name": "a.one"}, {"package_name": "a.one"}])
-        )
-        self.assertEqual(out, ["Collecting x", "Collecting x<br />Installed x"] * 2)
-        self.assertEqual(
-            list(m._install_selected([])), ["<i>Nothing selected to install.</i>"]
-        )
 
 
 class ExtensionCatalogTabTest(unittest.TestCase):

@@ -1,16 +1,9 @@
 import React from "react";
 import { Template } from "../../components/Template";
 import { Button } from "../../components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../../components/ui/dialog";
-import { LauncherExtensionsLink } from "../../components/LauncherExtensionsLink";
+import { ExtensionRunDialog } from "../../components/ExtensionRunDialog";
 import { errorText, goGetJson } from "../../functions/goData";
+import { Op, useExtensionRuns } from "../../functions/extensionOps";
 
 type Entry = {
   package_name?: string;
@@ -27,83 +20,11 @@ type Entry = {
 type State = { installed: boolean; version?: string; enabled: boolean; proxy?: string };
 
 type Kind = "interface" | "decorator";
-type Op = "install" | "uninstall";
-
-type Run = {
-  op: Op;
-  name: string;
-  proxy: string;
-  lines: string[];
-  step: string;
-  done: boolean;
-  ok: boolean;
-  needsGpu: boolean;
-};
 
 /** Built-in tabs are part of the host (as in interface_extensions._is_builtin_tab): no install or uninstall. */
 const isBuiltin = (e: Entry) =>
   e.requirements === "builtin" ||
   ((e.package_name ?? "").includes("builtin") && e.proxy !== "native");
-
-/**
- * Streams one install or uninstall (the control API answers NDJSON: {line},
- * {plan}, {step}, then {done, ok}). Only a package_name is sent; the Go side
- * looks it up in the catalog.
- */
-async function runOp(
-  op: Op,
-  packageName: string,
-  onUpdate: (patch: (r: Run) => Run) => void
-): Promise<void> {
-  const response = await fetch(`/api/go-data/extensions/${op}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ package_name: packageName }),
-  });
-  if (!response.ok || !response.body) {
-    const body = await response
-      .json()
-      .catch(() => ({} as { error?: string; needs?: string }));
-    onUpdate((r) => ({
-      ...r,
-      lines: [...r.lines, `Error: ${body.error ?? `HTTP ${response.status}`}`],
-      done: true,
-      ok: false,
-      needsGpu: response.status === 409 && body.needs === "gpu_choice",
-    }));
-    return;
-  }
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  const handle = (text: string) => {
-    if (!text.trim()) return;
-    const msg = JSON.parse(text);
-    if (typeof msg.line === "string") {
-      onUpdate((r) => ({ ...r, lines: [...r.lines, msg.line] }));
-    }
-    if (msg.step?.id) {
-      onUpdate((r) => ({ ...r, step: `${msg.step.id}: ${msg.step.state}` }));
-    }
-    if (msg.done) onUpdate((r) => ({ ...r, done: true, ok: !!msg.ok }));
-  };
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (value) buffer += decoder.decode(value, { stream: !done });
-    const parts = buffer.split("\n");
-    buffer = parts.pop() ?? "";
-    parts.forEach(handle);
-    if (done) {
-      handle(buffer);
-      break;
-    }
-  }
-  onUpdate((r) =>
-    r.done
-      ? r
-      : { ...r, done: true, ok: false, lines: [...r.lines, "The answer ended early."] }
-  );
-}
 
 /**
  * The extension lists (interface tabs and decorators) from the Go catalog, with
@@ -116,12 +37,6 @@ const ExtensionsPage = () => {
   const [states, setStates] = React.useState<Record<string, State>>({});
   const [filter, setFilter] = React.useState("");
   const [error, setError] = React.useState("");
-  const [run, setRun] = React.useState<Run | null>(null);
-  const logRef = React.useRef<HTMLPreElement>(null);
-  // The dialog keeps showing the last run while it fades out.
-  const lastRun = React.useRef<Run | null>(null);
-  if (run) lastRun.current = run;
-  const view = run ?? lastRun.current;
 
   const loadStates = React.useCallback(
     () =>
@@ -130,6 +45,7 @@ const ExtensionsPage = () => {
         .catch(() => undefined),
     [kind]
   );
+  const { run, view, busy, start, close } = useExtensionRuns(loadStates);
 
   React.useEffect(() => {
     setEntries(null);
@@ -141,35 +57,10 @@ const ExtensionsPage = () => {
     loadStates();
   }, [kind, loadStates]);
 
-  React.useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
-  }, [run?.lines.length]);
-
-  const start = async (e: Entry, op: Op) => {
+  const begin = (e: Entry, op: Op) => {
     const name = e.name || e.package_name || "";
     if (op === "uninstall" && !window.confirm(`Uninstall ${name}?`)) return;
-    setRun({
-      op,
-      name,
-      proxy: e.proxy ?? "",
-      lines: [],
-      step: "",
-      done: false,
-      ok: false,
-      needsGpu: false,
-    });
-    try {
-      await runOp(op, e.package_name ?? "", (patch) =>
-        setRun((r) => (r ? patch(r) : r))
-      );
-    } catch (err) {
-      setRun((r) =>
-        r
-          ? { ...r, lines: [...r.lines, `Error: ${errorText(err)}`], done: true, ok: false }
-          : r
-      );
-    }
-    loadStates();
+    start([{ op, name, package_name: e.package_name ?? "", proxy: e.proxy }]);
   };
 
   const f = filter.trim().toLowerCase();
@@ -179,7 +70,6 @@ const ExtensionsPage = () => {
       .toLowerCase()
       .includes(f)
   );
-  const busy = !!run && !run.done;
 
   const statusOf = (e: Entry) => {
     if (isBuiltin(e)) return "built in";
@@ -253,7 +143,7 @@ const ExtensionsPage = () => {
                           size="sm"
                           variant={s.installed ? "outline" : "default"}
                           disabled={busy}
-                          onClick={() => start(e, s.installed ? "uninstall" : "install")}
+                          onClick={() => begin(e, s.installed ? "uninstall" : "install")}
                         >
                           {s.installed ? "Uninstall" : "Install"}
                         </Button>
@@ -266,42 +156,7 @@ const ExtensionsPage = () => {
           </table>
         )}
       </div>
-
-      <Dialog open={!!run} onOpenChange={(open) => !open && run?.done && setRun(null)}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>
-              {view?.op === "install" ? "Installing" : "Uninstalling"} {view?.name}
-            </DialogTitle>
-            <DialogDescription>
-              {!view?.done
-                ? view?.step || "Working. Installs can take several minutes."
-                : view?.ok
-                  ? view?.proxy === "native"
-                    ? "Done."
-                    : "Done. Restart the app to load or unload it."
-                  : "It did not finish."}
-            </DialogDescription>
-          </DialogHeader>
-          <pre
-            ref={logRef}
-            className="max-h-[50vh] overflow-auto rounded bg-gray-100 p-2 text-xs dark:bg-gray-900"
-          >
-            {view?.lines.join("\n")}
-          </pre>
-          {view?.needsGpu && (
-            <p className="text-sm">
-              This install needs a GPU choice first. Make it on the{" "}
-              <LauncherExtensionsLink text="Extensions page of the launcher" />.
-            </p>
-          )}
-          <DialogFooter>
-            <Button disabled={!view?.done} onClick={() => setRun(null)}>
-              {view?.done ? "Close" : "Working…"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ExtensionRunDialog run={run} view={view} onClose={close} />
     </Template>
   );
 };

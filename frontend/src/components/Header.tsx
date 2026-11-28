@@ -209,6 +209,7 @@ export const routes: Route[] = [
       { href: "/tools/pip_list", text: "Installed Packages" },
       { href: "/tools/engines", text: "Engines" },
       { href: "/tools/extensions", text: "Extension Lists" },
+      { href: "/tools/custom-extensions", text: "Custom Extensions Installer" },
       { href: "/tools/log_viewer", text: "Log Viewer" },
       { href: "/tools/model_location", text: "Model Location" },
       { href: "/tools/server_settings", text: "Server Settings" },

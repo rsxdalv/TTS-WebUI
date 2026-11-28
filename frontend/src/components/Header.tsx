@@ -184,6 +184,11 @@ export const routes: Route[] = [
     text: "audio.cpp",
   },
   {
+    href: "/gradio",
+    text: "Gradio",
+    subroutes: [{ href: "/gradio/kokoro", text: "Kokoro TTS" }],
+  },
+  {
     href: "/tools",
     text: "Tools",
     subroutes: [

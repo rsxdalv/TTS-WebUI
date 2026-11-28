@@ -22,6 +22,7 @@ export type HostState =
 /** The paths of the pages that call the Gradio host. */
 const gradioPrefixes = [
   "/pipeline",
+  "/gradio",
   "/text-to-speech",
   "/audio-music-generation",
   "/audio-conversion",

@@ -38,6 +38,8 @@ const ToolsYouTube = lazy(() => import("./pages/tools/youtube_tutorials"));
 const OpenAIEndpoints = lazy(() => import("./pages/openai"));
 const AudioCppPage = lazy(() => import("./pages/audiocpp"));
 const OnnxEngines = lazy(() => import("./pages/onnx"));
+const GradioPage = lazy(() => import("./pages/gradio"));
+const GradioKokoroPage = lazy(() => import("./pages/gradio/kokoro"));
 const EnginesIndex = lazy(() => import("./pages/engines"));
 const EnginePage = lazy(() => import("./pages/engines/engine"));
 const ToolsLogViewer = lazy(() => import("./pages/tools/log_viewer"));
@@ -175,6 +177,8 @@ export const AppRoutes = () => (
       <Route path="/minimax" element={<MinimaxTts />} />
       <Route path="/audiocpp" element={<AudioCppPage />} />
       <Route path="/onnx" element={<OnnxEngines />} />
+      <Route path="/gradio" element={<GradioPage />} />
+      <Route path="/gradio/kokoro" element={<GradioKokoroPage />} />
       <Route path="/engines" element={<EnginesIndex />} />
       <Route path="/engine" element={<EnginePage />} />
       <Route path="/tools/extensions" element={<ToolsExtensions />} />

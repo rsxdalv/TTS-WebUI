@@ -6,12 +6,42 @@ from tts_webui.gradio.fix_gradio_tabs import fix_gradio_tabs
 from tts_webui.gradio.get_theme import get_theme
 
 
+# The React UI shows the Gradio page in a frame: ?embed=1 hides the page header,
+# ?tab=Text-to-Speech/Kokoro opens that tab (names match without emoji and
+# case, one per level, outermost first).
+embed_head = """
+<script>
+(function () {
+  var p = new URLSearchParams(location.search);
+  if (p.get("embed") === "1") {
+    var st = document.createElement("style");
+    st.textContent = "#tts-header{display:none!important}";
+    document.head.appendChild(st);
+  }
+  var tab = p.get("tab");
+  if (!tab) return;
+  function norm(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
+  var path = tab.split("/").map(norm), i = 0, tries = 0;
+  var timer = setInterval(function () {
+    if (i >= path.length || ++tries > 150) { clearInterval(timer); return; }
+    var btn = [].slice.call(document.querySelectorAll("button[role=tab]"))
+      .find(function (b) { return norm(b.textContent) === path[i]; });
+    if (!btn) return;
+    if (btn.getAttribute("aria-selected") !== "true") btn.click();
+    i++;
+  }, 200);
+})();
+</script>
+"""
+
+
 def main_block(config):
     fix_gradio_tabs()
 
     with gr.Blocks(
         css=full_css,
         title="TTS WebUI - Gradio",
+        head=embed_head,
         analytics_enabled=False,  # it broke too many times
         theme=get_theme(config),
     ) as blocks:
@@ -23,7 +53,7 @@ def main_block(config):
             | <h3><a href="https://forms.gle/2L62owhBsGFzdFBC8">Feedback / Bug reports</a></h3>
             | <h3><a href="https://discord.gg/V8BKTVRtJ9">Discord Server</a></h3>
         </div>
-        """)
+        """, elem_id="tts-header")
 
         with gr.Tabs():
             all_tabs(config)

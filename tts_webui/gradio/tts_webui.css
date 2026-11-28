@@ -22,3 +22,27 @@
   min-width: 2em !important;
   flex-grow: 0 !important;
 }
+
+/* Embedded in the React UI (?embed=1 puts .tts-embed on <html>): the frame
+   brings its own padding, so use the whole width and cut the nesting. */
+.tts-embed #tts-header {
+  display: none !important;
+}
+
+.tts-embed .gradio-container main.fillable {
+  max-width: none !important;
+  padding: 0 !important;
+}
+
+.tts-embed .gradio-container {
+  --layout-gap: 8px;
+}
+
+/* Tabs inside tabs: a border and 12px on each side per level adds up. */
+.tts-embed .tabitem {
+  padding: 8px 4px !important;
+}
+
+.tts-embed .tab-nav button {
+  padding: 4px 10px !important;
+}

@@ -6,18 +6,16 @@ from tts_webui.gradio.fix_gradio_tabs import fix_gradio_tabs
 from tts_webui.gradio.get_theme import get_theme
 
 
-# The React UI shows the Gradio page in a frame: ?embed=1 hides the page header,
+# The React UI shows the Gradio page in a frame: ?embed=1 hides the page header
+# and tightens the layout (.tts-embed in tts_webui.css),
 # ?tab=Text-to-Speech/Kokoro opens that tab (names match without emoji and
 # case, one per level, outermost first).
 embed_head = """
 <script>
 (function () {
   var p = new URLSearchParams(location.search);
-  if (p.get("embed") === "1") {
-    var st = document.createElement("style");
-    st.textContent = "#tts-header{display:none!important}";
-    document.head.appendChild(st);
-  }
+  // Embedded in the React UI: tts_webui.css (.tts-embed) uses the full width.
+  if (p.get("embed") === "1") document.documentElement.classList.add("tts-embed");
   var tab = p.get("tab");
   if (!tab) return;
   function norm(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }

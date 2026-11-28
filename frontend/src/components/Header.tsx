@@ -207,7 +207,7 @@ export const routes: Route[] = [
         text: "API Config",
       },
       { href: "/tools/pip_list", text: "Installed Packages" },
-      { href: "/engines", text: "Engines" },
+      { href: "/tools/engines", text: "Engines" },
       { href: "/tools/extensions", text: "Extension Lists" },
       { href: "/tools/log_viewer", text: "Log Viewer" },
       { href: "/tools/model_location", text: "Model Location" },
@@ -233,7 +233,7 @@ const RouteLinks = ({ routes }: { routes: Route[] }) => {
     ) ||
     routes.find((r) => r.href.slice(1) === route.slice(0, route.indexOf("/"))) ||
     // A page listed in a section's submenu whose URL does not start with the
-    // section's (/engines, /extensions/huggingface_cache_manager under Tools).
+    // section's (/extensions/huggingface_cache_manager under Tools).
     routes.find((r) => r.subroutes?.some((s) => s.href === `/${route}`));
   const currentInnerRoute =
     currentTopRoute?.subroutes?.find((r) => r.href.slice(1) === route) ||

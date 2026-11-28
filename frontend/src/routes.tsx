@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 /**
  * The routes of the app.
@@ -114,6 +114,12 @@ const Loading = () => (
   </div>
 );
 
+/** Redirects to another path and keeps the query string (/engine?pkg=...). */
+const RedirectKeepingSearch = ({ to }: { to: string }) => {
+  const { search } = useLocation();
+  return <Navigate to={to + search} replace />;
+};
+
 export const AppRoutes = () => (
   <Suspense fallback={<Loading />}>
     <Routes>
@@ -181,8 +187,11 @@ export const AppRoutes = () => (
       <Route path="/gradio/kokoro" element={<GradioKokoroPage />} />
       <Route path="/gradio/:group" element={<GradioTabPage />} />
       <Route path="/gradio/:group/:tab" element={<GradioTabPage />} />
-      <Route path="/engines" element={<EnginesIndex />} />
-      <Route path="/engine" element={<EnginePage />} />
+      <Route path="/tools/engines" element={<EnginesIndex />} />
+      <Route path="/tools/engine" element={<EnginePage />} />
+      {/* The old addresses of the Engines pages. */}
+      <Route path="/engines" element={<RedirectKeepingSearch to="/tools/engines" />} />
+      <Route path="/engine" element={<RedirectKeepingSearch to="/tools/engine" />} />
       <Route path="/tools/extensions" element={<ToolsExtensions />} />
       <Route path="/tools/youtube_tutorials" element={<ToolsYouTube />} />
       <Route path="/tools/log_viewer" element={<ToolsLogViewer />} />

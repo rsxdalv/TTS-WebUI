@@ -1,4 +1,5 @@
 // StepList renders the installation waterfall using only /api/steps/* endpoints.
+import { useState } from "react";
 import type { StepStatus } from "./CoreApp";
 import { StepItem } from "./StepItem";
 import { GPUView } from "./GPUView";
@@ -43,7 +44,30 @@ const STEP_META: Record<string, { title: string; description: string; hasStream:
   },
 };
 
+// Steps that may be skipped (hidden as done, in this browser only; nothing changes on the server).
+const SKIPPABLE = new Set(["update"]);
+const SKIP_KEY = "tts-skipped-steps";
+
+function loadSkipped(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(SKIP_KEY) ?? "[]");
+    return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export function StepList({ statuses, onRefresh }: StepListProps) {
+  const [skipped, setSkipped] = useState<string[]>(loadSkipped);
+  function setSkip(step: string, on: boolean) {
+    const next = on ? [...skipped.filter((x) => x !== step), step] : skipped.filter((x) => x !== step);
+    setSkipped(next);
+    try {
+      localStorage.setItem(SKIP_KEY, JSON.stringify(next));
+    } catch {
+      // storage unavailable: the skip lasts until the page is reloaded
+    }
+  }
   // A running step is never shown done, and while any step runs no other step
   // can be started: the server answers 409 anyway (R2-3).
   const isDone = (s: StepStatus) => s.done && !s.running;
@@ -64,7 +88,8 @@ export function StepList({ statuses, onRefresh }: StepListProps) {
           description: "",
           hasStream: false,
         };
-        const state: "done" | "active" | "pending" = isDone(s)
+        const isSkipped = SKIPPABLE.has(s.step) && skipped.includes(s.step) && !s.running;
+        const state: "done" | "active" | "pending" = isDone(s) || isSkipped
           ? "done"
           : idx === activeIdx && (!anyRunning || s.running)
             ? "active"
@@ -92,6 +117,9 @@ export function StepList({ statuses, onRefresh }: StepListProps) {
             hasStream={meta.hasStream}
             running={s.running}
             detail={s.detail}
+            skipped={isSkipped}
+            onSkip={SKIPPABLE.has(s.step) ? () => setSkip(s.step, true) : undefined}
+            onUnskip={() => setSkip(s.step, false)}
             onComplete={onRefresh}
           />
         );
